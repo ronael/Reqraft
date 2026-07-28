@@ -5,7 +5,8 @@ import process from "node:process";
 import { rewrite } from "./core/engine.js";
 
 import type { RepromptLevel, RepromptResult } from "./core/types.js";
-import { loadConfig } from "./config/loader.js";
+import type { Config } from "./config/schema.js";
+import { DEFAULT_CONFIG, loadConfig } from "./config/loader.js";
 import { resolveProfile, listProfiles } from "./profiles/registry.js";
 import { createProvider, listProviders } from "./providers/registry.js";
 import { resolveModel } from "./models/model-resolver.js";
@@ -13,9 +14,26 @@ import { getPresetModels } from "./models/presets.js";
 import { writeClipboard } from "./clipboard/clipboard.js";
 import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
+import {
+  AppFrame,
+  EmptyState,
+  HeaderBar,
+  MetaRow,
+  Notice,
+  SectionCard,
+  ShortcutBar,
+  Spinner,
+  StatusBadge,
+} from "./ui/components/index.js";
+import { hydrateCredentials } from "./auth/credentials.js";
+import { formatUiError } from "./ui/errors.js";
+import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
+import { theme } from "./ui/theme/tokens.js";
 
 type ViewMode = "result" | "diff" | "explain";
-type ModalType = "profile" | "level" | "provider" | "model" | null;
+type ModalType = "profile" | "level" | "provider" | "model" | "commands" | "help" | null;
+type CommandAction =
+  "generate" | "profile" | "level" | "provider" | "model" | "result" | "diff" | "explain" | "copy";
 
 interface AppState {
   input: string;
@@ -32,13 +50,13 @@ interface AppState {
 
 export function App(): React.JSX.Element {
   const { exit } = useApp();
-  const { columns, rows } = useTerminalSize();
+  const { columns } = useTerminalSize();
   const [state, setState] = useState<AppState>({
     input: "",
-    profile: "auto",
-    level: "standard",
-    provider: "mock",
-    model: "mock-model",
+    profile: DEFAULT_CONFIG.defaultProfile,
+    level: DEFAULT_CONFIG.defaultLevel,
+    provider: DEFAULT_CONFIG.defaultProvider,
+    model: DEFAULT_CONFIG.defaultModel,
     result: null,
     error: null,
     view: "result",
@@ -46,10 +64,15 @@ export function App(): React.JSX.Element {
     copied: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [config, setConfig] = useState<Config | null>(null);
+  const [configReady, setConfigReady] = useState(false);
 
   useEffect(() => {
-    loadConfig()
+    hydrateCredentials(process.env)
+      .catch(() => undefined)
+      .then(() => loadConfig())
       .then((config) => {
+        setConfig(config);
         setState((prev) => ({
           ...prev,
           provider: config.defaultProvider,
@@ -59,7 +82,10 @@ export function App(): React.JSX.Element {
         }));
       })
       .catch(() => {
-        // keep defaults
+        // Keep the validated defaults if the local file cannot be loaded.
+      })
+      .finally(() => {
+        setConfigReady(true);
       });
   }, []);
 
@@ -69,8 +95,9 @@ export function App(): React.JSX.Element {
     setState((prev) => ({ ...prev, error: null, result: null }));
 
     try {
+      await hydrateCredentials(process.env);
       const { profile } = resolveProfile(state.profile, state.input);
-      const provider = createProvider(state.provider as "mock", process.env);
+      const provider = createProvider(state.provider as "mock", process.env, config ?? undefined);
       const { model, reasoningEffort } = resolveModel(state.provider, state.model, state.model);
       const result = await rewrite({
         input: state.input,
@@ -81,17 +108,18 @@ export function App(): React.JSX.Element {
         includeChanges: true,
         stream: false,
         reasoningEffort,
+        fidelityMode: config?.fidelityMode,
       });
       setState((prev) => ({ ...prev, result, view: "result" }));
     } catch (err) {
       setState((prev) => ({
         ...prev,
-        error: err instanceof Error ? err.message : String(err),
+        error: formatUiError(err, state.provider),
       }));
     } finally {
       setIsLoading(false);
     }
-  }, [state.input, state.profile, state.level, state.provider, state.model]);
+  }, [state.input, state.profile, state.level, state.provider, state.model, config]);
 
   useInput((input, key) => {
     if (state.modal) {
@@ -105,7 +133,8 @@ export function App(): React.JSX.Element {
       void generate();
       return;
     }
-    if (key.ctrl && key.shift && input === "C") {
+    if (key.ctrl && input === "y") {
+      setState((prev) => ({ ...prev, input: state.input }));
       if (state.result) {
         void writeClipboard(state.result.rewritten).then(() => {
           setState((prev) => ({ ...prev, copied: true }));
@@ -117,27 +146,40 @@ export function App(): React.JSX.Element {
       return;
     }
     if (key.ctrl && input === "d") {
-      setState((prev) => ({ ...prev, view: prev.view === "diff" ? "result" : "diff" }));
+      setState((prev) => ({
+        ...prev,
+        input: state.input,
+        view: prev.view === "diff" ? "result" : "diff",
+      }));
       return;
     }
     if (key.ctrl && input === "p") {
-      setState((prev) => ({ ...prev, modal: "profile" }));
+      setState((prev) => ({ ...prev, input: state.input, modal: "profile" }));
       return;
     }
     if (key.ctrl && input === "m") {
-      setState((prev) => ({ ...prev, modal: "model" }));
+      setState((prev) => ({ ...prev, input: state.input, modal: "model" }));
       return;
     }
     if (key.ctrl && input === "l") {
-      setState((prev) => ({ ...prev, modal: "level" }));
+      setState((prev) => ({ ...prev, input: state.input, modal: "level" }));
       return;
     }
     if (key.ctrl && input === "r") {
+      setState((prev) => ({ ...prev, input: state.input }));
       void generate();
       return;
     }
-    if (input === "?") {
-      setState((prev) => ({ ...prev, view: prev.view === "explain" ? "result" : "explain" }));
+    if (key.ctrl && input === "k") {
+      setState((prev) => ({ ...prev, input: state.input, modal: "commands" }));
+      return;
+    }
+    if (key.ctrl && input === "e" && state.result) {
+      setState((prev) => ({ ...prev, input: state.input, view: "explain" }));
+      return;
+    }
+    if (input === "?" && state.input.length === 0) {
+      setState((prev) => ({ ...prev, input: state.input, modal: "help" }));
       return;
     }
     if (key.escape || (key.ctrl && input === "c")) {
@@ -177,7 +219,10 @@ export function App(): React.JSX.Element {
         );
       }
       case "provider": {
-        const providers: SelectOption<string>[] = listProviders().map((id) => ({ label: id, value: id }));
+        const providers: SelectOption<string>[] = listProviders().map((id) => ({
+          label: id,
+          value: id,
+        }));
         return (
           <SelectModal
             title="Changer de provider"
@@ -200,11 +245,51 @@ export function App(): React.JSX.Element {
           />
         );
       }
+      case "commands": {
+        const actions: SelectOption<CommandAction>[] = [
+          { label: "Générer ou régénérer", value: "generate" },
+          { label: "Changer de profil", value: "profile" },
+          { label: "Changer de niveau", value: "level" },
+          { label: "Changer de provider", value: "provider" },
+          { label: "Changer de modèle", value: "model" },
+          ...(state.result
+            ? [
+                { label: "Afficher le résultat", value: "result" as const },
+                { label: "Afficher le diff", value: "diff" as const },
+                { label: "Afficher l'explication", value: "explain" as const },
+                { label: "Copier le résultat", value: "copy" as const },
+              ]
+            : []),
+        ];
+        return (
+          <SelectModal
+            title="Actions"
+            options={actions}
+            onSelect={runCommand}
+            onCancel={closeModal}
+          />
+        );
+      }
+      case "help":
+        return (
+          <SelectModal
+            title="Raccourcis"
+            options={[
+              { label: "Entrée — générer", value: "generate" },
+              { label: "Ctrl+P — profil", value: "profile" },
+              { label: "Ctrl+L — niveau", value: "level" },
+              { label: "Ctrl+M — modèle", value: "model" },
+              { label: "Ctrl+D — diff", value: "diff" },
+              { label: "Ctrl+R — régénérer", value: "regenerate" },
+            ]}
+            onSelect={closeModal}
+            onCancel={closeModal}
+          />
+        );
       default:
         return null;
     }
   };
-
 
   const closeModal = (): void => {
     setState((prev) => ({ ...prev, modal: null }));
@@ -216,7 +301,9 @@ export function App(): React.JSX.Element {
     setState((prev) => ({ ...prev, level, modal: null }));
   };
   const setProvider = (provider: string): void => {
-    setState((prev) => ({ ...prev, provider, modal: null }));
+    const fallbackModel =
+      getPresetModels().find((preset) => preset.provider === provider)?.id ?? "";
+    setState((prev) => ({ ...prev, provider, model: fallbackModel, modal: null }));
   };
   const setModel = (model: string): void => {
     setState((prev) => ({ ...prev, model, modal: null }));
@@ -226,6 +313,31 @@ export function App(): React.JSX.Element {
   };
   const submitInput = (): void => {
     void generate();
+  };
+  const copyResult = (): void => {
+    if (!state.result) return;
+    void writeClipboard(state.result.rewritten).then(() => {
+      setState((prev) => ({ ...prev, copied: true, modal: null }));
+      setTimeout(() => {
+        setState((prev) => ({ ...prev, copied: false }));
+      }, 1500);
+    });
+  };
+  const runCommand = (action: CommandAction): void => {
+    if (["profile", "level", "provider", "model"].includes(action)) {
+      setState((prev) => ({ ...prev, modal: action as ModalType }));
+      return;
+    }
+    if (action === "generate") {
+      setState((prev) => ({ ...prev, modal: null }));
+      void generate();
+      return;
+    }
+    if (action === "copy") {
+      copyResult();
+      return;
+    }
+    setState((prev) => ({ ...prev, view: action as ViewMode, modal: null }));
   };
 
   const renderResult = (): string => {
@@ -242,63 +354,98 @@ export function App(): React.JSX.Element {
   };
 
   const resultText = renderResult();
-  const maxHeight = Math.max(3, Math.floor(rows / 3));
+  const layoutMode = getLayoutMode(columns);
+  const compact = layoutMode !== "wide";
+  const resultTitle =
+    state.view === "diff" ? "Diff" : state.view === "explain" ? "Explication" : "Prompt amélioré";
+  const frameWidth = getFrameWidth(columns);
+
+  if (!configReady) {
+    return (
+      <AppFrame mode={layoutMode} width={frameWidth}>
+        <Box>
+          <Text bold color={theme.color.accent}>
+            reqraft
+          </Text>
+          <Text dimColor> chargement de la configuration...</Text>
+        </Box>
+      </AppFrame>
+    );
+  }
+
+  if (state.modal) {
+    return (
+      <AppFrame mode={layoutMode} width={frameWidth}>
+        <HeaderBar provider={state.provider} model={state.model} compact={compact} />
+        <SectionCard
+          title={
+            state.modal === "help"
+              ? "Aide"
+              : state.modal === "commands"
+                ? "Palette d’actions"
+                : "Sélection"
+          }
+          tone="primary"
+        >
+          {renderModal()}
+        </SectionCard>
+      </AppFrame>
+    );
+  }
 
   return (
-    <Box flexDirection="column" height={rows}>
-      <Box justifyContent="space-between">
-        <Text bold>rp</Text>
-        <Text>{state.provider} · {state.model}</Text>
-      </Box>
-
-      <Box flexDirection="column" borderStyle="single" padding={1} minHeight={3}>
-        <Text dimColor>Prompt original</Text>
+    <AppFrame mode={layoutMode} width={frameWidth}>
+      <HeaderBar provider={state.provider} model={state.model} compact={compact} />
+      <SectionCard title="Demande brute" tone="primary">
         <TextInput
           value={state.input}
           onChange={updateInput}
           onSubmit={submitInput}
-          placeholder="Écris ta demande brute..."
+          focus={!isLoading}
+          placeholder="Écris ta demande brute, même imparfaite…"
         />
-      </Box>
-
-      <Box justifyContent="space-between" paddingX={1}>
-        <Text>Profil : {state.profile}</Text>
-        <Text>Niveau : {state.level}</Text>
-      </Box>
-
-      <Box flexDirection="column" borderStyle="single" padding={1} flexGrow={1} minHeight={maxHeight}>
-        <Text dimColor>
-          {state.view === "result" && "Prompt amélioré"}
-          {state.view === "diff" && "Diff"}
-          {state.view === "explain" && "Explication"}
-        </Text>
-        {isLoading ? (
-          <Text>Génération...</Text>
-        ) : state.error ? (
-          <Text color="red">{state.error}</Text>
-        ) : (
-          <Text wrap="wrap">{resultText || "Appuie sur Ctrl+Enter pour générer."}</Text>
+      </SectionCard>
+      <Box paddingX={1} marginBottom={1} flexWrap="wrap">
+        <StatusBadge label="Profil" value={state.profile} />
+        <StatusBadge label="Niveau" value={state.level} />
+        {!compact && (
+          <>
+            <StatusBadge label="Provider" value={state.provider} />
+            <StatusBadge label="Modèle" value={state.model} />
+          </>
         )}
       </Box>
-
-      <Box justifyContent="space-between" paddingX={1}>
-        <Text dimColor>
-          Ctrl+Enter générer · Ctrl+P profil · Ctrl+L niveau · Ctrl+M modèle · Ctrl+D diff · Ctrl+R régénérer · ? explication · Esc quitter
-        </Text>
-      </Box>
+      <SectionCard title={resultTitle} tone={state.result ? "primary" : "secondary"}>
+        {isLoading ? (
+          <Spinner />
+        ) : state.error ? (
+          <Notice tone="danger">{state.error}</Notice>
+        ) : state.result ? (
+          <>
+            <Text wrap="wrap">{resultText}</Text>
+            <MetaRow result={state.result} />
+          </>
+        ) : (
+          <EmptyState
+            title={
+              state.view === "diff"
+                ? "Le diff sera disponible après une génération."
+                : state.view === "explain"
+                  ? "L’explication sera disponible après une génération."
+                  : "Aucun résultat pour le moment."
+            }
+            action="Appuie sur Entrée pour générer une reformulation."
+          />
+        )}
+      </SectionCard>
+      <ShortcutBar compact={compact} hasResult={Boolean(state.result)} />
 
       {state.copied && (
         <Box>
-          <Text color="green">Copié dans le presse-papiers.</Text>
+          <Notice tone="success">Copié dans le presse-papiers.</Notice>
         </Box>
       )}
-
-      {state.modal && (
-        <Box position="absolute" marginTop={Math.floor(rows / 4)} marginLeft={Math.floor(columns / 4)}>
-          {renderModal()}
-        </Box>
-      )}
-    </Box>
+    </AppFrame>
   );
 }
 
