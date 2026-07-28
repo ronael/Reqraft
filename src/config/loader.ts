@@ -13,6 +13,7 @@ export const DEFAULT_CONFIG: Config = {
   stream: true,
   timeoutMs: 30000,
   showChanges: false,
+  showStats: false,
   telemetry: false,
 };
 

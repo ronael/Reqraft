@@ -1,6 +1,12 @@
 import { z } from "zod";
 import type { RepromptLevel } from "../core/types.js";
 
+const BooleanConfigSchema = z.preprocess((value) => {
+  if (value === "true") return true;
+  if (value === "false") return false;
+  return value;
+}, z.boolean());
+
 export const OpenAICompatibleProviderConfigSchema = z
   .object({
     type: z.literal("openai-compatible"),
@@ -20,6 +26,7 @@ export const ConfigSchema = z.object({
   stream: z.boolean().default(true),
   timeoutMs: z.number().int().positive().default(30000),
   showChanges: z.boolean().default(false),
+  showStats: BooleanConfigSchema.default(false),
   telemetry: z.boolean().default(false),
   providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
 }).passthrough();
@@ -36,6 +43,7 @@ const CONFIG_KEYS = [
   "stream",
   "timeoutMs",
   "showChanges",
+  "showStats",
   "telemetry",
 ] as const;
 

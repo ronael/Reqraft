@@ -24,6 +24,7 @@ export interface RepromptCliOptions {
   json?: boolean;
   diff?: boolean;
   explain?: boolean;
+  stats?: boolean;
   stream?: boolean;
   timeout?: string;
   verbose?: boolean;
@@ -79,7 +80,7 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
       console.error(`Profil détecté : ${profile.id}`);
     }
 
-    await outputResult(result, options);
+    await outputResult(result, options, config.showStats);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`Erreur : ${message}`);
@@ -106,7 +107,11 @@ async function resolveInput(options: RepromptCliOptions): Promise<string> {
   return "";
 }
 
-async function outputResult(result: RepromptResult, options: RepromptCliOptions): Promise<void> {
+async function outputResult(
+  result: RepromptResult,
+  options: RepromptCliOptions,
+  defaultShowStats: boolean,
+): Promise<void> {
   if (options.json) {
     console.log(JSON.stringify(result, null, 2));
   } else if (options.diff) {
@@ -117,10 +122,49 @@ async function outputResult(result: RepromptResult, options: RepromptCliOptions)
     console.log(result.rewritten);
   }
 
+  if (!options.json && (options.stats ?? defaultShowStats)) {
+    console.log("");
+    console.log(formatStats(result));
+  }
+
   if (options.copy) {
     await writeClipboard(result.rewritten);
     console.error("Résultat copié dans le presse-papiers.");
   }
+}
+
+function formatStats(result: RepromptResult): string {
+  const lines = ["Stats"];
+  const details = [
+    result.latencyMs !== undefined ? `Durée ${formatDuration(result.latencyMs)}` : undefined,
+    result.usage?.inputTokens !== undefined ? `${String(result.usage.inputTokens)} entrée` : undefined,
+    result.usage?.outputTokens !== undefined ? `${String(result.usage.outputTokens)} sortie` : undefined,
+  ].filter((item): item is string => item !== undefined);
+
+  if (details.length > 0) {
+    lines.push(`Tokens ${details.join(" · ")}`);
+  }
+
+  if (result.usage?.estimatedCost !== undefined) {
+    lines.push(`Coût estimé ${formatCost(result.usage.estimatedCost, result.usage.currency)}`);
+  } else {
+    lines.push("Coût estimé non disponible");
+  }
+
+  lines.push(`Provider ${result.provider} · Modèle ${result.model}`);
+  return lines.join("\n");
+}
+
+function formatDuration(ms: number): string {
+  if (ms < 1000) {
+    return `${String(ms)} ms`;
+  }
+  return `${(ms / 1000).toFixed(2)} s`;
+}
+
+function formatCost(cost: number, currency?: string): string {
+  const suffix = currency ? ` ${currency}` : "";
+  return `${cost.toFixed(6)}${suffix}`;
 }
 
 function formatDiff(original: string, rewritten: string): string {

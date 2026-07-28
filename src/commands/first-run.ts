@@ -187,6 +187,7 @@ export function createInitConfig(input: InitConfigInput): Config {
     stream: input.stream,
     timeoutMs: input.timeoutMs,
     showChanges: input.existing?.showChanges ?? DEFAULT_CONFIG.showChanges,
+    showStats: input.existing?.showStats ?? DEFAULT_CONFIG.showStats,
     telemetry: false,
     providers: Object.keys(providers).length > 0 ? providers : undefined,
   });
@@ -204,6 +205,7 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
     `Copie auto.    ${config.copyAfterGeneration ? "oui" : "non"}`,
     `Streaming      ${config.stream ? "oui" : "non"}`,
     `Timeout        ${String(config.timeoutMs)} ms`,
+    `Stats          ${config.showStats ? "oui" : "non"}`,
     "Télémétrie     désactivée",
   ];
 

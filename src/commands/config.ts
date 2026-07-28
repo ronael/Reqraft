@@ -63,6 +63,7 @@ function parseValue(key: ConfigKey, value: string): unknown {
     case "copyAfterGeneration":
     case "stream":
     case "showChanges":
+    case "showStats":
     case "telemetry":
       return value === "true";
     case "timeoutMs":

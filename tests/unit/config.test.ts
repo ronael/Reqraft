@@ -14,10 +14,12 @@ describe("config schema", () => {
       stream: false,
       timeoutMs: 60000,
       showChanges: true,
+      showStats: true,
       telemetry: false,
     });
     expect(config.defaultProvider).toBe("openai");
     expect(config.timeoutMs).toBe(60000);
+    expect(config.showStats).toBe(true);
   });
 
   it("applies defaults", () => {
@@ -25,6 +27,12 @@ describe("config schema", () => {
     expect(config.defaultProvider).toBe("anthropic");
     expect(config.defaultModel).toBe("claude-haiku-4-5");
     expect(config.timeoutMs).toBe(30000);
+    expect(config.showStats).toBe(false);
+  });
+
+  it("accepts boolean-like showStats values from existing configs", () => {
+    const config = ConfigSchema.parse({ showStats: "true" });
+    expect(config.showStats).toBe(true);
   });
 
   it("merges with priority CLI > env > file > defaults", () => {

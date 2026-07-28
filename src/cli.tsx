@@ -23,6 +23,7 @@ interface CliOptions {
   json?: boolean;
   diff?: boolean;
   explain?: boolean;
+  stats?: boolean;
   stream?: boolean;
   timeout?: string;
   verbose?: boolean;
@@ -46,6 +47,7 @@ program
   .option("--json", "Sortie structurée en JSON")
   .option("--diff", "Afficher un diff entre l'original et le résultat")
   .option("--explain", "Afficher une explication des modifications")
+  .option("--stats", "Afficher les statistiques de génération")
   .option("--no-stream", "Désactiver le streaming")
   .option("--timeout <ms>", "Timeout en millisecondes")
   .option("--verbose", "Mode verbeux")
