@@ -2,65 +2,66 @@
 
 ## Lot en cours
 
-Lot A — Initialisation du projet (terminé, prêt au commit).
+Lot B — Domaine et moteur (terminé, prêt au commit).
 
 ## Terminé
 
-- Création de la structure de dossiers complète.
-- Configuration `package.json` avec les deux exécutables `rp` et `reprompt`.
-- Installation des dépendances (pnpm).
-- Configuration TypeScript strict (`tsconfig.json`) avec `jsx: react`.
-- Configuration ESLint + Prettier.
-- Configuration Vitest et tsup.
-- Fichiers source initiaux : `cli.tsx`, `app.tsx`, `version.ts`, `core/types.ts`, `providers/mock.ts`.
-- Test unitaire minimal (`tests/unit/version.test.ts`).
-- CI GitHub minimale (Ubuntu/macOS/Windows, Node 20/22).
-- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test`, `pnpm build` réussies.
-- Test manuel des binaires `node dist/cli.js --help`, `--version`, `"test"` réussi.
+### Lot A
+
+- Initialisation complète du projet.
+- Commit : `feat(lot-a): initialize project foundation`.
+
+### Lot B
+
+- Types du domaine (`src/core/types.ts`).
+- Système de profils : base, registry, auto-détection, et 7 profils basiques (clean, code, frontend, web-design, debug, review, writing).
+- Niveaux de transformation (`src/core/levels.ts`).
+- Builder de prompts (`src/core/prompt-builder.ts`).
+- Parser de résultats structurés avec fallback (`src/core/result-parser.ts`).
+- Moteur de reformulation (`src/core/engine.ts`).
+- Provider mock amélioré.
+- Tests unitaires : profiles, result-parser, engine.
+- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (16 tests), `pnpm build` réussies.
 
 ## Reste à faire
 
-- Commit `feat(lot-a): initialize project foundation`.
-- Passer au Lot B — Domaine et moteur.
+- Commit `feat(lot-b): implement reprompt engine`.
+- Passer au Lot C — Providers et modèles.
 
-## Fichiers créés ou modifiés
+## Fichiers créés ou modifiés (Lot B)
 
-- `package.json`
-- `tsconfig.json`
-- `eslint.config.mjs`
-- `prettier.config.mjs`
-- `vitest.config.ts`
-- `tsup.config.ts`
-- `.gitignore`
-- `.github/workflows/ci.yml`
-- `src/cli.tsx`
-- `src/app.tsx`
-- `src/version.ts`
-- `src/core/types.ts`
+- `src/core/engine.ts`
+- `src/core/levels.ts`
+- `src/core/prompt-builder.ts`
+- `src/core/result-parser.ts`
+- `src/profiles/auto.ts`
+- `src/profiles/base.ts`
+- `src/profiles/clean.ts`
+- `src/profiles/code.ts`
+- `src/profiles/debug.ts`
+- `src/profiles/frontend.ts`
+- `src/profiles/registry.ts`
+- `src/profiles/review.ts`
+- `src/profiles/types.ts`
+- `src/profiles/web-design.ts`
+- `src/profiles/writing.ts`
 - `src/providers/mock.ts`
-- `tests/unit/version.test.ts`
-- `benchmark/runner.ts`
+- `tests/unit/engine.test.ts`
+- `tests/unit/profiles.test.ts`
+- `tests/unit/result-parser.test.ts`
 - `WORKLOG.md`
 
-## Commandes exécutées
+## Commandes exécutées (Lot B)
 
-- `pnpm init`
-- `mkdir -p ...`
-- `pnpm install`
-- `pnpm exec tsc --noEmit` ✓
-- `pnpm lint` ✓
-- `pnpm test` ✓ (1 test passé)
-- `pnpm build` ✓
-- `node dist/cli.js --help` ✓
-- `node dist/cli.js --version` ✓
-- `node dist/cli.js "test"` ✓
+- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (16 tests passés).
 
 ## Décisions techniques
 
-- `jsx: react` plutôt que `react-jsx` pour éviter les conflits d'import React avec TypeScript strict.
-- Le shebang est injecté par tsup via `banner.js` ; retiré du fichier source `cli.tsx` pour éviter le double shebang.
-- Utilisation d'Ink 5.x avec React 18.x.
+- Architecture profil indépendante avec `PromptProfile` et registre.
+- Détection locale par mots-clés (pas d'appel IA).
+- Parser robuste avec suppression des fences Markdown et fallback JSON.
+- Moteur isolé, testable avec provider mock.
 
 ## Prochaine action
 
-Effectuer le commit du Lot A puis commencer le Lot B.
+Effectuer le commit du Lot B puis commencer le Lot C.
