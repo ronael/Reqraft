@@ -8,6 +8,7 @@ import { runReprompt } from "./commands/reprompt.js";
 import { runConfig } from "./commands/config.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runFirstRunSetup } from "./commands/first-run.js";
+import { runAlias } from "./commands/aliases.js";
 import { listProviders } from "./providers/registry.js";
 import { getPresetModels } from "./models/presets.js";
 
@@ -112,6 +113,16 @@ program
   .description("Vérifie l'installation et la configuration")
   .action(async () => {
     await runDoctor();
+  });
+
+program
+  .command("alias")
+  .description("Gère les alias shell")
+  .argument("<action>", "set, remove, list")
+  .argument("[name]", "Nom de l'alias")
+  .option("--dry-run", "Afficher la modification sans l'appliquer")
+  .action(async (action: string, name?: string, options?: { dryRun?: boolean }) => {
+    await runAlias(action, name, options ?? {});
   });
 
 program
