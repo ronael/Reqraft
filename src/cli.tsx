@@ -12,6 +12,7 @@ import { runAlias } from "./commands/aliases.js";
 import { listProviders } from "./providers/registry.js";
 import { getPresetModels } from "./models/presets.js";
 import { credentialStatus, login, logout, type CredentialProvider } from "./auth/credentials.js";
+import { printScreen } from "./ui/text.js";
 
 interface CliOptions {
   profile?: string;
@@ -70,10 +71,20 @@ program
   .argument("<action>", "login, logout, status")
   .argument("[provider]", "anthropic, openai, deepseek, mistral")
   .action(async (action: string, provider?: CredentialProvider) => {
-    if (action === "status") { await credentialStatus(); return; }
-    if (!provider || !["anthropic", "openai", "deepseek", "mistral"].includes(provider)) throw new Error("Provider invalide.");
-    if (action === "login") { await login(provider); return; }
-    if (action === "logout") { await logout(provider); return; }
+    if (action === "status") {
+      await credentialStatus();
+      return;
+    }
+    if (!provider || !["anthropic", "openai", "deepseek", "mistral"].includes(provider))
+      throw new Error("Provider invalide.");
+    if (action === "login") {
+      await login(provider);
+      return;
+    }
+    if (action === "logout") {
+      await logout(provider);
+      return;
+    }
     throw new Error("Action invalide : login, logout ou status.");
   });
 
@@ -81,7 +92,7 @@ program
   .command("profiles")
   .description("Liste les profils disponibles")
   .action(() => {
-    console.log("Profiles:");
+    printScreen("Profils", "Styles de reformulation disponibles");
     console.log("  auto");
     for (const profile of [
       "clean",
@@ -100,8 +111,9 @@ program
   .command("providers")
   .description("Liste les providers disponibles")
   .action(() => {
+    printScreen("Providers", "Connexions IA disponibles");
     for (const id of listProviders()) {
-      console.log(id);
+      console.log(`  ${id}`);
     }
   });
 
@@ -109,8 +121,14 @@ program
   .command("models")
   .description("Liste les modèles recommandés")
   .action(() => {
+    printScreen("Modèles", "Modèles recommandés par provider");
+    let currentProvider = "";
     for (const preset of getPresetModels()) {
-      console.log(`${preset.provider}\t${preset.id}\t${preset.name}`);
+      if (preset.provider !== currentProvider) {
+        currentProvider = preset.provider;
+        console.log(`\n  ${currentProvider}`);
+      }
+      console.log(`    ${preset.id.padEnd(30)} ${preset.name}`);
     }
   });
 
@@ -161,4 +179,9 @@ program
     console.log(version);
   });
 
-program.parse();
+try {
+  await program.parseAsync();
+} catch (error) {
+  console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+}

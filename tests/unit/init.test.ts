@@ -89,14 +89,14 @@ describe("init assistant helpers", () => {
     expect(summary).not.toContain("secret-value");
   });
 
-  it("explains after init why missing keys were not requested", () => {
+  it("recommends secure credential storage after init", () => {
     const note = buildPostInitSecurityNote({
       envName: "OPENAI_API_KEY",
       detected: false,
       message: "OPENAI_API_KEY non détectée.",
     });
 
-    expect(note).toContain("Reqraft ne t'a pas demandé ta clé API");
+    expect(note).toContain("rp auth login openai");
     expect(note).toContain("OPENAI_API_KEY");
     expect(note).toContain("export OPENAI_API_KEY");
     expect(note).not.toContain("secret-value");

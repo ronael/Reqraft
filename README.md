@@ -128,6 +128,8 @@ Set your API key in the environment:
 export ANTHROPIC_API_KEY=...
 export OPENAI_API_KEY=...
 export DEEPSEEK_API_KEY=...
+export MISTRAL_API_KEY=...
+```
 
 Or store it in the system credential manager:
 
@@ -138,8 +140,6 @@ rp auth logout openai
 ```
 
 Environment variables take precedence over stored credentials. macOS uses Keychain and Linux uses Secret Service; Windows currently uses environment variables.
-export MISTRAL_API_KEY=...
-```
 
 ## Configuration
 
@@ -154,9 +154,9 @@ rp config setup              # same as rp init
 rp config setup --reset      # same as rp init --reset
 ```
 
-`rp init` never stores API keys. It checks environment variables such as
-`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, or `MISTRAL_API_KEY`
-and prints shell-specific setup instructions when a key is missing.
+`rp init` never stores API keys in `config.json`. When a key is missing, it recommends
+`rp auth login <provider>` for secure system storage and also prints shell-specific
+environment-variable instructions.
 
 ## Shell aliases
 

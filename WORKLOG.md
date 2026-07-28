@@ -2,7 +2,46 @@
 
 ## Lot en cours
 
-Publication — en attente de l'OTP npm ou de la configuration du token d'automation.
+Identité terminal — validation finale de la branche `feat/tui-design-system`.
+
+## Identité terminal
+
+### Lots A et B — direction et design system
+
+- Direction terminal-first documentée dans `docs/tui-design.md`.
+- Palette sémantique, tokens, types et seuils responsive centralisés.
+- Composants réutilisables ajoutés : frame, header, panneaux, badges, notices,
+  état vide, métadonnées, raccourcis, sélecteur et spinner.
+
+### Lots C et D — écran principal et interactions
+
+- Écran principal limité à 112 colonnes, sans hauteur artificielle ni grands
+  espaces vides.
+- États vide, chargement, résultat, diff, explication, succès et erreur harmonisés.
+- Métadonnées de durée et de tokens affichées après génération.
+- Palette `Ctrl+K`, aide `?`, navigation `Esc` et raccourcis de contexte validés
+  dans un pseudo-terminal réel.
+- Les erreurs provider brutes sont remplacées par une prochaine action claire.
+
+### Lots E et F — commandes et robustesse
+
+- Titres partagés appliqués à `doctor`, `auth`, `profiles`, `providers` et `models`.
+- `init` recommande désormais le coffre-fort via `rp auth login`.
+- Les valeurs d'exemple comme `ta-clé` sont refusées dans la saisie et dans
+  l'environnement avant tout appel provider.
+- Fallback `NO_COLOR` ajouté pour les logs, pipes et terminaux non interactifs.
+- Rendu manuel validé à 48 colonnes ; seuils automatisés pour 40, 52, 76 et
+  120 colonnes.
+
+### Validation
+
+- Tests ciblés auth, erreurs, responsive et fallback couleur ajoutés.
+- `pnpm exec tsc --noEmit` : succès.
+- `pnpm lint` : succès.
+- `pnpm test` : 16 fichiers, 102 tests réussis.
+- `pnpm build` : succès, bundle ESM généré.
+- Tests manuels : rendu étroit, palette, aide, retour `Esc`, commandes secondaires,
+  fallback `NO_COLOR` et refus interactif d'une clé `ta-clé`.
 
 ## Terminé
 
