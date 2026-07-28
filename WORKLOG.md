@@ -16,6 +16,11 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 - ✅ Cas de test validé en dev avec OpenAI : 3.05 s, 232 tokens d'entrée, 177 tokens de sortie visible, 0 token de raisonnement.
 - ✅ Garde-fous de fidélité ajoutés pour éviter l'expansion non demandée des prompts courts.
 - ✅ Cas landing page Apple revalidé : 2.11 s, 329 tokens d'entrée, 31 tokens de sortie visible, 0 token de raisonnement.
+- ✅ Stratégie OpenAI-first adoptée : `gpt-4.1-mini` sert de référence avant validation des autres providers.
+- ✅ Modes de fidélité préparés (`permissive`, `balanced`, `strict`) avec `balanced` par défaut.
+- ✅ `--explain` corrigé : prompt sur stdout, explications sur stderr.
+- ✅ Dataset de benchmark fidélité ajouté avec 40 cas.
+- ✅ Contrat provider documenté dans `docs/provider-contract.md`.
 
 ### Lots A à K
 

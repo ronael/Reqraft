@@ -1,4 +1,5 @@
 export type RepromptLevel = "minimal" | "standard" | "complete";
+export type FidelityMode = "permissive" | "balanced" | "strict";
 
 export interface RepromptRequest {
   input: string;

@@ -37,6 +37,17 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
     "",
     levelDescription,
     "",
+    request.level === "complete"
+      ? [
+          "Format obligatoire pour le niveau complete :",
+          "Le champ rewritten doit contenir exactement ces sections en français :",
+          "Objectif :",
+          "Contraintes :",
+          "À vérifier :",
+          "Ne remplace pas À vérifier par des décisions inventées.",
+          "",
+        ].join("\n")
+      : "",
     "Contraintes de sortie :",
     "- Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier.",
     "- Garde warnings vide sauf ambiguïté critique.",

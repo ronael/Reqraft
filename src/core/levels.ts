@@ -21,8 +21,9 @@ export function describeLevel(level: RepromptLevel): string {
 - ne presque rien ajouter.`;
     case "complete":
       return `Niveau complet :
-- produire un brief rigoureux ;
-- séparer objectif, contexte, actions, contraintes et validations ;
+- produire un brief rigoureux mais fidèle ;
+- structurer obligatoirement le champ rewritten avec les sections Objectif, Contraintes et À vérifier ;
+- ne résous pas les informations manquantes : liste-les dans À vérifier ;
 - ne compléter que ce qui est déjà présent ;
 - signaler les informations réellement manquantes ;
 - ne jamais inventer de décision.`;

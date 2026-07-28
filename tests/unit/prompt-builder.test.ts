@@ -29,4 +29,18 @@ describe("prompt builder", () => {
 
     expect(systemPrompt.length).toBeLessThan(1800);
   });
+
+  it("requires complete prompts to separate objective constraints and missing information", () => {
+    const { systemPrompt } = buildPrompt({
+      input: "fais une landing page style apple",
+      profile: webDesignProfile,
+      level: "complete",
+      includeChanges: false,
+    });
+
+    expect(systemPrompt).toContain("Objectif");
+    expect(systemPrompt).toContain("Contraintes");
+    expect(systemPrompt).toContain("À vérifier");
+    expect(systemPrompt).toContain("ne résous pas les informations manquantes");
+  });
 });

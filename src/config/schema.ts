@@ -27,6 +27,7 @@ export const ConfigSchema = z.object({
   timeoutMs: z.number().int().positive().default(30000),
   showChanges: z.boolean().default(false),
   showStats: BooleanConfigSchema.default(false),
+  fidelityMode: z.enum(["permissive", "balanced", "strict"]).default("balanced"),
   telemetry: z.boolean().default(false),
   providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
 }).passthrough();
@@ -44,6 +45,7 @@ const CONFIG_KEYS = [
   "timeoutMs",
   "showChanges",
   "showStats",
+  "fidelityMode",
   "telemetry",
 ] as const;
 

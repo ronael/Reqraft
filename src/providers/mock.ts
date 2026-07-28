@@ -10,9 +10,10 @@ export class MockProvider implements ProviderAdapter {
   readonly name = "Mock Provider";
 
   generate(request: ProviderRequest): Promise<ProviderResponse> {
+    const originalInput = extractOriginalInput(request.userPrompt);
     return Promise.resolve({
       text: JSON.stringify({
-        rewritten: `[mock] ${request.userPrompt}`,
+        rewritten: `[mock] ${originalInput}`,
         changes: ["Mock reformulation applied"],
         warnings: [],
       }),
@@ -25,4 +26,9 @@ export class MockProvider implements ProviderAdapter {
   validateConfiguration(): Promise<ProviderHealth> {
     return Promise.resolve({ ok: true, message: "Mock provider is always available" });
   }
+}
+
+function extractOriginalInput(userPrompt: string): string {
+  const fenced = /```\n([\s\S]*?)\n```/.exec(userPrompt);
+  return (fenced?.[1] ?? userPrompt).trim();
 }

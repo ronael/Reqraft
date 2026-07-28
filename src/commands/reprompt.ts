@@ -25,6 +25,7 @@ export interface RepromptCliOptions {
   diff?: boolean;
   explain?: boolean;
   stats?: boolean;
+  fidelity?: "permissive" | "balanced" | "strict";
   stream?: boolean;
   timeout?: string;
   verbose?: boolean;
@@ -74,6 +75,7 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
       includeChanges: options.explain ?? options.json ?? config.showChanges,
       stream: options.stream ?? config.stream,
       reasoningEffort,
+      fidelityMode: options.fidelity ?? config.fidelityMode,
     });
 
     if (detected && options.verbose) {
@@ -117,7 +119,8 @@ async function outputResult(
   } else if (options.diff) {
     console.log(formatDiff(result.original, result.rewritten));
   } else if (options.explain) {
-    console.log(formatExplain(result));
+    console.log(result.rewritten);
+    console.error(formatExplain(result));
   } else {
     console.log(result.rewritten);
   }

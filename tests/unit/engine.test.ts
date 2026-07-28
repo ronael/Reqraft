@@ -54,7 +54,7 @@ class ExpandingProvider implements ProviderAdapter {
   generate(): Promise<ProviderResponse> {
     return Promise.resolve({
       text: JSON.stringify({
-        rewritten: "Crée une landing page avec un header, des témoignages, une FAQ, un footer et une palette détaillée.",
+        rewritten: "Crée une landing page avec un header, des témoignages, une FAQ, un footer, une palette détaillée, une section pricing, des animations, une stratégie SEO, une navigation responsive, des critères de performance, une base de données, un système d'authentification et plusieurs sections produit détaillées.",
         warnings: [],
       }),
       usage: { inputTokens: 10, outputTokens: 30, visibleOutputTokens: 30 },
@@ -99,7 +99,7 @@ describe("engine", () => {
       includeChanges: false,
     });
 
-    expect(provider.request?.maxOutputTokens).toBe(450);
+    expect(provider.request?.maxOutputTokens).toBe(900);
   });
 
   it("rejects empty provider responses", async () => {
@@ -123,9 +123,38 @@ describe("engine", () => {
       provider: new ExpandingProvider(),
       model: "mock-model",
       includeChanges: false,
+      fidelityMode: "permissive",
     });
 
     expect(result.warnings.join("\n")).toContain("Potential unsupported additions");
     expect(result.warnings.join("\n")).toContain("témoignages");
+  });
+
+  it("blocks disproportionate expansions in balanced fidelity mode", async () => {
+    await expect(
+      rewrite({
+        input: "fais une landing page style apple",
+        profile: webDesignProfile,
+        level: "standard",
+        provider: new ExpandingProvider(),
+        model: "mock-model",
+        includeChanges: false,
+        fidelityMode: "balanced",
+      }),
+    ).rejects.toThrow("expansion disproportionnée");
+  });
+
+  it("blocks unsupported additions in strict fidelity mode", async () => {
+    await expect(
+      rewrite({
+        input: "fais une landing page style apple",
+        profile: webDesignProfile,
+        level: "standard",
+        provider: new ExpandingProvider(),
+        model: "mock-model",
+        includeChanges: false,
+        fidelityMode: "strict",
+      }),
+    ).rejects.toThrow("ajouts non supportés");
   });
 });

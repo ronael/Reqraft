@@ -24,6 +24,7 @@ interface CliOptions {
   diff?: boolean;
   explain?: boolean;
   stats?: boolean;
+  fidelity?: "permissive" | "balanced" | "strict";
   stream?: boolean;
   timeout?: string;
   verbose?: boolean;
@@ -48,6 +49,7 @@ program
   .option("--diff", "Afficher un diff entre l'original et le résultat")
   .option("--explain", "Afficher une explication des modifications")
   .option("--stats", "Afficher les statistiques de génération")
+  .option("--fidelity <mode>", "Politique de fidélité (permissive, balanced, strict)")
   .option("--no-stream", "Désactiver le streaming")
   .option("--timeout <ms>", "Timeout en millisecondes")
   .option("--verbose", "Mode verbeux")

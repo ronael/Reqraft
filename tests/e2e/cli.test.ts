@@ -79,4 +79,12 @@ describe("CLI e2e", () => {
     expect(stderr).toContain("Raisonnement non communiqué");
     expect(stderr).toContain("Sortie totale 20 tokens");
   });
+
+  it("writes rewritten prompt to stdout and explanations to stderr", () => {
+    const { stdout, stderr, exitCode } = run('"test" --provider mock --explain');
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("[mock]");
+    expect(stderr).toContain("Modifications");
+    expect(stderr).toContain("Mock reformulation applied");
+  });
 });
