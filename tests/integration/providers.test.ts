@@ -19,7 +19,7 @@ describe("OpenAI provider", () => {
         JSON.stringify({
           choices: [{ message: { content: '{"rewritten":"ok"}' }, finish_reason: "stop" }],
           usage: { prompt_tokens: 10, completion_tokens: 5 },
-          model: "gpt-5.4-mini",
+          model: "gpt-5-mini",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
       ),
@@ -30,7 +30,7 @@ describe("OpenAI provider", () => {
   it("sends correct payload", async () => {
     const provider = new OpenAIProvider("test-key");
     const result = await provider.generate({
-      model: "gpt-5.4-mini",
+      model: "gpt-5-mini",
       systemPrompt: "sys",
       userPrompt: "user",
       temperature: 0.2,
@@ -40,7 +40,7 @@ describe("OpenAI provider", () => {
     });
 
     expect(result.text).toBe('{"rewritten":"ok"}');
-    expect(result.model).toBe("gpt-5.4-mini");
+    expect(result.model).toBe("gpt-5-mini");
     expect(result.usage?.inputTokens).toBe(10);
 
     const call = vi.mocked(globalThis.fetch).mock.calls[0];
@@ -48,8 +48,10 @@ describe("OpenAI provider", () => {
     const requestUrl = call[0] as string;
     expect(requestUrl).toBe("https://api.openai.com/v1/chat/completions");
     const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
-    expect(body.model).toBe("gpt-5.4-mini");
+    expect(body.model).toBe("gpt-5-mini");
     expect(body.reasoning_effort).toBe("none");
+    expect(body.max_completion_tokens).toBe(100);
+    expect(body).not.toHaveProperty("max_tokens");
   });
 });
 

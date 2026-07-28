@@ -1,12 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { ConfigSchema, mergeConfig } from "../../src/config/schema.js";
 import { getConfigDir, getConfigPath } from "../../src/config/paths.js";
+import { getPresetModels } from "../../src/models/presets.js";
 
 describe("config schema", () => {
   it("parses valid config", () => {
     const config = ConfigSchema.parse({
       defaultProvider: "openai",
-      defaultModel: "gpt-5.4-mini",
+      defaultModel: "gpt-5-mini",
       defaultProfile: "code",
       defaultLevel: "complete",
       copyAfterGeneration: true,
@@ -30,12 +31,23 @@ describe("config schema", () => {
     const merged = mergeConfig(
       ConfigSchema.parse({}),
       { defaultProvider: "openai" },
-      { defaultModel: "gpt-5.4-nano" },
+      { defaultModel: "gpt-5-nano" },
       { defaultLevel: "complete" },
     );
     expect(merged.defaultProvider).toBe("openai"); // from file
-    expect(merged.defaultModel).toBe("gpt-5.4-nano"); // from env
+    expect(merged.defaultModel).toBe("gpt-5-nano"); // from env
     expect(merged.defaultLevel).toBe("complete"); // from cli
+  });
+});
+
+describe("model presets", () => {
+  it("uses sourced OpenAI model ids", () => {
+    const openaiModels = getPresetModels()
+      .filter((preset) => preset.provider === "openai")
+      .map((preset) => preset.id);
+
+    expect(openaiModels).toEqual(["gpt-5-mini", "gpt-5-nano", "gpt-5.1"]);
+    expect(openaiModels.some((id) => id.includes("gpt-5.4"))).toBe(false);
   });
 });
 

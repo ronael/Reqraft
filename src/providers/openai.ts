@@ -45,7 +45,7 @@ export class OpenAIProvider implements ProviderAdapter {
         { role: "user", content: request.userPrompt },
       ],
       temperature: request.temperature,
-      max_tokens: request.maxOutputTokens,
+      max_completion_tokens: request.maxOutputTokens,
     };
 
     if (request.reasoningEffort === "none") {

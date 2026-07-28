@@ -32,7 +32,7 @@ Presets are recommendations, not hardcoded defaults. The registry is dated and c
 |-------------------|------------|----------------------|
 | Recommended       | Anthropic  | claude-haiku-4-5     |
 | Budget            | DeepSeek   | deepseek-v4-flash    |
-| OpenAI            | OpenAI     | gpt-5.4-mini         |
+| OpenAI            | OpenAI     | gpt-5-mini           |
 | European          | Mistral    | mistral-small-2603   |
 | Quality           | Anthropic  | claude-sonnet-5      |
 
