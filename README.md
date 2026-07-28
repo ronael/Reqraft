@@ -128,6 +128,16 @@ Set your API key in the environment:
 export ANTHROPIC_API_KEY=...
 export OPENAI_API_KEY=...
 export DEEPSEEK_API_KEY=...
+
+Or store it in the system credential manager:
+
+```bash
+rp auth login openai
+rp auth status
+rp auth logout openai
+```
+
+Environment variables take precedence over stored credentials. macOS uses Keychain and Linux uses Secret Service; Windows currently uses environment variables.
 export MISTRAL_API_KEY=...
 ```
 

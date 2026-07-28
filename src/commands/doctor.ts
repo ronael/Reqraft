@@ -1,10 +1,12 @@
 import process from "node:process";
 import { loadConfig, configPath } from "../config/loader.js";
 import { createProvider, listProviders } from "../providers/registry.js";
+import { hydrateCredentials } from "../auth/credentials.js";
 
 export async function runDoctor(): Promise<void> {
   const config = await loadConfig();
   const env = process.env;
+  await hydrateCredentials(env);
 
   console.log("Configuration");
   console.log(`  Fichier : ${configPath()}`);

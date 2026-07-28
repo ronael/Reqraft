@@ -6,7 +6,7 @@ Reqraft est conçu pour rester local et respectueux de la vie privée.
 
 - Aucun prompt n'est conservé par défaut.
 - Aucune télémétrie n'est envoyée par défaut (`telemetry: false`).
-- Les clés API sont lues depuis les variables d'environnement et ne sont jamais écrites dans `config.json` ni dans les logs.
+- Les clés API sont lues depuis les variables d'environnement ou le stockage sécurisé du système, et ne sont jamais écrites dans `config.json` ni dans les logs.
 - Le presse-papiers est lu et écrit uniquement lorsque vous le demandez explicitement.
 
 ## Détection des secrets

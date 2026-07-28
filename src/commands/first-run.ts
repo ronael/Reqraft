@@ -6,6 +6,7 @@ import { ConfigSchema, type Config } from "../config/schema.js";
 import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "../config/loader.js";
 import { getPresetModels } from "../models/presets.js";
 import { createProvider } from "../providers/registry.js";
+import { hydrateCredentials } from "../auth/credentials.js";
 
 type InitProvider = Exclude<Config["defaultProvider"], "mock">;
 
@@ -237,6 +238,7 @@ export function buildPostInitSecurityNote(keyStatus: ApiKeyStatus, shell = proce
 export async function runFirstRunSetup(options: RunFirstRunOptions = {}): Promise<void> {
   const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout);
   const env = options.env ?? process.env;
+  await hydrateCredentials(env);
   const shell = options.shell ?? process.env.SHELL ?? "";
 
   try {
