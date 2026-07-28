@@ -1,4 +1,129 @@
 import process from "node:process";
+import { writeFile, mkdir } from "node:fs/promises";
+import path from "node:path";
+import { BENCHMARK_DATASET } from "./cases/dataset.js";
+import { scoreCase } from "./scoring.js";
+import { rewrite } from "../src/core/engine.js";
+import { resolveProfile } from "../src/profiles/registry.js";
+import { createProvider } from "../src/providers/registry.js";
+import { resolveModel } from "../src/models/model-resolver.js";
+import type { RepromptResult } from "../src/core/types.js";
 
-console.log("Benchmark runner — implémenté dans le Lot J.");
-process.exit(0);
+interface BenchmarkRun {
+  provider: string;
+  model: string;
+  timestamp: string;
+  results: {
+    id: string;
+    profile: string;
+    input: string;
+    output: RepromptResult;
+    score: ReturnType<typeof scoreCase>;
+  }[];
+  aggregate: {
+    meanTotal: number;
+    totalTokens: number;
+    totalLatencyMs: number;
+  };
+}
+
+async function runBenchmark(providerId: string, modelId?: string): Promise<BenchmarkRun> {
+  const provider = createProvider(providerId as "mock", process.env);
+  const { model } = resolveModel(providerId, modelId, "mock-model");
+  const timestamp = new Date().toISOString();
+
+  const results = [];
+  let totalTokens = 0;
+  let totalLatencyMs = 0;
+
+  for (const benchmarkCase of BENCHMARK_DATASET) {
+    const { profile } = resolveProfile(benchmarkCase.profile, benchmarkCase.input);
+    const result = await rewrite({
+      input: benchmarkCase.input,
+      profile,
+      level: "standard",
+      provider,
+      model,
+      includeChanges: true,
+      stream: false,
+    });
+
+    totalTokens += (result.usage?.inputTokens ?? 0) + (result.usage?.outputTokens ?? 0);
+    totalLatencyMs += result.latencyMs ?? 0;
+
+    results.push({
+      id: benchmarkCase.id,
+      profile: benchmarkCase.profile,
+      input: benchmarkCase.input,
+      output: result,
+      score: scoreCase(result.rewritten, benchmarkCase),
+    });
+  }
+
+  const meanTotal = results.reduce((sum, r) => sum + r.score.total, 0) / results.length;
+
+  return {
+    provider: providerId,
+    model,
+    timestamp,
+    results,
+    aggregate: {
+      meanTotal,
+      totalTokens,
+      totalLatencyMs,
+    },
+  };
+}
+
+function formatMarkdown(run: BenchmarkRun): string {
+  const lines = [
+    "# Benchmark Reqraft",
+    "",
+    `- Provider : ${run.provider}`,
+    `- Modèle : ${run.model}`,
+    `- Date : ${run.timestamp}`,
+    `- Cas : ${String(run.results.length)}`,
+    `- Score moyen : ${run.aggregate.meanTotal.toFixed(2)}`,
+    `- Tokens totaux : ${String(run.aggregate.totalTokens)}`,
+    `- Latence totale : ${String(run.aggregate.totalLatencyMs)}ms`,
+    "",
+    "| ID | Profil | Score | Input | Output |",
+    "|---|---|---|---|---|",
+  ];
+
+  for (const result of run.results) {
+    const input = result.input.replace(/\|/g, "\\|").slice(0, 60);
+    const output = result.output.rewritten.replace(/\|/g, "\\|").replace(/\n/g, " ").slice(0, 80);
+    lines.push(
+      `| ${result.id} | ${result.profile} | ${result.score.total.toFixed(2)} | ${input} | ${output} |`,
+    );
+  }
+
+  return lines.join("\n");
+}
+
+async function main(): Promise<void> {
+  const provider = process.argv[2] ?? "mock";
+  const model = process.argv[3];
+
+  console.log(`Benchmark avec provider=${provider}${model ? ` model=${model}` : ""}`);
+  const run = await runBenchmark(provider, model);
+
+  const outDir = path.join(process.cwd(), "benchmark-results");
+  await mkdir(outDir, { recursive: true });
+
+  const baseName = `${run.provider}-${run.model}-${run.timestamp.replace(/[:.]/g, "-")}`;
+  const jsonPath = path.join(outDir, `${baseName}.json`);
+  const mdPath = path.join(outDir, `${baseName}.md`);
+
+  await writeFile(jsonPath, JSON.stringify(run, null, 2), "utf8");
+  await writeFile(mdPath, formatMarkdown(run), "utf8");
+
+  console.log(`Résultats écrits dans ${outDir}`);
+  console.log(`Score moyen : ${run.aggregate.meanTotal.toFixed(2)}`);
+}
+
+main().catch((error: unknown) => {
+  console.error(error);
+  process.exit(1);
+});

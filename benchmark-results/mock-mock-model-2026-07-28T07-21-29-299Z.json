@@ -1,0 +1,1392 @@
+{
+  "provider": "mock",
+  "model": "mock-model",
+  "timestamp": "2026-07-28T07:21:29.299Z",
+  "results": [
+    {
+      "id": "code-1",
+      "profile": "frontend",
+      "input": "ajoute un bouton dans le dashboard pour exporter en pdf",
+      "output": {
+        "original": "ajoute un bouton dans le dashboard pour exporter en pdf",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\najoute un bouton dans le dashboard pour exporter en pdf\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "code-2",
+      "profile": "frontend",
+      "input": "corrige le formulaire sur mobile il est cassé",
+      "output": {
+        "original": "corrige le formulaire sur mobile il est cassé",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ncorrige le formulaire sur mobile il est cassé\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "code-3",
+      "profile": "code",
+      "input": "refactorise ce bout de code en ts propre stp",
+      "output": {
+        "original": "refactorise ce bout de code en ts propre stp",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nrefactorise ce bout de code en ts propre stp\n```\n",
+        "profile": "code",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "code-4",
+      "profile": "frontend",
+      "input": "fait en sorte que le bouton soit disabled quand le form est invalide",
+      "output": {
+        "original": "fait en sorte que le bouton soit disabled quand le form est invalide",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nfait en sorte que le bouton soit disabled quand le form est invalide\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.6666666666666666,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9333333333333332
+      }
+    },
+    {
+      "id": "code-5",
+      "profile": "frontend",
+      "input": "ajoute une validation email cote client",
+      "output": {
+        "original": "ajoute une validation email cote client",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\najoute une validation email cote client\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "frontend-1",
+      "profile": "frontend",
+      "input": "améliore la card et fait qu'elle marche mobile",
+      "output": {
+        "original": "améliore la card et fait qu'elle marche mobile",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\naméliore la card et fait qu'elle marche mobile\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.6666666666666666,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9333333333333332
+      }
+    },
+    {
+      "id": "frontend-2",
+      "profile": "frontend",
+      "input": "crée une modale de confirmation pour la suppression",
+      "output": {
+        "original": "crée une modale de confirmation pour la suppression",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ncrée une modale de confirmation pour la suppression\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "frontend-3",
+      "profile": "frontend",
+      "input": "ajoute un loader quand les données chargent",
+      "output": {
+        "original": "ajoute un loader quand les données chargent",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\najoute un loader quand les données chargent\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9
+      }
+    },
+    {
+      "id": "frontend-4",
+      "profile": "frontend",
+      "input": "gère l'état vide de la liste d'utilisateurs",
+      "output": {
+        "original": "gère l'état vide de la liste d'utilisateurs",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ngère l'état vide de la liste d'utilisateurs\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "frontend-5",
+      "profile": "frontend",
+      "input": "rends le header sticky et responsive",
+      "output": {
+        "original": "rends le header sticky et responsive",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nrends le header sticky et responsive\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "design-1",
+      "profile": "web-design",
+      "input": "design une landing page pour une app de fitness",
+      "output": {
+        "original": "design une landing page pour une app de fitness",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ndesign une landing page pour une app de fitness\n```\n",
+        "profile": "web-design",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "design-2",
+      "profile": "web-design",
+      "input": "modernise la page d'accueil sans changer le logo",
+      "output": {
+        "original": "modernise la page d'accueil sans changer le logo",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nmodernise la page d'accueil sans changer le logo\n```\n",
+        "profile": "web-design",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 0,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "design-3",
+      "profile": "web-design",
+      "input": "crée une palette de couleurs accessible pour le dashboard",
+      "output": {
+        "original": "crée une palette de couleurs accessible pour le dashboard",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ncrée une palette de couleurs accessible pour le dashboard\n```\n",
+        "profile": "web-design",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "design-4",
+      "profile": "web-design",
+      "input": "améliore le contraste des textes sur fond sombre",
+      "output": {
+        "original": "améliore le contraste des textes sur fond sombre",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\naméliore le contraste des textes sur fond sombre\n```\n",
+        "profile": "web-design",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "design-5",
+      "profile": "web-design",
+      "input": "fais une maquette de la page pricing avec 3 plans",
+      "output": {
+        "original": "fais une maquette de la page pricing avec 3 plans",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nfais une maquette de la page pricing avec 3 plans\n```\n",
+        "profile": "web-design",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "debug-1",
+      "profile": "debug",
+      "input": "j'ai une erreur 500 quand je clique sur sauvegarder",
+      "output": {
+        "original": "j'ai une erreur 500 quand je clique sur sauvegarder",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nj'ai une erreur 500 quand je clique sur sauvegarder\n```\n",
+        "profile": "debug",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "debug-2",
+      "profile": "debug",
+      "input": "l'appli crash au lancement sur iOS",
+      "output": {
+        "original": "l'appli crash au lancement sur iOS",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nl'appli crash au lancement sur iOS\n```\n",
+        "profile": "debug",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "debug-3",
+      "profile": "debug",
+      "input": "les données ne s'affichent pas dans le tableau apres le fetch",
+      "output": {
+        "original": "les données ne s'affichent pas dans le tableau apres le fetch",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nles données ne s'affichent pas dans le tableau apres le fetch\n```\n",
+        "profile": "debug",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "debug-4",
+      "profile": "debug",
+      "input": "timeout sur l'api users quand il y a trop de resultats",
+      "output": {
+        "original": "timeout sur l'api users quand il y a trop de resultats",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ntimeout sur l'api users quand il y a trop de resultats\n```\n",
+        "profile": "debug",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "debug-5",
+      "profile": "debug",
+      "input": "le bouton submit reste grisé apres avoir corrigé les champs",
+      "output": {
+        "original": "le bouton submit reste grisé apres avoir corrigé les champs",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nle bouton submit reste grisé apres avoir corrigé les champs\n```\n",
+        "profile": "debug",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "review-1",
+      "profile": "review",
+      "input": "fais une revue de sécurité de l'authentification",
+      "output": {
+        "original": "fais une revue de sécurité de l'authentification",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nfais une revue de sécurité de l'authentification\n```\n",
+        "profile": "review",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "review-2",
+      "profile": "review",
+      "input": "audit les perfs du chargement initial",
+      "output": {
+        "original": "audit les perfs du chargement initial",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\naudit les perfs du chargement initial\n```\n",
+        "profile": "review",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.6666666666666666,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9333333333333332
+      }
+    },
+    {
+      "id": "review-3",
+      "profile": "review",
+      "input": "vérifie la qualité du code de la branche feature/paiement",
+      "output": {
+        "original": "vérifie la qualité du code de la branche feature/paiement",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nvérifie la qualité du code de la branche feature/paiement\n```\n",
+        "profile": "review",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "review-4",
+      "profile": "review",
+      "input": "analyse les risques du nouveau système de permissions",
+      "output": {
+        "original": "analyse les risques du nouveau système de permissions",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nanalyse les risques du nouveau système de permissions\n```\n",
+        "profile": "review",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "review-5",
+      "profile": "review",
+      "input": "revoir le refactor de la page produit",
+      "output": {
+        "original": "revoir le refactor de la page produit",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nrevoir le refactor de la page produit\n```\n",
+        "profile": "review",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.6666666666666666,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9333333333333332
+      }
+    },
+    {
+      "id": "writing-1",
+      "profile": "writing",
+      "input": "rédige un email de relance pour le client",
+      "output": {
+        "original": "rédige un email de relance pour le client",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nrédige un email de relance pour le client\n```\n",
+        "profile": "writing",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "writing-2",
+      "profile": "writing",
+      "input": "formule une description de poste pour un dev frontend",
+      "output": {
+        "original": "formule une description de poste pour un dev frontend",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nformule une description de poste pour un dev frontend\n```\n",
+        "profile": "writing",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "writing-3",
+      "profile": "writing",
+      "input": "corrige ce message slack pour qu'il soit plus clair",
+      "output": {
+        "original": "corrige ce message slack pour qu'il soit plus clair",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ncorrige ce message slack pour qu'il soit plus clair\n```\n",
+        "profile": "writing",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "writing-4",
+      "profile": "writing",
+      "input": "écris un post de blog sur les bonnes pratiques React",
+      "output": {
+        "original": "écris un post de blog sur les bonnes pratiques React",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nécris un post de blog sur les bonnes pratiques React\n```\n",
+        "profile": "writing",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "writing-5",
+      "profile": "writing",
+      "input": "résume ce texte en 3 phrases",
+      "output": {
+        "original": "résume ce texte en 3 phrases",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nrésume ce texte en 3 phrases\n```\n",
+        "profile": "writing",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9
+      }
+    },
+    {
+      "id": "short-1",
+      "profile": "debug",
+      "input": "fix bug",
+      "output": {
+        "original": "fix bug",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nfix bug\n```\n",
+        "profile": "debug",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 0.5,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "short-2",
+      "profile": "code",
+      "input": "refactor login",
+      "output": {
+        "original": "refactor login",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nrefactor login\n```\n",
+        "profile": "code",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 0.5,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "short-3",
+      "profile": "writing",
+      "input": "redige email",
+      "output": {
+        "original": "redige email",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nredige email\n```\n",
+        "profile": "writing",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 0.5,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "short-4",
+      "profile": "web-design",
+      "input": "design hero",
+      "output": {
+        "original": "design hero",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ndesign hero\n```\n",
+        "profile": "web-design",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 0.5,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "long-1",
+      "profile": "frontend",
+      "input": "je veux que tu ajoutes une page settings avec toutes les options utilisateur, qu'on puisse changer le nom, l'email, le mot de passe, la langue, les notifications, et qu'on puisse supprimer son compte, mais ne touche pas à l'auth existante",
+      "output": {
+        "original": "je veux que tu ajoutes une page settings avec toutes les options utilisateur, qu'on puisse changer le nom, l'email, le mot de passe, la langue, les notifications, et qu'on puisse supprimer son compte, mais ne touche pas à l'auth existante",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nje veux que tu ajoutes une page settings avec toutes les options utilisateur, qu'on puisse changer le nom, l'email, le mot de passe, la langue, les notifications, et qu'on puisse supprimer son compte, mais ne touche pas à l'auth existante\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.8571428571428571,
+        "noInvention": 0,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.7714285714285715
+      }
+    },
+    {
+      "id": "long-2",
+      "profile": "frontend",
+      "input": "crée un dashboard admin avec une sidebar, un header, des widgets pour les stats utilisateurs, les revenus, les erreurs, et un tableau des derniers signalements, tout en respectant le design system actuel basé sur tailwind et shadcn",
+      "output": {
+        "original": "crée un dashboard admin avec une sidebar, un header, des widgets pour les stats utilisateurs, les revenus, les erreurs, et un tableau des derniers signalements, tout en respectant le design system actuel basé sur tailwind et shadcn",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ncrée un dashboard admin avec une sidebar, un header, des widgets pour les stats utilisateurs, les revenus, les erreurs, et un tableau des derniers signalements, tout en respectant le design system actuel basé sur tailwind et shadcn\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "typos-1",
+      "profile": "frontend",
+      "input": "ajoute un bouteon dan sle dashbord",
+      "output": {
+        "original": "ajoute un bouteon dan sle dashbord",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\najoute un bouteon dan sle dashbord\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "typos-2",
+      "profile": "frontend",
+      "input": "le formualire marche pa sur moblie",
+      "output": {
+        "original": "le formualire marche pa sur moblie",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nle formualire marche pa sur moblie\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.8
+      }
+    },
+    {
+      "id": "mix-1",
+      "profile": "code",
+      "input": "il faut refactor le AuthContext pour qu'il utilise le nouveau hook useSession",
+      "output": {
+        "original": "il faut refactor le AuthContext pour qu'il utilise le nouveau hook useSession",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nil faut refactor le AuthContext pour qu'il utilise le nouveau hook useSession\n```\n",
+        "profile": "code",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.6666666666666666,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9333333333333332
+      }
+    },
+    {
+      "id": "mix-2",
+      "profile": "frontend",
+      "input": "update le composant Button avec les nouveaux tokens du design system",
+      "output": {
+        "original": "update le composant Button avec les nouveaux tokens du design system",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nupdate le composant Button avec les nouveaux tokens du design system\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "codeblock-1",
+      "profile": "code",
+      "input": "```ts\nconst x = 1\n```\nexplique ce code",
+      "output": {
+        "original": "```ts\nconst x = 1\n```\nexplique ce code",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\n```ts\nconst x = 1\n```\nexplique ce code\n```\n",
+        "profile": "code",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9
+      }
+    },
+    {
+      "id": "codeblock-2",
+      "profile": "code",
+      "input": "```bash\nnpm install\n```\nfais en sorte que cette commande soit dans le README",
+      "output": {
+        "original": "```bash\nnpm install\n```\nfais en sorte que cette commande soit dans le README",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\n```bash\nnpm install\n```\nfais en sorte que cette commande soit dans le README\n```\n",
+        "profile": "code",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "preserve-1",
+      "profile": "frontend",
+      "input": "dans src/components/Header.tsx change le lien par /dashboard",
+      "output": {
+        "original": "dans src/components/Header.tsx change le lien par /dashboard",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\ndans src/components/Header.tsx change le lien par /dashboard\n```\n",
+        "profile": "frontend",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "preserve-2",
+      "profile": "code",
+      "input": "exécute pnpm test avant de commit",
+      "output": {
+        "original": "exécute pnpm test avant de commit",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nexécute pnpm test avant de commit\n```\n",
+        "profile": "code",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 1,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 1
+      }
+    },
+    {
+      "id": "clean-1",
+      "profile": "clean",
+      "input": "bonjour, je voudrai savoir si c'est possible de reporter la reunion",
+      "output": {
+        "original": "bonjour, je voudrai savoir si c'est possible de reporter la reunion",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\nbonjour, je voudrai savoir si c'est possible de reporter la reunion\n```\n",
+        "profile": "clean",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9
+      }
+    },
+    {
+      "id": "clean-2",
+      "profile": "clean",
+      "input": "peux tu m'envoyer le doc final stp",
+      "output": {
+        "original": "peux tu m'envoyer le doc final stp",
+        "rewritten": "[mock] Reformule la demande suivante :\n\n```\npeux tu m'envoyer le doc final stp\n```\n",
+        "profile": "clean",
+        "level": "standard",
+        "provider": "mock",
+        "model": "mock-model",
+        "changes": [
+          "Mock reformulation applied"
+        ],
+        "warnings": [],
+        "usage": {
+          "inputTokens": 10,
+          "outputTokens": 20
+        },
+        "latencyMs": 0
+      },
+      "score": {
+        "intention": 1,
+        "terms": 0.5,
+        "noInvention": 1,
+        "clarity": 1,
+        "profile": 1,
+        "total": 0.9
+      }
+    }
+  ],
+  "aggregate": {
+    "meanTotal": 0.9421325051759832,
+    "totalTokens": 1380,
+    "totalLatencyMs": 0
+  }
+}
