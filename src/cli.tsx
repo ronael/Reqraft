@@ -4,6 +4,7 @@ import React from "react";
 import { render } from "ink";
 import { App } from "./app.js";
 import { version } from "./version.js";
+import { runReprompt } from "./commands/reprompt.js";
 import { listProviders } from "./providers/registry.js";
 import { getPresetModels } from "./models/presets.js";
 
@@ -44,22 +45,31 @@ program
   .option("--no-stream", "Désactiver le streaming")
   .option("--timeout <ms>", "Timeout en millisecondes")
   .option("--verbose", "Mode verbeux")
-  .action((text: string | undefined, options: CliOptions) => {
-    const initialText = text ?? "";
-    if (process.stdin.isTTY && !initialText && !options.clipboard && !options.file) {
+  .action(async (text: string | undefined, options: CliOptions) => {
+    if (process.stdin.isTTY && !text && !options.clipboard && !options.file) {
       render(<App />);
       return;
     }
-    // Mode non interactif : placeholder minimal pour le Lot A.
-    // Les lots suivants implémenteront le traitement réel.
-    console.log(initialText || "[mode non interactif — Lot A]");
+    await runReprompt({ text, ...options });
   });
 
 program
   .command("profiles")
   .description("Liste les profils disponibles")
   .action(() => {
-    console.log("Profiles: auto, clean, code, frontend, web-design, debug, review, writing");
+    console.log("Profiles:");
+    console.log("  auto");
+    for (const profile of [
+      "clean",
+      "code",
+      "frontend",
+      "web-design",
+      "debug",
+      "review",
+      "writing",
+    ]) {
+      console.log(`  ${profile}`);
+    }
   });
 
 program

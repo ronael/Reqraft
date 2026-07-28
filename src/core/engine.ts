@@ -19,6 +19,7 @@ export interface EngineOptions {
   stream?: boolean;
   temperature?: number;
   maxOutputTokens?: number;
+  reasoningEffort?: "none" | "low" | "medium" | "high";
 }
 
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
@@ -39,6 +40,7 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     temperature: options.temperature ?? 0.2,
     maxOutputTokens: options.maxOutputTokens ?? 1500,
     stream: options.stream ?? false,
+    reasoningEffort: options.reasoningEffort,
   };
 
   const response = await options.provider.generate(providerRequest);
