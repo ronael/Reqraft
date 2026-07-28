@@ -11,6 +11,7 @@ import { EXIT_CODES } from "../utils/exit-codes.js";
 import { loadConfig } from "../config/loader.js";
 import { detectSecrets } from "../core/secret-detector.js";
 import { redactSecrets } from "../utils/redaction.js";
+import { hydrateCredentials } from "../auth/credentials.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -36,6 +37,7 @@ export interface RepromptCliOptions {
 export async function runReprompt(options: RepromptCliOptions): Promise<void> {
   try {
     const config = await loadConfig();
+    await hydrateCredentials(process.env);
     let input = await resolveInput(options);
     if (!input) {
       console.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");

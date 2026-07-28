@@ -11,6 +11,7 @@ import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
 import { listProviders } from "./providers/registry.js";
 import { getPresetModels } from "./models/presets.js";
+import { credentialStatus, login, logout, type CredentialProvider } from "./auth/credentials.js";
 
 interface CliOptions {
   profile?: string;
@@ -61,6 +62,19 @@ program
       return;
     }
     await runReprompt({ text, ...options });
+  });
+
+program
+  .command("auth")
+  .description("Gère les clés API dans le stockage sécurisé")
+  .argument("<action>", "login, logout, status")
+  .argument("[provider]", "anthropic, openai, deepseek, mistral")
+  .action(async (action: string, provider?: CredentialProvider) => {
+    if (action === "status") { await credentialStatus(); return; }
+    if (!provider || !["anthropic", "openai", "deepseek", "mistral"].includes(provider)) throw new Error("Provider invalide.");
+    if (action === "login") { await login(provider); return; }
+    if (action === "logout") { await logout(provider); return; }
+    throw new Error("Action invalide : login, logout ou status.");
   });
 
 program
