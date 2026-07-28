@@ -2,47 +2,43 @@
 
 ## Lot en cours
 
-Lot K — Stabilisation (terminé, prêt au commit final).
+Publication — en attente de l'OTP npm ou de la configuration du token d'automation.
 
 ## Terminé
 
-### Lots précédents
+### Lots A à K
 
-- Lot A à J terminés et commités.
+- Tous les lots implémentés, validés et commités.
 
-### Lot K
+### Publication
 
-- Toutes les validations finales exécutées avec succès.
-- `pnpm pack` produit un tarball installable.
-- Test d'installation dans `/tmp/rp-install` : les deux exécutables `rp` et `reprompt` fonctionnent.
-- Test du binaire packagé : `rp "test" --provider mock` fonctionne.
-- CI GitHub déjà configurée pour Ubuntu, macOS, Windows, Node 20/22.
-- `.gitignore` mis à jour pour ignorer `benchmark-results/`.
-- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (46 tests), `pnpm build`, `pnpm pack` réussies.
+- ✅ Vérification de la disponibilité du nom `@reqraft/cli` sur npm (disponible).
+- ✅ Branche `main` créée/mergée avec `develop` et poussée.
+- ✅ Tag `v0.1.0` créé et poussé.
+- ✅ Workflow GitHub Actions `.github/workflows/publish.yml` ajouté.
+- ✅ `package.json` corrigé avec `npm pkg fix` (chemins `bin` normalisés).
+- ✅ Release GitHub `v0.1.0` créée : https://github.com/ronael/Reqraft/releases/tag/v0.1.0
+- ❌ Publication npm bloquée par l'OTP 2FA du compte npm.
 
 ## Reste à faire
 
-- Commit `feat(lot-k): finalize stabilization and packaging`.
-- Fournir le résumé final de l'intervention.
+- Fournir l'OTP npm ou configurer un `NPM_TOKEN` d'automation dans les secrets GitHub.
+- Relancer `npm publish --otp=<code>` ou déclencher le workflow GitHub Actions.
 
-## Fichiers créés ou modifiés (Lot K)
+## Commandes exécutées
 
-- `.gitignore`
-- `WORKLOG.md`
-
-## Commandes exécutées (Lot K)
-
-- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build && pnpm pack --pack-destination /tmp/rp-pack` → succès.
-- `npm install /tmp/rp-pack/reqraft-cli-0.1.0.tgz` dans `/tmp/rp-install` → succès.
-- `/tmp/rp-install/node_modules/.bin/rp --version` → `0.1.0`.
-- `/tmp/rp-install/node_modules/.bin/reprompt --version` → `0.1.0`.
-- `/tmp/rp-install/node_modules/.bin/rp "test" --provider mock` → fonctionne.
+- `npm view @reqraft/cli` → 404, nom disponible.
+- `git checkout main && git merge develop && git push origin main` → succès.
+- `git tag -a v0.1.0 && git push origin v0.1.0` → succès.
+- `npm pkg fix` → chemins `bin` corrigés.
+- `gh release create v0.1.0` → release créée.
+- `npm publish --access public` → échec, OTP requis.
 
 ## Décisions techniques
 
-- Le package est publiable tel quel avec `npm publish` (après renommage si besoin).
-- Les exécutables `rp` et `reprompt` sont correctement exposés via `bin`.
+- Workflow de publication automatisée déclenchée par les tags `v*`.
+- Le workflow attend le secret `NPM_TOKEN` pour publier automatiquement.
 
 ## Prochaine action
 
-Effectuer le commit final du Lot K et rédiger le résumé de l'intervention.
+Attendre l'OTP ou le token npm de l'utilisateur pour finaliser la publication.
