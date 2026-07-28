@@ -30,7 +30,7 @@ export async function runDoctor(): Promise<void> {
   console.log("Providers");
   for (const id of listProviders()) {
     try {
-      const provider = createProvider(id as "mock", env);
+      const provider = createProvider(id as "mock", env, config);
       const health = await provider.validateConfiguration();
       console.log(`  ${id.padEnd(20)} : ${health.ok ? "OK" : `manque ${health.missingConfiguration?.join(", ") ?? "configuration"}`}`);
     } catch {

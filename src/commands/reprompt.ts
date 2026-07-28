@@ -57,7 +57,7 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
     const level = parseLevel(options.level ?? config.defaultLevel);
     const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
     const providerId = options.provider ?? config.defaultProvider;
-    const provider = createProvider(providerId as "mock", process.env);
+    const provider = createProvider(providerId as "mock", process.env, config);
     const { model, reasoningEffort } = resolveModel(
       providerId,
       options.model,

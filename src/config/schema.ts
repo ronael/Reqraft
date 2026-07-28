@@ -1,6 +1,16 @@
 import { z } from "zod";
 import type { RepromptLevel } from "../core/types.js";
 
+export const OpenAICompatibleProviderConfigSchema = z
+  .object({
+    type: z.literal("openai-compatible"),
+    name: z.string().optional(),
+    baseUrl: z.string().min(1),
+    apiKeyEnv: z.string().min(1).optional(),
+    customHeaders: z.record(z.string()).optional(),
+  })
+  .strict();
+
 export const ConfigSchema = z.object({
   defaultProvider: z.enum(["anthropic", "openai", "deepseek", "mistral", "openai-compatible", "mock"]).default("anthropic"),
   defaultModel: z.string().default("claude-haiku-4-5"),
@@ -11,9 +21,23 @@ export const ConfigSchema = z.object({
   timeoutMs: z.number().int().positive().default(30000),
   showChanges: z.boolean().default(false),
   telemetry: z.boolean().default(false),
-});
+  providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
+}).passthrough();
 
 export type Config = z.infer<typeof ConfigSchema>;
+export type ConfigKey = (typeof CONFIG_KEYS)[number];
+
+const CONFIG_KEYS = [
+  "defaultProvider",
+  "defaultModel",
+  "defaultProfile",
+  "defaultLevel",
+  "copyAfterGeneration",
+  "stream",
+  "timeoutMs",
+  "showChanges",
+  "telemetry",
+] as const;
 
 export function mergeConfig(
   defaults: Config,
@@ -29,18 +53,8 @@ export function mergeConfig(
   });
 }
 
-export function configKeys(): (keyof Config)[] {
-  return [
-    "defaultProvider",
-    "defaultModel",
-    "defaultProfile",
-    "defaultLevel",
-    "copyAfterGeneration",
-    "stream",
-    "timeoutMs",
-    "showChanges",
-    "telemetry",
-  ];
+export function configKeys(): ConfigKey[] {
+  return [...CONFIG_KEYS];
 }
 
 export function isValidLevel(level: string): level is RepromptLevel {

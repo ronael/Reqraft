@@ -1,6 +1,6 @@
 import process from "node:process";
 import { loadConfig, saveConfig, configPath } from "../config/loader.js";
-import { ConfigSchema, configKeys, type Config } from "../config/schema.js";
+import { ConfigSchema, configKeys, type ConfigKey } from "../config/schema.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 
 export async function runConfig(action?: string, key?: string, value?: string): Promise<void> {
@@ -15,7 +15,7 @@ export async function runConfig(action?: string, key?: string, value?: string): 
           console.error("Usage : rp config set <clé> <valeur>");
           process.exit(EXIT_CODES.INVALID_INPUT);
         }
-        await setConfig(key as keyof Config, value);
+        await setConfig(key, value);
         break;
       case "path":
         console.log(configPath());
@@ -33,17 +33,21 @@ export async function runConfig(action?: string, key?: string, value?: string): 
 async function showConfig(key?: string): Promise<void> {
   const config = await loadConfig();
   if (key) {
-    if (!configKeys().includes(key as keyof Config)) {
+    if (!isConfigKey(key)) {
       console.error(`Clé inconnue : ${key}`);
       process.exit(EXIT_CODES.INVALID_CONFIGURATION);
     }
-    console.log(String(config[key as keyof Config]));
+    console.log(String(config[key]));
   } else {
     console.log(JSON.stringify(config, null, 2));
   }
 }
 
-async function setConfig(key: keyof Config, value: string): Promise<void> {
+async function setConfig(key: string, value: string): Promise<void> {
+  if (!isConfigKey(key)) {
+    console.error(`Clé inconnue : ${key}`);
+    process.exit(EXIT_CODES.INVALID_CONFIGURATION);
+  }
   const config = await loadConfig();
   const parsedValue = parseValue(key, value);
   const updated = { ...config, [key]: parsedValue };
@@ -54,7 +58,7 @@ async function setConfig(key: keyof Config, value: string): Promise<void> {
   console.log(`${key} = ${value}`);
 }
 
-function parseValue(key: keyof Config, value: string): unknown {
+function parseValue(key: ConfigKey, value: string): unknown {
   switch (key) {
     case "copyAfterGeneration":
     case "stream":
@@ -66,4 +70,8 @@ function parseValue(key: keyof Config, value: string): unknown {
     default:
       return value;
   }
+}
+
+function isConfigKey(key: string): key is ConfigKey {
+  return configKeys().includes(key as ConfigKey);
 }

@@ -31,6 +31,12 @@ describe("CLI e2e", () => {
     expect(stdout).toMatch(/^\d+\.\d+\.\d+/);
   });
 
+  it("shows init in help", () => {
+    const { stdout, exitCode } = run("--help");
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("init");
+  });
+
   it("reprompts a simple text with mock provider", () => {
     const { stdout, exitCode } = run('"test" --provider mock');
     expect(exitCode).toBe(0);

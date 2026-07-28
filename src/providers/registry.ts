@@ -5,6 +5,7 @@ import { MistralProvider } from "./mistral.js";
 import { MockProvider } from "./mock.js";
 import { OpenAIProvider } from "./openai.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
+import type { Config } from "../config/schema.js";
 
 export type BuiltinProvider =
   | "anthropic"
@@ -17,6 +18,7 @@ export type BuiltinProvider =
 export function createProvider(
   id: BuiltinProvider,
   env: NodeJS.ProcessEnv,
+  config?: Config,
 ): ProviderAdapter {
   switch (id) {
     case "anthropic":
@@ -28,15 +30,31 @@ export function createProvider(
     case "mistral":
       return new MistralProvider(env.MISTRAL_API_KEY ?? "");
     case "openai-compatible":
-      return new OpenAICompatibleProvider("OpenAI Compatible", {
-        baseUrl: env.RP_OPENAI_COMPATIBLE_BASE_URL ?? "",
-        apiKey: env.RP_OPENAI_COMPATIBLE_API_KEY,
-      });
+      return createOpenAICompatibleProvider(env, config);
     case "mock":
       return new MockProvider();
     default:
       throw new Error(`Provider non supporté : ${String(id)}`);
   }
+}
+
+function createOpenAICompatibleProvider(
+  env: NodeJS.ProcessEnv,
+  config?: Config,
+): OpenAICompatibleProvider {
+  const providerConfig = config?.providers ? Object.values(config.providers)[0] : undefined;
+  if (providerConfig) {
+    return new OpenAICompatibleProvider(providerConfig.name ?? "OpenAI Compatible", {
+      baseUrl: providerConfig.baseUrl,
+      apiKey: providerConfig.apiKeyEnv ? env[providerConfig.apiKeyEnv] : undefined,
+      customHeaders: providerConfig.customHeaders,
+    });
+  }
+
+  return new OpenAICompatibleProvider("OpenAI Compatible", {
+    baseUrl: env.RP_OPENAI_COMPATIBLE_BASE_URL ?? "",
+    apiKey: env.RP_OPENAI_COMPATIBLE_API_KEY,
+  });
 }
 
 export function listProviders(): string[] {

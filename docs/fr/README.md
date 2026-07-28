@@ -15,6 +15,15 @@ rp "ajoute un bouton pour exporter le rapport"
 ```
 
 ```bash
+rp init
+rp init --reset
+```
+
+`rp init` configure le provider, le modèle et les préférences locales. Les clés
+API ne sont jamais enregistrées dans `config.json` : Reqraft utilise les
+variables d'environnement comme `ANTHROPIC_API_KEY` ou `OPENAI_API_KEY`.
+
+```bash
 rp --profile frontend "améliore la card et fait qu'elle marche mobile"
 ```
 

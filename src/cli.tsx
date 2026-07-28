@@ -97,14 +97,23 @@ program
   });
 
 program
+  .command("init")
+  .description("Lance l'assistant de configuration initiale")
+  .option("--reset", "Recommencer avec les valeurs par défaut")
+  .action(async (options: { reset?: boolean }) => {
+    await runFirstRunSetup({ reset: options.reset });
+  });
+
+program
   .command("config")
   .description("Gère la configuration")
   .argument("[action]", "get, set, path, setup")
   .argument("[key]", "Clé de configuration")
   .argument("[value]", "Valeur de configuration")
-  .action(async (action?: string, key?: string, value?: string) => {
+  .option("--reset", "Avec setup, recommencer avec les valeurs par défaut")
+  .action(async (action?: string, key?: string, value?: string, options?: { reset?: boolean }) => {
     if (action === "setup") {
-      await runFirstRunSetup();
+      await runFirstRunSetup({ reset: options?.reset });
       return;
     }
     await runConfig(action, key, value);

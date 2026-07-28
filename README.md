@@ -38,6 +38,13 @@ rp "your request"
 reprompt "your request"
 ```
 
+Run the first-time setup wizard:
+
+```bash
+rp init
+rp init --reset
+```
+
 ## Quick usage
 
 ### Direct command
@@ -127,12 +134,19 @@ export MISTRAL_API_KEY=...
 ## Configuration
 
 ```bash
+rp init                    # first-run wizard
+rp init --reset            # restart from defaults, with confirmation
 rp config                    # show config
 rp config get defaultProvider
 rp config set defaultProvider openai
 rp config path
-rp config setup              # first-run wizard
+rp config setup              # same as rp init
+rp config setup --reset      # same as rp init --reset
 ```
+
+`rp init` never stores API keys. It checks environment variables such as
+`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, or `MISTRAL_API_KEY`
+and prints shell-specific setup instructions when a key is missing.
 
 ## Shell aliases
 

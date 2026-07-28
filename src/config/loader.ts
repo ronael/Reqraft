@@ -1,7 +1,8 @@
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
+import path from "node:path";
 import { ConfigSchema, type Config } from "./schema.js";
-import { getConfigDir, getConfigPath } from "./paths.js";
+import { getConfigPath } from "./paths.js";
 
 export const DEFAULT_CONFIG: Config = {
   defaultProvider: "anthropic",
@@ -32,10 +33,26 @@ export async function loadConfig(): Promise<Config> {
   }
 }
 
-export async function saveConfig(config: Config): Promise<void> {
-  const configDir = getConfigDir();
-  await mkdir(configDir, { recursive: true });
-  await writeFile(getConfigPath(), JSON.stringify(config, null, 2) + "\n", "utf8");
+export async function saveConfig(config: Config, targetPath = getConfigPath()): Promise<void> {
+  const validated = ConfigSchema.parse(config);
+  const configDir = path.dirname(targetPath);
+  await mkdir(configDir, { recursive: true, mode: 0o700 });
+
+  const tempPath = path.join(
+    configDir,
+    `.config.${String(process.pid)}.${String(Date.now())}.${Math.random().toString(36).slice(2)}.tmp`,
+  );
+
+  try {
+    await writeFile(tempPath, JSON.stringify(validated, null, 2) + "\n", {
+      encoding: "utf8",
+      mode: 0o600,
+    });
+    await rename(tempPath, targetPath);
+  } catch (error) {
+    await unlink(tempPath).catch(() => undefined);
+    throw error;
+  }
 }
 
 export function configPath(): string {
