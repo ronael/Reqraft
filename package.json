@@ -5,8 +5,8 @@
   "main": "./dist/cli.js",
   "type": "module",
   "bin": {
-    "rp": "./dist/cli.js",
-    "reprompt": "./dist/cli.js"
+    "rp": "dist/cli.js",
+    "reprompt": "dist/cli.js"
   },
   "files": [
     "dist",
