@@ -125,3 +125,15 @@ zsh -ic 'pnpm benchmark:fidelity anthropic claude-haiku-4-5'
 ```
 
 Acceptance requires no empty response or invalid API parameter, a mean fidelity score of at least 0.90, no disproportionate minimal output, reasonable median latency, and no changes to common fidelity rules solely for Anthropic.
+
+### Anthropic Validation Result
+
+The real reference run completed with the unchanged 40-case dataset:
+
+- 40 cases, 0 failures and no empty response;
+- mean fidelity score: 0.90625 (threshold: 0.90);
+- median latency: 1.959 s; P95: 2.926 s;
+- 0 reasoning tokens and 0 disproportionate minimal outputs;
+- no invalid API parameter observed.
+
+Anthropic Haiku is therefore functionally validated against the common behavior. It is slower than the OpenAI `gpt-4.1-mini` reference run, which remains the default reference implementation; the provider comparison does not justify changing the common engine or the OpenAI model.

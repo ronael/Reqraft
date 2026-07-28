@@ -32,6 +32,8 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 - ✅ Extraction SSE ajoutée : agrégation des `text_delta`, remontée des tokens d'entrée/sortie et erreurs de flux converties en `ProviderError`.
 - ✅ Contrat et commande de benchmark Anthropic documentés dans `docs/provider-contract.md`.
 - ⏸️ Benchmark Anthropic réel en attente de `ANTHROPIC_API_KEY` dans le shell ; aucune clé n'a été affichée ni enregistrée.
+- ✅ Benchmark Anthropic réel exécuté avec `claude-haiku-4-5` sur le dataset OpenAI inchangé : 40 cas, 0 échec, score moyen 0,90625, médiane 1,959 s, P95 2,926 s, 0 reasoning token et 0 sortie minimal disproportionnée.
+- ✅ Anthropic Haiku validé fonctionnellement ; `gpt-4.1-mini` reste la référence de performance et de comportement OpenAI.
 
 ### Lots A à K
 
