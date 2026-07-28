@@ -2,56 +2,57 @@
 
 ## Lot en cours
 
-Lot E — CLI non interactif (terminé, prêt au commit).
+Lot F — Configuration (terminé, prêt au commit).
 
 ## Terminé
 
 ### Lots précédents
 
-- Lot A à D terminés et commités.
+- Lot A à E terminés et commités.
 
-### Lot E
+### Lot F
 
-- Commande non interactive complète (`src/commands/reprompt.ts`).
-- Support des entrées : argument, stdin, fichier (`--file`), presse-papiers (`--clipboard`).
-- Support des sorties : texte brut, JSON (`--json`), diff (`--diff`), explication (`--explain`).
-- Copie dans le presse-papiers (`--copy`).
-- Gestion des profils, niveaux, providers et modèles.
-- Codes de sortie normalisés (`src/utils/exit-codes.ts`).
-- Gestion des erreurs avec messages clairs et mode verbose.
-- Tests E2E du CLI (`tests/e2e/cli.test.ts`).
-- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (29 tests), `pnpm build` réussies.
+- Schéma Zod de configuration (`src/config/schema.ts`).
+- Chemins multiplateformes respectant XDG (`src/config/paths.ts`).
+- Loader de configuration avec valeurs par défaut (`src/config/loader.ts`).
+- Commandes `rp config get`, `rp config set`, `rp config path`.
+- Assistant de premier démarrage (`rp config setup`).
+- Commande `rp doctor` vérifiant clés API et providers.
+- Intégration de la configuration dans `runReprompt` (priorité CLI > config).
+- Tests unitaires de configuration.
+- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (33 tests), `pnpm build` réussies.
 
 ## Reste à faire
 
-- Commit `feat(lot-e): implement non-interactive CLI`.
-- Passer au Lot F — Configuration.
+- Commit `feat(lot-f): implement configuration and doctor`.
+- Passer au Lot G — TUI.
 
-## Fichiers créés ou modifiés (Lot E)
+## Fichiers créés ou modifiés (Lot F)
 
-- `src/cli.tsx`
-- `src/commands/reprompt.ts`
-- `src/clipboard/clipboard.ts`
-- `src/utils/input.ts`
-- `src/utils/exit-codes.ts`
-- `src/core/engine.ts` (ajout `reasoningEffort`)
-- `tests/e2e/cli.test.ts`
+- `src/config/schema.ts`
+- `src/config/paths.ts`
+- `src/config/loader.ts`
+- `src/commands/config.ts`
+- `src/commands/doctor.ts`
+- `src/commands/first-run.ts`
+- `src/commands/reprompt.ts` (utilise loadConfig)
+- `src/cli.tsx` (commandes config/doctor/setup)
+- `tests/unit/config.test.ts`
 - `WORKLOG.md`
 
-## Commandes exécutées (Lot E)
+## Commandes exécutées (Lot F)
 
-- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (29 tests passés).
-- `node dist/cli.js "..." --provider mock --verbose` → fonctionne.
-- `echo "..." | node dist/cli.js --provider mock --json` → fonctionne.
-- `node dist/cli.js --file /tmp/demande.txt --provider mock` → fonctionne.
+- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (33 tests passés).
+- `node dist/cli.js config path` → `/Users/.../Library/Application Support/rp/config.json`.
+- `node dist/cli.js doctor` → fonctionne.
+- `node dist/cli.js config set defaultProvider mock` → fonctionne.
 
 ## Décisions techniques
 
-- `runReprompt` orchestre la résolution d'entrée, le profil, le provider, le modèle et la sortie.
-- Utilisation de `clipboardy` pour le presse-papiers cross-platform.
-- Codes de sortie explicites selon le plan.
-- Diff simple ligne par ligne.
+- Priorité : CLI > config > défauts (les variables d'environnement seront intégrées dans le Lot F ou G si nécessaire).
+- Pas de clé API stockée dans config.json.
+- `doctor` affiche uniquement la présence/absence des clés, jamais leur valeur.
 
 ## Prochaine action
 
-Effectuer le commit du Lot E puis commencer le Lot F.
+Effectuer le commit du Lot F puis commencer le Lot G.

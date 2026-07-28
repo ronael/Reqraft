@@ -8,6 +8,7 @@ import { resolveModel } from "../models/model-resolver.js";
 import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { readFileContent, readStdin } from "../utils/input.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
+import { loadConfig } from "../config/loader.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -28,20 +29,21 @@ export interface RepromptCliOptions {
 
 export async function runReprompt(options: RepromptCliOptions): Promise<void> {
   try {
+    const config = await loadConfig();
     const input = await resolveInput(options);
     if (!input) {
       console.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
       process.exit(EXIT_CODES.INVALID_INPUT);
     }
 
-    const level = parseLevel(options.level ?? "standard");
-    const { profile, detected } = resolveProfile(options.profile ?? "auto", input);
-    const providerId = options.provider ?? "mock";
+    const level = parseLevel(options.level ?? config.defaultLevel);
+    const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
+    const providerId = options.provider ?? config.defaultProvider;
     const provider = createProvider(providerId as "mock", process.env);
     const { model, reasoningEffort } = resolveModel(
       providerId,
       options.model,
-      "mock-model",
+      config.defaultModel,
     );
 
     const result = await rewrite({
@@ -50,8 +52,8 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
       level,
       provider,
       model,
-      includeChanges: options.explain ?? options.json ?? false,
-      stream: options.stream ?? false,
+      includeChanges: options.explain ?? options.json ?? config.showChanges,
+      stream: options.stream ?? config.stream,
       reasoningEffort,
     });
 

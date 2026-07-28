@@ -5,6 +5,9 @@ import { render } from "ink";
 import { App } from "./app.js";
 import { version } from "./version.js";
 import { runReprompt } from "./commands/reprompt.js";
+import { runConfig } from "./commands/config.js";
+import { runDoctor } from "./commands/doctor.js";
+import { runFirstRunSetup } from "./commands/first-run.js";
 import { listProviders } from "./providers/registry.js";
 import { getPresetModels } from "./models/presets.js";
 
@@ -93,18 +96,22 @@ program
 program
   .command("config")
   .description("Gère la configuration")
-  .argument("[action]", "get, set, path")
+  .argument("[action]", "get, set, path, setup")
   .argument("[key]", "Clé de configuration")
   .argument("[value]", "Valeur de configuration")
-  .action((action?: string) => {
-    console.log(`config ${action ?? ""} — implémenté dans les lots suivants`);
+  .action(async (action?: string, key?: string, value?: string) => {
+    if (action === "setup") {
+      await runFirstRunSetup();
+      return;
+    }
+    await runConfig(action, key, value);
   });
 
 program
   .command("doctor")
   .description("Vérifie l'installation et la configuration")
-  .action(() => {
-    console.log("doctor — implémenté dans les lots suivants");
+  .action(async () => {
+    await runDoctor();
   });
 
 program
