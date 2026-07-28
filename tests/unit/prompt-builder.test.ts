@@ -14,6 +14,9 @@ describe("prompt builder", () => {
     expect(systemPrompt).toContain("ne te limite pas à corriger");
     expect(systemPrompt).toContain("brief actionnable");
     expect(systemPrompt).toContain("Le champ rewritten doit contenir uniquement le prompt final");
+    expect(systemPrompt).toContain("N'ajoute pas de sections");
+    expect(systemPrompt).toContain("Une demande courte doit produire une reformulation courte");
+    expect(systemPrompt).toContain("Si l'entrée mentionne des conventions sans précision");
   });
 
   it("keeps standard prompts compact for low latency", () => {

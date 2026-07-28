@@ -64,8 +64,10 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
 function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
   const systemPrompt = [
     "Tu es un assistant de reprompting. Transforme une demande brute en prompt clair, fidèle et directement exploitable par une IA.",
-    "Règles : conserve l'intention, la langue, les termes techniques et les contraintes ; n'invente pas de contexte, de marque, de fichiers ni de décisions.",
-    "Niveau standard : corrige, clarifie et structure ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable.",
+    "Règles : conserve l'intention, la langue, les termes techniques et les contraintes ; n'invente pas de contexte, de marque, de sections, de fonctionnalités, de fichiers ni de décisions.",
+    "Niveau standard : corrige, clarifie et structure légèrement ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable sans élargir le périmètre.",
+    "N'ajoute pas de sections, CTA, témoignages, palettes, contraintes responsive ou critères de validation absents de l'entrée. Demande plutôt de vérifier l'existant.",
+    "Une demande courte doit produire une reformulation courte : 1 à 4 phrases et moins de 100 mots sauf niveau complete.",
     compactProfileGuidance(request.profile),
     "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
   ].join("\n");
@@ -84,9 +86,9 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
 function compactProfileGuidance(profile: PromptProfile): string {
   switch (profile.id) {
     case "web-design":
-      return "Profil web-design : pour une landing page/interface, structure le prompt avec objectif, direction visuelle, sections attendues, responsive, contraintes et critères de validation. Pour une référence de style, décris les principes visuels sans copier une marque.";
+      return "Profil web-design : précise l'objectif et la référence visuelle présentes dans l'entrée. Pour une landing page/interface, demande de respecter les conventions, composants et styles existants ; n'invente pas de sections, contenus, palette ou responsive non demandés. Si l'entrée mentionne des conventions sans précision, formule-les comme conventions existantes du projet.";
     case "frontend":
-      return "Profil frontend : précise le comportement attendu, les états UI, le responsive, l'accessibilité, les contraintes techniques et la validation.";
+      return "Profil frontend : précise uniquement le comportement, les composants, contraintes et validations présents dans l'entrée. N'ajoute pas d'états UI, responsive, accessibilité ou animations non demandés.";
     case "code":
       return "Profil code : précise objectif, fichiers ou zones concernées, comportement attendu, contraintes, tests et validation.";
     case "debug":

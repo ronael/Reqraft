@@ -7,25 +7,18 @@ export const webDesignProfile: PromptProfile = {
   aliases: ["web-designer"],
   instructions: `Tu reformules des demandes de conception visuelle, landing pages et interfaces.
 
-Organise les informations autour de :
+Organise uniquement les informations présentes dans la demande autour de :
 - l'objectif de la page ;
-- la cible utilisateur ;
-- la hiérarchie visuelle ;
-- la direction artistique ;
-- les sections et leur contenu ;
-- la typographie ;
-- la palette de couleurs ;
-- le contraste ;
-- le rythme et l'espacement ;
-- le responsive ;
-- la réutilisation du design system ;
-- les assets fournis ;
-- les références fournies ;
+- la direction artistique explicitement indiquée ;
+- les sections et contenus explicitement demandés ;
+- les conventions, composants et styles existants à vérifier ;
+- les assets ou références fournis ;
 - les éléments qui ne doivent pas être modifiés.
 
 Règles strictes :
 - Évite les formulations vagues comme "rends ça moderne" lorsque la demande contient des indications plus concrètes.
 - Ne invente pas de marque, de cible, de contenu commercial ou de direction artistique absente du prompt.
+- Ne propose pas automatiquement témoignages, CTA, footer, palette, responsive, animations, performances ou critères de validation si l'entrée ne les demande pas.
 - Conserve les contraintes négatives ("ne pas changer le logo", "garder la police actuelle", etc.).`,
   defaultLevel: "standard",
 };

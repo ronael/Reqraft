@@ -14,6 +14,8 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 - ✅ Les stats distinguent entrée, sortie visible, raisonnement et sortie totale lorsque le provider les communique.
 - ✅ `gpt-4.1-mini` ajouté comme preset OpenAI recommandé pour le reprompting rapide.
 - ✅ Cas de test validé en dev avec OpenAI : 3.05 s, 232 tokens d'entrée, 177 tokens de sortie visible, 0 token de raisonnement.
+- ✅ Garde-fous de fidélité ajoutés pour éviter l'expansion non demandée des prompts courts.
+- ✅ Cas landing page Apple revalidé : 2.11 s, 329 tokens d'entrée, 31 tokens de sortie visible, 0 token de raisonnement.
 
 ### Lots A à K
 

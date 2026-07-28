@@ -8,6 +8,7 @@ import type { PromptProfile } from "../profiles/types.js";
 import { buildPrompt } from "./prompt-builder.js";
 import { parseResult } from "./result-parser.js";
 import { assertNonEmptyResult } from "./validation.js";
+import { detectUnsupportedAdditions, isDisproportionateExpansion } from "./fidelity.js";
 
 export interface EngineOptions {
   input: string;
@@ -48,6 +49,7 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const responseText = assertNonEmptyResult(response.text);
   const parsed = parseResult(responseText);
   const rewritten = assertNonEmptyResult(parsed.rewritten);
+  const fidelityWarnings = buildFidelityWarnings(options.input, rewritten);
   const latencyMs = Date.now() - start;
 
   return {
@@ -58,7 +60,7 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     provider: options.provider.id,
     model: response.model ?? options.model,
     changes: options.includeChanges ? parsed.changes : [],
-    warnings: parsed.warnings,
+    warnings: [...parsed.warnings, ...fidelityWarnings],
     usage: response.usage
       ? {
           inputTokens: response.usage.inputTokens,
@@ -71,6 +73,18 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
       : undefined,
     latencyMs,
   };
+}
+
+function buildFidelityWarnings(input: string, rewritten: string): string[] {
+  const warnings: string[] = [];
+  const additions = detectUnsupportedAdditions(input, rewritten);
+  if (additions.length > 0) {
+    warnings.push(`Potential unsupported additions: ${additions.join(", ")}`);
+  }
+  if (isDisproportionateExpansion(input, rewritten)) {
+    warnings.push("Potential disproportionate expansion for a short input.");
+  }
+  return warnings;
 }
 
 function defaultMaxOutputTokens(level: RepromptLevel): number {

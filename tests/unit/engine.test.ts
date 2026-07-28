@@ -47,6 +47,26 @@ class EmptyProvider implements ProviderAdapter {
   }
 }
 
+class ExpandingProvider implements ProviderAdapter {
+  readonly id = "expanding";
+  readonly name = "Expanding";
+
+  generate(): Promise<ProviderResponse> {
+    return Promise.resolve({
+      text: JSON.stringify({
+        rewritten: "Crée une landing page avec un header, des témoignages, une FAQ, un footer et une palette détaillée.",
+        warnings: [],
+      }),
+      usage: { inputTokens: 10, outputTokens: 30, visibleOutputTokens: 30 },
+      model: "mock-model",
+    });
+  }
+
+  validateConfiguration(): Promise<ProviderHealth> {
+    return Promise.resolve({ ok: true, message: "ok" });
+  }
+}
+
 describe("engine", () => {
   it("rewrites input using mock provider", async () => {
     const result = await rewrite({
@@ -93,5 +113,19 @@ describe("engine", () => {
         includeChanges: false,
       }),
     ).rejects.toThrow("sans produire de texte visible");
+  });
+
+  it("adds fidelity warnings for unsupported additions", async () => {
+    const result = await rewrite({
+      input: "fais une landing page style apple",
+      profile: webDesignProfile,
+      level: "standard",
+      provider: new ExpandingProvider(),
+      model: "mock-model",
+      includeChanges: false,
+    });
+
+    expect(result.warnings.join("\n")).toContain("Potential unsupported additions");
+    expect(result.warnings.join("\n")).toContain("témoignages");
   });
 });
