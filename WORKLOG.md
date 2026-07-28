@@ -2,57 +2,48 @@
 
 ## Lot en cours
 
-Lot F — Configuration (terminé, prêt au commit).
+Lot G — TUI (terminé, prêt au commit).
 
 ## Terminé
 
 ### Lots précédents
 
-- Lot A à E terminés et commités.
+- Lot A à F terminés et commités.
 
-### Lot F
+### Lot G
 
-- Schéma Zod de configuration (`src/config/schema.ts`).
-- Chemins multiplateformes respectant XDG (`src/config/paths.ts`).
-- Loader de configuration avec valeurs par défaut (`src/config/loader.ts`).
-- Commandes `rp config get`, `rp config set`, `rp config path`.
-- Assistant de premier démarrage (`rp config setup`).
-- Commande `rp doctor` vérifiant clés API et providers.
-- Intégration de la configuration dans `runReprompt` (priorité CLI > config).
-- Tests unitaires de configuration.
+- TUI interactive complète dans `src/app.tsx`.
+- Éditeur de prompt avec `ink-text-input`.
+- Affichage du profil actif, niveau, provider, modèle.
+- Affichage du résultat, diff, explication.
+- Modales de sélection pour profil, niveau, modèle.
+- Raccourcis : Ctrl+Enter, Ctrl+D, Ctrl+P, Ctrl+L, Ctrl+M, Ctrl+R, Ctrl+Shift+C, ?, Esc.
+- Gestion responsive avec `useTerminalSize`.
+- Intégration du moteur de reformulation et de la configuration.
 - Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (33 tests), `pnpm build` réussies.
 
 ## Reste à faire
 
-- Commit `feat(lot-f): implement configuration and doctor`.
-- Passer au Lot G — TUI.
+- Commit `feat(lot-g): implement interactive TUI`.
+- Passer au Lot H — Alias shell.
 
-## Fichiers créés ou modifiés (Lot F)
+## Fichiers créés ou modifiés (Lot G)
 
-- `src/config/schema.ts`
-- `src/config/paths.ts`
-- `src/config/loader.ts`
-- `src/commands/config.ts`
-- `src/commands/doctor.ts`
-- `src/commands/first-run.ts`
-- `src/commands/reprompt.ts` (utilise loadConfig)
-- `src/cli.tsx` (commandes config/doctor/setup)
-- `tests/unit/config.test.ts`
+- `src/app.tsx`
+- `src/ui/hooks/use-terminal-size.ts`
+- `src/ui/components/select-modal.tsx`
 - `WORKLOG.md`
 
-## Commandes exécutées (Lot F)
+## Commandes exécutées (Lot G)
 
 - `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (33 tests passés).
-- `node dist/cli.js config path` → `/Users/.../Library/Application Support/rp/config.json`.
-- `node dist/cli.js doctor` → fonctionne.
-- `node dist/cli.js config set defaultProvider mock` → fonctionne.
 
 ## Décisions techniques
 
-- Priorité : CLI > config > défauts (les variables d'environnement seront intégrées dans le Lot F ou G si nécessaire).
-- Pas de clé API stockée dans config.json.
-- `doctor` affiche uniquement la présence/absence des clés, jamais leur valeur.
+- TUI monolithique dans `app.tsx` pour la V1 ; composants extraits pour modales et hooks terminal.
+- `ink-select-input` pour les sélections.
+- Gestion des états via `useState`.
 
 ## Prochaine action
 
-Effectuer le commit du Lot F puis commencer le Lot G.
+Effectuer le commit du Lot G puis commencer le Lot H.

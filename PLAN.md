@@ -1428,7 +1428,7 @@ Ne jamais lancer les benchmarks payants dans la CI publique.
 Le README doit immédiatement montrer :
 
 ```bash
-npm install -g <nom-du-package>
+pnpm install -g <nom-du-package>
 ```
 
 Puis :
