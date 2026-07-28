@@ -45,6 +45,7 @@ const PROFILE_RULES: Record<string, KeywordRule[]> = {
       keywords: [
         "design",
         "landing",
+        "landing page",
         "maquette",
         "mockup",
         "wireframe",
@@ -65,6 +66,10 @@ const PROFILE_RULES: Record<string, KeywordRule[]> = {
         "spacing",
         "modern",
         "moderne",
+        "style",
+        "apple",
+        "convention",
+        "conventions",
       ],
       weight: 1,
     },

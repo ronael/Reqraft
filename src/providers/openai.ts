@@ -20,6 +20,9 @@ interface OpenAIChoice {
 interface OpenAIUsage {
   prompt_tokens?: number;
   completion_tokens?: number;
+  completion_tokens_details?: {
+    reasoning_tokens?: number;
+  };
 }
 
 interface OpenAIResponse {
@@ -45,6 +48,7 @@ export class OpenAIProvider implements ProviderAdapter {
         { role: "user", content: request.userPrompt },
       ],
       max_completion_tokens: request.maxOutputTokens,
+      response_format: { type: "json_object" },
     };
 
     if (supportsTemperature(request.model)) {
@@ -80,6 +84,11 @@ export class OpenAIProvider implements ProviderAdapter {
       usage: {
         inputTokens: data.usage?.prompt_tokens,
         outputTokens: data.usage?.completion_tokens,
+        reasoningTokens: data.usage?.completion_tokens_details?.reasoning_tokens,
+        visibleOutputTokens: calculateVisibleOutputTokens(
+          data.usage?.completion_tokens,
+          data.usage?.completion_tokens_details?.reasoning_tokens,
+        ),
       },
       model: data.model,
       finishReason: choice.finish_reason,
@@ -130,4 +139,14 @@ function supportsReasoningEffort(
 
 function isGpt5Family(model: string): boolean {
   return model.startsWith("gpt-5");
+}
+
+function calculateVisibleOutputTokens(
+  outputTokens: number | undefined,
+  reasoningTokens: number | undefined,
+): number | undefined {
+  if (outputTokens === undefined || reasoningTokens === undefined) {
+    return undefined;
+  }
+  return Math.max(outputTokens - reasoningTokens, 0);
 }

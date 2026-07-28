@@ -29,11 +29,11 @@ export function describeLevel(level: RepromptLevel): string {
     case "standard":
     default:
       return `Niveau standard :
-- corriger ;
-- clarifier ;
-- structurer ;
-- réduire les ambiguïtés ;
-- préserver la taille réelle de la demande ;
+- corriger et clarifier la demande ;
+- ne te limite pas à corriger la grammaire lorsque la demande implique une création, une implémentation ou une conception ;
+- produire un brief actionnable, directement exploitable par une IA ;
+- structurer en sections courtes lorsque cela rend le prompt plus utile ;
+- conserver l'intention sans inventer de données métier spécifiques ;
 - rendre les contraintes visibles.`;
   }
 }

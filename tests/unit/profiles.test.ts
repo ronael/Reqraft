@@ -29,6 +29,15 @@ describe("profile registry", () => {
     expect(profile.id).toBe("frontend");
   });
 
+  it("auto resolves landing page requests to web-design", () => {
+    const { profile, detected } = resolveProfile(
+      "auto",
+      "je voudrais que me crée une landing page style apple en respectant les convention",
+    );
+    expect(detected).toBe(true);
+    expect(profile.id).toBe("web-design");
+  });
+
   it("auto falls back to clean on generic input", () => {
     const { profile, detected } = resolveProfile("auto", "bonjour comment vas tu aujourd'hui");
     expect(detected).toBe(true);

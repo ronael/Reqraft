@@ -22,6 +22,8 @@ export interface RepromptResult {
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
+    reasoningTokens?: number;
+    visibleOutputTokens?: number;
     estimatedCost?: number;
     currency?: string;
   };
@@ -52,6 +54,8 @@ export interface ProviderResponse {
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
+    reasoningTokens?: number;
+    visibleOutputTokens?: number;
   };
   model?: string;
   finishReason?: string;

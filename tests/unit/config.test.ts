@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { ConfigSchema, mergeConfig } from "../../src/config/schema.js";
 import { getConfigDir, getConfigPath } from "../../src/config/paths.js";
 import { getPresetModels } from "../../src/models/presets.js";
+import { resolveModel } from "../../src/models/model-resolver.js";
 
 describe("config schema", () => {
   it("parses valid config", () => {
@@ -53,11 +54,17 @@ describe("model presets", () => {
     const openaiPresets = getPresetModels().filter((preset) => preset.provider === "openai");
     const openaiModels = openaiPresets.map((preset) => preset.id);
 
-    expect(openaiModels).toEqual(["gpt-5-mini", "gpt-5-nano", "gpt-5.1"]);
+    expect(openaiModels).toEqual(["gpt-4.1-mini", "gpt-5-mini", "gpt-5-nano", "gpt-5.1"]);
     expect(openaiModels.some((id) => id.includes("gpt-5.4"))).toBe(false);
-    expect(openaiPresets.find((preset) => preset.id === "gpt-5-mini")?.reasoningEffort).toBeUndefined();
-    expect(openaiPresets.find((preset) => preset.id === "gpt-5-nano")?.reasoningEffort).toBeUndefined();
+    expect(openaiPresets.find((preset) => preset.id === "gpt-5-mini")?.reasoningEffort).toBe("low");
+    expect(openaiPresets.find((preset) => preset.id === "gpt-5-nano")?.reasoningEffort).toBe("low");
     expect(openaiPresets.find((preset) => preset.id === "gpt-5.1")?.reasoningEffort).toBe("none");
+    expect(openaiPresets.find((preset) => preset.id === "gpt-4.1-mini")?.recommended).toBe(true);
+  });
+
+  it("resolves dated OpenAI model ids to their preset parameters", () => {
+    const resolved = resolveModel("openai", "gpt-5-mini-2025-08-07", "gpt-5-mini");
+    expect(resolved.reasoningEffort).toBe("low");
   });
 });
 

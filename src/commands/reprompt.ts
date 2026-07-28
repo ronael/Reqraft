@@ -123,8 +123,8 @@ async function outputResult(
   }
 
   if (!options.json && (options.stats ?? defaultShowStats)) {
-    console.log("");
-    console.log(formatStats(result));
+    console.error("");
+    console.error(formatStats(result));
   }
 
   if (options.copy) {
@@ -135,15 +135,13 @@ async function outputResult(
 
 function formatStats(result: RepromptResult): string {
   const lines = ["Stats"];
-  const details = [
-    result.latencyMs !== undefined ? `Durée ${formatDuration(result.latencyMs)}` : undefined,
-    result.usage?.inputTokens !== undefined ? `${String(result.usage.inputTokens)} entrée` : undefined,
-    result.usage?.outputTokens !== undefined ? `${String(result.usage.outputTokens)} sortie` : undefined,
-  ].filter((item): item is string => item !== undefined);
-
-  if (details.length > 0) {
-    lines.push(`Tokens ${details.join(" · ")}`);
+  if (result.latencyMs !== undefined) {
+    lines.push(`Durée ${formatDuration(result.latencyMs)}`);
   }
+  lines.push(`Entrée ${formatTokenValue(result.usage?.inputTokens)}`);
+  lines.push(`Sortie visible ${formatTokenValue(result.usage?.visibleOutputTokens)}`);
+  lines.push(`Raisonnement ${formatTokenValue(result.usage?.reasoningTokens)}`);
+  lines.push(`Sortie totale ${formatTokenValue(result.usage?.outputTokens)}`);
 
   if (result.usage?.estimatedCost !== undefined) {
     lines.push(`Coût estimé ${formatCost(result.usage.estimatedCost, result.usage.currency)}`);
@@ -153,6 +151,10 @@ function formatStats(result: RepromptResult): string {
 
   lines.push(`Provider ${result.provider} · Modèle ${result.model}`);
   return lines.join("\n");
+}
+
+function formatTokenValue(value: number | undefined): string {
+  return value === undefined ? "non communiqué" : `${String(value)} tokens`;
 }
 
 function formatDuration(ms: number): string {

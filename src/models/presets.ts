@@ -31,12 +31,20 @@ export const MODEL_PRESETS: ModelPreset[] = [
     category: "quality",
   },
   {
+    id: "gpt-4.1-mini",
+    name: "GPT-4.1 mini",
+    provider: "openai",
+    description: "Rapide et fiable pour le reprompting avec sortie visible immédiate.",
+    recommended: true,
+    category: "fast",
+  },
+  {
     id: "gpt-5-mini",
     name: "GPT-5 mini",
     provider: "openai",
     description: "Version rapide et économique de GPT-5 pour les tâches bien définies.",
-    recommended: true,
     category: "openai",
+    reasoningEffort: "low",
   },
   {
     id: "gpt-5-nano",
@@ -44,6 +52,7 @@ export const MODEL_PRESETS: ModelPreset[] = [
     provider: "openai",
     description: "Version la plus rapide et la plus économique de GPT-5.",
     category: "budget",
+    reasoningEffort: "low",
   },
   {
     id: "gpt-5.1",
@@ -83,7 +92,11 @@ export function getPresetModels(): ModelPreset[] {
 }
 
 export function findPreset(providerId: string, modelId: string): ModelPreset | undefined {
-  return MODEL_PRESETS.find((p) => p.provider === providerId && p.id === modelId);
+  const providerPresets = MODEL_PRESETS.filter((p) => p.provider === providerId);
+  return (
+    providerPresets.find((p) => p.id === modelId) ??
+    providerPresets.find((p) => modelId.startsWith(`${p.id}-`))
+  );
 }
 
 export function listRecommendedModels(): ModelPreset[] {

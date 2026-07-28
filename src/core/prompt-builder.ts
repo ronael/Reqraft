@@ -17,6 +17,10 @@ export interface PromptBuildInput {
 }
 
 export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
+  if (request.level === "standard" && !request.includeChanges) {
+    return buildCompactStandardPrompt(request);
+  }
+
   const levelDescription = describeLevel(request.level);
 
   const systemPrompt = [
@@ -32,6 +36,12 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
     request.profile.instructions,
     "",
     levelDescription,
+    "",
+    "Contraintes de sortie :",
+    "- Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier.",
+    "- Garde warnings vide sauf ambiguïté critique.",
+    "- N'ajoute pas d'analyse, de justification, de résumé ou de variantes hors du champ rewritten.",
+    "- Reste concis : chaque token généré doit aider l'utilisateur.",
     "",
     request.includeChanges
       ? "Réponds au format JSON strict avec les champs : rewritten (string), changes (string[]), warnings (string[])."
@@ -49,6 +59,45 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
   ].join("\n");
 
   return { systemPrompt, userPrompt };
+}
+
+function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
+  const systemPrompt = [
+    "Tu es un assistant de reprompting. Transforme une demande brute en prompt clair, fidèle et directement exploitable par une IA.",
+    "Règles : conserve l'intention, la langue, les termes techniques et les contraintes ; n'invente pas de contexte, de marque, de fichiers ni de décisions.",
+    "Niveau standard : corrige, clarifie et structure ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable.",
+    compactProfileGuidance(request.profile),
+    "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
+  ].join("\n");
+
+  const userPrompt = [
+    "Demande à reformuler :",
+    "```",
+    request.input,
+    "```",
+    request.language ? `Langue attendue : ${request.language}` : "",
+  ].filter(Boolean).join("\n");
+
+  return { systemPrompt, userPrompt };
+}
+
+function compactProfileGuidance(profile: PromptProfile): string {
+  switch (profile.id) {
+    case "web-design":
+      return "Profil web-design : pour une landing page/interface, structure le prompt avec objectif, direction visuelle, sections attendues, responsive, contraintes et critères de validation. Pour une référence de style, décris les principes visuels sans copier une marque.";
+    case "frontend":
+      return "Profil frontend : précise le comportement attendu, les états UI, le responsive, l'accessibilité, les contraintes techniques et la validation.";
+    case "code":
+      return "Profil code : précise objectif, fichiers ou zones concernées, comportement attendu, contraintes, tests et validation.";
+    case "debug":
+      return "Profil debug : précise symptôme, contexte, reproduction, hypothèses à vérifier, logs utiles et critères de résolution.";
+    case "review":
+      return "Profil review : demande une revue orientée risques, bugs, régressions, sécurité, performance et tests manquants.";
+    case "writing":
+      return "Profil rédaction : préserve le ton, l'objectif, le public, les contraintes de longueur et les informations à ne pas modifier.";
+    default:
+      return `Profil ${profile.id} : applique les consignes du profil sans élargir artificiellement le périmètre.`;
+  }
 }
 
 export function buildMinimalPrompt(input: string): BuiltPrompt {

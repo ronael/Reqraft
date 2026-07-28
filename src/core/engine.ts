@@ -7,6 +7,7 @@ import type {
 import type { PromptProfile } from "../profiles/types.js";
 import { buildPrompt } from "./prompt-builder.js";
 import { parseResult } from "./result-parser.js";
+import { assertNonEmptyResult } from "./validation.js";
 
 export interface EngineOptions {
   input: string;
@@ -38,18 +39,20 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     systemPrompt,
     userPrompt,
     temperature: options.temperature ?? 0.2,
-    maxOutputTokens: options.maxOutputTokens ?? 1500,
+    maxOutputTokens: options.maxOutputTokens ?? defaultMaxOutputTokens(options.level),
     stream: options.stream ?? false,
     reasoningEffort: options.reasoningEffort,
   };
 
   const response = await options.provider.generate(providerRequest);
-  const parsed = parseResult(response.text);
+  const responseText = assertNonEmptyResult(response.text);
+  const parsed = parseResult(responseText);
+  const rewritten = assertNonEmptyResult(parsed.rewritten);
   const latencyMs = Date.now() - start;
 
   return {
     original: options.input,
-    rewritten: parsed.rewritten,
+    rewritten,
     profile: options.profile.id,
     level: options.level,
     provider: options.provider.id,
@@ -60,10 +63,24 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
       ? {
           inputTokens: response.usage.inputTokens,
           outputTokens: response.usage.outputTokens,
+          reasoningTokens: response.usage.reasoningTokens,
+          visibleOutputTokens: response.usage.visibleOutputTokens,
           estimatedCost: undefined,
           currency: undefined,
         }
       : undefined,
     latencyMs,
   };
+}
+
+function defaultMaxOutputTokens(level: RepromptLevel): number {
+  switch (level) {
+    case "minimal":
+      return 250;
+    case "complete":
+      return 1100;
+    case "standard":
+    default:
+      return 450;
+  }
 }

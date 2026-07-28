@@ -18,7 +18,11 @@ describe("OpenAI provider", () => {
       new Response(
         JSON.stringify({
           choices: [{ message: { content: '{"rewritten":"ok"}' }, finish_reason: "stop" }],
-          usage: { prompt_tokens: 10, completion_tokens: 5 },
+          usage: {
+            prompt_tokens: 10,
+            completion_tokens: 5,
+            completion_tokens_details: { reasoning_tokens: 2 },
+          },
           model: "gpt-5-mini",
         }),
         { status: 200, headers: { "Content-Type": "application/json" } },
@@ -42,6 +46,8 @@ describe("OpenAI provider", () => {
     expect(result.text).toBe('{"rewritten":"ok"}');
     expect(result.model).toBe("gpt-5-mini");
     expect(result.usage?.inputTokens).toBe(10);
+    expect(result.usage?.reasoningTokens).toBe(2);
+    expect(result.usage?.visibleOutputTokens).toBe(3);
 
     const call = vi.mocked(globalThis.fetch).mock.calls[0];
     if (!call?.[1]) throw new Error("fetch not called");
@@ -50,6 +56,7 @@ describe("OpenAI provider", () => {
     const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
     expect(body.model).toBe("gpt-5-mini");
     expect(body.max_completion_tokens).toBe(100);
+    expect(body.response_format).toEqual({ type: "json_object" });
     expect(body).not.toHaveProperty("max_tokens");
     expect(body).not.toHaveProperty("temperature");
     expect(body).not.toHaveProperty("reasoning_effort");
@@ -71,6 +78,25 @@ describe("OpenAI provider", () => {
     if (!call?.[1]) throw new Error("fetch not called");
     const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
     expect(body).not.toHaveProperty("reasoning_effort");
+    expect(body).not.toHaveProperty("temperature");
+  });
+
+  it("sends low reasoning effort for GPT-5 mini when requested", async () => {
+    const provider = new OpenAIProvider("test-key");
+    await provider.generate({
+      model: "gpt-5-mini",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+      reasoningEffort: "low",
+    });
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    if (!call?.[1]) throw new Error("fetch not called");
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.reasoning_effort).toBe("low");
     expect(body).not.toHaveProperty("temperature");
   });
 

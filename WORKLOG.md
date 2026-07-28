@@ -6,6 +6,15 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 
 ## Terminé
 
+### Optimisation OpenAI / init dev
+
+- ✅ Correction du cas où OpenAI consomme toute la limite de sortie en reasoning tokens sans produire de texte visible.
+- ✅ Les réponses provider vides provoquent maintenant une erreur claire et un code de sortie non nul.
+- ✅ Les statistiques sont affichées sur stderr, séparées du prompt reformulé écrit sur stdout.
+- ✅ Les stats distinguent entrée, sortie visible, raisonnement et sortie totale lorsque le provider les communique.
+- ✅ `gpt-4.1-mini` ajouté comme preset OpenAI recommandé pour le reprompting rapide.
+- ✅ Cas de test validé en dev avec OpenAI : 3.05 s, 232 tokens d'entrée, 177 tokens de sortie visible, 0 token de raisonnement.
+
 ### Lots A à K
 
 - Tous les lots implémentés, validés et commités.

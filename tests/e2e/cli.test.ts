@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { execSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
@@ -8,23 +8,27 @@ const CLI = path.resolve(process.cwd(), "dist/cli.js");
 const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
 
 function run(args: string): { stdout: string; stderr: string; exitCode: number } {
-  try {
-    const stdout = execSync(`node ${CLI} ${args}`, {
-      encoding: "utf8",
-      env: {
-        ...process.env,
-        XDG_CONFIG_HOME: TEST_CONFIG_HOME,
-      },
-    });
-    return { stdout, stderr: "", exitCode: 0 };
-  } catch (error) {
-    const err = error as { stdout?: string; stderr?: string; status?: number };
-    return {
-      stdout: err.stdout ?? "",
-      stderr: err.stderr ?? "",
-      exitCode: err.status ?? 1,
-    };
+  const result = spawnSync("node", [CLI, ...parseArgs(args)], {
+    encoding: "utf8",
+    env: {
+      ...process.env,
+      XDG_CONFIG_HOME: TEST_CONFIG_HOME,
+    },
+  });
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode: result.status ?? 1,
+  };
+}
+
+function parseArgs(args: string): string[] {
+  const parsed: string[] = [];
+  const regex = /"([^"]*)"|(\S+)/g;
+  for (const match of args.matchAll(regex)) {
+    parsed.push(match[1] ?? match[2] ?? "");
   }
+  return parsed;
 }
 
 describe("CLI e2e", () => {
@@ -63,9 +67,16 @@ describe("CLI e2e", () => {
     const { stdout, exitCode } = run('"test" --provider mock --stats');
     expect(exitCode).toBe(0);
     expect(stdout).toContain("[mock]");
-    expect(stdout).toContain("Stats");
-    expect(stdout).toContain("Tokens");
-    expect(stdout).toContain("10 entrée");
-    expect(stdout).toContain("20 sortie");
+  });
+
+  it("writes stats to stderr when requested", () => {
+    const { stdout, stderr, exitCode } = run('"test" --provider mock --stats');
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("[mock]");
+    expect(stderr).toContain("Stats");
+    expect(stderr).toContain("Entrée 10 tokens");
+    expect(stderr).toContain("Sortie visible 20 tokens");
+    expect(stderr).toContain("Raisonnement non communiqué");
+    expect(stderr).toContain("Sortie totale 20 tokens");
   });
 });

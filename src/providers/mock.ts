@@ -16,7 +16,7 @@ export class MockProvider implements ProviderAdapter {
         changes: ["Mock reformulation applied"],
         warnings: [],
       }),
-      usage: { inputTokens: 10, outputTokens: 20 },
+      usage: { inputTokens: 10, outputTokens: 20, visibleOutputTokens: 20 },
       model: "mock-model",
       finishReason: "stop",
     });
