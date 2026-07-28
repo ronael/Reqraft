@@ -9,6 +9,8 @@ import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { readFileContent, readStdin } from "../utils/input.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 import { loadConfig } from "../config/loader.js";
+import { detectSecrets } from "../core/secret-detector.js";
+import { redactSecrets } from "../utils/redaction.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -25,15 +27,31 @@ export interface RepromptCliOptions {
   stream?: boolean;
   timeout?: string;
   verbose?: boolean;
+  force?: boolean;
+  redactSecrets?: boolean;
 }
 
 export async function runReprompt(options: RepromptCliOptions): Promise<void> {
   try {
     const config = await loadConfig();
-    const input = await resolveInput(options);
+    let input = await resolveInput(options);
     if (!input) {
       console.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
       process.exit(EXIT_CODES.INVALID_INPUT);
+    }
+
+    const secrets = detectSecrets(input);
+    if (secrets.length > 0 && !options.force) {
+      if (options.redactSecrets) {
+        input = redactSecrets(input);
+      } else {
+        console.error("Un secret potentiel a été détecté dans le texte.");
+        for (const secret of secrets) {
+          console.error(`  - ${secret.type}`);
+        }
+        console.error("Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.");
+        process.exit(EXIT_CODES.SECRET_DETECTED);
+      }
     }
 
     const level = parseLevel(options.level ?? config.defaultLevel);

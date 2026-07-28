@@ -49,6 +49,8 @@ program
   .option("--no-stream", "Désactiver le streaming")
   .option("--timeout <ms>", "Timeout en millisecondes")
   .option("--verbose", "Mode verbeux")
+  .option("--force", "Forcer l'envoi malgré un secret détecté")
+  .option("--redact-secrets", "Masquer automatiquement les secrets détectés")
   .action(async (text: string | undefined, options: CliOptions) => {
     if (process.stdin.isTTY && !text && !options.clipboard && !options.file) {
       render(<App />);

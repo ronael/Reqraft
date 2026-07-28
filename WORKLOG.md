@@ -2,55 +2,52 @@
 
 ## Lot en cours
 
-Lot H — Alias shell (terminé, prêt au commit).
+Lot I — Confidentialité et sécurité (terminé, prêt au commit).
 
 ## Terminé
 
 ### Lots précédents
 
-- Lot A à G terminés et commités.
+- Lot A à H terminés et commités.
 
-### Lot H
+### Lot I
 
-- Détection du shell (Bash, Zsh, Fish, PowerShell).
-- Handlers par shell pour formater et parser les alias.
-- Manager d'alias avec set/remove/list sécurisés.
-- Blocs délimités pour ne jamais toucher au contenu externe.
-- Mode `--dry-run`.
-- Détection des collisions et alias invalides/dangereux.
-- Commande `rp alias set|remove|list`.
-- Tests sur fichiers temporaires.
-- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (41 tests), `pnpm build` réussies.
+- Détecteur local de secrets (`src/core/secret-detector.ts`).
+- Redaction optionnelle (`src/utils/redaction.ts`).
+- Intégration dans `runReprompt` avec `--force` et `--redact-secrets`.
+- Aucun historique de prompts, pas de télémétrie par défaut.
+- Clés API jamais écrites dans config/logs.
+- Fichier `SECURITY.md`.
+- Documentation `docs/privacy.md`.
+- Tests de détection et de redaction.
+- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (46 tests), `pnpm build` réussies.
 
 ## Reste à faire
 
-- Commit `feat(lot-h): implement shell alias management`.
-- Passer au Lot I — Confidentialité et sécurité.
+- Commit `feat(lot-i): add secret detection and privacy docs`.
+- Passer au Lot J — Benchmark et documentation.
 
-## Fichiers créés ou modifiés (Lot H)
+## Fichiers créés ou modifiés (Lot I)
 
-- `src/aliases/detector.ts`
-- `src/aliases/manager.ts`
-- `src/aliases/shells/types.ts`
-- `src/aliases/shells/bash.ts`
-- `src/aliases/shells/zsh.ts`
-- `src/aliases/shells/fish.ts`
-- `src/aliases/shells/powershell.ts`
-- `src/commands/aliases.ts`
-- `src/cli.tsx` (commande alias)
-- `tests/unit/aliases.test.ts`
+- `src/core/secret-detector.ts`
+- `src/utils/redaction.ts`
+- `src/commands/reprompt.ts`
+- `src/cli.tsx` (options --force, --redact-secrets)
+- `tests/unit/secret-detector.test.ts`
+- `SECURITY.md`
+- `docs/privacy.md`
 - `WORKLOG.md`
 
-## Commandes exécutées (Lot H)
+## Commandes exécutées (Lot I)
 
-- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (41 tests passés).
+- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (46 tests passés).
 
 ## Décisions techniques
 
-- Blocs `# >>> rp aliases >>>` / `# <<< rp aliases <<<` pour isoler les modifications.
-- Confirmation interactive avant modification d'un fichier de profil shell.
-- Alias invalides rejetés (caractères spéciaux, noms réservés).
+- Patterns regex locaux pour GitHub, OpenAI, Anthropic, AWS, clés privées, variables sensibles.
+- Arrêt avec code de sortie 6 en cas de secret détecté en mode non interactif.
+- `--redact-secrets` remplace les valeurs par `[REDACTED]`.
 
 ## Prochaine action
 
-Effectuer le commit du Lot H puis commencer le Lot I.
+Effectuer le commit du Lot I puis commencer le Lot J.
