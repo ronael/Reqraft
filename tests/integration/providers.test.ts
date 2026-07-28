@@ -170,9 +170,69 @@ describe("Anthropic provider", () => {
     expect(result.model).toBe("claude-haiku-4-5");
 
     const call = vi.mocked(globalThis.fetch).mock.calls[0];
-    if (!call) throw new Error("fetch not called");
+    if (!call?.[1]) throw new Error("fetch not called");
     const requestUrl = call[0] as string;
     expect(requestUrl).toBe("https://api.anthropic.com/v1/messages");
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body).toMatchObject({
+      model: "claude-haiku-4-5",
+      max_tokens: 100,
+      temperature: 0.2,
+      system: "sys",
+      stream: false,
+    });
+  });
+
+  it("collects text and usage from a streaming Messages response", async () => {
+    mockFetch(
+      new Response(
+        [
+          'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":8}}}\n\n',
+          'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"{\\"rewritten\\":\\"ok"}}\n\n',
+          'event: content_block_delta\ndata: {"type":"content_block_delta","delta":{"type":"text_delta","text":"\\"}"}}\n\n',
+          'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":4},"delta":{"stop_reason":"end_turn"}}\n\n',
+        ].join(""),
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      ),
+    );
+
+    const provider = new AnthropicProvider("test-key");
+    const result = await provider.generate({
+      model: "claude-haiku-4-5",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: true,
+    });
+
+    expect(result).toMatchObject({
+      text: '{"rewritten":"ok"}',
+      model: "claude-haiku-4-5",
+      finishReason: "end_turn",
+      usage: { inputTokens: 8, outputTokens: 4, visibleOutputTokens: 4 },
+    });
+  });
+
+  it("raises a provider error emitted by a streaming response", async () => {
+    mockFetch(
+      new Response(
+        'event: error\ndata: {"type":"error","error":{"message":"overloaded"}}\n\n',
+        { status: 200, headers: { "Content-Type": "text/event-stream" } },
+      ),
+    );
+
+    const provider = new AnthropicProvider("test-key");
+    await expect(
+      provider.generate({
+        model: "claude-haiku-4-5",
+        systemPrompt: "sys",
+        userPrompt: "user",
+        temperature: 0.2,
+        maxOutputTokens: 100,
+        stream: true,
+      }),
+    ).rejects.toThrow("Anthropic streaming error: overloaded");
   });
 });
 

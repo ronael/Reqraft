@@ -26,6 +26,13 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 - ✅ Payload OpenAI et limites de responsabilité documentés dans `docs/provider-contract.md`; les règles de profils, niveaux et fidélité restent dans le moteur commun.
 - ⏭️ Prochain lot : Anthropic Haiku, avec le même dataset et sans modification des règles communes pour influencer le score.
 
+### Anthropic Haiku adapter
+
+- ✅ Payload Anthropic Messages validé par tests mockés : endpoint, headers, `max_tokens`, `temperature`, `system`, message utilisateur et propagation de `stream`.
+- ✅ Extraction SSE ajoutée : agrégation des `text_delta`, remontée des tokens d'entrée/sortie et erreurs de flux converties en `ProviderError`.
+- ✅ Contrat et commande de benchmark Anthropic documentés dans `docs/provider-contract.md`.
+- ⏸️ Benchmark Anthropic réel en attente de `ANTHROPIC_API_KEY` dans le shell ; aucune clé n'a été affichée ni enregistrée.
+
 ### Lots A à K
 
 - Tous les lots implémentés, validés et commités.

@@ -97,3 +97,31 @@ Open question:
 - Fidelity warnings/errors come from the common engine.
 - Provider adapter does not add product behavior.
 - Streaming and non-streaming extraction produce equivalent final text.
+
+## Anthropic Adapter Contract
+
+Candidate reference model:
+
+```text
+provider: anthropic
+model: claude-haiku-4-5
+```
+
+The Anthropic adapter uses the Messages endpoint with these provider-only decisions:
+
+- `POST /v1/messages`;
+- `x-api-key` and `anthropic-version: 2023-06-01` headers;
+- `max_tokens`, `temperature`, `system` and one user message;
+- `stream` is propagated from the common request;
+- SSE `text_delta` events are collected into the same final `text` field as non-streaming responses;
+- Message input and output usage map to common token fields; output tokens are visible tokens because Anthropic does not expose a separate reasoning-token field here;
+- error events emitted inside a successful SSE HTTP response become `ProviderError` instances.
+
+Anthropic validation must use `benchmark/fidelity-cases.ts` unchanged:
+
+```sh
+pnpm test tests/integration/providers.test.ts
+zsh -ic 'pnpm benchmark:fidelity anthropic claude-haiku-4-5'
+```
+
+Acceptance requires no empty response or invalid API parameter, a mean fidelity score of at least 0.90, no disproportionate minimal output, reasonable median latency, and no changes to common fidelity rules solely for Anthropic.
