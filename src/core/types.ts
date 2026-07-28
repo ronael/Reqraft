@@ -44,6 +44,7 @@ export interface ProviderRequest {
   temperature: number;
   maxOutputTokens: number;
   stream: boolean;
+  reasoningEffort?: "none" | "low" | "medium" | "high";
 }
 
 export interface ProviderResponse {

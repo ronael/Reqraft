@@ -2,7 +2,7 @@
 
 ## Lot en cours
 
-Lot B — Domaine et moteur (terminé, prêt au commit).
+Lot C — Providers et modèles (terminé, prêt au commit).
 
 ## Terminé
 
@@ -13,55 +13,52 @@ Lot B — Domaine et moteur (terminé, prêt au commit).
 
 ### Lot B
 
-- Types du domaine (`src/core/types.ts`).
-- Système de profils : base, registry, auto-détection, et 7 profils basiques (clean, code, frontend, web-design, debug, review, writing).
-- Niveaux de transformation (`src/core/levels.ts`).
-- Builder de prompts (`src/core/prompt-builder.ts`).
-- Parser de résultats structurés avec fallback (`src/core/result-parser.ts`).
-- Moteur de reformulation (`src/core/engine.ts`).
-- Provider mock amélioré.
-- Tests unitaires : profiles, result-parser, engine.
-- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (16 tests), `pnpm build` réussies.
+- Domaine et moteur : types, profils, niveaux, builder, parser, engine, mock.
+- Commit : `feat(lot-b): implement reprompt engine`.
+
+### Lot C
+
+- Adaptateurs providers : OpenAI, Anthropic, DeepSeek, Mistral, OpenAI Compatible.
+- Erreurs uniformisées (`ProviderError`, `raiseProviderError`).
+- Presets de modèles avec `MODEL_PRESETS_UPDATED_AT = "2026-07-28"`.
+- Résolution de modèles (`resolveModel`).
+- Registre de providers (`createProvider`, `listProviders`).
+- Commandes `rp providers` et `rp models` fonctionnelles.
+- Tests d'intégration providers (mock fetch).
+- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (21 tests), `pnpm build` réussies.
 
 ## Reste à faire
 
-- Commit `feat(lot-b): implement reprompt engine`.
-- Passer au Lot C — Providers et modèles.
+- Commit `feat(lot-c): implement providers and model presets`.
+- Passer au Lot D — Profils (enrichir les instructions et tests de non-invention/préservation).
 
-## Fichiers créés ou modifiés (Lot B)
+## Fichiers créés ou modifiés (Lot C)
 
-- `src/core/engine.ts`
-- `src/core/levels.ts`
-- `src/core/prompt-builder.ts`
-- `src/core/result-parser.ts`
-- `src/profiles/auto.ts`
-- `src/profiles/base.ts`
-- `src/profiles/clean.ts`
-- `src/profiles/code.ts`
-- `src/profiles/debug.ts`
-- `src/profiles/frontend.ts`
-- `src/profiles/registry.ts`
-- `src/profiles/review.ts`
-- `src/profiles/types.ts`
-- `src/profiles/web-design.ts`
-- `src/profiles/writing.ts`
-- `src/providers/mock.ts`
-- `tests/unit/engine.test.ts`
-- `tests/unit/profiles.test.ts`
-- `tests/unit/result-parser.test.ts`
+- `src/core/types.ts` (ajout `reasoningEffort`)
+- `src/providers/anthropic.ts`
+- `src/providers/deepseek.ts`
+- `src/providers/errors.ts`
+- `src/providers/mistral.ts`
+- `src/providers/openai.ts`
+- `src/providers/openai-compatible.ts`
+- `src/providers/registry.ts`
+- `src/models/presets.ts`
+- `src/models/model-resolver.ts`
+- `src/cli.tsx` (commandes providers/models)
+- `tests/integration/providers.test.ts`
 - `WORKLOG.md`
 
-## Commandes exécutées (Lot B)
+## Commandes exécutées (Lot C)
 
-- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (16 tests passés).
+- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (21 tests passés).
 
 ## Décisions techniques
 
-- Architecture profil indépendante avec `PromptProfile` et registre.
-- Détection locale par mots-clés (pas d'appel IA).
-- Parser robuste avec suppression des fences Markdown et fallback JSON.
-- Moteur isolé, testable avec provider mock.
+- Abstraction légère via `ProviderAdapter` et fetch natif (pas de SDK officiel).
+- `OpenAICompatibleProvider` réutilisable pour DeepSeek, Mistral, endpoints locaux.
+- `reasoning_effort: none` transmis pour les presets OpenAI concernés.
+- Presets modifiables avec date de registry.
 
 ## Prochaine action
 
-Effectuer le commit du Lot B puis commencer le Lot C.
+Effectuer le commit du Lot C puis commencer le Lot D.

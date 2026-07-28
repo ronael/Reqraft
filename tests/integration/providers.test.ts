@@ -1,0 +1,112 @@
+import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
+import { AnthropicProvider } from "../../src/providers/anthropic.js";
+import { OpenAIProvider } from "../../src/providers/openai.js";
+import { MistralProvider } from "../../src/providers/mistral.js";
+import { DeepSeekProvider } from "../../src/providers/deepseek.js";
+
+function mockFetch(response: Response): void {
+  globalThis.fetch = vi.fn().mockResolvedValue(response);
+}
+
+function restoreFetch(): void {
+  vi.restoreAllMocks();
+}
+
+describe("OpenAI provider", () => {
+  beforeEach(() => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          choices: [{ message: { content: '{"rewritten":"ok"}' }, finish_reason: "stop" }],
+          usage: { prompt_tokens: 10, completion_tokens: 5 },
+          model: "gpt-5.4-mini",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+  });
+  afterEach(restoreFetch);
+
+  it("sends correct payload", async () => {
+    const provider = new OpenAIProvider("test-key");
+    const result = await provider.generate({
+      model: "gpt-5.4-mini",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+      reasoningEffort: "none",
+    });
+
+    expect(result.text).toBe('{"rewritten":"ok"}');
+    expect(result.model).toBe("gpt-5.4-mini");
+    expect(result.usage?.inputTokens).toBe(10);
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    if (!call?.[1]) throw new Error("fetch not called");
+    const requestUrl = call[0] as string;
+    expect(requestUrl).toBe("https://api.openai.com/v1/chat/completions");
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.model).toBe("gpt-5.4-mini");
+    expect(body.reasoning_effort).toBe("none");
+  });
+});
+
+describe("Anthropic provider", () => {
+  beforeEach(() => {
+    mockFetch(
+      new Response(
+        JSON.stringify({
+          content: [{ type: "text", text: '{"rewritten":"ok"}' }],
+          usage: { input_tokens: 8, output_tokens: 4 },
+          model: "claude-haiku-4-5",
+          stop_reason: "end_turn",
+        }),
+        { status: 200, headers: { "Content-Type": "application/json" } },
+      ),
+    );
+  });
+  afterEach(restoreFetch);
+
+  it("sends correct payload", async () => {
+    const provider = new AnthropicProvider("test-key");
+    const result = await provider.generate({
+      model: "claude-haiku-4-5",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+    });
+
+    expect(result.text).toBe('{"rewritten":"ok"}');
+    expect(result.model).toBe("claude-haiku-4-5");
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    if (!call) throw new Error("fetch not called");
+    const requestUrl = call[0] as string;
+    expect(requestUrl).toBe("https://api.anthropic.com/v1/messages");
+  });
+});
+
+describe("Provider configuration health", () => {
+  it("OpenAI reports missing key", async () => {
+    const provider = new OpenAIProvider("");
+    const health = await provider.validateConfiguration();
+    expect(health.ok).toBe(false);
+    expect(health.missingConfiguration).toContain("OPENAI_API_KEY");
+  });
+
+  it("Mistral reports missing key", async () => {
+    const provider = new MistralProvider("");
+    const health = await provider.validateConfiguration();
+    expect(health.ok).toBe(false);
+  });
+
+  it("DeepSeek reports missing key", async () => {
+    const provider = new DeepSeekProvider("");
+    const health = await provider.validateConfiguration();
+    expect(health.ok).toBe(false);
+  });
+});

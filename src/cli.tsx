@@ -4,6 +4,8 @@ import React from "react";
 import { render } from "ink";
 import { App } from "./app.js";
 import { version } from "./version.js";
+import { listProviders } from "./providers/registry.js";
+import { getPresetModels } from "./models/presets.js";
 
 interface CliOptions {
   profile?: string;
@@ -64,14 +66,18 @@ program
   .command("providers")
   .description("Liste les providers disponibles")
   .action(() => {
-    console.log("Providers: anthropic, openai, deepseek, mistral, openai-compatible, mock");
+    for (const id of listProviders()) {
+      console.log(id);
+    }
   });
 
 program
   .command("models")
   .description("Liste les modèles recommandés")
   .action(() => {
-    console.log("Models presets loaded — use with --provider and --model");
+    for (const preset of getPresetModels()) {
+      console.log(`${preset.provider}\t${preset.id}\t${preset.name}`);
+    }
   });
 
 program
