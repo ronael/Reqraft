@@ -1,7 +1,7 @@
 # Provider Contract
 
 Reqraft validates OpenAI first, with `gpt-4.1-mini` as the current reference model.
-Other providers must later reproduce the same product behavior through the common engine.
+Other providers must reproduce the same product behavior through the common engine; they must not change common fidelity rules to improve their own score.
 
 ## Responsibility Split
 
@@ -69,6 +69,18 @@ Current payload decisions:
 - `temperature` omitted for `gpt-5*` models.
 - `reasoning_effort` sent only for supported model families.
 
+Frozen reference acceptance run:
+
+- 40 fidelity cases;
+- 0 provider or empty-output failures;
+- mean score: 0.975;
+- 35 cases scored 1.00;
+- median latency: about 1.1 s; P95: about 3.2 s;
+- no reasoning tokens;
+- `minimal`, `standard` and `complete` behave consistently.
+
+The benchmark dataset in `benchmark/fidelity-cases.ts` is the OpenAI reference suite. It deliberately retains regression cases for Apple-style landing pages, login corrections, responsive forms, `refactor` / `refactore`, and `PR` / `pull request` wording.
+
 Open question:
 
 - If Reqraft later introduces true text-only provider output, `response_format` can become conditional. For now, CLI text mode still writes only `rewritten` to stdout, while structured provider output remains internal.
@@ -85,4 +97,3 @@ Open question:
 - Fidelity warnings/errors come from the common engine.
 - Provider adapter does not add product behavior.
 - Streaming and non-streaming extraction produce equivalent final text.
-

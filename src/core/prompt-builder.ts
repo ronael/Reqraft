@@ -32,22 +32,11 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
     `Profil actif : ${request.profile.name}`,
     request.profile.description,
     "",
-    "Instructions spécifiques au profil :",
-    request.profile.instructions,
+    "Consignes adaptées au niveau :",
+    levelAwareProfileGuidance(request.profile, request.level),
     "",
     levelDescription,
     "",
-    request.level === "complete"
-      ? [
-          "Format obligatoire pour le niveau complete :",
-          "Le champ rewritten doit contenir exactement ces sections en français :",
-          "Objectif :",
-          "Contraintes :",
-          "À vérifier :",
-          "Ne remplace pas À vérifier par des décisions inventées.",
-          "",
-        ].join("\n")
-      : "",
     "Contraintes de sortie :",
     "- Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier.",
     "- Garde warnings vide sauf ambiguïté critique.",
@@ -79,7 +68,7 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
     "Niveau standard : corrige, clarifie et structure légèrement ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable sans élargir le périmètre.",
     "N'ajoute pas de sections, CTA, témoignages, palettes, contraintes responsive ou critères de validation absents de l'entrée. Demande plutôt de vérifier l'existant.",
     "Une demande courte doit produire une reformulation courte : 1 à 4 phrases et moins de 100 mots sauf niveau complete.",
-    compactProfileGuidance(request.profile),
+    levelAwareProfileGuidance(request.profile, request.level),
     "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
   ].join("\n");
 
@@ -94,18 +83,22 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
   return { systemPrompt, userPrompt };
 }
 
-function compactProfileGuidance(profile: PromptProfile): string {
+function levelAwareProfileGuidance(profile: PromptProfile, level: RepromptRequest["level"]): string {
+  if (level === "minimal") {
+    return `Le niveau minimal est prioritaire sur le profil ${profile.id}. Conserve uniquement l'action et les termes explicitement présents ; ne crée ni rubriques, ni checklist, ni critères supplémentaires.`;
+  }
+
   switch (profile.id) {
     case "web-design":
       return "Profil web-design : précise l'objectif et la référence visuelle présentes dans l'entrée. Pour une landing page/interface, demande de respecter les conventions, composants et styles existants ; n'invente pas de sections, contenus, palette ou responsive non demandés. Si l'entrée mentionne des conventions sans précision, formule-les comme conventions existantes du projet.";
     case "frontend":
-      return "Profil frontend : précise uniquement le comportement, les composants, contraintes et validations présents dans l'entrée. N'ajoute pas d'états UI, responsive, accessibilité ou animations non demandés.";
+      return "Profil frontend : préserve le framework, les composants, contraintes et validations présents dans l'entrée. Pour une correction de page ou de composant sans symptôme précis, demande de corriger le problème en respectant l'implémentation existante. Ne invente pas de structure du code, champs ou validations ; n'ajoute pas d'états UI, responsive, accessibilité ou animations non demandés.";
     case "code":
-      return "Profil code : précise objectif, fichiers ou zones concernées, comportement attendu, contraintes, tests et validation.";
+      return "Profil code : préserver les termes techniques, fichiers, commandes et identifiants fournis ; préciser uniquement l'objectif, les zones, le comportement, les contraintes, les tests et la validation explicitement mentionnés ; ne jamais inventer.";
     case "debug":
-      return "Profil debug : précise symptôme, contexte, reproduction, hypothèses à vérifier, logs utiles et critères de résolution.";
+      return "Profil debug : reformule le symptôme et la correction demandée. N'exige pas automatiquement logs, appareils, navigateurs, versions, reproduction ou cause racine ; ne les mentionne que s'ils sont fournis ou indispensables à l'ambiguïté signalée.";
     case "review":
-      return "Profil review : demande une revue orientée risques, bugs, régressions, sécurité, performance et tests manquants.";
+      return "Profil review : conserve exactement le ou les axes d'audit demandés. N'ajoute pas sécurité, performance, tests, refactorisation ou autres axes si l'entrée se concentre sur les régressions.";
     case "writing":
       return "Profil rédaction : préserve le ton, l'objectif, le public, les contraintes de longueur et les informations à ne pas modifier.";
     default:

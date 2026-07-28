@@ -15,15 +15,18 @@ export function describeLevel(level: RepromptLevel): string {
   switch (level) {
     case "minimal":
       return `Niveau minimal :
+- Le niveau minimal est prioritaire sur le profil.
 - corriger les fautes ;
 - améliorer légèrement la syntaxe ;
 - conserver la structure ;
-- ne presque rien ajouter.`;
+- ne presque rien ajouter ;
+- pour une demande courte, produire une seule phrase courte.`;
     case "complete":
       return `Niveau complet :
 - produire un brief rigoureux mais fidèle ;
-- structurer obligatoirement le champ rewritten avec les sections Objectif, Contraintes et À vérifier ;
-- ne résous pas les informations manquantes : liste-les dans À vérifier ;
+- utiliser les sections Objectif, Contraintes et À vérifier uniquement lorsque la demande est complexe ou réellement sous-spécifiée ;
+- pour une action triviale, rester concis et signaler seulement l'information manquante qui bloque l'exécution ;
+- ne résous pas les informations manquantes avec des décisions inventées ;
 - ne compléter que ce qui est déjà présent ;
 - signaler les informations réellement manquantes ;
 - ne jamais inventer de décision.`;

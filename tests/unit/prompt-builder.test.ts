@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildPrompt } from "../../src/core/prompt-builder.js";
+import { debugProfile } from "../../src/profiles/debug.js";
+import { frontendProfile } from "../../src/profiles/frontend.js";
 import { webDesignProfile } from "../../src/profiles/web-design.js";
 
 describe("prompt builder", () => {
@@ -30,7 +32,7 @@ describe("prompt builder", () => {
     expect(systemPrompt.length).toBeLessThan(1800);
   });
 
-  it("requires complete prompts to separate objective constraints and missing information", () => {
+  it("makes complete prompts use structure only when it is useful", () => {
     const { systemPrompt } = buildPrompt({
       input: "fais une landing page style apple",
       profile: webDesignProfile,
@@ -38,9 +40,45 @@ describe("prompt builder", () => {
       includeChanges: false,
     });
 
-    expect(systemPrompt).toContain("Objectif");
-    expect(systemPrompt).toContain("Contraintes");
-    expect(systemPrompt).toContain("À vérifier");
+    expect(systemPrompt).toContain("uniquement lorsque la demande est complexe");
     expect(systemPrompt).toContain("ne résous pas les informations manquantes");
+    expect(systemPrompt).not.toContain("exactement ces sections");
+  });
+
+  it("makes the minimal level override the debug profile checklist", () => {
+    const { systemPrompt } = buildPrompt({
+      input: "fix le bug mobile",
+      profile: debugProfile,
+      level: "minimal",
+      includeChanges: false,
+    });
+
+    expect(systemPrompt).toContain("Le niveau minimal est prioritaire sur le profil");
+    expect(systemPrompt).toContain("une seule phrase courte");
+    expect(systemPrompt).not.toContain("étapes de reproduction");
+  });
+
+  it("keeps debug standard prompts proportional to the reported symptom", () => {
+    const { systemPrompt } = buildPrompt({
+      input: "fix le bug mobile",
+      profile: debugProfile,
+      level: "standard",
+      includeChanges: false,
+    });
+
+    expect(systemPrompt).toContain("N'exige pas automatiquement logs, appareils, navigateurs");
+    expect(systemPrompt).not.toContain("étapes de reproduction");
+  });
+
+  it("does not invent implementation details for an underspecified frontend fix", () => {
+    const { systemPrompt } = buildPrompt({
+      input: "corrige la page login",
+      profile: frontendProfile,
+      level: "standard",
+      includeChanges: false,
+    });
+
+    expect(systemPrompt).toContain("sans symptôme précis");
+    expect(systemPrompt).toContain("structure du code, champs ou validations");
   });
 });

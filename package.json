@@ -23,6 +23,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "benchmark": "tsx benchmark/runner.ts",
+    "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "typecheck": "tsc --noEmit"
   },
   "keywords": [

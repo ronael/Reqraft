@@ -343,6 +343,31 @@ Audit note:
 - This is the best observed output so far.
 - It is short, faithful, and under 5 seconds.
 
+## Fidelity Benchmark Runner
+
+The 40-case fidelity dataset can be executed in one command.
+
+Dry run with the mock provider:
+
+```bash
+pnpm benchmark:fidelity mock
+```
+
+OpenAI reference run:
+
+```bash
+zsh -ic 'pnpm benchmark:fidelity openai gpt-4.1-mini'
+```
+
+The runner writes both files:
+
+```text
+benchmark-results/fidelity-<provider>-<model>-<timestamp>.json
+benchmark-results/fidelity-<provider>-<model>-<timestamp>.md
+```
+
+The Markdown file is intended for quick manual or AI audit. The JSON file keeps the full raw outputs, scores, latency and token metadata.
+
 ## Automated Tests Added Or Updated
 
 Files:
@@ -465,4 +490,41 @@ Durée 2.11 s · sortie visible 31 tokens
 complete landing page:
 Objectif / Contraintes / À vérifier structure returned.
 Durée 2.54 s · sortie visible 120 tokens
+```
+
+## Fidelity Correction Pass (2026-07-28)
+
+Changes implemented after the 40-case OpenAI audit:
+
+- The unsupported-addition detector now matches lexical expressions instead of raw substrings. `impactant` no longer triggers a false `CTA` warning; explicit `CTA`, `appel à l'action` and `bouton d'action` still do.
+- `minimal` explicitly overrides profile-specific checklists and requests one short sentence for short inputs.
+- `debug` no longer requests logs, browsers, devices, reproduction steps or a root cause unless the input provides or requires them.
+- `review` retains the requested review focus instead of automatically broadening to security, performance and tests.
+- `frontend` corrections without a reported symptom preserve the existing implementation instead of inventing code structure, fields or validations.
+- `complete` uses `Objectif` / `Contraintes` / `À vérifier` only for complex or genuinely underspecified requests.
+- A short but useful clarification is no longer rejected solely because its word count is more than five times a three-word input.
+
+Targeted OpenAI checks after these changes:
+
+```text
+fix le bug mobile --profile debug --level minimal
+-> Corrige le bug sur la version mobile.
+
+review cette PR surtout les régressions possibles --profile review --level standard
+-> Analyse cette pull request en te concentrant particulièrement sur les régressions potentielles introduites.
+
+corrige le padding --profile clean --level complete
+-> Corrige le padding.
+
+corrige la page login --profile frontend --level standard
+-> Corrige la page de connexion en respectant l'implémentation existante,
+   sans ajouter de nouveaux champs, validations ou comportements.
+```
+
+All local checks passed after the correction pass: 86 tests, lint, typecheck and build.
+
+The complete 40-case rerun was started once but the terminal session ended before the runner wrote a result file. It was intentionally not retried automatically to avoid repeating provider calls. Run it manually when convenient:
+
+```sh
+zsh -ic 'pnpm benchmark:fidelity openai gpt-4.1-mini'
 ```

@@ -168,7 +168,7 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
     forbiddenAdditions: ["nouvelle typographie", "témoignages", "FAQ"],
     mustPreserve: ["bleu", "blanc"],
   },
-  ...Array.from({ length: 20 }, (_, index) => ({
+  ...Array.from({ length: 18 }, (_, index) => ({
     id: `short-regression-${String(index + 1)}`,
     input: [
       "ajoute une icône",
@@ -181,4 +181,20 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
     level: ["minimal", "standard", "complete"][index % 3] as RepromptLevel,
     forbiddenAdditions: ["témoignages", "pricing", "FAQ", "authentification", "base de données"],
   })),
+  {
+    id: "code-refactore-typo",
+    input: "refactore ce helper sans changer le comportement",
+    profile: "code",
+    level: "standard",
+    forbiddenAdditions: ["nouvelle fonctionnalité", "API", "base de données"],
+    mustPreserve: ["helper", "comportement"],
+  },
+  {
+    id: "review-pr-pull-request-equivalence",
+    input: "review cette PR, cherche les régressions possibles",
+    profile: "review",
+    level: "standard",
+    forbiddenAdditions: ["sécurité", "performance", "tests manquants", "refactor obligatoire"],
+    mustPreserve: ["régressions"],
+  },
 ];

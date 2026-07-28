@@ -20,6 +20,24 @@ describe("fidelity checks", () => {
     expect(additions).not.toContain("responsive");
   });
 
+  it("matches CTA only as an explicit lexical expression", () => {
+    const additions = detectUnsupportedAdditions(
+      "améliore le titre",
+      "Améliore le titre pour le rendre plus clair et impactant, sans modifier son sens.",
+    );
+
+    expect(additions).not.toContain("CTA");
+  });
+
+  it("detects explicit CTA expressions", () => {
+    const additions = detectUnsupportedAdditions(
+      "améliore le titre",
+      "Ajoute un bouton d'action et un appel à l'action visible.",
+    );
+
+    expect(additions).toContain("CTA");
+  });
+
   it("detects disproportionate expansion for very short inputs", () => {
     expect(
       isDisproportionateExpansion(
@@ -27,5 +45,14 @@ describe("fidelity checks", () => {
         "Crée une landing page inspirée du style Apple. Ajoute un header, une section fonctionnalités, une section témoignages, une FAQ, un footer, une palette détaillée, des animations, une stratégie SEO et des critères de performance.",
       ),
     ).toBe(true);
+  });
+
+  it("does not treat a concise clarification of a tiny input as disproportionate", () => {
+    expect(
+      isDisproportionateExpansion(
+        "corrige la page login",
+        "Corrige le problème présent sur la page login, en respectant les conventions et l'implémentation existantes.",
+      ),
+    ).toBe(false);
   });
 });

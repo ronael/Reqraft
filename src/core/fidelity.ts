@@ -1,7 +1,10 @@
 const UNSUPPORTED_ADDITION_TERMS = [
   { label: "témoignages", patterns: ["témoignage", "témoignages", "testimonial", "testimonials"] },
   { label: "FAQ", patterns: ["faq", "questions fréquentes"] },
-  { label: "CTA", patterns: ["cta", "appel à l'action", "call to action"] },
+  {
+    label: "CTA",
+    patterns: ["cta", "appel à l'action", "call to action", "bouton d'action", "bouton de conversion"],
+  },
   { label: "pricing", patterns: ["pricing", "tarifs", "prix"] },
   { label: "footer", patterns: ["footer", "pied de page"] },
   { label: "header", patterns: ["header", "en-tête", "en tête"] },
@@ -19,17 +22,24 @@ export function detectUnsupportedAdditions(input: string, output: string): strin
   const normalizedOutput = normalize(output);
 
   return UNSUPPORTED_ADDITION_TERMS.filter((term) => {
-    const inOutput = term.patterns.some((pattern) => normalizedOutput.includes(normalize(pattern)));
-    const inInput = term.patterns.some((pattern) => normalizedInput.includes(normalize(pattern)));
+    const inOutput = term.patterns.some((pattern) => containsLexicalTerm(normalizedOutput, pattern));
+    const inInput = term.patterns.some((pattern) => containsLexicalTerm(normalizedInput, pattern));
     return inOutput && !inInput;
   }).map((term) => term.label);
+}
+
+function containsLexicalTerm(text: string, pattern: string): boolean {
+  const normalizedPattern = normalize(pattern);
+  const escapedPattern = normalizedPattern.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const expression = new RegExp(`(?:^|[^\\p{L}\\p{N}])${escapedPattern}(?=$|[^\\p{L}\\p{N}])`, "u");
+  return expression.test(text);
 }
 
 export function isDisproportionateExpansion(input: string, output: string): boolean {
   const inputWords = wordCount(input);
   const outputWords = wordCount(output);
   if (inputWords < 30) {
-    return outputWords > 80 || outputWords > inputWords * 5;
+    return outputWords > 80 || outputWords > Math.max(30, inputWords * 5);
   }
   if (inputWords < 90) {
     return outputWords > inputWords * 5;

@@ -21,6 +21,10 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 - ✅ `--explain` corrigé : prompt sur stdout, explications sur stderr.
 - ✅ Dataset de benchmark fidélité ajouté avec 40 cas.
 - ✅ Contrat provider documenté dans `docs/provider-contract.md`.
+- ✅ Référence OpenAI figée avec `gpt-4.1-mini` : benchmark de 40 cas, 0 échec, score moyen 0,975, 35 cas à 1,00, médiane ~1,1 s, P95 ~3,2 s et 0 reasoning token.
+- ✅ Dataset de 40 cas conservé comme suite de référence, avec régressions explicites pour landing page Apple, page login, formulaire responsive, `refactor` / `refactore` et `PR` / `pull request`.
+- ✅ Payload OpenAI et limites de responsabilité documentés dans `docs/provider-contract.md`; les règles de profils, niveaux et fidélité restent dans le moteur commun.
+- ⏭️ Prochain lot : Anthropic Haiku, avec le même dataset et sans modification des règles communes pour influencer le score.
 
 ### Lots A à K
 
