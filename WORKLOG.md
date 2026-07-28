@@ -2,63 +2,53 @@
 
 ## Lot en cours
 
-Lot C — Providers et modèles (terminé, prêt au commit).
+Lot D — Profils (terminé, prêt au commit).
 
 ## Terminé
 
-### Lot A
+### Lots précédents
 
-- Initialisation complète du projet.
-- Commit : `feat(lot-a): initialize project foundation`.
+- Lot A : initialisation.
+- Lot B : domaine et moteur.
+- Lot C : providers et modèles.
 
-### Lot B
+### Lot D
 
-- Domaine et moteur : types, profils, niveaux, builder, parser, engine, mock.
-- Commit : `feat(lot-b): implement reprompt engine`.
-
-### Lot C
-
-- Adaptateurs providers : OpenAI, Anthropic, DeepSeek, Mistral, OpenAI Compatible.
-- Erreurs uniformisées (`ProviderError`, `raiseProviderError`).
-- Presets de modèles avec `MODEL_PRESETS_UPDATED_AT = "2026-07-28"`.
-- Résolution de modèles (`resolveModel`).
-- Registre de providers (`createProvider`, `listProviders`).
-- Commandes `rp providers` et `rp models` fonctionnelles.
-- Tests d'intégration providers (mock fetch).
-- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (21 tests), `pnpm build` réussies.
+- Enrichissement des instructions des 7 profils (clean, code, frontend, web-design, debug, review, writing).
+- Amélioration de la détection `auto` avec règles pondérées et plus de mots-clés.
+- Architecture pour profils personnalisés via `parseCustomProfile` (frontmatter Markdown ou JSON, validé Zod).
+- Tests de préservation et de non-invention (`profile-preservation.test.ts`).
+- Validation complète : `tsc --noEmit`, `pnpm lint`, `pnpm test` (25 tests), `pnpm build` réussies.
 
 ## Reste à faire
 
-- Commit `feat(lot-c): implement providers and model presets`.
-- Passer au Lot D — Profils (enrichir les instructions et tests de non-invention/préservation).
+- Commit `feat(lot-d): enrich profiles and add preservation tests`.
+- Passer au Lot E — CLI non interactif.
 
-## Fichiers créés ou modifiés (Lot C)
+## Fichiers créés ou modifiés (Lot D)
 
-- `src/core/types.ts` (ajout `reasoningEffort`)
-- `src/providers/anthropic.ts`
-- `src/providers/deepseek.ts`
-- `src/providers/errors.ts`
-- `src/providers/mistral.ts`
-- `src/providers/openai.ts`
-- `src/providers/openai-compatible.ts`
-- `src/providers/registry.ts`
-- `src/models/presets.ts`
-- `src/models/model-resolver.ts`
-- `src/cli.tsx` (commandes providers/models)
-- `tests/integration/providers.test.ts`
+- `src/profiles/clean.ts`
+- `src/profiles/code.ts`
+- `src/profiles/frontend.ts`
+- `src/profiles/web-design.ts`
+- `src/profiles/debug.ts`
+- `src/profiles/review.ts`
+- `src/profiles/writing.ts`
+- `src/profiles/auto.ts`
+- `src/profiles/custom.ts`
+- `tests/unit/profile-preservation.test.ts`
 - `WORKLOG.md`
 
-## Commandes exécutées (Lot C)
+## Commandes exécutées (Lot D)
 
-- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (21 tests passés).
+- `pnpm exec tsc --noEmit && pnpm lint && pnpm test && pnpm build` → succès (25 tests passés).
 
 ## Décisions techniques
 
-- Abstraction légère via `ProviderAdapter` et fetch natif (pas de SDK officiel).
-- `OpenAICompatibleProvider` réutilisable pour DeepSeek, Mistral, endpoints locaux.
-- `reasoning_effort: none` transmis pour les presets OpenAI concernés.
-- Presets modifiables avec date de registry.
+- Instructions de profils explicites avec règles de préservation des termes techniques.
+- Détection auto locale, sans appel IA.
+- Format de profil personnalisé : Markdown frontmatter ou JSON, validé Zod.
 
 ## Prochaine action
 
-Effectuer le commit du Lot C puis commencer le Lot D.
+Effectuer le commit du Lot D puis commencer le Lot E.

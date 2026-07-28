@@ -1,77 +1,169 @@
-const TECH_KEYWORDS: Record<string, string[]> = {
+interface KeywordRule {
+  keywords: string[];
+  weight: number;
+}
+
+const PROFILE_RULES: Record<string, KeywordRule[]> = {
   frontend: [
-    "react",
-    "vue",
-    "svelte",
-    "angular",
-    "component",
-    "composant",
-    "css",
-    "tailwind",
-    "styled",
-    "button",
-    "bouton",
-    "dashboard",
-    "modal",
-    "page",
-    "card",
-    "carte",
-    "formulaire",
-    "form",
-    "responsive",
-    "mobile",
-    "frontend",
-    "ui",
-    "interface",
+    {
+      keywords: [
+        "react",
+        "vue",
+        "svelte",
+        "angular",
+        "component",
+        "composant",
+        "css",
+        "tailwind",
+        "styled",
+        "button",
+        "bouton",
+        "dashboard",
+        "modal",
+        "page",
+        "card",
+        "carte",
+        "formulaire",
+        "form",
+        "responsive",
+        "mobile",
+        "frontend",
+        "ui",
+        "interface",
+        "html",
+        "dom",
+        "event",
+        "onClick",
+        "useState",
+        "useEffect",
+      ],
+      weight: 1,
+    },
   ],
   "web-design": [
-    "design",
-    "landing",
-    "maquette",
-    "mockup",
-    "wireframe",
-    "palette",
-    "typography",
-    "typographie",
-    "layout",
-    "hero",
-    "section",
-    "visuel",
-    "visually",
-    "brand",
-    "marque",
+    {
+      keywords: [
+        "design",
+        "landing",
+        "maquette",
+        "mockup",
+        "wireframe",
+        "palette",
+        "typography",
+        "typographie",
+        "layout",
+        "hero",
+        "section",
+        "visuel",
+        "visually",
+        "brand",
+        "marque",
+        "couleur",
+        "color",
+        "font",
+        "spacing",
+        "spacing",
+        "modern",
+        "moderne",
+      ],
+      weight: 1,
+    },
   ],
   debug: [
-    "bug",
-    "erreur",
-    "error",
-    "crash",
-    "stack trace",
-    "exception",
-    "résoudre",
-    "fix",
-    "debug",
-    "debugger",
+    {
+      keywords: [
+        "bug",
+        "erreur",
+        "error",
+        "crash",
+        "stack trace",
+        "exception",
+        "résoudre",
+        "fix",
+        "debug",
+        "debugger",
+        "ne marche pas",
+        "does not work",
+        "fails",
+        "failed",
+        "timeout",
+        "500",
+        "404",
+      ],
+      weight: 1,
+    },
   ],
-  review: ["review", "audit", "revue", "refactor", "refactoring", "code review", "qualité"],
+  review: [
+    {
+      keywords: [
+        "review",
+        "audit",
+        "revue",
+        "refactor",
+        "refactoring",
+        "code review",
+        "qualité",
+        "performance",
+        "security",
+        "sécurité",
+        "best practice",
+        "bonne pratique",
+      ],
+      weight: 1,
+    },
+  ],
   code: [
-    "function",
-    "fonction",
-    "api",
-    "endpoint",
-    "route",
-    "test",
-    "tester",
-    "typescript",
-    "javascript",
-    "python",
-    "sql",
-    "database",
-    "backend",
-    "server",
-    "pnpm",
-    "npm",
-    "git",
+    {
+      keywords: [
+        "function",
+        "fonction",
+        "api",
+        "endpoint",
+        "route",
+        "test",
+        "tester",
+        "typescript",
+        "javascript",
+        "python",
+        "sql",
+        "database",
+        "backend",
+        "server",
+        "pnpm",
+        "npm",
+        "git",
+        "docker",
+        "ci",
+        "cd",
+        "refactor",
+        "implémenter",
+        "implement",
+        "class",
+        "module",
+        "package",
+      ],
+      weight: 1,
+    },
+  ],
+  writing: [
+    {
+      keywords: [
+        "email",
+        "e-mail",
+        "mail",
+        "message",
+        "description",
+        "document",
+        "publication",
+        "post",
+        "rédiger",
+        "write",
+        "rédaction",
+        "ton",
+        "formuler",
+      ],
+      weight: 1,
+    },
   ],
 };
 
@@ -79,15 +171,18 @@ export function detectProfile(input: string): { profile: string; scores: Record<
   const lower = input.toLowerCase();
   const scores: Record<string, number> = {};
 
-  for (const [profile, keywords] of Object.entries(TECH_KEYWORDS)) {
-    scores[profile] = keywords.reduce((sum, keyword) => {
-      const regex = new RegExp(`\\b${keyword}\\b`, "g");
-      const matches = lower.match(regex);
-      return sum + (matches?.length ?? 0);
+  for (const [profile, rules] of Object.entries(PROFILE_RULES)) {
+    scores[profile] = rules.reduce((profileScore, rule) => {
+      const ruleScore = rule.keywords.reduce((sum, keyword) => {
+        const regex = new RegExp(`\\b${keyword}\\b`, "g");
+        const matches = lower.match(regex);
+        return sum + (matches?.length ?? 0) * rule.weight;
+      }, 0);
+      return profileScore + ruleScore;
     }, 0);
   }
 
-  // Code blocks give a small boost to code-related profiles.
+  // Code blocks boost code-related profiles.
   const codeBlockMatches = lower.match(/```[a-z]*/g);
   if (codeBlockMatches && codeBlockMatches.length > 0) {
     scores.code = (scores.code ?? 0) + codeBlockMatches.length;
@@ -108,4 +203,8 @@ export function detectProfile(input: string): { profile: string; scores: Record<
   }
 
   return { profile: winner[0], scores };
+}
+
+export function getProfileDetectionScores(input: string): Record<string, number> {
+  return detectProfile(input).scores;
 }
