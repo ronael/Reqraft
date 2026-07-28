@@ -35,6 +35,12 @@ Publication — en attente de l'OTP npm ou de la configuration du token d'automa
 - ✅ Benchmark Anthropic réel exécuté avec `claude-haiku-4-5` sur le dataset OpenAI inchangé : 40 cas, 0 échec, score moyen 0,90625, médiane 1,959 s, P95 2,926 s, 0 reasoning token et 0 sortie minimal disproportionnée.
 - ✅ Anthropic Haiku validé fonctionnellement ; `gpt-4.1-mini` reste la référence de performance et de comportement OpenAI.
 
+### Mistral Small 4 adapter
+
+- ✅ JSON mode Mistral activé au niveau de l'adaptateur et reprise unique ajoutée pour les erreurs 503 transitoires.
+- ✅ Benchmark réel sur le dataset inchangé : 40 cas, 0 échec, médiane 0,812 s, P95 1,495 s et 0 sortie minimal disproportionnée.
+- ⏸️ Mistral non validé pour l'instant : score moyen 0,884375, sous le seuil de 0,90. Les règles communes n'ont pas été modifiées pour compenser ce résultat.
+
 ### Lots A à K
 
 - Tous les lots implémentés, validés et commités.

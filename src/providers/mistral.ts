@@ -6,6 +6,7 @@ import type {
   ModelInfo,
 } from "../core/types.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
+import { ProviderError } from "./errors.js";
 
 export class MistralProvider implements ProviderAdapter {
   readonly id = "mistral";
@@ -19,11 +20,19 @@ export class MistralProvider implements ProviderAdapter {
     this.adapter = new OpenAICompatibleProvider("Mistral", {
       baseUrl,
       apiKey,
+      responseFormat: { type: "json_object" },
     });
   }
 
-  generate(request: ProviderRequest): Promise<ProviderResponse> {
-    return this.adapter.generate(request);
+  async generate(request: ProviderRequest): Promise<ProviderResponse> {
+    try {
+      return await this.adapter.generate(request);
+    } catch (error) {
+      if (isTransientMistralError(error)) {
+        return this.adapter.generate(request);
+      }
+      throw error;
+    }
   }
 
   listModels(): Promise<ModelInfo[]> {
@@ -40,4 +49,8 @@ export class MistralProvider implements ProviderAdapter {
     }
     return Promise.resolve({ ok: true, message: "Mistral est configuré." });
   }
+}
+
+function isTransientMistralError(error: unknown): error is ProviderError {
+  return error instanceof ProviderError && error.message.startsWith("Provider error 503:");
 }

@@ -22,6 +22,8 @@ export interface OpenAICompatibleOptions {
   baseUrl: string;
   apiKey?: string;
   customHeaders?: Record<string, string>;
+  responseFormat?: { type: "json_object" };
+  extraBody?: Record<string, unknown>;
 }
 
 export class OpenAICompatibleProvider implements ProviderAdapter {
@@ -55,6 +57,8 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
         ],
         temperature: request.temperature,
         max_tokens: request.maxOutputTokens,
+        ...(this.options.responseFormat ? { response_format: this.options.responseFormat } : {}),
+        ...this.options.extraBody,
       }),
     });
 

@@ -19,6 +19,8 @@ export class DeepSeekProvider implements ProviderAdapter {
     this.adapter = new OpenAICompatibleProvider("DeepSeek", {
       baseUrl,
       apiKey,
+      responseFormat: { type: "json_object" },
+      extraBody: { thinking: { type: "disabled" } },
     });
   }
 
