@@ -37,7 +37,6 @@ export const MODEL_PRESETS: ModelPreset[] = [
     description: "Version rapide et économique de GPT-5 pour les tâches bien définies.",
     recommended: true,
     category: "openai",
-    reasoningEffort: "none",
   },
   {
     id: "gpt-5-nano",
@@ -45,7 +44,6 @@ export const MODEL_PRESETS: ModelPreset[] = [
     provider: "openai",
     description: "Version la plus rapide et la plus économique de GPT-5.",
     category: "budget",
-    reasoningEffort: "none",
   },
   {
     id: "gpt-5.1",

@@ -42,12 +42,14 @@ describe("config schema", () => {
 
 describe("model presets", () => {
   it("uses sourced OpenAI model ids", () => {
-    const openaiModels = getPresetModels()
-      .filter((preset) => preset.provider === "openai")
-      .map((preset) => preset.id);
+    const openaiPresets = getPresetModels().filter((preset) => preset.provider === "openai");
+    const openaiModels = openaiPresets.map((preset) => preset.id);
 
     expect(openaiModels).toEqual(["gpt-5-mini", "gpt-5-nano", "gpt-5.1"]);
     expect(openaiModels.some((id) => id.includes("gpt-5.4"))).toBe(false);
+    expect(openaiPresets.find((preset) => preset.id === "gpt-5-mini")?.reasoningEffort).toBeUndefined();
+    expect(openaiPresets.find((preset) => preset.id === "gpt-5-nano")?.reasoningEffort).toBeUndefined();
+    expect(openaiPresets.find((preset) => preset.id === "gpt-5.1")?.reasoningEffort).toBe("none");
   });
 });
 

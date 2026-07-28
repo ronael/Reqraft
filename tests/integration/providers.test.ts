@@ -27,7 +27,7 @@ describe("OpenAI provider", () => {
   });
   afterEach(restoreFetch);
 
-  it("sends correct payload", async () => {
+  it("sends a GPT-5-compatible payload", async () => {
     const provider = new OpenAIProvider("test-key");
     const result = await provider.generate({
       model: "gpt-5-mini",
@@ -49,9 +49,67 @@ describe("OpenAI provider", () => {
     expect(requestUrl).toBe("https://api.openai.com/v1/chat/completions");
     const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
     expect(body.model).toBe("gpt-5-mini");
-    expect(body.reasoning_effort).toBe("none");
     expect(body.max_completion_tokens).toBe(100);
     expect(body).not.toHaveProperty("max_tokens");
+    expect(body).not.toHaveProperty("temperature");
+    expect(body).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("does not send unsupported reasoning effort for GPT-5 mini", async () => {
+    const provider = new OpenAIProvider("test-key");
+    await provider.generate({
+      model: "gpt-5-mini",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+      reasoningEffort: "none",
+    });
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    if (!call?.[1]) throw new Error("fetch not called");
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body).not.toHaveProperty("reasoning_effort");
+    expect(body).not.toHaveProperty("temperature");
+  });
+
+  it("keeps custom GPT-5 family model ids while using safe defaults", async () => {
+    const provider = new OpenAIProvider("test-key");
+    await provider.generate({
+      model: "gpt-5.6-terra",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+      reasoningEffort: "none",
+    });
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    if (!call?.[1]) throw new Error("fetch not called");
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.model).toBe("gpt-5.6-terra");
+    expect(body.max_completion_tokens).toBe(100);
+    expect(body).not.toHaveProperty("max_tokens");
+    expect(body).not.toHaveProperty("temperature");
+  });
+
+  it("keeps temperature for legacy chat models", async () => {
+    const provider = new OpenAIProvider("test-key");
+    await provider.generate({
+      model: "gpt-4o-mini",
+      systemPrompt: "sys",
+      userPrompt: "user",
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+    });
+
+    const call = vi.mocked(globalThis.fetch).mock.calls[0];
+    if (!call?.[1]) throw new Error("fetch not called");
+    const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
+    expect(body.temperature).toBe(0.2);
   });
 });
 

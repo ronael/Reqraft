@@ -44,12 +44,15 @@ export class OpenAIProvider implements ProviderAdapter {
         { role: "system", content: request.systemPrompt },
         { role: "user", content: request.userPrompt },
       ],
-      temperature: request.temperature,
       max_completion_tokens: request.maxOutputTokens,
     };
 
-    if (request.reasoningEffort === "none") {
-      body.reasoning_effort = "none";
+    if (supportsTemperature(request.model)) {
+      body.temperature = request.temperature;
+    }
+
+    if (request.reasoningEffort && supportsReasoningEffort(request.model, request.reasoningEffort)) {
+      body.reasoning_effort = request.reasoningEffort;
     }
 
     const response = await fetch(`${this.baseUrl}/chat/completions`, {
@@ -109,4 +112,22 @@ export class OpenAIProvider implements ProviderAdapter {
     }
     return Promise.resolve({ ok: true, message: "OpenAI est configuré." });
   }
+}
+
+function supportsTemperature(model: string): boolean {
+  return !isGpt5Family(model);
+}
+
+function supportsReasoningEffort(
+  model: string,
+  effort: NonNullable<ProviderRequest["reasoningEffort"]>,
+): boolean {
+  if (effort === "none") {
+    return model.startsWith("gpt-5.1");
+  }
+  return isGpt5Family(model) || model.startsWith("o");
+}
+
+function isGpt5Family(model: string): boolean {
+  return model.startsWith("gpt-5");
 }
