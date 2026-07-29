@@ -26,8 +26,7 @@
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "typecheck": "tsc --noEmit",
-    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage && pnpm sonar",
-    "sonar": "node scripts/run-sonar.mjs",
+    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage",
     "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",
     "release:check": "pnpm quality && pnpm pack:dry-run",
     "publish:public": "pnpm publish --access public",
@@ -64,7 +63,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
-    "@sonar/scan": "4.3.8",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",
     "@vitest/coverage-v8": "2.1.9",

@@ -15,8 +15,7 @@ pnpm test             # run Vitest
 pnpm lint             # run ESLint
 pnpm format           # run Prettier
 pnpm typecheck        # run tsc --noEmit
-pnpm quality          # local gate: typecheck, format check, lint, build, coverage, sonar
-pnpm sonar            # SonarQube scan; reads SONAR_* from shell or .env
+pnpm quality          # local gate: typecheck, format check, lint, build, coverage
 pnpm benchmark        # run benchmark
 ```
 
@@ -73,16 +72,9 @@ All tests must pass before a commit.
 For quality-gated work, run:
 
 ```bash
-pnpm exec tsc --noEmit
-pnpm lint
-pnpm test
-pnpm build
-pnpm sonar
 pnpm quality
 ```
 
-`pnpm sonar` reads Sonar variables from the shell first, then from `.env`.
-It intentionally fails when no `SONAR_TOKEN` is available, and SonarQube Cloud
-also requires `SONAR_ORGANIZATION` when no `SONAR_HOST_URL` is configured.
-Those failures are missing local prerequisites, not code failures; CI should
-provide the variables when the Sonar gate is expected to run.
+It chains type checking, the Prettier check, ESLint, the build and the
+coverage run. Rules and documented exceptions live in
+[docs/code-quality.md](code-quality.md).

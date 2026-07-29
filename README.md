@@ -211,7 +211,7 @@ Benchmarks are never run automatically because they consume API credits.
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md).
 Static analysis and coverage setup are documented in
-[docs/sonarqube.md](docs/sonarqube.md).
+[docs/code-quality.md](docs/code-quality.md).
 
 ## License
 
