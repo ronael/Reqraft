@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { RepromptLevel } from "../core/types.js";
 import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import { BUILTIN_PROVIDER_IDS, OPENAI_COMPATIBLE_PROVIDER_ID } from "../providers/catalog.js";
 
 const BooleanConfigSchema = z.preprocess((value) => {
   if (value === "true") return true;
@@ -10,7 +11,7 @@ const BooleanConfigSchema = z.preprocess((value) => {
 
 export const OpenAICompatibleProviderConfigSchema = z
   .object({
-    type: z.literal("openai-compatible"),
+    type: z.literal(OPENAI_COMPATIBLE_PROVIDER_ID),
     name: z.string().optional(),
     baseUrl: z.string().min(1),
     apiKeyEnv: z.string().min(1).optional(),
@@ -20,9 +21,7 @@ export const OpenAICompatibleProviderConfigSchema = z
 
 export const ConfigSchema = z
   .object({
-    defaultProvider: z
-      .enum(["anthropic", "openai", "deepseek", "mistral", "openai-compatible", "mock"])
-      .default("anthropic"),
+    defaultProvider: z.enum(BUILTIN_PROVIDER_IDS).default("anthropic"),
     defaultModel: z.string().default("claude-haiku-4-5"),
     defaultProfile: z.string().default("auto"),
     defaultLevel: z.enum(["minimal", "standard", "complete"]).default("standard"),

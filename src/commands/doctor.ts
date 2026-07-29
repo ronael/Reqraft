@@ -3,6 +3,12 @@ import { loadConfig, configPath } from "../config/loader.js";
 import { createProvider, listProviders } from "../providers/registry.js";
 import { hydrateCredentials } from "../auth/credentials.js";
 import { printKeyValue, printScreen } from "../ui/text.js";
+import {
+  getProviderDefinition,
+  getProviderEnvName,
+  isCredentialProvider,
+  listCredentialProviders,
+} from "../providers/catalog.js";
 
 export async function runDoctor(): Promise<void> {
   const config = await loadConfig();
@@ -25,16 +31,10 @@ export async function runDoctor(): Promise<void> {
   console.log("");
 
   console.log("Clés API");
-  const keys = [
-    { name: "Anthropic", env: "ANTHROPIC_API_KEY" },
-    { name: "OpenAI", env: "OPENAI_API_KEY" },
-    { name: "DeepSeek", env: "DEEPSEEK_API_KEY" },
-    { name: "Mistral", env: "MISTRAL_API_KEY" },
-  ] as const;
-
-  for (const { name, env: key } of keys) {
+  for (const definition of listCredentialProviders()) {
+    const key = getProviderEnvName(definition.id);
     const present = env[key] ? "configuré" : "non configuré";
-    console.log(`  ${name.padEnd(10)} : ${present}`);
+    console.log(`  ${definition.label.padEnd(10)} : ${present}`);
   }
   console.log("");
 
@@ -43,10 +43,11 @@ export async function runDoctor(): Promise<void> {
     try {
       const provider = createProvider(id as "mock", env, config);
       const health = await provider.validateConfiguration();
-      const status = health.ok
-        ? "OK"
-        : `manque ${health.missingConfiguration?.join(", ") ?? "configuration"}`;
-      console.log(`  ${id.padEnd(20)} : ${status}`);
+      const missing = health.missingConfiguration?.join(", ");
+      const missingLabel =
+        missing ?? (isCredentialProvider(id) ? getProviderEnvName(id) : "configuration");
+      const status = health.ok ? "OK" : `manque ${missingLabel}`;
+      console.log(`  ${getProviderDefinition(id as "mock").label.padEnd(20)} : ${status}`);
     } catch {
       console.log(`  ${id.padEnd(20)} : erreur`);
     }

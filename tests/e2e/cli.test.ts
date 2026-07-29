@@ -3,7 +3,7 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { PROVIDER_ENV } from "../../src/auth/credentials.js";
+import { listCredentialProviders } from "../../src/providers/catalog.js";
 
 const CLI = path.resolve(process.cwd(), "dist/cli.js");
 const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
@@ -17,7 +17,7 @@ const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
  * on startup, which would otherwise fail the suite on that machine only.
  */
 function testEnv(): NodeJS.ProcessEnv {
-  const providerKeys = new Set<string>(Object.values(PROVIDER_ENV));
+  const providerKeys = new Set(listCredentialProviders().map((provider) => provider.apiKeyEnvName));
   const withoutProviderKeys = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => !providerKeys.has(name)),
   );

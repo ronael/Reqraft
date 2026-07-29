@@ -5,17 +5,13 @@ import { promisify } from "node:util";
 import { createProvider } from "../providers/registry.js";
 import { printScreen } from "../ui/text.js";
 import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import {
+  type CredentialProvider,
+  getProviderEnvName,
+  listCredentialProviders,
+} from "../providers/catalog.js";
 
 const execFileAsync = promisify(execFile);
-
-export const PROVIDER_ENV = {
-  anthropic: "ANTHROPIC_API_KEY",
-  openai: "OPENAI_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-} as const;
-
-export type CredentialProvider = keyof typeof PROVIDER_ENV;
 
 /** Linux Secret Service CLI, and the attribute pair identifying a Reqraft key. */
 const SECRET_TOOL = "secret-tool";
@@ -32,8 +28,8 @@ const PLACEHOLDER_CREDENTIALS = new Set([
 
 export async function hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void> {
   assertEnvironmentCredentials(env);
-  for (const provider of Object.keys(PROVIDER_ENV) as CredentialProvider[]) {
-    const envName = PROVIDER_ENV[provider];
+  for (const { id: provider } of listCredentialProviders()) {
+    const envName = getProviderEnvName(provider);
     const envCredential = env[envName];
     if (!envCredential) {
       const secret = await getCredential(provider);
@@ -53,7 +49,7 @@ export async function login(provider: CredentialProvider): Promise<void> {
   console.log("valide.");
   await setCredential(provider, secret);
   console.log(`Clé ${provider} enregistrée dans le stockage sécurisé du système.`);
-  const envName = PROVIDER_ENV[provider];
+  const envName = getProviderEnvName(provider);
   if (process.env[envName]) {
     console.log(
       `Attention : ${envName} est déjà définie et reste prioritaire sur le stockage sécurisé.`,
@@ -87,8 +83,8 @@ async function describeCredentialSource(
 
 export async function credentialStatus(): Promise<void> {
   printScreen("Clés API", "Source active pour chaque provider");
-  for (const provider of Object.keys(PROVIDER_ENV) as CredentialProvider[]) {
-    const envCredential = process.env[PROVIDER_ENV[provider]];
+  for (const { id: provider } of listCredentialProviders()) {
+    const envCredential = process.env[getProviderEnvName(provider)];
     const source = await describeCredentialSource(provider, envCredential);
     console.log(`${provider.padEnd(10)} ${source}`);
   }
@@ -101,7 +97,8 @@ export function assertCredentialIsNotPlaceholder(secret: string): void {
 }
 
 export function assertEnvironmentCredentials(env: NodeJS.ProcessEnv): void {
-  for (const envName of Object.values(PROVIDER_ENV)) {
+  for (const { id: provider } of listCredentialProviders()) {
+    const envName = getProviderEnvName(provider);
     const secret = env[envName];
     if (secret && isPlaceholderCredential(secret)) {
       throw new Error(
@@ -116,7 +113,7 @@ function isPlaceholderCredential(secret: string): boolean {
 }
 
 async function validateCredential(provider: CredentialProvider, secret: string): Promise<void> {
-  const envName = PROVIDER_ENV[provider];
+  const envName = getProviderEnvName(provider);
   const adapter = createProvider(provider, { [envName]: secret });
   if (!adapter.listModels) {
     throw new Error(`Le provider ${provider} ne permet pas de vérifier la clé.`);

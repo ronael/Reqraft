@@ -11,7 +11,8 @@ import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
 import { listProviders } from "./providers/registry.js";
 import { getPresetModels } from "./models/presets.js";
-import { credentialStatus, login, logout, type CredentialProvider } from "./auth/credentials.js";
+import { credentialStatus, login, logout } from "./auth/credentials.js";
+import { isCredentialProvider, listCredentialProviders } from "./providers/catalog.js";
 import { printScreen } from "./ui/text.js";
 
 interface CliOptions {
@@ -35,6 +36,9 @@ interface CliOptions {
 }
 
 const program = new Command();
+const AUTH_PROVIDER_HINT = listCredentialProviders()
+  .map((provider) => provider.id)
+  .join(", ");
 
 program
   .name("rp")
@@ -73,14 +77,13 @@ program
   .command("auth")
   .description("Gère les clés API dans le stockage sécurisé")
   .argument("<action>", "login, logout, status")
-  .argument("[provider]", "anthropic, openai, deepseek, mistral")
-  .action(async (action: string, provider?: CredentialProvider) => {
+  .argument("[provider]", AUTH_PROVIDER_HINT)
+  .action(async (action: string, provider?: string) => {
     if (action === "status") {
       await credentialStatus();
       return;
     }
-    if (!provider || !["anthropic", "openai", "deepseek", "mistral"].includes(provider))
-      throw new Error("Provider invalide.");
+    if (!provider || !isCredentialProvider(provider)) throw new Error("Provider invalide.");
     if (action === "login") {
       await login(provider);
       return;

@@ -6,9 +6,13 @@ import { MockProvider } from "./mock.js";
 import { OpenAIProvider } from "./openai.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
 import type { Config } from "../config/schema.js";
-
-export type BuiltinProvider =
-  "anthropic" | "openai" | "deepseek" | "mistral" | "openai-compatible" | "mock";
+import {
+  type BuiltinProvider,
+  getProviderDefinition,
+  getProviderEnvName,
+  listProviderDefinitions,
+  OPENAI_COMPATIBLE_PROVIDER_ID,
+} from "./catalog.js";
 
 type ProviderFactory = (env: NodeJS.ProcessEnv, config?: Config) => ProviderAdapter;
 
@@ -18,21 +22,45 @@ type ProviderFactory = (env: NodeJS.ProcessEnv, config?: Config) => ProviderAdap
  * `listProviders` derives from these keys, so adding an adapter here is enough
  * to expose it everywhere.
  */
-const PROVIDER_FACTORIES: Record<BuiltinProvider, ProviderFactory> = {
-  anthropic: (env) => new AnthropicProvider(env.ANTHROPIC_API_KEY ?? ""),
-  openai: (env) => new OpenAIProvider(env.OPENAI_API_KEY ?? ""),
-  deepseek: (env) => new DeepSeekProvider(env.DEEPSEEK_API_KEY ?? ""),
-  mistral: (env) => new MistralProvider(env.MISTRAL_API_KEY ?? ""),
-  "openai-compatible": (env, config) => createOpenAICompatibleProvider(env, config),
-  mock: () => new MockProvider(),
-};
+const PROVIDER_FACTORIES = new Map<BuiltinProvider, ProviderFactory>([
+  [
+    "anthropic",
+    (env) =>
+      new AnthropicProvider(env[getProviderEnvName("anthropic")] ?? "", undefined, [
+        getProviderEnvName("anthropic"),
+      ]),
+  ],
+  [
+    "openai",
+    (env) =>
+      new OpenAIProvider(env[getProviderEnvName("openai")] ?? "", undefined, [
+        getProviderEnvName("openai"),
+      ]),
+  ],
+  [
+    "deepseek",
+    (env) =>
+      new DeepSeekProvider(env[getProviderEnvName("deepseek")] ?? "", undefined, [
+        getProviderEnvName("deepseek"),
+      ]),
+  ],
+  [
+    "mistral",
+    (env) =>
+      new MistralProvider(env[getProviderEnvName("mistral")] ?? "", undefined, [
+        getProviderEnvName("mistral"),
+      ]),
+  ],
+  [OPENAI_COMPATIBLE_PROVIDER_ID, (env, config) => createOpenAICompatibleProvider(env, config)],
+  ["mock", () => new MockProvider()],
+]);
 
 export function createProvider(
   id: BuiltinProvider,
   env: NodeJS.ProcessEnv,
   config?: Config,
 ): ProviderAdapter {
-  const factory = PROVIDER_FACTORIES[id] as ProviderFactory | undefined;
+  const factory = PROVIDER_FACTORIES.get(id);
   if (!factory) {
     throw new Error(`Provider non supporté : ${id}`);
   }
@@ -45,19 +73,22 @@ function createOpenAICompatibleProvider(
 ): OpenAICompatibleProvider {
   const providerConfig = config?.providers ? Object.values(config.providers)[0] : undefined;
   if (providerConfig) {
-    return new OpenAICompatibleProvider(providerConfig.name ?? "OpenAI Compatible", {
-      baseUrl: providerConfig.baseUrl,
-      apiKey: providerConfig.apiKeyEnv ? env[providerConfig.apiKeyEnv] : undefined,
-      customHeaders: providerConfig.customHeaders,
-    });
+    return new OpenAICompatibleProvider(
+      providerConfig.name ?? getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label,
+      {
+        baseUrl: providerConfig.baseUrl,
+        apiKey: providerConfig.apiKeyEnv ? env[providerConfig.apiKeyEnv] : undefined,
+        customHeaders: providerConfig.customHeaders,
+      },
+    );
   }
 
-  return new OpenAICompatibleProvider("OpenAI Compatible", {
+  return new OpenAICompatibleProvider(getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label, {
     baseUrl: env.RP_OPENAI_COMPATIBLE_BASE_URL ?? "",
     apiKey: env.RP_OPENAI_COMPATIBLE_API_KEY,
   });
 }
 
 export function listProviders(): string[] {
-  return Object.keys(PROVIDER_FACTORIES);
+  return listProviderDefinitions().map((definition) => definition.id);
 }

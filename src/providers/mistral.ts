@@ -16,6 +16,7 @@ export class MistralProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     baseUrl = "https://api.mistral.ai/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {
     this.adapter = new OpenAICompatibleProvider("Mistral", {
       baseUrl,
@@ -43,8 +44,8 @@ export class MistralProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API Mistral manquante (MISTRAL_API_KEY).",
-        missingConfiguration: ["MISTRAL_API_KEY"],
+        message: `Clé API Mistral manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({ ok: true, message: "Mistral est configuré." });

@@ -9,8 +9,15 @@ import { createProvider } from "../providers/registry.js";
 import { hydrateCredentials } from "../auth/credentials.js";
 import { formatUiError } from "../ui/errors.js";
 import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
-
-type InitProvider = Exclude<Config["defaultProvider"], "mock">;
+import {
+  type InitProvider,
+  getProviderDefinition,
+  getProviderEnvName,
+  isCredentialProvider,
+  listCredentialProviders,
+  listProviderDefinitions,
+  OPENAI_COMPATIBLE_PROVIDER_ID,
+} from "../providers/catalog.js";
 
 interface InitProviderChoice {
   label: string;
@@ -64,35 +71,25 @@ const BUILTIN_PROFILES = [
   "writing",
 ];
 
-const OPENAI_COMPATIBLE_ID = "openai-compatible";
-const OPENAI_COMPATIBLE_LABEL = "OpenAI Compatible";
 const MODEL_ID_PROMPT = "Identifiant du modèle";
 const SETUP_CANCELLED = "Initialisation annulée.\n";
 const RESTART_TERMINAL_NOTE = "Relance ton terminal pour une configuration permanente.";
 
-const PROVIDER_ENV: Partial<Record<InitProvider, string>> = {
-  anthropic: "ANTHROPIC_API_KEY",
-  openai: "OPENAI_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-};
-
-const PROVIDER_LABEL: Record<InitProvider, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  deepseek: "DeepSeek",
-  mistral: "Mistral",
-  [OPENAI_COMPATIBLE_ID]: OPENAI_COMPATIBLE_LABEL,
-};
-
 export function getInitProviderChoices(): InitProviderChoice[] {
+  const choices = listProviderDefinitions()
+    .filter((definition) => definition.visibleInInit)
+    .map((definition) => ({
+      label: definition.label,
+      provider: definition.id as InitProvider,
+    }));
+
   return [
-    { label: "Anthropic", provider: "anthropic" },
-    { label: "OpenAI", provider: "openai" },
-    { label: "DeepSeek", provider: "deepseek" },
-    { label: "Mistral", provider: "mistral" },
-    { label: OPENAI_COMPATIBLE_LABEL, provider: OPENAI_COMPATIBLE_ID },
-    { label: "Serveur local compatible OpenAI", provider: OPENAI_COMPATIBLE_ID, local: true },
+    ...choices,
+    {
+      label: "Serveur local compatible OpenAI",
+      provider: OPENAI_COMPATIBLE_PROVIDER_ID,
+      local: true,
+    },
   ];
 }
 
@@ -101,8 +98,9 @@ export function buildApiKeyStatus(
   env: NodeJS.ProcessEnv,
   apiKeyEnv?: string,
 ): ApiKeyStatus {
-  const envName = apiKeyEnv ?? PROVIDER_ENV[provider];
-  const optional = provider === OPENAI_COMPATIBLE_ID;
+  const definition = getProviderDefinition(provider);
+  const envName = apiKeyEnv ?? definition.apiKeyEnvName;
+  const optional = !definition.requiresApiKey;
   if (!envName) {
     return {
       detected: false,
@@ -178,7 +176,7 @@ export function createInitConfig(input: InitConfigInput): Config {
   const providers = { ...(input.existing?.providers ?? {}) };
   if (input.compatibleProvider) {
     providers[input.compatibleProvider.id] = {
-      type: OPENAI_COMPATIBLE_ID,
+      type: OPENAI_COMPATIBLE_PROVIDER_ID,
       name: input.compatibleProvider.name,
       baseUrl: input.compatibleProvider.baseUrl,
       apiKeyEnv: input.compatibleProvider.apiKeyEnv,
@@ -227,7 +225,11 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
   if (compatible) {
     lines.splice(5, 0, `Base URL       ${compatible.baseUrl}`);
     lines.splice(6, 0, `Variable clé   ${compatible.apiKeyEnv ?? "aucune"}`);
-    lines.splice(7, 0, `Nom provider   ${compatible.name ?? OPENAI_COMPATIBLE_LABEL}`);
+    lines.splice(
+      7,
+      0,
+      `Nom provider   ${compatible.name ?? getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label}`,
+    );
   }
 
   return lines.join("\n");
@@ -394,7 +396,7 @@ async function collectConfig(
   for (;;) {
     const providerChoice = await askProvider(io, defaults);
     const compatibleProvider =
-      providerChoice.provider === OPENAI_COMPATIBLE_ID
+      providerChoice.provider === OPENAI_COMPATIBLE_PROVIDER_ID
         ? await askCompatibleProvider(io, defaults, providerChoice.local)
         : undefined;
     const keyStatus = buildApiKeyStatus(
@@ -504,7 +506,8 @@ async function askCompatibleProvider(
   const name = await askText(
     io,
     "Nom personnalisé du provider",
-    existing?.name ?? (local ? "Serveur local" : OPENAI_COMPATIBLE_LABEL),
+    existing?.name ??
+      (local ? "Serveur local" : getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label),
   );
   const baseUrl = await askText(
     io,
@@ -609,7 +612,7 @@ async function maybeRunConnectionTest(
   io: InitIo,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
-  if (!keyStatus.detected && config.defaultProvider !== OPENAI_COMPATIBLE_ID) {
+  if (!keyStatus.detected && config.defaultProvider !== OPENAI_COMPATIBLE_PROVIDER_ID) {
     return;
   }
 
@@ -666,12 +669,15 @@ function formatKeySummary(status: ApiKeyStatus): string {
 }
 
 function providerLabel(provider: Config["defaultProvider"]): string {
-  return provider === "mock" ? "mock" : PROVIDER_LABEL[provider];
+  return getProviderDefinition(provider).label;
 }
 
 function providerFromEnvName(envName: string): string {
-  const match = Object.entries(PROVIDER_ENV).find(([, value]) => value === envName);
-  return match?.[0] ?? "openai";
+  const match = listCredentialProviders().find(
+    (definition) =>
+      isCredentialProvider(definition.id) && getProviderEnvName(definition.id) === envName,
+  );
+  return match?.id ?? "openai";
 }
 
 function parseHeaders(input: string): Record<string, string> | undefined {

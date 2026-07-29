@@ -29,6 +29,7 @@ export class AnthropicProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = "https://api.anthropic.com/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {}
 
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
@@ -104,8 +105,8 @@ export class AnthropicProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API Anthropic manquante (ANTHROPIC_API_KEY).",
-        missingConfiguration: ["ANTHROPIC_API_KEY"],
+        message: `Clé API Anthropic manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({ ok: true, message: "Anthropic est configuré." });

@@ -3,6 +3,7 @@ import { AnthropicProvider } from "../../src/providers/anthropic.js";
 import { OpenAIProvider } from "../../src/providers/openai.js";
 import { MistralProvider } from "../../src/providers/mistral.js";
 import { DeepSeekProvider } from "../../src/providers/deepseek.js";
+import { createProvider } from "../../src/providers/registry.js";
 
 function mockFetch(response: Response): void {
   globalThis.fetch = vi.fn().mockResolvedValue(response);
@@ -238,7 +239,7 @@ describe("Anthropic provider", () => {
 
 describe("Provider configuration health", () => {
   it("OpenAI reports missing key", async () => {
-    const provider = new OpenAIProvider("");
+    const provider = createProvider("openai", {});
     const health = await provider.validateConfiguration();
     expect(health.ok).toBe(false);
     expect(health.missingConfiguration).toContain("OPENAI_API_KEY");

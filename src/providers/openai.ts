@@ -39,6 +39,7 @@ export class OpenAIProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = "https://api.openai.com/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {}
 
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
@@ -122,8 +123,8 @@ export class OpenAIProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API OpenAI manquante (OPENAI_API_KEY).",
-        missingConfiguration: ["OPENAI_API_KEY"],
+        message: `Clé API OpenAI manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({ ok: true, message: "OpenAI est configuré." });
