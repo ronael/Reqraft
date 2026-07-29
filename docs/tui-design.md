@@ -22,22 +22,34 @@ in `src/ui/components/`; no component should hardcode a semantic color.
 
 ```text
 src/ui/
+├── app-actions.ts
+├── app-state.ts
 ├── components/
+│   ├── app-modal.tsx
 │   ├── app-frame.tsx
 │   ├── empty-state.tsx
 │   ├── header-bar.tsx
 │   ├── meta-row.tsx
 │   ├── notice.tsx
+│   ├── result-panel-body.tsx
 │   ├── section-card.tsx
 │   ├── select-modal.tsx
 │   ├── shortcut-bar.tsx
 │   ├── spinner.tsx
 │   └── status-badge.tsx
+├── modal-options.ts
+├── result-view.ts
 ├── layout/responsive.ts
 ├── theme/palette.ts
 ├── theme/tokens.ts
-└── theme/types.ts
+├── theme/types.ts
+└── view-labels.ts
 ```
+
+`src/app.tsx` should stay a composition shell: it wires Ink, application use
+cases and state setters. Pure UI decisions belong in `app-state`,
+`app-actions`, `modal-options`, `result-view` or focused components so they can
+be unit-tested without rendering the full terminal app.
 
 ## Responsive behavior
 
