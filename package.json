@@ -21,10 +21,13 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\"",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm test:coverage && pnpm build",
+    "sonar": "node scripts/run-sonar.mjs"
   },
   "keywords": [
     "cli",
@@ -53,8 +56,10 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.11.1",
+    "@sonar/scan": "4.3.8",
     "@types/node": "^22.7.4",
     "@types/react": "^18.3.11",
+    "@vitest/coverage-v8": "2.1.9",
     "eslint": "^9.11.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.0.0",

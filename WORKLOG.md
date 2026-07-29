@@ -2,7 +2,45 @@
 
 ## Lot en cours
 
-Identité terminal — validation finale de la branche `feat/tui-design-system`.
+Qualité professionnelle — branche `refactor/professional-cli-quality`.
+
+### Contrat de résultat et politiques
+
+- Les réponses provider utilisables ne sont plus masquées par les contrôles de
+  fidélité après consommation des tokens.
+- Les alertes sont structurées en `good`, `review` et `risky`, visibles dans le
+  TUI, sur stderr et dans la sortie JSON.
+- `--fail-on-quality` permet aux automatisations d’échouer sans supprimer la
+  réponse écrite sur stdout.
+- Timeouts, budgets adaptatifs, réserves par niveau et seuils de fidélité sont
+  centralisés et documentés dans `src/core/reprompt-policy.ts`.
+- Le timeout est réellement propagé aux appels réseau de tous les providers,
+  y compris la validation des identifiants.
+- Les capacités modèle OpenAI pilotent désormais `temperature`,
+  `reasoning_effort` et la limite de sortie depuis un module dédié.
+
+### Qualité et SonarQube
+
+- Suite `pnpm quality` ajoutée : TypeScript, ESLint, tests avec couverture et
+  build de production.
+- Baseline Prettier normalisée et contrôle de format intégré à la suite qualité.
+- Analyse SonarQube ajoutée avec rapport LCOV et quality gate bloquante.
+- Workflow GitHub Actions compatible Node.js 20, SonarQube Cloud et serveur
+  auto-hébergé ; l’analyse des pull requests reste activable selon l’édition.
+- Baseline de couverture assumée : 42,74 % sur tout `src`, plus de 92 % sur le
+  cœur commun. Le TUI et les commandes historiques restent la dette principale.
+
+### Validation du lot
+
+- `pnpm quality` : 18 fichiers, 114 tests réussis, couverture LCOV et build OK.
+- E2E isolés de la vraie configuration macOS, Linux et Windows via un HOME
+  temporaire.
+- Benchmark OpenAI réel du 29 juillet 2026 : 40 cas, 0 échec, score moyen
+  0,98125, médiane 1,036 s, P95 2,186 s.
+- 37 résultats `good`, 3 résultats `review`, 0 résultat `risky`; toutes les
+  réponses sont restituées.
+- Démarrage et fermeture du TUI de production vérifiés dans un pseudo-terminal.
+- `pnpm sonar` sans token : échec explicite attendu, sans fuite de secret.
 
 ## Identité terminal
 
