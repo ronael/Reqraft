@@ -26,7 +26,7 @@
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "typecheck": "tsc --noEmit",
-    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage",
+    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage && pnpm sonar",
     "sonar": "node scripts/run-sonar.mjs"
   },
   "keywords": [

@@ -1,8 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { ConfigSchema, mergeConfig } from "../../src/config/schema.js";
+import { DEFAULT_CONFIG } from "../../src/config/loader.js";
+import { ConfigSchema, mergeConfig, parseConfigValue } from "../../src/config/schema.js";
 import { getConfigDir, getConfigPath } from "../../src/config/paths.js";
-import { getPresetModels } from "../../src/models/presets.js";
+import { DEFAULT_REPROMPT_LEVEL, REPROMPT_LEVELS } from "../../src/core/levels.js";
+import { DEFAULT_FIDELITY_MODE, FIDELITY_MODES } from "../../src/core/types.js";
+import { DEFAULT_MODEL_ID, getPresetModels } from "../../src/models/presets.js";
 import { resolveModel } from "../../src/models/model-resolver.js";
+import { DEFAULT_PROVIDER_ID } from "../../src/providers/catalog.js";
+import { AUTO_PROFILE_ID } from "../../src/profiles/profile-ids.js";
 
 describe("config schema", () => {
   it("parses valid config", () => {
@@ -25,15 +30,42 @@ describe("config schema", () => {
 
   it("applies defaults", () => {
     const config = ConfigSchema.parse({});
-    expect(config.defaultProvider).toBe("anthropic");
-    expect(config.defaultModel).toBe("claude-haiku-4-5");
+    expect(config.defaultProvider).toBe(DEFAULT_PROVIDER_ID);
+    expect(config.defaultModel).toBe(DEFAULT_MODEL_ID);
+    expect(config.defaultProfile).toBe(AUTO_PROFILE_ID);
+    expect(config.defaultLevel).toBe(DEFAULT_REPROMPT_LEVEL);
+    expect(config.fidelityMode).toBe(DEFAULT_FIDELITY_MODE);
     expect(config.timeoutMs).toBe(30000);
     expect(config.showStats).toBe(false);
+  });
+
+  it("derives the loader defaults from the schema defaults", () => {
+    expect(DEFAULT_CONFIG).toEqual(ConfigSchema.parse({}));
+  });
+
+  it("uses the shared reprompt level registry", () => {
+    for (const level of REPROMPT_LEVELS) {
+      expect(ConfigSchema.parse({ defaultLevel: level }).defaultLevel).toBe(level);
+    }
+  });
+
+  it("uses the shared fidelity mode registry", () => {
+    for (const mode of FIDELITY_MODES) {
+      expect(ConfigSchema.parse({ fidelityMode: mode }).fidelityMode).toBe(mode);
+    }
   });
 
   it("accepts boolean-like showStats values from existing configs", () => {
     const config = ConfigSchema.parse({ showStats: "true" });
     expect(config.showStats).toBe(true);
+  });
+
+  it("parses config command values with strict boolean handling", () => {
+    expect(parseConfigValue("showStats", "true")).toBe(true);
+    expect(parseConfigValue("showStats", "false")).toBe(false);
+    expect(() => parseConfigValue("showStats", "yes")).toThrow("showStats attend true ou false");
+    expect(parseConfigValue("timeoutMs", "5000")).toBe(5000);
+    expect(parseConfigValue("defaultProfile", "frontend")).toBe("frontend");
   });
 
   it("merges with priority CLI > env > file > defaults", () => {

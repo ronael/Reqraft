@@ -9,9 +9,12 @@ import {
   buildPostInitSecurityNote,
   buildSummary,
   createInitConfig,
+  getInitProfileChoices,
   getInitProviderChoices,
 } from "../../src/commands/first-run.js";
 import { saveConfig } from "../../src/config/loader.js";
+import { AUTO_PROFILE_ID } from "../../src/profiles/profile-ids.js";
+import { listProfiles } from "../../src/profiles/registry.js";
 
 describe("init assistant helpers", () => {
   it("does not expose the mock provider to users", () => {
@@ -24,6 +27,13 @@ describe("init assistant helpers", () => {
       "openai-compatible",
     ]);
     expect(getInitProviderChoices().map((choice) => choice.label)).not.toContain("Mock");
+  });
+
+  it("uses the profile registry for init choices", () => {
+    expect(getInitProfileChoices()).toEqual([
+      AUTO_PROFILE_ID,
+      ...listProfiles().map((profile) => profile.id),
+    ]);
   });
 
   it("detects API key presence without exposing values", () => {
@@ -100,6 +110,19 @@ describe("init assistant helpers", () => {
     expect(note).toContain("OPENAI_API_KEY");
     expect(note).toContain("export OPENAI_API_KEY");
     expect(note).not.toContain("secret-value");
+  });
+
+  it("does not recommend secure auth for unknown custom API key variables", () => {
+    const note = buildPostInitSecurityNote({
+      envName: "OPENROUTER_API_KEY",
+      detected: false,
+      message: "OPENROUTER_API_KEY non détectée.",
+    });
+
+    expect(note).not.toContain("rp auth login openai");
+    expect(note).not.toContain("rp auth login");
+    expect(note).toContain("OPENROUTER_API_KEY");
+    expect(note).toContain("export OPENROUTER_API_KEY");
   });
 });
 

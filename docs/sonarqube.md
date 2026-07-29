@@ -66,8 +66,9 @@ Any new suppression belongs in this list, with its reasoning.
 pnpm quality
 ```
 
-This runs type checking, the Prettier check, ESLint, all tests with V8 coverage,
-and the production build. Coverage is generated at `coverage/lcov.info`.
+This runs type checking, the Prettier check, ESLint, the production build, all
+tests with V8 coverage, and the SonarQube analysis. Coverage is generated at
+`coverage/lcov.info`.
 
 The first recorded repository-wide statement coverage is 42.74%. This is an
 explicit baseline, not an acceptance target: the common reprompt core is above
@@ -80,15 +81,28 @@ upward instead of hiding untested production files.
 The scanner reads `sonar-project.properties`. To run it:
 
 ```bash
-export SONAR_TOKEN="..."
-export SONAR_HOST_URL="https://sonarqube.example.com"
-export SONAR_PROJECT_KEY="reqraft"
 pnpm test:coverage
 pnpm sonar
 ```
 
-For SonarQube Cloud, omit `SONAR_HOST_URL` and also define
-`SONAR_ORGANIZATION`. Never commit the token.
+`pnpm sonar` reads `SONAR_TOKEN`, `SONAR_HOST_URL`, `SONAR_PROJECT_KEY` and
+`SONAR_ORGANIZATION` from the shell first, then from a local `.env` file. Shell
+variables deliberately win over `.env` values so CI and one-off overrides stay
+predictable.
+
+Example `.env`:
+
+```bash
+SONAR_TOKEN="..."
+SONAR_PROJECT_KEY="reqraft"
+SONAR_ORGANIZATION="your-sonarcloud-org"
+```
+
+For SonarQube Cloud, omit `SONAR_HOST_URL` and define `SONAR_ORGANIZATION`.
+`pnpm sonar` fails before contacting the scanner if the organization is missing.
+For a self-hosted SonarQube server, define `SONAR_HOST_URL` instead; the
+organization is usually not required there. Never commit the token; `.env` is
+ignored by git.
 
 ## GitHub Actions
 

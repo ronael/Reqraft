@@ -1,14 +1,14 @@
 import { z } from "zod";
+import { DEFAULT_REPROMPT_LEVEL, RepromptLevelSchema } from "../core/levels.js";
+import { BUILTIN_PROFILE_IDS } from "./profile-ids.js";
 import type { PromptProfile } from "./types.js";
 
 const CustomProfileSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
-  extends: z
-    .enum(["clean", "code", "frontend", "web-design", "debug", "review", "writing"])
-    .optional(),
-  defaultLevel: z.enum(["minimal", "standard", "complete"]).default("standard"),
+  extends: z.enum(BUILTIN_PROFILE_IDS).optional(),
+  defaultLevel: RepromptLevelSchema.default(DEFAULT_REPROMPT_LEVEL),
   instructions: z.string().optional(),
 });
 

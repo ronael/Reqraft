@@ -8,8 +8,12 @@ import { getPresetModels } from "../models/presets.js";
 import { createProvider } from "../providers/registry.js";
 import { hydrateCredentials } from "../auth/credentials.js";
 import { formatUiError } from "../ui/errors.js";
+import { REPROMPT_LEVELS } from "../core/levels.js";
 import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import { listProfiles } from "../profiles/registry.js";
+import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
 import {
+  type CredentialProvider,
   type InitProvider,
   getProviderDefinition,
   getProviderEnvName,
@@ -60,20 +64,13 @@ interface RunFirstRunOptions {
   shell?: string;
 }
 
-const BUILTIN_PROFILES = [
-  "auto",
-  "clean",
-  "code",
-  "frontend",
-  "web-design",
-  "debug",
-  "review",
-  "writing",
-];
-
 const MODEL_ID_PROMPT = "Identifiant du modèle";
 const SETUP_CANCELLED = "Initialisation annulée.\n";
 const RESTART_TERMINAL_NOTE = "Relance ton terminal pour une configuration permanente.";
+
+export function getInitProfileChoices(): string[] {
+  return [AUTO_PROFILE_ID, ...listProfiles().map((profile) => profile.id)];
+}
 
 export function getInitProviderChoices(): InitProviderChoice[] {
   const choices = listProviderDefinitions()
@@ -242,15 +239,21 @@ export function buildPostInitSecurityNote(
   if (!keyStatus.envName || keyStatus.detected) {
     return "";
   }
+  const credentialProvider = credentialProviderFromEnvName(keyStatus.envName);
+  const secureStorageLines = credentialProvider
+    ? [
+        "Méthode recommandée, avec le coffre-fort sécurisé du système :",
+        "",
+        `rp auth login ${credentialProvider}`,
+        "",
+      ]
+    : [];
 
   return [
     "Clé API à configurer",
     "",
     "La configuration est enregistrée, mais la connexion au provider nécessite encore une clé.",
-    "Méthode recommandée, avec le coffre-fort sécurisé du système :",
-    "",
-    `rp auth login ${providerFromEnvName(keyStatus.envName)}`,
-    "",
+    ...secureStorageLines,
     "Alternative par variable d'environnement :",
     "",
     buildShellInstructions(keyStatus.envName, shell),
@@ -552,16 +555,17 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
 }
 
 async function askProfile(io: InitIo, currentProfile: string): Promise<string> {
-  const defaultIndex = Math.max(BUILTIN_PROFILES.indexOf(currentProfile), 0);
-  const index = await askMenu(io, "Profil par défaut", BUILTIN_PROFILES, defaultIndex);
-  return BUILTIN_PROFILES[index] ?? "auto";
+  const profiles = getInitProfileChoices();
+  const defaultIndex = Math.max(profiles.indexOf(currentProfile), 0);
+  const index = await askMenu(io, "Profil par défaut", profiles, defaultIndex);
+  return profiles[index] ?? AUTO_PROFILE_ID;
 }
 
 async function askLevel(
   io: InitIo,
   currentLevel: Config["defaultLevel"],
 ): Promise<Config["defaultLevel"]> {
-  const levels: Config["defaultLevel"][] = ["minimal", "standard", "complete"];
+  const levels = [...REPROMPT_LEVELS];
   const defaultIndex = Math.max(levels.indexOf(currentLevel), 1);
   const index = await askMenu(io, "Niveau", levels, defaultIndex);
   return levels[index] ?? "standard";
@@ -672,12 +676,12 @@ function providerLabel(provider: Config["defaultProvider"]): string {
   return getProviderDefinition(provider).label;
 }
 
-function providerFromEnvName(envName: string): string {
+function credentialProviderFromEnvName(envName: string): CredentialProvider | undefined {
   const match = listCredentialProviders().find(
     (definition) =>
       isCredentialProvider(definition.id) && getProviderEnvName(definition.id) === envName,
   );
-  return match?.id ?? "openai";
+  return match?.id;
 }
 
 function parseHeaders(input: string): Record<string, string> | undefined {

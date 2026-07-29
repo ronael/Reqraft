@@ -22,6 +22,7 @@ import {
   getCommandOptions,
   getFallbackModelForProvider,
   getModelOptions,
+  getProviderOptions,
   getProfileOptions,
   HELP_OPTIONS,
   LEVEL_OPTIONS,
@@ -131,6 +132,14 @@ describe("modal options", () => {
     expect(getProfileOptions()[0]).toEqual({ label: "auto (détection)", value: "auto" });
     expect(getModelOptions("openai").map((option) => option.value)).toContain("gpt-4.1-mini");
     expect(getFallbackModelForProvider("openai")).toBe("gpt-4.1-mini");
+  });
+
+  it("builds provider choices from the central provider catalog", () => {
+    expect(getProviderOptions()).toContainEqual({ label: "openai — OpenAI", value: "openai" });
+    expect(getProviderOptions()).toContainEqual({
+      label: "anthropic — Anthropic",
+      value: "anthropic",
+    });
   });
 
   it("only exposes result actions after a generation exists", () => {

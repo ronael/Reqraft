@@ -1,5 +1,10 @@
-export type RepromptLevel = "minimal" | "standard" | "complete";
-export type FidelityMode = "permissive" | "balanced" | "strict";
+import type { RepromptLevel } from "./levels.js";
+
+export type { RepromptLevel };
+
+export const FIDELITY_MODES = ["permissive", "balanced", "strict"] as const;
+export type FidelityMode = (typeof FIDELITY_MODES)[number];
+export const DEFAULT_FIDELITY_MODE = "balanced" satisfies FidelityMode;
 export type QualityStatus = "good" | "review" | "risky";
 export type QualitySeverity = "info" | "warning" | "critical";
 

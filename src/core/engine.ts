@@ -5,6 +5,7 @@ import { assessFidelity, buildQualityAssessment } from "./fidelity.js";
 import { buildPrompt } from "./prompt-builder.js";
 import { REPROMPT_POLICY, resolveOutputTokenBudget } from "./reprompt-policy.js";
 import { parseResult } from "./result-parser.js";
+import { DEFAULT_FIDELITY_MODE } from "./types.js";
 import type {
   ProviderAdapter,
   FidelityMode,
@@ -76,7 +77,7 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const fidelity = assessFidelity(
     options.input,
     rewritten,
-    options.fidelityMode ?? "balanced",
+    options.fidelityMode ?? DEFAULT_FIDELITY_MODE,
     options.level,
   );
   const completionSignals =

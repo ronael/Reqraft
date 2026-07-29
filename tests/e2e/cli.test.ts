@@ -3,7 +3,9 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { listCredentialProviders } from "../../src/providers/catalog.js";
+import { listCredentialProviders, listProviderDefinitions } from "../../src/providers/catalog.js";
+import { listProfiles } from "../../src/profiles/registry.js";
+import { EXIT_CODES } from "../../src/utils/exit-codes.js";
 
 const CLI = path.resolve(process.cwd(), "dist/cli.js");
 const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
@@ -17,7 +19,9 @@ const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
  * on startup, which would otherwise fail the suite on that machine only.
  */
 function testEnv(): NodeJS.ProcessEnv {
-  const providerKeys = new Set(listCredentialProviders().map((provider) => provider.apiKeyEnvName));
+  const providerKeys = new Set<string>(
+    listCredentialProviders().map((provider) => provider.apiKeyEnvName),
+  );
   const withoutProviderKeys = Object.fromEntries(
     Object.entries(process.env).filter(([name]) => !providerKeys.has(name)),
   );
@@ -123,5 +127,50 @@ describe("CLI e2e", () => {
     expect(exitCode).toBe(1);
     expect(stdout).toBe("");
     expect(stderr).toContain("Le timeout doit être un entier strictement positif.");
+  });
+
+  it("rejects detected secrets before sending the request", () => {
+    const fakeSecret = "sk-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+    const { stdout, stderr, exitCode } = run(`"${fakeSecret}" --provider mock`);
+
+    expect(exitCode).toBe(EXIT_CODES.SECRET_DETECTED);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("Un secret potentiel a été détecté");
+  });
+
+  it("rejects invalid boolean config values", () => {
+    const { stdout, stderr, exitCode } = run("config set showStats yes");
+    expect(exitCode).toBe(2);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("showStats attend true ou false");
+  });
+
+  it("lists providers from the public catalog", () => {
+    const { stdout, exitCode } = run("providers");
+    expect(exitCode).toBe(0);
+
+    for (const definition of listProviderDefinitions()) {
+      expect(stdout).toContain(definition.id);
+      expect(stdout).toContain(definition.label);
+    }
+  });
+
+  it("lists profiles from the profile registry", () => {
+    const { stdout, exitCode } = run("profiles");
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("auto");
+
+    for (const profile of listProfiles()) {
+      expect(stdout).toContain(profile.id);
+      expect(stdout).toContain(profile.name);
+    }
+  });
+
+  it("groups models with provider labels from the public catalog", () => {
+    const { stdout, exitCode } = run("models");
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("openai — OpenAI");
+    expect(stdout).toContain("anthropic — Anthropic");
+    expect(stdout).toContain("gpt-4.1-mini");
   });
 });

@@ -7,6 +7,7 @@ import { reviewProfile } from "./review.js";
 import { webDesignProfile } from "./web-design.js";
 import { writingProfile } from "./writing.js";
 import { detectProfile } from "./auto.js";
+import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "./profile-ids.js";
 
 export const BUILTIN_PROFILES: PromptProfile[] = [
   cleanProfile,
@@ -17,6 +18,10 @@ export const BUILTIN_PROFILES: PromptProfile[] = [
   reviewProfile,
   writingProfile,
 ];
+
+if (BUILTIN_PROFILES.map((profile) => profile.id).join("\0") !== BUILTIN_PROFILE_IDS.join("\0")) {
+  throw new Error("La registry des profils ne respecte pas l'ordre des ids partagés.");
+}
 
 const PROFILES_BY_ID = new Map<string, PromptProfile>();
 const PROFILES_BY_ALIAS = new Map<string, PromptProfile>();
@@ -31,7 +36,7 @@ for (const profile of BUILTIN_PROFILES) {
 }
 
 export function getProfile(id: string): PromptProfile | undefined {
-  if (id === "auto") {
+  if (id === AUTO_PROFILE_ID) {
     return undefined;
   }
   return PROFILES_BY_ID.get(id) ?? PROFILES_BY_ALIAS.get(id);
@@ -41,7 +46,7 @@ export function resolveProfile(
   requested: string,
   input: string,
 ): { profile: PromptProfile; detected: boolean } {
-  if (requested === "auto") {
+  if (requested === AUTO_PROFILE_ID) {
     const detectedId = detectProfile(input).profile;
     const profile = getProfile(detectedId);
     if (!profile) {

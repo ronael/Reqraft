@@ -15,8 +15,8 @@ pnpm test             # run Vitest
 pnpm lint             # run ESLint
 pnpm format           # run Prettier
 pnpm typecheck        # run tsc --noEmit
-pnpm quality          # local gate: typecheck, format check, lint, build, coverage
-pnpm sonar            # SonarQube scan; requires SONAR_TOKEN
+pnpm quality          # local gate: typecheck, format check, lint, build, coverage, sonar
+pnpm sonar            # SonarQube scan; reads SONAR_* from shell or .env
 pnpm benchmark        # run benchmark
 ```
 
@@ -81,6 +81,8 @@ pnpm sonar
 pnpm quality
 ```
 
-`pnpm sonar` intentionally fails when `SONAR_TOKEN` is absent. That failure is a
-missing local prerequisite, not a code failure; CI should provide the token when
-the Sonar gate is expected to run.
+`pnpm sonar` reads Sonar variables from the shell first, then from `.env`.
+It intentionally fails when no `SONAR_TOKEN` is available, and SonarQube Cloud
+also requires `SONAR_ORGANIZATION` when no `SONAR_HOST_URL` is configured.
+Those failures are missing local prerequisites, not code failures; CI should
+provide the variables when the Sonar gate is expected to run.

@@ -38,31 +38,66 @@ export async function hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void> 
   }
 }
 
-export async function login(provider: CredentialProvider): Promise<void> {
-  printScreen(`Connexion à ${provider}`, "Stockage sécurisé du système");
-  console.log("La clé ne sera jamais écrite dans config.json.\n");
-  const secret = await readSecret(`Clé API ${provider} (saisie masquée) : `);
+interface CredentialOutput {
+  log(message: string): void;
+}
+
+interface CredentialLoginOutput extends CredentialOutput {
+  write(message: string): void;
+}
+
+interface LoginDependencies {
+  env?: NodeJS.ProcessEnv;
+  output?: CredentialLoginOutput;
+  readSecret?: (question: string) => Promise<string>;
+  validateCredential?: (provider: CredentialProvider, secret: string) => Promise<void>;
+  setCredential?: (provider: CredentialProvider, secret: string) => Promise<void>;
+}
+
+interface LogoutDependencies {
+  output?: CredentialOutput;
+  deleteCredential?: (provider: CredentialProvider) => Promise<void>;
+}
+
+export async function login(
+  provider: CredentialProvider,
+  dependencies: LoginDependencies = {},
+): Promise<void> {
+  const output = dependencies.output ?? {
+    log: console.log,
+    write: process.stdout.write.bind(process.stdout),
+  };
+  const env = dependencies.env ?? process.env;
+  printScreen(`Connexion à ${provider}`, "Stockage sécurisé du système", output);
+  output.log("La clé ne sera jamais écrite dans config.json.\n");
+  const secret = await (dependencies.readSecret ?? readSecret)(
+    `Clé API ${provider} (saisie masquée) : `,
+  );
   if (!secret) throw new Error("Aucune clé fournie.");
   assertCredentialIsNotPlaceholder(secret);
-  process.stdout.write("Vérification de la clé… ");
-  await validateCredential(provider, secret);
-  console.log("valide.");
-  await setCredential(provider, secret);
-  console.log(`Clé ${provider} enregistrée dans le stockage sécurisé du système.`);
+  output.write("Vérification de la clé… ");
+  await (dependencies.validateCredential ?? validateCredential)(provider, secret);
+  output.log("valide.");
+  await (dependencies.setCredential ?? setCredential)(provider, secret);
+  output.log(`Clé ${provider} enregistrée dans le stockage sécurisé du système.`);
   const envName = getProviderEnvName(provider);
-  if (process.env[envName]) {
-    console.log(
+  if (env[envName]) {
+    output.log(
       `Attention : ${envName} est déjà définie et reste prioritaire sur le stockage sécurisé.`,
     );
-    console.log(
+    output.log(
       `Supprime cette variable si elle contient une ancienne clé, puis relance ton terminal.`,
     );
   }
 }
 
-export async function logout(provider: CredentialProvider): Promise<void> {
-  await deleteCredential(provider);
-  console.log(`Clé ${provider} supprimée du stockage sécurisé.`);
+export async function logout(
+  provider: CredentialProvider,
+  dependencies: LogoutDependencies = {},
+): Promise<void> {
+  const output = dependencies.output ?? console;
+  await (dependencies.deleteCredential ?? deleteCredential)(provider);
+  output.log(`Clé ${provider} supprimée du stockage sécurisé.`);
 }
 
 /**
@@ -72,21 +107,33 @@ export async function logout(provider: CredentialProvider): Promise<void> {
 async function describeCredentialSource(
   provider: CredentialProvider,
   envCredential: string | undefined,
+  readCredential: (provider: CredentialProvider) => Promise<string | undefined> = getCredential,
 ): Promise<string> {
   if (envCredential) {
     return isPlaceholderCredential(envCredential)
       ? "variable d'environnement invalide (valeur d'exemple)"
       : "variable d'environnement";
   }
-  return (await getCredential(provider)) ? "stockage sécurisé" : "non configurée";
+  return (await readCredential(provider)) ? "stockage sécurisé" : "non configurée";
 }
 
-export async function credentialStatus(): Promise<void> {
-  printScreen("Clés API", "Source active pour chaque provider");
+interface CredentialStatusDependencies {
+  env?: NodeJS.ProcessEnv;
+  output?: CredentialOutput;
+  readCredential?: (provider: CredentialProvider) => Promise<string | undefined>;
+}
+
+export async function credentialStatus(
+  dependencies: CredentialStatusDependencies = {},
+): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const output = dependencies.output ?? console;
+  const readCredential = dependencies.readCredential ?? getCredential;
+  printScreen("Clés API", "Source active pour chaque provider", output);
   for (const { id: provider } of listCredentialProviders()) {
-    const envCredential = process.env[getProviderEnvName(provider)];
-    const source = await describeCredentialSource(provider, envCredential);
-    console.log(`${provider.padEnd(10)} ${source}`);
+    const envCredential = env[getProviderEnvName(provider)];
+    const source = await describeCredentialSource(provider, envCredential, readCredential);
+    output.log(`${provider.padEnd(10)} ${source}`);
   }
 }
 

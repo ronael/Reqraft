@@ -4,21 +4,8 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { ConfigSchema, type Config } from "./schema.js";
 import { getConfigPath } from "./paths.js";
-import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 
-export const DEFAULT_CONFIG: Config = {
-  defaultProvider: "anthropic",
-  defaultModel: "claude-haiku-4-5",
-  defaultProfile: "auto",
-  defaultLevel: "standard",
-  copyAfterGeneration: false,
-  stream: true,
-  timeoutMs: REPROMPT_POLICY.runtime.defaultTimeoutMs,
-  showChanges: false,
-  showStats: false,
-  fidelityMode: "balanced",
-  telemetry: false,
-};
+export const DEFAULT_CONFIG: Config = ConfigSchema.parse({});
 
 export async function loadConfig(): Promise<Config> {
   const configPath = getConfigPath();

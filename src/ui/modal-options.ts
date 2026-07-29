@@ -1,16 +1,16 @@
 import type { RepromptLevel } from "../core/types.js";
+import { REPROMPT_LEVELS } from "../core/levels.js";
 import { getPresetModels } from "../models/presets.js";
+import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
 import { listProfiles } from "../profiles/registry.js";
-import { listProviders } from "../providers/registry.js";
+import { listProviderDefinitions } from "../providers/catalog.js";
 import type { SelectOption } from "./components/select-modal.js";
 
 export type ModalCommandAction =
   "generate" | "profile" | "level" | "provider" | "model" | "result" | "diff" | "explain" | "copy";
 
 export const LEVEL_OPTIONS: SelectOption<RepromptLevel>[] = [
-  { label: "minimal", value: "minimal" },
-  { label: "standard", value: "standard" },
-  { label: "complete", value: "complete" },
+  ...REPROMPT_LEVELS.map((level) => ({ label: level, value: level })),
 ];
 
 export const HELP_OPTIONS: SelectOption<string>[] = [
@@ -24,7 +24,7 @@ export const HELP_OPTIONS: SelectOption<string>[] = [
 
 export function getProfileOptions(): SelectOption<string>[] {
   return [
-    { label: "auto (détection)", value: "auto" },
+    { label: "auto (détection)", value: AUTO_PROFILE_ID },
     ...listProfiles().map((profile) => ({
       label: `${profile.name} — ${profile.description}`,
       value: profile.id,
@@ -33,7 +33,10 @@ export function getProfileOptions(): SelectOption<string>[] {
 }
 
 export function getProviderOptions(): SelectOption<string>[] {
-  return listProviders().map((id) => ({ label: id, value: id }));
+  return listProviderDefinitions().map((provider) => ({
+    label: `${provider.id} — ${provider.label}`,
+    value: provider.id,
+  }));
 }
 
 export function getModelOptions(provider: string): SelectOption<string>[] {

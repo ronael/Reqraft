@@ -1,22 +1,22 @@
 import process from "node:process";
 import { scan } from "@sonar/scan";
+import { formatSonarScanError, loadDotenv, resolveSonarScanConfiguration } from "./sonar-env.mjs";
 
-const token = process.env.SONAR_TOKEN;
-if (!token) {
-  console.error("SONAR_TOKEN est requis pour lancer l’analyse SonarQube.");
+loadDotenv();
+
+const configuration = resolveSonarScanConfiguration();
+if (!configuration.ok) {
+  console.error(configuration.message);
   process.exitCode = 1;
 } else {
-  const options = {
-    "sonar.projectKey": process.env.SONAR_PROJECT_KEY ?? "reqraft",
-    "sonar.qualitygate.wait": "true",
-  };
-  if (process.env.SONAR_ORGANIZATION) {
-    options["sonar.organization"] = process.env.SONAR_ORGANIZATION;
+  try {
+    await scan({
+      serverUrl: configuration.serverUrl,
+      token: configuration.token,
+      options: configuration.options,
+    });
+  } catch (error) {
+    console.error(`Analyse SonarQube échouée : ${formatSonarScanError(error)}`);
+    process.exitCode = 1;
   }
-
-  await scan({
-    serverUrl: process.env.SONAR_HOST_URL || undefined,
-    token,
-    options,
-  });
 }

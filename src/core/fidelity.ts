@@ -1,4 +1,5 @@
 import { REPROMPT_POLICY } from "./reprompt-policy.js";
+import { DEFAULT_REPROMPT_LEVEL } from "./levels.js";
 import type {
   FidelityMode,
   QualityAssessment,
@@ -55,7 +56,7 @@ function containsLexicalTerm(text: string, pattern: string): boolean {
 export function isDisproportionateExpansion(
   input: string,
   output: string,
-  level: RepromptLevel = "standard",
+  level: RepromptLevel = DEFAULT_REPROMPT_LEVEL,
 ): boolean {
   const inputWords = wordCount(input);
   const outputWords = wordCount(output);

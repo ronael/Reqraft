@@ -11,11 +11,7 @@ export const BUILTIN_PROVIDER_IDS = [
 
 export type BuiltinProvider = (typeof BUILTIN_PROVIDER_IDS)[number];
 export const OPENAI_COMPATIBLE_PROVIDER_ID = OPENAI_COMPATIBLE_ID satisfies BuiltinProvider;
-export type CredentialProvider = Extract<
-  BuiltinProvider,
-  "anthropic" | "openai" | "deepseek" | "mistral"
->;
-export type InitProvider = Exclude<BuiltinProvider, "mock">;
+export const DEFAULT_PROVIDER_ID = "anthropic" satisfies BuiltinProvider;
 
 export interface ProviderDefinition {
   id: BuiltinProvider;
@@ -28,13 +24,6 @@ export interface ProviderDefinition {
   isLocal: boolean;
   isTest: boolean;
 }
-
-export type CredentialProviderDefinition = ProviderDefinition & {
-  id: CredentialProvider;
-  apiKeyEnvName: string;
-  supportsSecureAuth: true;
-  requiresApiKey: true;
-};
 
 export const PROVIDER_DEFINITIONS = [
   {
@@ -102,6 +91,20 @@ export const PROVIDER_DEFINITIONS = [
     isTest: true,
   },
 ] as const satisfies readonly ProviderDefinition[];
+
+export type CredentialProvider = Extract<
+  (typeof PROVIDER_DEFINITIONS)[number],
+  { supportsSecureAuth: true; requiresApiKey: true }
+>["id"];
+export type InitProvider = Extract<
+  (typeof PROVIDER_DEFINITIONS)[number],
+  { visibleInInit: true }
+>["id"];
+
+export type CredentialProviderDefinition = Extract<
+  (typeof PROVIDER_DEFINITIONS)[number],
+  { supportsSecureAuth: true; requiresApiKey: true }
+>;
 
 const PROVIDER_DEFINITION_BY_ID: Record<BuiltinProvider, ProviderDefinition> = Object.fromEntries(
   PROVIDER_DEFINITIONS.map((definition) => [definition.id, definition]),
