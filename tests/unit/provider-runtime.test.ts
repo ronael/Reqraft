@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { listCredentialProviders } from "../../src/providers/catalog.js";
+import { createProvider } from "../../src/providers/registry.js";
 import { resolveProviderRuntime } from "../../src/providers/runtime.js";
 
 describe("provider runtime", () => {
@@ -36,5 +38,15 @@ describe("provider runtime", () => {
         env: {},
       }),
     ).toThrow("Provider non supporté : unknown");
+  });
+
+  it("hydrates credential providers from catalog env names", async () => {
+    for (const definition of listCredentialProviders()) {
+      const provider = createProvider(definition.id, {});
+      const health = await provider.validateConfiguration();
+
+      expect(health.ok).toBe(false);
+      expect(health.missingConfiguration).toEqual([definition.apiKeyEnvName]);
+    }
   });
 });

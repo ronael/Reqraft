@@ -8,13 +8,39 @@ import { OpenAICompatibleProvider } from "./openai-compatible.js";
 import type { Config } from "../config/schema.js";
 import {
   type BuiltinProvider,
+  type CredentialProvider,
   getProviderDefinition,
-  getProviderEnvName,
+  type CredentialProviderDefinition,
   listProviderDefinitions,
+  listCredentialProviders,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "./catalog.js";
 
 type ProviderFactory = (env: NodeJS.ProcessEnv, config?: Config) => ProviderAdapter;
+type CredentialProviderFactory = (
+  apiKey: string,
+  missingConfiguration: string[],
+) => ProviderAdapter;
+
+const CREDENTIAL_PROVIDER_FACTORIES = new Map<CredentialProvider, CredentialProviderFactory>([
+  [
+    "anthropic",
+    (apiKey, missingConfiguration) =>
+      new AnthropicProvider(apiKey, undefined, missingConfiguration),
+  ],
+  [
+    "openai",
+    (apiKey, missingConfiguration) => new OpenAIProvider(apiKey, undefined, missingConfiguration),
+  ],
+  [
+    "deepseek",
+    (apiKey, missingConfiguration) => new DeepSeekProvider(apiKey, undefined, missingConfiguration),
+  ],
+  [
+    "mistral",
+    (apiKey, missingConfiguration) => new MistralProvider(apiKey, undefined, missingConfiguration),
+  ],
+]);
 
 /**
  * Single source of truth for the built-in providers.
@@ -23,34 +49,10 @@ type ProviderFactory = (env: NodeJS.ProcessEnv, config?: Config) => ProviderAdap
  * to expose it everywhere.
  */
 const PROVIDER_FACTORIES = new Map<BuiltinProvider, ProviderFactory>([
-  [
-    "anthropic",
-    (env) =>
-      new AnthropicProvider(env[getProviderEnvName("anthropic")] ?? "", undefined, [
-        getProviderEnvName("anthropic"),
-      ]),
-  ],
-  [
-    "openai",
-    (env) =>
-      new OpenAIProvider(env[getProviderEnvName("openai")] ?? "", undefined, [
-        getProviderEnvName("openai"),
-      ]),
-  ],
-  [
-    "deepseek",
-    (env) =>
-      new DeepSeekProvider(env[getProviderEnvName("deepseek")] ?? "", undefined, [
-        getProviderEnvName("deepseek"),
-      ]),
-  ],
-  [
-    "mistral",
-    (env) =>
-      new MistralProvider(env[getProviderEnvName("mistral")] ?? "", undefined, [
-        getProviderEnvName("mistral"),
-      ]),
-  ],
+  ...listCredentialProviders().map((definition): [BuiltinProvider, ProviderFactory] => [
+    definition.id,
+    (env) => createCredentialProvider(definition, env),
+  ]),
   [OPENAI_COMPATIBLE_PROVIDER_ID, (env, config) => createOpenAICompatibleProvider(env, config)],
   ["mock", () => new MockProvider()],
 ]);
@@ -65,6 +67,18 @@ export function createProvider(
     throw new Error(`Provider non supporté : ${id}`);
   }
   return factory(env, config);
+}
+
+function createCredentialProvider(
+  definition: CredentialProviderDefinition,
+  env: NodeJS.ProcessEnv,
+): ProviderAdapter {
+  const factory = CREDENTIAL_PROVIDER_FACTORIES.get(definition.id);
+  if (!factory) {
+    throw new Error(`Provider sans adapter configuré : ${definition.id}`);
+  }
+
+  return factory(env[definition.apiKeyEnvName] ?? "", [definition.apiKeyEnvName]);
 }
 
 function createOpenAICompatibleProvider(
