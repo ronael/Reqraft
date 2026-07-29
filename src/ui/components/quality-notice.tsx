@@ -3,6 +3,13 @@ import { Box, Text } from "ink";
 import type { QualityAssessment } from "../../core/types.js";
 import { Notice } from "./notice.js";
 
+export function qualitySignalViewKey(
+  signal: QualityAssessment["signals"][number],
+  index: number,
+): string {
+  return `${signal.code}:${String(index)}`;
+}
+
 export function QualityNotice({
   quality,
 }: Readonly<{
@@ -19,8 +26,8 @@ export function QualityNotice({
       <Notice tone={tone}>{title}</Notice>
       {quality.signals
         .filter((signal) => signal.severity !== "info")
-        .map((signal) => (
-          <Text key={signal.code} dimColor>
+        .map((signal, index) => (
+          <Text key={qualitySignalViewKey(signal, index)} dimColor>
             - {signal.message}
           </Text>
         ))}

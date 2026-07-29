@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
 import { shouldUseColor } from "../../src/ui/text.js";
+import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js";
 
 describe("terminal layout", () => {
   it.each([
@@ -25,5 +26,20 @@ describe("terminal color fallback", () => {
     expect(shouldUseColor(true, undefined)).toBe(true);
     expect(shouldUseColor(false, undefined)).toBe(false);
     expect(shouldUseColor(true, "1")).toBe(false);
+  });
+});
+
+describe("quality notice", () => {
+  it("keeps React keys unique when several model warnings share the same code", () => {
+    const first = qualitySignalViewKey(
+      { code: "model_warning", severity: "warning", message: "Premier warning" },
+      0,
+    );
+    const second = qualitySignalViewKey(
+      { code: "model_warning", severity: "warning", message: "Second warning" },
+      1,
+    );
+
+    expect(first).not.toBe(second);
   });
 });
