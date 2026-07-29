@@ -1,6 +1,6 @@
 {
   "name": "@reqraft/cli",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "CLI open source de reprompting — transforme une demande brute en un prompt clair, fidèle et directement exploitable par une IA.",
   "main": "./dist/cli.js",
   "type": "module",
@@ -27,7 +27,12 @@
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "typecheck": "tsc --noEmit",
     "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage && pnpm sonar",
-    "sonar": "node scripts/run-sonar.mjs"
+    "sonar": "node scripts/run-sonar.mjs",
+    "pack:dry-run": "pnpm pack --dry-run",
+    "release:check": "pnpm quality && pnpm pack:dry-run",
+    "publish:public": "pnpm publish --access public",
+    "prepublishOnly": "pnpm quality",
+    "prepack": "pnpm build"
   },
   "keywords": [
     "cli",
@@ -41,6 +46,9 @@
   ],
   "author": "Reqraft Contributors",
   "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
   "packageManager": "pnpm@10.6.5",
   "engines": {
     "node": ">=20.0.0"
