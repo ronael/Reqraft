@@ -2,18 +2,16 @@ import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import process from "node:process";
 import React, { useCallback, useEffect, useState } from "react";
-import { rewrite } from "./core/engine.js";
-import { prepareRewriteOptions } from "./core/rewrite-options.js";
 
+import { executeReprompt } from "./application/reprompt.js";
 import { hydrateCredentials } from "./auth/credentials.js";
 import { writeClipboard } from "./clipboard/clipboard.js";
 import { DEFAULT_CONFIG, loadConfig } from "./config/loader.js";
 import type { Config } from "./config/schema.js";
 import type { RepromptLevel, RepromptResult } from "./core/types.js";
 import { getPresetModels } from "./models/presets.js";
-import { listProfiles, resolveProfile } from "./profiles/registry.js";
+import { listProfiles } from "./profiles/registry.js";
 import { listProviders } from "./providers/registry.js";
-import { resolveProviderRuntime } from "./providers/runtime.js";
 import {
   AppFrame,
   EmptyState,
@@ -120,29 +118,20 @@ export function App(): React.JSX.Element {
     setState((prev) => ({ ...prev, error: null, result: null }));
 
     try {
-      await hydrateCredentials(process.env);
-      const { profile } = resolveProfile(state.profile, state.input);
-      const { provider, model, reasoningEffort } = resolveProviderRuntime({
+      const { result } = await executeReprompt({
+        input: state.input,
+        profileId: state.profile,
+        level: state.level,
         providerId: state.provider,
         requestedModel: state.model,
         defaultModel: state.model,
         env: process.env,
         config: config ?? undefined,
+        stream: false,
+        fidelityMode: config?.fidelityMode,
+        timeoutMs: config?.timeoutMs,
+        maxOutputTokens: config?.maxOutputTokens,
       });
-      const result = await rewrite(
-        prepareRewriteOptions({
-          input: state.input,
-          profile,
-          level: state.level,
-          provider,
-          model,
-          stream: false,
-          reasoningEffort,
-          fidelityMode: config?.fidelityMode,
-          timeoutMs: config?.timeoutMs,
-          maxOutputTokens: config?.maxOutputTokens,
-        }),
-      );
       setState((prev) => ({ ...prev, result, view: "result" }));
     } catch (err) {
       setState((prev) => ({

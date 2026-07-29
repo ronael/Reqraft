@@ -1,17 +1,13 @@
 import process from "node:process";
 import type { RepromptResult } from "../core/types.js";
-import { rewrite } from "../core/engine.js";
-import { prepareRewriteOptions } from "../core/rewrite-options.js";
 import { parseLevel } from "../core/levels.js";
-import { resolveProfile } from "../profiles/registry.js";
-import { resolveProviderRuntime } from "../providers/runtime.js";
 import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { readFileContent, readStdin } from "../utils/input.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 import { loadConfig } from "../config/loader.js";
 import { detectSecrets } from "../core/secret-detector.js";
 import { redactSecrets } from "../utils/redaction.js";
-import { hydrateCredentials } from "../auth/credentials.js";
+import { executeReprompt } from "../application/reprompt.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -73,7 +69,6 @@ function reportFatalError(error: unknown, verbose: boolean): never {
 export async function runReprompt(options: RepromptCliOptions): Promise<void> {
   try {
     const config = await loadConfig();
-    await hydrateCredentials(process.env);
     const rawInput = await resolveInput(options);
     if (!rawInput) {
       console.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
@@ -82,37 +77,28 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
 
     const input = applySecretPolicy(rawInput, options);
     const level = parseLevel(options.level ?? config.defaultLevel);
-    const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
     const providerId = options.provider ?? config.defaultProvider;
-    const { provider, model, reasoningEffort } = resolveProviderRuntime({
+    const { result, detectedProfile } = await executeReprompt({
+      input,
+      profileId: options.profile ?? config.defaultProfile,
+      level,
       providerId,
       requestedModel: options.model,
       defaultModel: config.defaultModel,
       env: process.env,
       config,
+      stream: options.stream ?? config.stream,
+      fidelityMode: options.fidelity ?? config.fidelityMode,
+      timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
+      maxOutputTokens: resolvePositiveInteger(
+        "La limite de sortie",
+        options.maxOutputTokens,
+        config.maxOutputTokens,
+      ),
     });
 
-    const result = await rewrite(
-      prepareRewriteOptions({
-        input,
-        profile,
-        level,
-        provider,
-        model,
-        stream: options.stream ?? config.stream,
-        reasoningEffort,
-        fidelityMode: options.fidelity ?? config.fidelityMode,
-        timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
-        maxOutputTokens: resolvePositiveInteger(
-          "La limite de sortie",
-          options.maxOutputTokens,
-          config.maxOutputTokens,
-        ),
-      }),
-    );
-
-    if (detected && options.verbose) {
-      console.error(`Profil détecté : ${profile.id}`);
+    if (detectedProfile && options.verbose) {
+      console.error(`Profil détecté : ${result.profile}`);
     }
 
     await outputResult(result, options, config.showStats);
