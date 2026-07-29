@@ -9,9 +9,6 @@ import { writeClipboard } from "./clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "./config/loader.js";
 import type { Config } from "./config/schema.js";
 import type { RepromptLevel, RepromptResult } from "./core/types.js";
-import { getPresetModels } from "./models/presets.js";
-import { listProfiles } from "./profiles/registry.js";
-import { listProviders } from "./providers/registry.js";
 import {
   AppFrame,
   EmptyState,
@@ -24,7 +21,7 @@ import {
   Spinner,
   StatusBadge,
 } from "./ui/components/index.js";
-import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
+import { SelectModal } from "./ui/components/select-modal.js";
 import { formatUiError } from "./ui/errors.js";
 import {
   beginGeneration,
@@ -35,13 +32,23 @@ import {
 } from "./ui/generation-state.js";
 import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
+import {
+  getCommandOptions,
+  getFallbackModelForProvider,
+  getModelOptions,
+  getProfileOptions,
+  getProviderOptions,
+  HELP_OPTIONS,
+  LEVEL_OPTIONS,
+  type ModalCommandAction,
+} from "./ui/modal-options.js";
+import { formatResultView, type ResultViewMode } from "./ui/result-view.js";
 import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
 import { theme } from "./ui/theme/tokens.js";
 
-type ViewMode = "result" | "diff" | "explain";
+type ViewMode = ResultViewMode;
 type ModalType = "profile" | "level" | "provider" | "model" | "commands" | "help" | null;
-type CommandAction =
-  "generate" | "profile" | "level" | "provider" | "model" | "result" | "diff" | "explain" | "copy";
+type CommandAction = ModalCommandAction;
 
 /** Panel titles per view. Lookup tables keep the render path free of ladders. */
 const RESULT_TITLES: Record<ViewMode, string> = {
@@ -161,81 +168,50 @@ export function App(): React.JSX.Element {
   const renderModal = (): React.JSX.Element | null => {
     switch (state.modal) {
       case "profile": {
-        const profiles: SelectOption<string>[] = [
-          { label: "auto (détection)", value: "auto" },
-          ...listProfiles().map((p) => ({ label: `${p.name} — ${p.description}`, value: p.id })),
-        ];
         return (
           <SelectModal
             title="Changer de profil"
-            options={profiles}
+            options={getProfileOptions()}
             onSelect={setProfile}
             onCancel={closeModal}
           />
         );
       }
       case "level": {
-        const levels: SelectOption<RepromptLevel>[] = [
-          { label: "minimal", value: "minimal" },
-          { label: "standard", value: "standard" },
-          { label: "complete", value: "complete" },
-        ];
         return (
           <SelectModal
             title="Changer de niveau"
-            options={levels}
+            options={LEVEL_OPTIONS}
             onSelect={setLevel}
             onCancel={closeModal}
           />
         );
       }
       case "provider": {
-        const providers: SelectOption<string>[] = listProviders().map((id) => ({
-          label: id,
-          value: id,
-        }));
         return (
           <SelectModal
             title="Changer de provider"
-            options={providers}
+            options={getProviderOptions()}
             onSelect={setProvider}
             onCancel={closeModal}
           />
         );
       }
       case "model": {
-        const models: SelectOption<string>[] = getPresetModels()
-          .filter((m) => m.provider === state.provider)
-          .map((m) => ({ label: `${m.id} — ${m.name}`, value: m.id }));
         return (
           <SelectModal
             title="Changer de modèle"
-            options={models}
+            options={getModelOptions(state.provider)}
             onSelect={setModel}
             onCancel={closeModal}
           />
         );
       }
       case "commands": {
-        const actions: SelectOption<CommandAction>[] = [
-          { label: "Générer ou régénérer", value: "generate" },
-          { label: "Changer de profil", value: "profile" },
-          { label: "Changer de niveau", value: "level" },
-          { label: "Changer de provider", value: "provider" },
-          { label: "Changer de modèle", value: "model" },
-          ...(state.result
-            ? [
-                { label: "Afficher le résultat", value: "result" as const },
-                { label: "Afficher le diff", value: "diff" as const },
-                { label: "Afficher l'explication", value: "explain" as const },
-                { label: "Copier le résultat", value: "copy" as const },
-              ]
-            : []),
-        ];
         return (
           <SelectModal
             title="Actions"
-            options={actions}
+            options={getCommandOptions(Boolean(state.result))}
             onSelect={runCommand}
             onCancel={closeModal}
           />
@@ -245,14 +221,7 @@ export function App(): React.JSX.Element {
         return (
           <SelectModal
             title="Raccourcis"
-            options={[
-              { label: "Entrée — générer", value: "generate" },
-              { label: "Ctrl+P — profil", value: "profile" },
-              { label: "Ctrl+L — niveau", value: "level" },
-              { label: "Ctrl+M — modèle", value: "model" },
-              { label: "Ctrl+D — diff", value: "diff" },
-              { label: "Ctrl+R — régénérer", value: "regenerate" },
-            ]}
+            options={HELP_OPTIONS}
             onSelect={closeModal}
             onCancel={closeModal}
           />
@@ -272,8 +241,7 @@ export function App(): React.JSX.Element {
     setState((prev) => ({ ...prev, level, modal: null }));
   };
   const setProvider = (provider: string): void => {
-    const fallbackModel =
-      getPresetModels().find((preset) => preset.provider === provider)?.id ?? "";
+    const fallbackModel = getFallbackModelForProvider(provider);
     setState((prev) => ({ ...prev, provider, model: fallbackModel, modal: null }));
   };
   const setModel = (model: string): void => {
@@ -377,20 +345,7 @@ export function App(): React.JSX.Element {
     }
   });
 
-  const renderResult = (): string => {
-    if (!state.result) return "";
-    switch (state.view) {
-      case "diff":
-        return formatDiff(state.result.original, state.result.rewritten);
-      case "explain":
-        return formatExplain(state.result);
-      case "result":
-      default:
-        return state.result.rewritten;
-    }
-  };
-
-  const resultText = renderResult();
+  const resultText = state.result ? formatResultView(state.result, state.view) : "";
   const layoutMode = getLayoutMode(columns);
   const compact = layoutMode !== "wide";
   const resultTitle = RESULT_TITLES[state.view];
@@ -478,39 +433,4 @@ export function App(): React.JSX.Element {
       )}
     </AppFrame>
   );
-}
-
-function formatDiff(original: string, rewritten: string): string {
-  const originalLines = original.split("\n");
-  const rewrittenLines = rewritten.split("\n");
-  const output: string[] = [];
-  const maxLines = Math.max(originalLines.length, rewrittenLines.length);
-
-  for (let i = 0; i < maxLines; i++) {
-    const originalLine = originalLines[i] ?? "";
-    const rewrittenLine = rewrittenLines[i] ?? "";
-    if (originalLine !== rewrittenLine) {
-      output.push(`- ${originalLine}`);
-      output.push(`+ ${rewrittenLine}`);
-    } else {
-      output.push(`  ${originalLine}`);
-    }
-  }
-
-  return output.join("\n");
-}
-
-function formatExplain(result: RepromptResult): string {
-  const lines = ["Modifications :"];
-  for (const change of result.changes) {
-    lines.push(`- ${change}`);
-  }
-  if (result.warnings.length > 0) {
-    lines.push("");
-    lines.push("Avertissements :");
-    for (const warning of result.warnings) {
-      lines.push(`- ${warning}`);
-    }
-  }
-  return lines.join("\n");
 }

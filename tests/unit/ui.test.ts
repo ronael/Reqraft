@@ -1,6 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
+import {
+  getCommandOptions,
+  getFallbackModelForProvider,
+  getModelOptions,
+  getProfileOptions,
+  HELP_OPTIONS,
+  LEVEL_OPTIONS,
+} from "../../src/ui/modal-options.js";
+import { formatDiff, formatExplain, formatResultView } from "../../src/ui/result-view.js";
 import { shouldUseColor } from "../../src/ui/text.js";
+import type { RepromptResult } from "../../src/core/types.js";
 import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js";
 import {
   beginGeneration,
@@ -48,6 +58,75 @@ describe("quality notice", () => {
     );
 
     expect(first).not.toBe(second);
+  });
+});
+
+describe("result view formatting", () => {
+  const result: RepromptResult = {
+    original: "corrige ceci\nmerci",
+    rewritten: "Corrige ceci, merci.",
+    profile: "auto",
+    level: "standard",
+    provider: "mock",
+    model: "mock-model",
+    changes: ["Correction de la casse.", "Ponctuation ajoutée."],
+    warnings: ["Ambiguïté conservée."],
+    quality: { status: "review", signals: [] },
+  };
+
+  it("returns the rewritten prompt for the result view", () => {
+    expect(formatResultView(result, "result")).toBe("Corrige ceci, merci.");
+  });
+
+  it("formats changed lines as a compact diff", () => {
+    expect(formatDiff(result.original, result.rewritten)).toBe(
+      "- corrige ceci\n+ Corrige ceci, merci.\n- merci\n+ ",
+    );
+  });
+
+  it("formats changes and warnings for the explain view", () => {
+    expect(formatExplain(result)).toBe(
+      [
+        "Modifications :",
+        "- Correction de la casse.",
+        "- Ponctuation ajoutée.",
+        "",
+        "Avertissements :",
+        "- Ambiguïté conservée.",
+      ].join("\n"),
+    );
+  });
+});
+
+describe("modal options", () => {
+  it("keeps level and help options centralized", () => {
+    expect(LEVEL_OPTIONS.map((option) => option.value)).toEqual([
+      "minimal",
+      "standard",
+      "complete",
+    ]);
+    expect(HELP_OPTIONS.map((option) => option.value)).toContain("regenerate");
+  });
+
+  it("builds profile and model choices from registries", () => {
+    expect(getProfileOptions()[0]).toEqual({ label: "auto (détection)", value: "auto" });
+    expect(getModelOptions("openai").map((option) => option.value)).toContain("gpt-4.1-mini");
+    expect(getFallbackModelForProvider("openai")).toBe("gpt-4.1-mini");
+  });
+
+  it("only exposes result actions after a generation exists", () => {
+    expect(getCommandOptions(false).map((option) => option.value)).not.toContain("copy");
+    expect(getCommandOptions(true).map((option) => option.value)).toEqual([
+      "generate",
+      "profile",
+      "level",
+      "provider",
+      "model",
+      "result",
+      "diff",
+      "explain",
+      "copy",
+    ]);
   });
 });
 
