@@ -1,9 +1,24 @@
+import { REPROMPT_POLICY } from "./reprompt-policy.js";
+import type {
+  FidelityMode,
+  QualityAssessment,
+  QualitySeverity,
+  QualitySignal,
+  RepromptLevel,
+} from "./types.js";
+
 const UNSUPPORTED_ADDITION_TERMS = [
   { label: "témoignages", patterns: ["témoignage", "témoignages", "testimonial", "testimonials"] },
   { label: "FAQ", patterns: ["faq", "questions fréquentes"] },
   {
     label: "CTA",
-    patterns: ["cta", "appel à l'action", "call to action", "bouton d'action", "bouton de conversion"],
+    patterns: [
+      "cta",
+      "appel à l'action",
+      "call to action",
+      "bouton d'action",
+      "bouton de conversion",
+    ],
   },
   { label: "pricing", patterns: ["pricing", "tarifs", "prix"] },
   { label: "footer", patterns: ["footer", "pied de page"] },
@@ -22,7 +37,9 @@ export function detectUnsupportedAdditions(input: string, output: string): strin
   const normalizedOutput = normalize(output);
 
   return UNSUPPORTED_ADDITION_TERMS.filter((term) => {
-    const inOutput = term.patterns.some((pattern) => containsLexicalTerm(normalizedOutput, pattern));
+    const inOutput = term.patterns.some((pattern) =>
+      containsLexicalTerm(normalizedOutput, pattern),
+    );
     const inInput = term.patterns.some((pattern) => containsLexicalTerm(normalizedInput, pattern));
     return inOutput && !inInput;
   }).map((term) => term.label);
@@ -35,16 +52,58 @@ function containsLexicalTerm(text: string, pattern: string): boolean {
   return expression.test(text);
 }
 
-export function isDisproportionateExpansion(input: string, output: string): boolean {
+export function isDisproportionateExpansion(
+  input: string,
+  output: string,
+  level: RepromptLevel = "standard",
+): boolean {
   const inputWords = wordCount(input);
   const outputWords = wordCount(output);
-  if (inputWords < 30) {
-    return outputWords > 80 || outputWords > Math.max(30, inputWords * 5);
+  const policy = REPROMPT_POLICY.fidelity.expansion.levels[level];
+  const expectedMaximum = inputWords * policy.inputWordMultiplier + policy.structuralAllowanceWords;
+  return outputWords > expectedMaximum;
+}
+
+export function assessFidelity(
+  input: string,
+  output: string,
+  mode: FidelityMode,
+  level: RepromptLevel,
+): QualityAssessment {
+  const signals: QualitySignal[] = [];
+  const additions = detectUnsupportedAdditions(input, output);
+
+  if (additions.length > 0) {
+    signals.push({
+      code: "unsupported_additions",
+      severity: mode === "strict" ? "warning" : "info",
+      message: `Éléments potentiellement ajoutés sans demande explicite : ${additions.join(", ")}.`,
+      details: additions,
+    });
   }
-  if (inputWords < 90) {
-    return outputWords > inputWords * 5;
+
+  if (isDisproportionateExpansion(input, output, level)) {
+    signals.push({
+      code: "disproportionate_expansion",
+      severity: mode === "permissive" ? "info" : "warning",
+      message: "La reformulation est nettement plus développée que la demande d’origine.",
+    });
   }
-  return false;
+
+  return buildQualityAssessment(signals);
+}
+
+export function buildQualityAssessment(signals: QualitySignal[]): QualityAssessment {
+  return {
+    status: resolveQualityStatus(signals.map((signal) => signal.severity)),
+    signals,
+  };
+}
+
+function resolveQualityStatus(severities: QualitySeverity[]): QualityAssessment["status"] {
+  if (severities.includes("critical")) return "risky";
+  if (severities.includes("warning")) return "review";
+  return "good";
 }
 
 function wordCount(text: string): number {

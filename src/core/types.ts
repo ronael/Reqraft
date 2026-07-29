@@ -1,5 +1,24 @@
 export type RepromptLevel = "minimal" | "standard" | "complete";
 export type FidelityMode = "permissive" | "balanced" | "strict";
+export type QualityStatus = "good" | "review" | "risky";
+export type QualitySeverity = "info" | "warning" | "critical";
+
+export interface QualitySignal {
+  code:
+    | "unsupported_additions"
+    | "disproportionate_expansion"
+    | "output_truncated"
+    | "model_warning"
+    | "unstructured_response";
+  severity: QualitySeverity;
+  message: string;
+  details?: string[];
+}
+
+export interface QualityAssessment {
+  status: QualityStatus;
+  signals: QualitySignal[];
+}
 
 export interface RepromptRequest {
   input: string;
@@ -20,6 +39,7 @@ export interface RepromptResult {
   model: string;
   changes: string[];
   warnings: string[];
+  quality: QualityAssessment;
   usage?: {
     inputTokens?: number;
     outputTokens?: number;
@@ -48,6 +68,7 @@ export interface ProviderRequest {
   maxOutputTokens: number;
   stream: boolean;
   reasoningEffort?: "none" | "low" | "medium" | "high";
+  signal?: AbortSignal;
 }
 
 export interface ProviderResponse {
@@ -71,7 +92,7 @@ export interface ProviderHealth {
 export interface ProviderAdapter {
   id: string;
   name: string;
-  listModels?(): Promise<ModelInfo[]>;
+  listModels?(signal?: AbortSignal): Promise<ModelInfo[]>;
   generate(request: ProviderRequest): Promise<ProviderResponse>;
   validateConfiguration(): Promise<ProviderHealth>;
 }

@@ -16,6 +16,7 @@ describe("parseResult", () => {
   it("parses valid JSON", () => {
     const result = parseResult('{"rewritten":"Bonjour","changes":[],"warnings":[]}');
     expect(result.rewritten).toBe("Bonjour");
+    expect(result.format).toBe("structured");
   });
 
   it("parses fenced JSON", () => {
@@ -27,6 +28,7 @@ describe("parseResult", () => {
   it("falls back on invalid JSON", () => {
     const result = parseResult("just some text");
     expect(result.rewritten).toBe("just some text");
+    expect(result.format).toBe("raw");
     expect(result.warnings.length).toBeGreaterThan(0);
   });
 });

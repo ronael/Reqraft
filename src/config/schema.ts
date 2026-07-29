@@ -1,5 +1,6 @@
 import { z } from "zod";
 import type { RepromptLevel } from "../core/types.js";
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 
 const BooleanConfigSchema = z.preprocess((value) => {
   if (value === "true") return true;
@@ -17,20 +18,25 @@ export const OpenAICompatibleProviderConfigSchema = z
   })
   .strict();
 
-export const ConfigSchema = z.object({
-  defaultProvider: z.enum(["anthropic", "openai", "deepseek", "mistral", "openai-compatible", "mock"]).default("anthropic"),
-  defaultModel: z.string().default("claude-haiku-4-5"),
-  defaultProfile: z.string().default("auto"),
-  defaultLevel: z.enum(["minimal", "standard", "complete"]).default("standard"),
-  copyAfterGeneration: z.boolean().default(false),
-  stream: z.boolean().default(true),
-  timeoutMs: z.number().int().positive().default(30000),
-  showChanges: z.boolean().default(false),
-  showStats: BooleanConfigSchema.default(false),
-  fidelityMode: z.enum(["permissive", "balanced", "strict"]).default("balanced"),
-  telemetry: z.boolean().default(false),
-  providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
-}).passthrough();
+export const ConfigSchema = z
+  .object({
+    defaultProvider: z
+      .enum(["anthropic", "openai", "deepseek", "mistral", "openai-compatible", "mock"])
+      .default("anthropic"),
+    defaultModel: z.string().default("claude-haiku-4-5"),
+    defaultProfile: z.string().default("auto"),
+    defaultLevel: z.enum(["minimal", "standard", "complete"]).default("standard"),
+    copyAfterGeneration: z.boolean().default(false),
+    stream: z.boolean().default(true),
+    timeoutMs: z.number().int().positive().default(REPROMPT_POLICY.runtime.defaultTimeoutMs),
+    maxOutputTokens: z.number().int().positive().optional(),
+    showChanges: z.boolean().default(false),
+    showStats: BooleanConfigSchema.default(false),
+    fidelityMode: z.enum(["permissive", "balanced", "strict"]).default("balanced"),
+    telemetry: z.boolean().default(false),
+    providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
+  })
+  .passthrough();
 
 export type Config = z.infer<typeof ConfigSchema>;
 export type ConfigKey = (typeof CONFIG_KEYS)[number];
@@ -43,6 +49,7 @@ const CONFIG_KEYS = [
   "copyAfterGeneration",
   "stream",
   "timeoutMs",
+  "maxOutputTokens",
   "showChanges",
   "showStats",
   "fidelityMode",

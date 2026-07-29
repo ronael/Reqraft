@@ -4,6 +4,7 @@ import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { createProvider } from "../providers/registry.js";
 import { printScreen } from "../ui/text.js";
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -106,7 +107,7 @@ async function validateCredential(provider: CredentialProvider, secret: string):
   if (!adapter.listModels) {
     throw new Error(`Le provider ${provider} ne permet pas de vérifier la clé.`);
   }
-  await adapter.listModels();
+  await adapter.listModels(AbortSignal.timeout(REPROMPT_POLICY.runtime.connectionCheckTimeoutMs));
 }
 
 function service(provider: CredentialProvider): string {

@@ -12,6 +12,8 @@ function run(args: string): { stdout: string; stderr: string; exitCode: number }
     encoding: "utf8",
     env: {
       ...process.env,
+      HOME: TEST_CONFIG_HOME,
+      APPDATA: TEST_CONFIG_HOME,
       XDG_CONFIG_HOME: TEST_CONFIG_HOME,
     },
   });
@@ -59,8 +61,12 @@ describe("CLI e2e", () => {
   it("outputs json", () => {
     const { stdout, exitCode } = run('"test" --provider mock --json');
     expect(exitCode).toBe(0);
-    const json = JSON.parse(stdout) as { rewritten: string };
+    const json = JSON.parse(stdout) as {
+      rewritten: string;
+      quality: { status: string; signals: unknown[] };
+    };
     expect(json.rewritten).toContain("[mock]");
+    expect(json.quality).toEqual({ status: "good", signals: [] });
   });
 
   it("shows stats when requested", () => {
@@ -78,6 +84,7 @@ describe("CLI e2e", () => {
     expect(stderr).toContain("Sortie visible 20 tokens");
     expect(stderr).toContain("Raisonnement non communiqué");
     expect(stderr).toContain("Sortie totale 20 tokens");
+    expect(stderr).toContain("Qualité correcte");
   });
 
   it("writes rewritten prompt to stdout and explanations to stderr", () => {
@@ -86,5 +93,21 @@ describe("CLI e2e", () => {
     expect(stdout).toContain("[mock]");
     expect(stderr).toContain("Modifications");
     expect(stderr).toContain("Mock reformulation applied");
+  });
+
+  it("accepts explicit runtime limits", () => {
+    const { stdout, stderr, exitCode } = run(
+      '"test" --provider mock --timeout 5000 --max-output-tokens 300',
+    );
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("[mock]");
+    expect(stderr).toBe("");
+  });
+
+  it("rejects invalid runtime limits with an actionable error", () => {
+    const { stdout, stderr, exitCode } = run('"test" --provider mock --timeout 0');
+    expect(exitCode).toBe(1);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("Le timeout doit être un entier strictement positif.");
   });
 });

@@ -29,6 +29,8 @@ interface CliOptions {
   fidelity?: "permissive" | "balanced" | "strict";
   stream?: boolean;
   timeout?: string;
+  maxOutputTokens?: string;
+  failOnQuality?: boolean;
   verbose?: boolean;
 }
 
@@ -54,6 +56,8 @@ program
   .option("--fidelity <mode>", "Politique de fidélité (permissive, balanced, strict)")
   .option("--no-stream", "Désactiver le streaming")
   .option("--timeout <ms>", "Timeout en millisecondes")
+  .option("--max-output-tokens <tokens>", "Plafond de tokens de sortie pour cette génération")
+  .option("--fail-on-quality", "Retourner un code non nul si le résultat doit être vérifié")
   .option("--verbose", "Mode verbeux")
   .option("--force", "Forcer l'envoi malgré un secret détecté")
   .option("--redact-secrets", "Masquer automatiquement les secrets détectés")

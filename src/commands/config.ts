@@ -67,6 +67,7 @@ function parseValue(key: ConfigKey, value: string): unknown {
     case "telemetry":
       return value === "true";
     case "timeoutMs":
+    case "maxOutputTokens":
       return Number(value);
     default:
       return value;

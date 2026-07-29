@@ -20,6 +20,7 @@ import {
   HeaderBar,
   MetaRow,
   Notice,
+  QualityNotice,
   SectionCard,
   ShortcutBar,
   Spinner,
@@ -109,6 +110,8 @@ export function App(): React.JSX.Element {
         stream: false,
         reasoningEffort,
         fidelityMode: config?.fidelityMode,
+        timeoutMs: config?.timeoutMs,
+        maxOutputTokens: config?.maxOutputTokens,
       });
       setState((prev) => ({ ...prev, result, view: "result" }));
     } catch (err) {
@@ -140,7 +143,7 @@ export function App(): React.JSX.Element {
           setState((prev) => ({ ...prev, copied: true }));
           setTimeout(() => {
             setState((prev) => ({ ...prev, copied: false }));
-          }, 1500);
+          }, theme.behavior.toastDurationMs);
         });
       }
       return;
@@ -320,7 +323,7 @@ export function App(): React.JSX.Element {
       setState((prev) => ({ ...prev, copied: true, modal: null }));
       setTimeout(() => {
         setState((prev) => ({ ...prev, copied: false }));
-      }, 1500);
+      }, theme.behavior.toastDurationMs);
     });
   };
   const runCommand = (action: CommandAction): void => {
@@ -424,6 +427,7 @@ export function App(): React.JSX.Element {
           <>
             <Text wrap="wrap">{resultText}</Text>
             <MetaRow result={state.result} />
+            <QualityNotice quality={state.result.quality} />
           </>
         ) : (
           <EmptyState

@@ -1,3 +1,5 @@
+import { theme } from "./theme/tokens.js";
+
 export function formatUiError(error: unknown, provider: string): string {
   const message = error instanceof Error ? error.message : String(error);
   if (/Provider error (401|403)/.test(message)) {
@@ -19,5 +21,6 @@ export function formatUiError(error: unknown, provider: string): string {
   if (/Clé API .* manquante/.test(message)) {
     return `${message} Lance « rp auth login ${provider} » pour la configurer.`;
   }
-  return message.length > 240 ? `${message.slice(0, 237)}…` : message;
+  const limit = theme.behavior.maxErrorMessageCharacters;
+  return message.length > limit ? `${message.slice(0, limit - 3)}…` : message;
 }

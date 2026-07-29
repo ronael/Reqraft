@@ -1,3 +1,5 @@
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+
 export class ProviderError extends Error {
   constructor(
     message: string,
@@ -19,7 +21,10 @@ export function raiseProviderError(response: Response, body: string): never {
     code = 4;
   }
   throw new ProviderError(
-    `Provider error ${String(response.status)}: ${body.slice(0, 200)}`,
+    `Provider error ${String(response.status)}: ${body.slice(
+      0,
+      REPROMPT_POLICY.runtime.maxProviderErrorBodyCharacters,
+    )}`,
     code,
   );
 }

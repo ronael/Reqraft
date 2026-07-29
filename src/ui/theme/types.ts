@@ -19,4 +19,9 @@ export interface TerminalTheme {
     normal: number;
     roomy: number;
   };
+  behavior: {
+    toastDurationMs: number;
+    spinnerFrameIntervalMs: number;
+    maxErrorMessageCharacters: number;
+  };
 }

@@ -34,6 +34,7 @@ export class AnthropicProvider implements ProviderAdapter {
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
     const response = await fetch(`${this.baseUrl}/messages`, {
       method: "POST",
+      signal: request.signal,
       headers: {
         "Content-Type": "application/json",
         "x-api-key": this.apiKey,
@@ -82,8 +83,9 @@ export class AnthropicProvider implements ProviderAdapter {
     };
   }
 
-  async listModels(): Promise<ModelInfo[]> {
+  async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const response = await fetch(`${this.baseUrl}/models`, {
+      signal,
       headers: { "x-api-key": this.apiKey, "anthropic-version": "2023-06-01" },
     });
     const text = await response.text();
@@ -122,7 +124,10 @@ function parseStreamingResponse(stream: string, requestedModel: string): Provide
 
     const event = JSON.parse(line.slice("data: ".length)) as AnthropicStreamEvent;
     if (event.type === "error") {
-      throw new ProviderError(`Anthropic streaming error: ${event.error?.message ?? "unknown error"}`, 4);
+      throw new ProviderError(
+        `Anthropic streaming error: ${event.error?.message ?? "unknown error"}`,
+        4,
+      );
     }
     if (event.type === "message_start") {
       inputTokens = event.message?.usage?.input_tokens;

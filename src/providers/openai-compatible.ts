@@ -48,6 +48,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
 
     const response = await fetch(`${this.options.baseUrl}/chat/completions`, {
       method: "POST",
+      signal: request.signal,
       headers,
       body: JSON.stringify({
         model: request.model,
@@ -84,11 +85,10 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     };
   }
 
-  async listModels(): Promise<ModelInfo[]> {
+  async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const response = await fetch(`${this.options.baseUrl}/models`, {
-      headers: this.options.apiKey
-        ? { Authorization: `Bearer ${this.options.apiKey}` }
-        : undefined,
+      signal,
+      headers: this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : undefined,
     });
     const text = await response.text();
     if (!response.ok) {

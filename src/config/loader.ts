@@ -3,6 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { ConfigSchema, type Config } from "./schema.js";
 import { getConfigPath } from "./paths.js";
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 
 export const DEFAULT_CONFIG: Config = {
   defaultProvider: "anthropic",
@@ -11,7 +12,7 @@ export const DEFAULT_CONFIG: Config = {
   defaultLevel: "standard",
   copyAfterGeneration: false,
   stream: true,
-  timeoutMs: 30000,
+  timeoutMs: REPROMPT_POLICY.runtime.defaultTimeoutMs,
   showChanges: false,
   showStats: false,
   fidelityMode: "balanced",

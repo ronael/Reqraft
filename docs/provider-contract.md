@@ -65,9 +65,14 @@ Current payload decisions:
 
 - Chat Completions endpoint.
 - `max_completion_tokens`, not `max_tokens`.
+- The common engine computes an adaptive output budget from source size,
+  reprompt level and optional reasoning reserve, then caps it with the model
+  registry limit or the user override.
 - `response_format: { type: "json_object" }` because the common engine currently expects structured `rewritten` and `warnings` fields from all providers.
 - `temperature` omitted for `gpt-5*` models.
 - `reasoning_effort` sent only for supported model families.
+- The request timeout is propagated with `AbortSignal`; adapters do not own
+  timeout policy.
 
 Frozen reference acceptance run:
 
@@ -80,6 +85,14 @@ Frozen reference acceptance run:
 - `minimal`, `standard` and `complete` behave consistently.
 
 The benchmark dataset in `benchmark/fidelity-cases.ts` is the OpenAI reference suite. It deliberately retains regression cases for Apple-style landing pages, login corrections, responsive forms, `refactor` / `refactore`, and `PR` / `pull request` wording.
+
+Post-refactor validation on 29 July 2026, with the same model and dataset:
+
+- 40 cases and 0 failures;
+- mean score: 0.98125;
+- median latency: 1.036 s; P95: 2.186 s;
+- 37 `good`, 3 `review` and 0 `risky` results;
+- every usable provider response was returned.
 
 Open question:
 

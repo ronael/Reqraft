@@ -29,6 +29,8 @@ export interface RepromptCliOptions {
   fidelity?: "permissive" | "balanced" | "strict";
   stream?: boolean;
   timeout?: string;
+  maxOutputTokens?: string;
+  failOnQuality?: boolean;
   verbose?: boolean;
   force?: boolean;
   redactSecrets?: boolean;
@@ -53,7 +55,9 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
         for (const secret of secrets) {
           console.error(`  - ${secret.type}`);
         }
-        console.error("Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.");
+        console.error(
+          "Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.",
+        );
         process.exit(EXIT_CODES.SECRET_DETECTED);
       }
     }
@@ -62,11 +66,7 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
     const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
     const providerId = options.provider ?? config.defaultProvider;
     const provider = createProvider(providerId as "mock", process.env, config);
-    const { model, reasoningEffort } = resolveModel(
-      providerId,
-      options.model,
-      config.defaultModel,
-    );
+    const { model, reasoningEffort } = resolveModel(providerId, options.model, config.defaultModel);
 
     const result = await rewrite({
       input,
@@ -78,6 +78,12 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
       stream: options.stream ?? config.stream,
       reasoningEffort,
       fidelityMode: options.fidelity ?? config.fidelityMode,
+      timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
+      maxOutputTokens: resolvePositiveInteger(
+        "La limite de sortie",
+        options.maxOutputTokens,
+        config.maxOutputTokens,
+      ),
     });
 
     if (detected && options.verbose) {
@@ -93,6 +99,23 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
     }
     process.exit(EXIT_CODES.GENERAL_ERROR);
   }
+}
+
+function resolveTimeout(option: string | undefined, configured: number): number {
+  return resolvePositiveInteger("Le timeout", option, configured) ?? configured;
+}
+
+function resolvePositiveInteger(
+  label: string,
+  option: string | undefined,
+  configured: number | undefined,
+): number | undefined {
+  if (option === undefined) return configured;
+  const value = Number(option);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} doit être un entier strictement positif.`);
+  }
+  return value;
 }
 
 async function resolveInput(options: RepromptCliOptions): Promise<string> {
@@ -127,6 +150,11 @@ async function outputResult(
     console.log(result.rewritten);
   }
 
+  if (!options.json && !options.explain && result.warnings.length > 0) {
+    console.error("");
+    console.error(formatQuality(result));
+  }
+
   if (!options.json && (options.stats ?? defaultShowStats)) {
     console.error("");
     console.error(formatStats(result));
@@ -135,6 +163,10 @@ async function outputResult(
   if (options.copy) {
     await writeClipboard(result.rewritten);
     console.error("Résultat copié dans le presse-papiers.");
+  }
+
+  if (options.failOnQuality && result.quality.status !== "good") {
+    process.exitCode = EXIT_CODES.QUALITY_REVIEW;
   }
 }
 
@@ -155,7 +187,28 @@ function formatStats(result: RepromptResult): string {
   }
 
   lines.push(`Provider ${result.provider} · Modèle ${result.model}`);
+  lines.push(`Qualité ${qualityLabel(result.quality.status)}`);
   return lines.join("\n");
+}
+
+export function formatQuality(result: RepromptResult): string {
+  const lines = [`Qualité ${qualityLabel(result.quality.status)}`];
+  for (const warning of result.warnings) {
+    lines.push(`- ${warning}`);
+  }
+  return lines.join("\n");
+}
+
+function qualityLabel(status: RepromptResult["quality"]["status"]): string {
+  switch (status) {
+    case "risky":
+      return "risquée";
+    case "review":
+      return "à vérifier";
+    case "good":
+    default:
+      return "correcte";
+  }
 }
 
 function formatTokenValue(value: number | undefined): string {

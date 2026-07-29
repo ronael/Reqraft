@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { detectUnsupportedAdditions, isDisproportionateExpansion } from "../../src/core/fidelity.js";
+import {
+  detectUnsupportedAdditions,
+  isDisproportionateExpansion,
+} from "../../src/core/fidelity.js";
 
 describe("fidelity checks", () => {
   it("detects common unsupported additions absent from the input", () => {
@@ -8,7 +11,9 @@ describe("fidelity checks", () => {
       "Crée une landing page avec un header, des témoignages, une FAQ, un footer et une palette détaillée.",
     );
 
-    expect(additions).toEqual(expect.arrayContaining(["header", "témoignages", "FAQ", "footer", "palette détaillée"]));
+    expect(additions).toEqual(
+      expect.arrayContaining(["header", "témoignages", "FAQ", "footer", "palette détaillée"]),
+    );
   });
 
   it("does not flag additions that were requested", () => {
@@ -43,6 +48,7 @@ describe("fidelity checks", () => {
       isDisproportionateExpansion(
         "fais une landing page style apple",
         "Crée une landing page inspirée du style Apple. Ajoute un header, une section fonctionnalités, une section témoignages, une FAQ, un footer, une palette détaillée, des animations, une stratégie SEO et des critères de performance.",
+        "minimal",
       ),
     ).toBe(true);
   });
@@ -54,5 +60,13 @@ describe("fidelity checks", () => {
         "Corrige le problème présent sur la page login, en respectant les conventions et l'implémentation existantes.",
       ),
     ).toBe(false);
+  });
+
+  it("allows more development in complete mode than in minimal mode", () => {
+    const input = "réalise un plan d’architecture";
+    const output = Array.from({ length: 60 }, () => "détail").join(" ");
+
+    expect(isDisproportionateExpansion(input, output, "minimal")).toBe(true);
+    expect(isDisproportionateExpansion(input, output, "complete")).toBe(false);
   });
 });

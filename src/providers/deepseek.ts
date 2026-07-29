@@ -28,8 +28,8 @@ export class DeepSeekProvider implements ProviderAdapter {
     return this.adapter.generate(request);
   }
 
-  listModels(): Promise<ModelInfo[]> {
-    return this.adapter.listModels();
+  listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    return this.adapter.listModels(signal);
   }
 
   validateConfiguration(): Promise<ProviderHealth> {

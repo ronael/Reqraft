@@ -67,7 +67,7 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
     "Règles : conserve l'intention, la langue, les termes techniques et les contraintes ; n'invente pas de contexte, de marque, de sections, de fonctionnalités, de fichiers ni de décisions.",
     "Niveau standard : corrige, clarifie et structure légèrement ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable sans élargir le périmètre.",
     "N'ajoute pas de sections, CTA, témoignages, palettes, contraintes responsive ou critères de validation absents de l'entrée. Demande plutôt de vérifier l'existant.",
-    "Une demande courte doit produire une reformulation courte : 1 à 4 phrases et moins de 100 mots sauf niveau complete.",
+    "Une demande courte doit rester concise, sauf si l’action demandée nécessite naturellement un résultat développé.",
     levelAwareProfileGuidance(request.profile, request.level),
     "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
   ].join("\n");
@@ -78,12 +78,17 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
     request.input,
     "```",
     request.language ? `Langue attendue : ${request.language}` : "",
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
 
   return { systemPrompt, userPrompt };
 }
 
-function levelAwareProfileGuidance(profile: PromptProfile, level: RepromptRequest["level"]): string {
+function levelAwareProfileGuidance(
+  profile: PromptProfile,
+  level: RepromptRequest["level"],
+): string {
   if (level === "minimal") {
     return `Le niveau minimal est prioritaire sur le profil ${profile.id}. Conserve uniquement l'action et les termes explicitement présents ; ne crée ni rubriques, ni checklist, ni critères supplémentaires.`;
   }

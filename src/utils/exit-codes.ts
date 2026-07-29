@@ -7,4 +7,5 @@ export const EXIT_CODES = {
   PARSING_ERROR: 5,
   SECRET_DETECTED: 6,
   INVALID_INPUT: 7,
+  QUALITY_REVIEW: 8,
 } as const;

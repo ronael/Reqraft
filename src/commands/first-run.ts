@@ -8,6 +8,7 @@ import { getPresetModels } from "../models/presets.js";
 import { createProvider } from "../providers/registry.js";
 import { hydrateCredentials } from "../auth/credentials.js";
 import { formatUiError } from "../ui/errors.js";
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 
 type InitProvider = Exclude<Config["defaultProvider"], "mock">;
 
@@ -207,6 +208,7 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
     `Copie auto.    ${config.copyAfterGeneration ? "oui" : "non"}`,
     `Streaming      ${config.stream ? "oui" : "non"}`,
     `Timeout        ${String(config.timeoutMs)} ms`,
+    `Sortie max.    ${config.maxOutputTokens === undefined ? "adaptative" : `${String(config.maxOutputTokens)} tokens`}`,
     `Stats          ${config.showStats ? "oui" : "non"}`,
     "Télémétrie     désactivée",
   ];
@@ -519,7 +521,7 @@ async function askTimeout(io: InitIo, currentTimeout: number): Promise<number> {
     const answer = await askText(
       io,
       "Timeout en millisecondes",
-      String(currentTimeout > 0 ? currentTimeout : 30000),
+      String(currentTimeout > 0 ? currentTimeout : REPROMPT_POLICY.runtime.defaultTimeoutMs),
     );
     const timeout = Number(answer);
     if (Number.isInteger(timeout) && timeout > 0) {
@@ -575,9 +577,12 @@ async function maybeRunConnectionTest(
       systemPrompt: "Réponds brièvement.",
       userPrompt: "Test de connexion Reqraft.",
       model: config.defaultModel,
-      temperature: 0,
-      maxOutputTokens: 16,
+      temperature: REPROMPT_POLICY.runtime.connectionCheckTemperature,
+      maxOutputTokens: REPROMPT_POLICY.runtime.connectionCheckMaxOutputTokens,
       stream: false,
+      signal: AbortSignal.timeout(
+        Math.min(config.timeoutMs, REPROMPT_POLICY.runtime.connectionCheckTimeoutMs),
+      ),
     });
     io.write(`Connexion réussie en ${String(Date.now() - startedAt)} ms.\n`);
   } catch (error) {

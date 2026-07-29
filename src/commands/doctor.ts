@@ -15,6 +15,13 @@ export async function runDoctor(): Promise<void> {
   printKeyValue("Provider", config.defaultProvider);
   printKeyValue("Modèle", config.defaultModel);
   printKeyValue("Profil", config.defaultProfile);
+  printKeyValue("Timeout", `${String(config.timeoutMs)} ms`);
+  printKeyValue(
+    "Sortie max.",
+    config.maxOutputTokens === undefined
+      ? "adaptative"
+      : `${String(config.maxOutputTokens)} tokens`,
+  );
   console.log("");
 
   console.log("Clés API");

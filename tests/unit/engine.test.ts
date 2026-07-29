@@ -54,11 +54,54 @@ class ExpandingProvider implements ProviderAdapter {
   generate(): Promise<ProviderResponse> {
     return Promise.resolve({
       text: JSON.stringify({
-        rewritten: "Crée une landing page avec un header, des témoignages, une FAQ, un footer, une palette détaillée, une section pricing, des animations, une stratégie SEO, une navigation responsive, des critères de performance, une base de données, un système d'authentification et plusieurs sections produit détaillées.",
+        rewritten:
+          "Crée une landing page avec un header, des témoignages, une FAQ, un footer, une palette détaillée, une section pricing, des animations, une stratégie SEO, une navigation responsive, des critères de performance, une base de données, un système d'authentification et plusieurs sections produit détaillées. Ajoute aussi un espace administrateur, des notifications, un programme de fidélité, une gestion multilingue, des tableaux de bord analytiques, un moteur de recherche et une documentation complète du déploiement.",
         warnings: [],
       }),
       usage: { inputTokens: 10, outputTokens: 30, visibleOutputTokens: 30 },
       model: "mock-model",
+    });
+  }
+
+  validateConfiguration(): Promise<ProviderHealth> {
+    return Promise.resolve({ ok: true, message: "ok" });
+  }
+}
+
+class TruncatedProvider implements ProviderAdapter {
+  readonly id = "truncated";
+  readonly name = "Truncated";
+
+  generate(): Promise<ProviderResponse> {
+    return Promise.resolve({
+      text: JSON.stringify({
+        rewritten: "Voici la partie exploitable de la reformulation.",
+        warnings: [],
+      }),
+      usage: { inputTokens: 20, outputTokens: 50, visibleOutputTokens: 50 },
+      model: "mock-model",
+      finishReason: "length",
+    });
+  }
+
+  validateConfiguration(): Promise<ProviderHealth> {
+    return Promise.resolve({ ok: true, message: "ok" });
+  }
+}
+
+class WaitingProvider implements ProviderAdapter {
+  readonly id = "waiting";
+  readonly name = "Waiting";
+
+  generate(request: ProviderRequest): Promise<ProviderResponse> {
+    return new Promise((_resolve, reject) => {
+      request.signal?.addEventListener(
+        "abort",
+        () => {
+          reject(new Error(String(request.signal?.reason)));
+        },
+        { once: true },
+      );
     });
   }
 
@@ -87,7 +130,7 @@ describe("engine", () => {
     expect(typeof result.latencyMs).toBe("number");
   });
 
-  it("uses smaller output budgets by level", async () => {
+  it("resolves an output budget from the centralized generation policy", async () => {
     const provider = new CaptureProvider();
 
     await rewrite({
@@ -99,7 +142,7 @@ describe("engine", () => {
       includeChanges: false,
     });
 
-    expect(provider.request?.maxOutputTokens).toBe(900);
+    expect(provider.request?.maxOutputTokens).toBeGreaterThan(0);
   });
 
   it("rejects empty provider responses", async () => {
@@ -115,7 +158,7 @@ describe("engine", () => {
     ).rejects.toThrow("sans produire de texte visible");
   });
 
-  it("adds fidelity warnings for unsupported additions", async () => {
+  it("keeps permissive fidelity findings as non-blocking information", async () => {
     const result = await rewrite({
       input: "fais une landing page style apple",
       profile: webDesignProfile,
@@ -126,35 +169,88 @@ describe("engine", () => {
       fidelityMode: "permissive",
     });
 
-    expect(result.warnings.join("\n")).toContain("Potential unsupported additions");
-    expect(result.warnings.join("\n")).toContain("témoignages");
+    expect(result.warnings).toEqual([]);
+    expect(result.quality.signals).toContainEqual(
+      expect.objectContaining({
+        code: "unsupported_additions",
+        severity: "info",
+      }),
+    );
   });
 
-  it("blocks disproportionate expansions in balanced fidelity mode", async () => {
-    await expect(
-      rewrite({
-        input: "fais une landing page style apple",
-        profile: webDesignProfile,
-        level: "standard",
-        provider: new ExpandingProvider(),
-        model: "mock-model",
-        includeChanges: false,
-        fidelityMode: "balanced",
-      }),
-    ).rejects.toThrow("expansion disproportionnée");
+  it("returns disproportionate expansions with a review signal in balanced mode", async () => {
+    const result = await rewrite({
+      input: "fais une landing page style apple",
+      profile: webDesignProfile,
+      level: "standard",
+      provider: new ExpandingProvider(),
+      model: "mock-model",
+      includeChanges: false,
+      fidelityMode: "balanced",
+    });
+
+    expect(result.rewritten).toContain("Crée une landing page");
+    expect(result.quality.status).toBe("review");
+    expect(result.quality.signals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "disproportionate_expansion",
+          severity: "warning",
+        }),
+      ]),
+    );
   });
 
-  it("blocks unsupported additions in strict fidelity mode", async () => {
+  it("returns strict-mode results with explicit unsupported-addition signals", async () => {
+    const result = await rewrite({
+      input: "fais une landing page style apple",
+      profile: webDesignProfile,
+      level: "standard",
+      provider: new ExpandingProvider(),
+      model: "mock-model",
+      includeChanges: false,
+      fidelityMode: "strict",
+    });
+
+    expect(result.rewritten).toContain("Crée une landing page");
+    expect(result.quality.signals).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          code: "unsupported_additions",
+          severity: "warning",
+        }),
+      ]),
+    );
+  });
+
+  it("keeps a parseable truncated response and marks it as risky", async () => {
+    const result = await rewrite({
+      input: "rédige une architecture détaillée",
+      profile: cleanProfile,
+      level: "complete",
+      provider: new TruncatedProvider(),
+      model: "mock-model",
+      includeChanges: false,
+    });
+
+    expect(result.rewritten).toContain("partie exploitable");
+    expect(result.quality.status).toBe("risky");
+    expect(result.quality.signals).toContainEqual(
+      expect.objectContaining({ code: "output_truncated", severity: "critical" }),
+    );
+  });
+
+  it("aborts provider work when the configured timeout expires", async () => {
     await expect(
       rewrite({
-        input: "fais une landing page style apple",
-        profile: webDesignProfile,
+        input: "test timeout",
+        profile: cleanProfile,
         level: "standard",
-        provider: new ExpandingProvider(),
+        provider: new WaitingProvider(),
         model: "mock-model",
         includeChanges: false,
-        fidelityMode: "strict",
+        timeoutMs: 10,
       }),
-    ).rejects.toThrow("ajouts non supportés");
+    ).rejects.toThrow("10 ms");
   });
 });

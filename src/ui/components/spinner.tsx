@@ -10,7 +10,7 @@ export function Spinner(): React.JSX.Element {
   React.useEffect(() => {
     const id = setInterval(() => {
       setFrame((value) => (value + 1) % frames.length);
-    }, 120);
+    }, theme.behavior.spinnerFrameIntervalMs);
     return () => {
       clearInterval(id);
     };
