@@ -64,6 +64,12 @@ const BUILTIN_PROFILES = [
   "writing",
 ];
 
+const OPENAI_COMPATIBLE_ID = "openai-compatible";
+const OPENAI_COMPATIBLE_LABEL = "OpenAI Compatible";
+const MODEL_ID_PROMPT = "Identifiant du modèle";
+const SETUP_CANCELLED = "Initialisation annulée.\n";
+const RESTART_TERMINAL_NOTE = "Relance ton terminal pour une configuration permanente.";
+
 const PROVIDER_ENV: Partial<Record<InitProvider, string>> = {
   anthropic: "ANTHROPIC_API_KEY",
   openai: "OPENAI_API_KEY",
@@ -76,7 +82,7 @@ const PROVIDER_LABEL: Record<InitProvider, string> = {
   openai: "OpenAI",
   deepseek: "DeepSeek",
   mistral: "Mistral",
-  "openai-compatible": "OpenAI Compatible",
+  [OPENAI_COMPATIBLE_ID]: OPENAI_COMPATIBLE_LABEL,
 };
 
 export function getInitProviderChoices(): InitProviderChoice[] {
@@ -85,8 +91,8 @@ export function getInitProviderChoices(): InitProviderChoice[] {
     { label: "OpenAI", provider: "openai" },
     { label: "DeepSeek", provider: "deepseek" },
     { label: "Mistral", provider: "mistral" },
-    { label: "OpenAI Compatible", provider: "openai-compatible" },
-    { label: "Serveur local compatible OpenAI", provider: "openai-compatible", local: true },
+    { label: OPENAI_COMPATIBLE_LABEL, provider: OPENAI_COMPATIBLE_ID },
+    { label: "Serveur local compatible OpenAI", provider: OPENAI_COMPATIBLE_ID, local: true },
   ];
 }
 
@@ -96,7 +102,7 @@ export function buildApiKeyStatus(
   apiKeyEnv?: string,
 ): ApiKeyStatus {
   const envName = apiKeyEnv ?? PROVIDER_ENV[provider];
-  const optional = provider === "openai-compatible";
+  const optional = provider === OPENAI_COMPATIBLE_ID;
   if (!envName) {
     return {
       detected: false,
@@ -124,7 +130,7 @@ export function buildShellInstructions(envName: string, shell = process.env.SHEL
       `set -Ux ${envName} "votre-clé"`,
       "```",
       "",
-      "Relance ton terminal pour une configuration permanente.",
+      RESTART_TERMINAL_NOTE,
     ].join("\n");
   }
 
@@ -146,7 +152,7 @@ export function buildShellInstructions(envName: string, shell = process.env.SHEL
       ")",
       "```",
       "",
-      "Relance ton terminal pour une configuration permanente.",
+      RESTART_TERMINAL_NOTE,
     ].join("\n");
   }
 
@@ -164,7 +170,7 @@ export function buildShellInstructions(envName: string, shell = process.env.SHEL
     `echo 'export ${envName}="votre-clé"' >> ${rcFile}`,
     "```",
     "",
-    "Relance ton terminal pour une configuration permanente.",
+    RESTART_TERMINAL_NOTE,
   ].join("\n");
 }
 
@@ -172,7 +178,7 @@ export function createInitConfig(input: InitConfigInput): Config {
   const providers = { ...(input.existing?.providers ?? {}) };
   if (input.compatibleProvider) {
     providers[input.compatibleProvider.id] = {
-      type: "openai-compatible",
+      type: OPENAI_COMPATIBLE_ID,
       name: input.compatibleProvider.name,
       baseUrl: input.compatibleProvider.baseUrl,
       apiKeyEnv: input.compatibleProvider.apiKeyEnv,
@@ -221,7 +227,7 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
   if (compatible) {
     lines.splice(5, 0, `Base URL       ${compatible.baseUrl}`);
     lines.splice(6, 0, `Variable clé   ${compatible.apiKeyEnv ?? "aucune"}`);
-    lines.splice(7, 0, `Nom provider   ${compatible.name ?? "OpenAI Compatible"}`);
+    lines.splice(7, 0, `Nom provider   ${compatible.name ?? OPENAI_COMPATIBLE_LABEL}`);
   }
 
   return lines.join("\n");
@@ -253,7 +259,7 @@ export function buildPostInitSecurityNote(
 async function confirmOverwrite(io: InitIo, question: string): Promise<Config | null> {
   const confirmed = await askConfirm(io, question, false);
   if (!confirmed) {
-    io.write("Initialisation annulée.\n");
+    io.write(SETUP_CANCELLED);
     return null;
   }
   return DEFAULT_CONFIG;
@@ -283,7 +289,7 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
 
   const action = await askExistingConfigAction(io, existingConfig);
   if (action === "cancel") {
-    io.write("Initialisation annulée.\n");
+    io.write(SETUP_CANCELLED);
     return null;
   }
   if (action === "show") {
@@ -323,7 +329,7 @@ async function runConfigurationLoop(
       continue;
     }
     if (decision === 2) {
-      io.write("Initialisation annulée.\n");
+      io.write(SETUP_CANCELLED);
       return;
     }
 
@@ -370,10 +376,10 @@ async function askModelIdentifier(
 ): Promise<string> {
   if (compatibleProvider?.baseUrl) {
     if (compatibleProvider.id === "local") {
-      return await askText(io, "Identifiant du modèle", defaults.defaultModel || "local-model");
+      return await askText(io, MODEL_ID_PROMPT, defaults.defaultModel || "local-model");
     }
     if (compatibleProvider.id === "custom") {
-      return await askText(io, "Identifiant du modèle", defaults.defaultModel);
+      return await askText(io, MODEL_ID_PROMPT, defaults.defaultModel);
     }
   }
   return await askModel(io, provider, defaults.defaultModel);
@@ -388,7 +394,7 @@ async function collectConfig(
   for (;;) {
     const providerChoice = await askProvider(io, defaults);
     const compatibleProvider =
-      providerChoice.provider === "openai-compatible"
+      providerChoice.provider === OPENAI_COMPATIBLE_ID
         ? await askCompatibleProvider(io, defaults, providerChoice.local)
         : undefined;
     const keyStatus = buildApiKeyStatus(
@@ -490,7 +496,7 @@ async function askProvider(io: InitIo, defaults: Config): Promise<InitProviderCh
 async function askCompatibleProvider(
   io: InitIo,
   defaults: Config,
-  local?: boolean,
+  local = false,
 ): Promise<CompatibleProviderInput> {
   const existing = firstCompatibleProvider(defaults);
   const idDefault = local ? "local" : "custom";
@@ -498,7 +504,7 @@ async function askCompatibleProvider(
   const name = await askText(
     io,
     "Nom personnalisé du provider",
-    existing?.name ?? (local ? "Serveur local" : "OpenAI Compatible"),
+    existing?.name ?? (local ? "Serveur local" : OPENAI_COMPATIBLE_LABEL),
   );
   const baseUrl = await askText(
     io,
@@ -524,7 +530,7 @@ async function askCompatibleProvider(
 async function askModel(io: InitIo, provider: InitProvider, currentModel: string): Promise<string> {
   const presets = getPresetModels().filter((preset) => preset.provider === provider);
   if (presets.length === 0) {
-    return await askText(io, "Identifiant du modèle", currentModel);
+    return await askText(io, MODEL_ID_PROMPT, currentModel);
   }
 
   const recommended = presets.find((preset) => preset.recommended);
@@ -537,7 +543,7 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
 
   const index = await askMenu(io, "Quel modèle souhaites-tu utiliser ?", labels);
   if (index === labels.length - 1) {
-    return await askText(io, "Identifiant du modèle", currentModel);
+    return await askText(io, MODEL_ID_PROMPT, currentModel);
   }
   return ordered[index]?.id ?? currentModel;
 }
@@ -603,7 +609,7 @@ async function maybeRunConnectionTest(
   io: InitIo,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
-  if (!keyStatus.detected && config.defaultProvider !== "openai-compatible") {
+  if (!keyStatus.detected && config.defaultProvider !== OPENAI_COMPATIBLE_ID) {
     return;
   }
 

@@ -7,7 +7,7 @@ const typing: ShortcutContext = { ...idle, inputLength: 4 };
 
 const ctrl = { ctrl: true, escape: false };
 const plain = { ctrl: false, escape: false };
-const escape = { ctrl: false, escape: true };
+const escapeKey = { ctrl: false, escape: true };
 
 describe("resolveShortcut", () => {
   it.each([
@@ -32,7 +32,7 @@ describe("resolveShortcut", () => {
     const modal: ShortcutContext = { ...idle, hasModal: true };
 
     it("dismisses on Escape", () => {
-      expect(resolveShortcut("", escape, modal)).toBe("close-modal");
+      expect(resolveShortcut("", escapeKey, modal)).toBe("close-modal");
     });
 
     it.each(["y", "d", "p", "r", "\r"])("swallows Ctrl+%s", (input) => {
@@ -62,7 +62,7 @@ describe("resolveShortcut", () => {
 
   describe("exit", () => {
     it("resolves from Escape outside a modal", () => {
-      expect(resolveShortcut("", escape, idle)).toBe("exit");
+      expect(resolveShortcut("", escapeKey, idle)).toBe("exit");
     });
 
     it("resolves from Ctrl+C", () => {

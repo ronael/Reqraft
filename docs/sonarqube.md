@@ -15,9 +15,42 @@ the historical trend across branches.
 The two overlap on rule findings, and that is intended: ESLint is the fast
 feedback loop, SonarQube is the gate of record.
 
-## Disabled rules
+## Rule set
 
-One rule is suppressed, at a single call site, with the rationale inline:
+`sonarjs.configs.recommended` enables 217 rules and leaves 62 off. Those 62 are
+re-enabled in `eslint.config.mjs`, minus the exceptions below, so a smell the
+preset would tolerate still fails the build.
+
+`sonarjs/no-duplicate-string` is scoped to `src/`. Fixtures legitimately repeat
+literals, and `sonar-project.properties` already separates test code through
+`sonar.tests`.
+
+## Tolerated rules
+
+Listed in `TOLERATED_SONAR_RULES` in `eslint.config.mjs`. Nothing is added here
+without a reason:
+
+- `sonarjs/cyclomatic-complexity` — redundant with `sonarjs/cognitive-complexity`,
+  already enforced at 15 and passing everywhere. The five functions it flagged
+  draw their score from `??` and `?.`, not from control flow: `runReprompt` has
+  eight `??` for two `if`. Satisfying the metric would mean deleting null-safety
+  fallbacks. SonarSource introduced Cognitive Complexity precisely because
+  Cyclomatic Complexity misreads readability, which is why the preset ships this
+  rule off.
+- `sonarjs/no-undefined-assignment` — asks for `null` instead of `undefined`.
+  The codebase models absence with optional properties, the TypeScript idiom;
+  `null` would widen the types for no gain.
+- `sonarjs/max-union-size` — caps unions at three members. `RepromptLevel` alone
+  has three, and discriminated unions are how the domain is typed.
+- `sonarjs/no-reference-error` — reports `console`, `setTimeout`, `NodeJS` and
+  `AbortSignal` as undeclared. The flat config declares no globals; TypeScript
+  already rejects genuinely undefined references.
+- `sonarjs/file-header` — would require a license header in all 100 files. A
+  convention the project has not adopted, not a smell.
+- `sonarjs/arrow-function-convention` and `sonarjs/shorthand-property-grouping` —
+  formatting opinions that collide with Prettier, which owns style here.
+
+## Suppressed call sites
 
 - `sonarjs/no-os-command-from-path` in `src/auth/credentials.ts`, on the
   `secret-tool` invocation. The Secret Service CLI has no stable absolute path

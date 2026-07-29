@@ -3,21 +3,39 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { PROVIDER_ENV } from "../../src/auth/credentials.js";
 
 const CLI = path.resolve(process.cwd(), "dist/cli.js");
 const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
+
+/**
+ * Environment for the CLI under test.
+ *
+ * Config is redirected to a throwaway home, and every provider key is removed:
+ * the suite runs on the mock provider, so a real — or placeholder — key in the
+ * developer's shell must never reach the CLI. Reqraft rejects placeholder keys
+ * on startup, which would otherwise fail the suite on that machine only.
+ */
+function testEnv(): NodeJS.ProcessEnv {
+  const providerKeys = new Set<string>(Object.values(PROVIDER_ENV));
+  const withoutProviderKeys = Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !providerKeys.has(name)),
+  );
+
+  return {
+    ...withoutProviderKeys,
+    HOME: TEST_CONFIG_HOME,
+    APPDATA: TEST_CONFIG_HOME,
+    XDG_CONFIG_HOME: TEST_CONFIG_HOME,
+  };
+}
 
 function run(args: string): { stdout: string; stderr: string; exitCode: number } {
   // process.execPath is absolute and pins the child to the very interpreter
   // running the suite, instead of whatever "node" PATH happens to resolve to.
   const result = spawnSync(process.execPath, [CLI, ...parseArgs(args)], {
     encoding: "utf8",
-    env: {
-      ...process.env,
-      HOME: TEST_CONFIG_HOME,
-      APPDATA: TEST_CONFIG_HOME,
-      XDG_CONFIG_HOME: TEST_CONFIG_HOME,
-    },
+    env: testEnv(),
   });
   return {
     stdout: result.stdout,

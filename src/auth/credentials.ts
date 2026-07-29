@@ -8,7 +8,7 @@ import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 
 const execFileAsync = promisify(execFile);
 
-const PROVIDER_ENV = {
+export const PROVIDER_ENV = {
   anthropic: "ANTHROPIC_API_KEY",
   openai: "OPENAI_API_KEY",
   deepseek: "DEEPSEEK_API_KEY",
@@ -16,6 +16,10 @@ const PROVIDER_ENV = {
 } as const;
 
 export type CredentialProvider = keyof typeof PROVIDER_ENV;
+
+/** Linux Secret Service CLI, and the attribute pair identifying a Reqraft key. */
+const SECRET_TOOL = "secret-tool";
+const SECRET_TOOL_KEYS = ["service", "reqraft", "provider"] as const;
 
 const PLACEHOLDER_CREDENTIALS = new Set([
   "ta-cle",
@@ -132,7 +136,7 @@ async function getCredential(provider: CredentialProvider): Promise<string | und
       ).stdout.trim();
     if (process.platform === "linux")
       return (
-        await execFileAsync("secret-tool", ["lookup", "service", "reqraft", "provider", provider])
+        await execFileAsync(SECRET_TOOL, ["lookup", ...SECRET_TOOL_KEYS, provider])
       ).stdout.trim();
   } catch {
     return undefined;
@@ -173,12 +177,10 @@ async function storeLinuxCredential(provider: CredentialProvider, secret: string
     // controls it has already won before this line runs. The command name is a
     // fixed literal; no part of it comes from user input.
     // eslint-disable-next-line sonarjs/no-os-command-from-path
-    const child = spawn("secret-tool", [
+    const child = spawn(SECRET_TOOL, [
       "store",
       "--label=Reqraft API key",
-      "service",
-      "reqraft",
-      "provider",
+      ...SECRET_TOOL_KEYS,
       provider,
     ]);
     child.once("error", reject);
@@ -196,7 +198,7 @@ async function deleteCredential(provider: CredentialProvider): Promise<void> {
     return;
   }
   if (process.platform === "linux") {
-    await execFileAsync("secret-tool", ["clear", "service", "reqraft", "provider", provider]);
+    await execFileAsync(SECRET_TOOL, ["clear", ...SECRET_TOOL_KEYS, provider]);
     return;
   }
   throw new Error("Le stockage sécurisé Windows n'est pas encore disponible.");

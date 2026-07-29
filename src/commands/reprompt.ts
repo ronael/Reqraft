@@ -148,21 +148,33 @@ async function resolveInput(options: RepromptCliOptions): Promise<string> {
   return "";
 }
 
+/**
+ * Writes the prompt itself.
+ *
+ * The rewritten prompt always goes to stdout so the command stays pipeable;
+ * only explanations are pushed to stderr.
+ */
+function writePrimaryOutput(result: RepromptResult, options: RepromptCliOptions): void {
+  if (options.json) {
+    console.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  if (options.diff) {
+    console.log(formatDiff(result.original, result.rewritten));
+    return;
+  }
+  console.log(result.rewritten);
+  if (options.explain) {
+    console.error(formatExplain(result));
+  }
+}
+
 async function outputResult(
   result: RepromptResult,
   options: RepromptCliOptions,
   defaultShowStats: boolean,
 ): Promise<void> {
-  if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
-  } else if (options.diff) {
-    console.log(formatDiff(result.original, result.rewritten));
-  } else if (options.explain) {
-    console.log(result.rewritten);
-    console.error(formatExplain(result));
-  } else {
-    console.log(result.rewritten);
-  }
+  writePrimaryOutput(result, options);
 
   if (!options.json && !options.explain && result.warnings.length > 0) {
     console.error("");
