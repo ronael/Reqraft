@@ -53,5 +53,5 @@ export class MistralProvider implements ProviderAdapter {
 }
 
 function isTransientMistralError(error: unknown): error is ProviderError {
-  return error instanceof ProviderError && error.message.startsWith("Provider error 503:");
+  return error instanceof ProviderError && error.httpStatus === 503;
 }

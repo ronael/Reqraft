@@ -2,13 +2,17 @@ import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 
 export class ProviderError extends Error {
+  readonly httpStatus?: number;
+
   constructor(
     message: string,
     readonly code: number,
     readonly cause?: unknown,
+    options: { httpStatus?: number } = {},
   ) {
     super(message);
     this.name = "ProviderError";
+    this.httpStatus = options.httpStatus;
   }
 }
 
@@ -34,5 +38,7 @@ export function raiseProviderError(response: Response, body: string): never {
       REPROMPT_POLICY.runtime.maxProviderErrorBodyCharacters,
     )}`,
     code,
+    undefined,
+    { httpStatus: response.status },
   );
 }
