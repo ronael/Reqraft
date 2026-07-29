@@ -6,6 +6,7 @@ import type {
   ModelInfo,
 } from "../core/types.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
+import { providerFetch } from "./http.js";
 
 interface AnthropicContent {
   type: string;
@@ -33,7 +34,7 @@ export class AnthropicProvider implements ProviderAdapter {
   ) {}
 
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
-    const response = await fetch(`${this.baseUrl}/messages`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/messages`, {
       method: "POST",
       signal: request.signal,
       headers: {
@@ -85,7 +86,7 @@ export class AnthropicProvider implements ProviderAdapter {
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
-    const response = await fetch(`${this.baseUrl}/models`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
       signal,
       headers: { "x-api-key": this.apiKey, "anthropic-version": "2023-06-01" },
     });

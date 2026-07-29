@@ -6,6 +6,7 @@ import type {
   ModelInfo,
 } from "../core/types.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
+import { providerFetch } from "./http.js";
 import { resolveModelCapabilities } from "../models/capabilities.js";
 
 interface OpenAIMessage {
@@ -65,7 +66,7 @@ export class OpenAIProvider implements ProviderAdapter {
       body.reasoning_effort = request.reasoningEffort;
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/chat/completions`, {
       method: "POST",
       signal: request.signal,
       headers: {
@@ -103,7 +104,7 @@ export class OpenAIProvider implements ProviderAdapter {
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
-    const response = await fetch(`${this.baseUrl}/models`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
       signal,
       headers: { Authorization: `Bearer ${this.apiKey}` },
     });
