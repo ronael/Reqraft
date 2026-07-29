@@ -9,6 +9,7 @@ import { writeClipboard } from "./clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "./config/loader.js";
 import type { Config } from "./config/schema.js";
 import type { RepromptLevel } from "./core/types.js";
+import { createUiRepromptInput } from "./ui/app-actions.js";
 import {
   applyLoadedConfig,
   clearCopyToast,
@@ -96,20 +97,7 @@ export function App(): React.JSX.Element {
     setState((prev) => beginGeneration(prev));
 
     try {
-      const { result } = await executeReprompt({
-        input: state.input,
-        profileId: state.profile,
-        level: state.level,
-        providerId: state.provider,
-        requestedModel: state.model,
-        defaultModel: state.model,
-        env: process.env,
-        config: config ?? undefined,
-        stream: config?.stream ?? DEFAULT_CONFIG.stream,
-        fidelityMode: config?.fidelityMode,
-        timeoutMs: config?.timeoutMs,
-        maxOutputTokens: config?.maxOutputTokens,
-      });
+      const { result } = await executeReprompt(createUiRepromptInput(state, config, process.env));
       setState((prev) => completeGeneration(prev, result));
     } catch (err) {
       setState((prev) => ({
@@ -119,7 +107,7 @@ export function App(): React.JSX.Element {
       generationInFlight.current = false;
       setIsLoading(false);
     }
-  }, [state.input, state.profile, state.level, state.provider, state.model, config]);
+  }, [state, config]);
 
   const closeModal = (): void => {
     setState(closeModalState);

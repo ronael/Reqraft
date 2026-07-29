@@ -15,6 +15,7 @@ import {
   toggleDiffView,
   updatePromptInput,
 } from "../../src/ui/app-state.js";
+import { createUiRepromptInput, resolveUiStreamPreference } from "../../src/ui/app-actions.js";
 import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
 import {
   getCommandOptions,
@@ -252,6 +253,62 @@ describe("app state transitions", () => {
       view: "diff",
     });
     expect(completeGeneration(state, result)).toMatchObject({ result, view: "result" });
+  });
+});
+
+describe("app action inputs", () => {
+  it("builds the shared reprompt use-case input from TUI state and config", () => {
+    const state = {
+      ...createInitialAppState({
+        defaultProfile: "auto",
+        defaultLevel: "standard",
+        defaultProvider: "openai",
+        defaultModel: "gpt-4.1-mini",
+      }),
+      input: "corrige ça",
+      profile: "frontend",
+      level: "complete" as const,
+      provider: "mock",
+      model: "mock-model",
+    };
+
+    const input = createUiRepromptInput(
+      state,
+      {
+        defaultProfile: "frontend",
+        defaultLevel: "complete",
+        defaultProvider: "mock",
+        defaultModel: "mock-model",
+        providers: {},
+        stream: true,
+        showStats: true,
+        showChanges: true,
+        copyAfterGeneration: false,
+        telemetry: false,
+        fidelityMode: "strict",
+        timeoutMs: 12_000,
+        maxOutputTokens: 900,
+      },
+      { OPENAI_API_KEY: "redacted" },
+    );
+
+    expect(input).toMatchObject({
+      input: "corrige ça",
+      profileId: "frontend",
+      level: "complete",
+      providerId: "mock",
+      requestedModel: "mock-model",
+      defaultModel: "mock-model",
+      stream: true,
+      fidelityMode: "strict",
+      timeoutMs: 12_000,
+      maxOutputTokens: 900,
+    });
+    expect(input.env.OPENAI_API_KEY).toBe("redacted");
+  });
+
+  it("falls back to the default stream preference before config is loaded", () => {
+    expect(resolveUiStreamPreference(null)).toBe(true);
   });
 });
 
