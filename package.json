@@ -1,6 +1,6 @@
 {
   "name": "@reqraft/cli",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "CLI open source de reprompting — transforme une demande brute en un prompt clair, fidèle et directement exploitable par une IA.",
   "main": "./dist/cli.js",
   "type": "module",
