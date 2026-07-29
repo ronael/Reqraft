@@ -3,6 +3,7 @@ import TextInput from "ink-text-input";
 import process from "node:process";
 import React, { useCallback, useEffect, useState } from "react";
 import { rewrite } from "./core/engine.js";
+import { prepareRewriteOptions } from "./core/rewrite-options.js";
 
 import { hydrateCredentials } from "./auth/credentials.js";
 import { writeClipboard } from "./clipboard/clipboard.js";
@@ -123,19 +124,20 @@ export function App(): React.JSX.Element {
       const { profile } = resolveProfile(state.profile, state.input);
       const provider = createProvider(state.provider as "mock", process.env, config ?? undefined);
       const { model, reasoningEffort } = resolveModel(state.provider, state.model, state.model);
-      const result = await rewrite({
-        input: state.input,
-        profile,
-        level: state.level,
-        provider,
-        model,
-        includeChanges: true,
-        stream: false,
-        reasoningEffort,
-        fidelityMode: config?.fidelityMode,
-        timeoutMs: config?.timeoutMs,
-        maxOutputTokens: config?.maxOutputTokens,
-      });
+      const result = await rewrite(
+        prepareRewriteOptions({
+          input: state.input,
+          profile,
+          level: state.level,
+          provider,
+          model,
+          stream: false,
+          reasoningEffort,
+          fidelityMode: config?.fidelityMode,
+          timeoutMs: config?.timeoutMs,
+          maxOutputTokens: config?.maxOutputTokens,
+        }),
+      );
       setState((prev) => ({ ...prev, result, view: "result" }));
     } catch (err) {
       setState((prev) => ({

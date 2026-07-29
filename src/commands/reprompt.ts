@@ -1,6 +1,7 @@
 import process from "node:process";
 import type { RepromptResult } from "../core/types.js";
 import { rewrite } from "../core/engine.js";
+import { prepareRewriteOptions } from "../core/rewrite-options.js";
 import { parseLevel } from "../core/levels.js";
 import { resolveProfile } from "../profiles/registry.js";
 import { createProvider } from "../providers/registry.js";
@@ -87,23 +88,24 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
     const provider = createProvider(providerId as "mock", process.env, config);
     const { model, reasoningEffort } = resolveModel(providerId, options.model, config.defaultModel);
 
-    const result = await rewrite({
-      input,
-      profile,
-      level,
-      provider,
-      model,
-      includeChanges: options.explain ?? options.json ?? config.showChanges,
-      stream: options.stream ?? config.stream,
-      reasoningEffort,
-      fidelityMode: options.fidelity ?? config.fidelityMode,
-      timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
-      maxOutputTokens: resolvePositiveInteger(
-        "La limite de sortie",
-        options.maxOutputTokens,
-        config.maxOutputTokens,
-      ),
-    });
+    const result = await rewrite(
+      prepareRewriteOptions({
+        input,
+        profile,
+        level,
+        provider,
+        model,
+        stream: options.stream ?? config.stream,
+        reasoningEffort,
+        fidelityMode: options.fidelity ?? config.fidelityMode,
+        timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
+        maxOutputTokens: resolvePositiveInteger(
+          "La limite de sortie",
+          options.maxOutputTokens,
+          config.maxOutputTokens,
+        ),
+      }),
+    );
 
     if (detected && options.verbose) {
       console.error(`Profil détecté : ${profile.id}`);
