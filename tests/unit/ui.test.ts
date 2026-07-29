@@ -2,6 +2,11 @@ import { describe, expect, it } from "vitest";
 import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
 import { shouldUseColor } from "../../src/ui/text.js";
 import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js";
+import {
+  beginGeneration,
+  canStartGeneration,
+  failGeneration,
+} from "../../src/ui/generation-state.js";
 
 describe("terminal layout", () => {
   it.each([
@@ -41,5 +46,23 @@ describe("quality notice", () => {
     );
 
     expect(first).not.toBe(second);
+  });
+});
+
+describe("generation state", () => {
+  it("does not start empty or concurrent generations", () => {
+    expect(canStartGeneration("", false)).toBe(false);
+    expect(canStartGeneration("   ", false)).toBe(false);
+    expect(canStartGeneration("corrige ça", true)).toBe(false);
+    expect(canStartGeneration("corrige ça", false)).toBe(true);
+  });
+
+  it("keeps the previous result visible while a new request starts or fails", () => {
+    const previous = { rewritten: "Résultat payé" };
+    const started = beginGeneration({ error: "ancienne erreur", result: previous, modal: null });
+    const failed = failGeneration(started, "nouvelle erreur");
+
+    expect(started).toEqual({ error: null, result: previous, modal: null });
+    expect(failed).toEqual({ error: "nouvelle erreur", result: previous, modal: null });
   });
 });

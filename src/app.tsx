@@ -1,7 +1,7 @@
 import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import process from "node:process";
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
 import { executeReprompt } from "./application/reprompt.js";
 import { hydrateCredentials } from "./auth/credentials.js";
@@ -26,6 +26,7 @@ import {
 } from "./ui/components/index.js";
 import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
 import { formatUiError } from "./ui/errors.js";
+import { beginGeneration, canStartGeneration, failGeneration } from "./ui/generation-state.js";
 import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
 import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
@@ -87,6 +88,7 @@ export function App(): React.JSX.Element {
     copied: false,
   });
   const [isLoading, setIsLoading] = useState(false);
+  const generationInFlight = useRef(false);
   const [config, setConfig] = useState<Config | null>(null);
   const [configReady, setConfigReady] = useState(false);
 
@@ -113,9 +115,10 @@ export function App(): React.JSX.Element {
   }, []);
 
   const generate = useCallback(async () => {
-    if (!state.input.trim()) return;
+    if (!canStartGeneration(state.input, generationInFlight.current)) return;
+    generationInFlight.current = true;
     setIsLoading(true);
-    setState((prev) => ({ ...prev, error: null, result: null }));
+    setState((prev) => beginGeneration(prev));
 
     try {
       const { result } = await executeReprompt({
@@ -135,10 +138,10 @@ export function App(): React.JSX.Element {
       setState((prev) => ({ ...prev, result, view: "result" }));
     } catch (err) {
       setState((prev) => ({
-        ...prev,
-        error: formatUiError(err, state.provider),
+        ...failGeneration(prev, formatUiError(err, state.provider)),
       }));
     } finally {
+      generationInFlight.current = false;
       setIsLoading(false);
     }
   }, [state.input, state.profile, state.level, state.provider, state.model, config]);
