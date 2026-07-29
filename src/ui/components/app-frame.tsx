@@ -6,11 +6,11 @@ export function AppFrame({
   mode,
   width,
   children,
-}: {
+}: Readonly<{
   mode: LayoutMode;
   width: number;
   children: React.ReactNode;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   return (
     <Box
       flexDirection="column"

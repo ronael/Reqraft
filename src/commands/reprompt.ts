@@ -36,32 +36,51 @@ export interface RepromptCliOptions {
   redactSecrets?: boolean;
 }
 
+/**
+ * Applies the local secret policy before any text leaves the machine.
+ *
+ * Returns the text to send: redacted on --redact-secrets, unchanged on
+ * --force. Otherwise the run stops with SECRET_DETECTED.
+ */
+function applySecretPolicy(input: string, options: RepromptCliOptions): string {
+  const secrets = detectSecrets(input);
+  if (secrets.length === 0 || options.force) {
+    return input;
+  }
+  if (options.redactSecrets) {
+    return redactSecrets(input);
+  }
+
+  console.error("Un secret potentiel a été détecté dans le texte.");
+  for (const secret of secrets) {
+    console.error(`  - ${secret.type}`);
+  }
+  console.error(
+    "Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.",
+  );
+  process.exit(EXIT_CODES.SECRET_DETECTED);
+}
+
+function reportFatalError(error: unknown, verbose: boolean): never {
+  const message = error instanceof Error ? error.message : String(error);
+  console.error(`Erreur : ${message}`);
+  if (verbose && error instanceof Error && error.stack) {
+    console.error(error.stack);
+  }
+  process.exit(EXIT_CODES.GENERAL_ERROR);
+}
+
 export async function runReprompt(options: RepromptCliOptions): Promise<void> {
   try {
     const config = await loadConfig();
     await hydrateCredentials(process.env);
-    let input = await resolveInput(options);
-    if (!input) {
+    const rawInput = await resolveInput(options);
+    if (!rawInput) {
       console.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
       process.exit(EXIT_CODES.INVALID_INPUT);
     }
 
-    const secrets = detectSecrets(input);
-    if (secrets.length > 0 && !options.force) {
-      if (options.redactSecrets) {
-        input = redactSecrets(input);
-      } else {
-        console.error("Un secret potentiel a été détecté dans le texte.");
-        for (const secret of secrets) {
-          console.error(`  - ${secret.type}`);
-        }
-        console.error(
-          "Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.",
-        );
-        process.exit(EXIT_CODES.SECRET_DETECTED);
-      }
-    }
-
+    const input = applySecretPolicy(rawInput, options);
     const level = parseLevel(options.level ?? config.defaultLevel);
     const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
     const providerId = options.provider ?? config.defaultProvider;
@@ -92,12 +111,7 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
 
     await outputResult(result, options, config.showStats);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Erreur : ${message}`);
-    if (options.verbose && error instanceof Error && error.stack) {
-      console.error(error.stack);
-    }
-    process.exit(EXIT_CODES.GENERAL_ERROR);
+    reportFatalError(error, options.verbose ?? false);
   }
 }
 

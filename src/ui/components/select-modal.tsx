@@ -20,7 +20,7 @@ export function SelectModal<T extends string>({
   options,
   onSelect,
   onCancel,
-}: SelectModalProps<T>): React.JSX.Element {
+}: Readonly<SelectModalProps<T>>): React.JSX.Element {
   const items = options.map((option) => ({ label: option.label, value: option.value }));
 
   useInput((input, key) => {

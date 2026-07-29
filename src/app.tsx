@@ -1,19 +1,18 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { Box, Text, useInput, useApp } from "ink";
+import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import process from "node:process";
+import React, { useCallback, useEffect, useState } from "react";
 import { rewrite } from "./core/engine.js";
 
-import type { RepromptLevel, RepromptResult } from "./core/types.js";
-import type { Config } from "./config/schema.js";
+import { hydrateCredentials } from "./auth/credentials.js";
+import { writeClipboard } from "./clipboard/clipboard.js";
 import { DEFAULT_CONFIG, loadConfig } from "./config/loader.js";
-import { resolveProfile, listProfiles } from "./profiles/registry.js";
-import { createProvider, listProviders } from "./providers/registry.js";
+import type { Config } from "./config/schema.js";
+import type { RepromptLevel, RepromptResult } from "./core/types.js";
 import { resolveModel } from "./models/model-resolver.js";
 import { getPresetModels } from "./models/presets.js";
-import { writeClipboard } from "./clipboard/clipboard.js";
-import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
-import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
+import { listProfiles, resolveProfile } from "./profiles/registry.js";
+import { createProvider, listProviders } from "./providers/registry.js";
 import {
   AppFrame,
   EmptyState,
@@ -26,15 +25,39 @@ import {
   Spinner,
   StatusBadge,
 } from "./ui/components/index.js";
-import { hydrateCredentials } from "./auth/credentials.js";
+import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
 import { formatUiError } from "./ui/errors.js";
+import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
+import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
 import { theme } from "./ui/theme/tokens.js";
 
 type ViewMode = "result" | "diff" | "explain";
 type ModalType = "profile" | "level" | "provider" | "model" | "commands" | "help" | null;
 type CommandAction =
   "generate" | "profile" | "level" | "provider" | "model" | "result" | "diff" | "explain" | "copy";
+
+/** Panel titles per view. Lookup tables keep the render path free of ladders. */
+const RESULT_TITLES: Record<ViewMode, string> = {
+  result: "Prompt amélioré",
+  diff: "Diff",
+  explain: "Explication",
+};
+
+const EMPTY_STATE_TITLES: Record<ViewMode, string> = {
+  result: "Aucun résultat pour le moment.",
+  diff: "Le diff sera disponible après une génération.",
+  explain: "L’explication sera disponible après une génération.",
+};
+
+const MODAL_TITLES: Record<NonNullable<ModalType>, string> = {
+  help: "Aide",
+  commands: "Palette d’actions",
+  profile: "Sélection",
+  level: "Sélection",
+  provider: "Sélection",
+  model: "Sélection",
+};
 
 interface AppState {
   input: string;
@@ -123,72 +146,6 @@ export function App(): React.JSX.Element {
       setIsLoading(false);
     }
   }, [state.input, state.profile, state.level, state.provider, state.model, config]);
-
-  useInput((input, key) => {
-    if (state.modal) {
-      if (key.escape) {
-        setState((prev) => ({ ...prev, modal: null }));
-      }
-      return;
-    }
-
-    if (key.ctrl && input === "\r") {
-      void generate();
-      return;
-    }
-    if (key.ctrl && input === "y") {
-      setState((prev) => ({ ...prev, input: state.input }));
-      if (state.result) {
-        void writeClipboard(state.result.rewritten).then(() => {
-          setState((prev) => ({ ...prev, copied: true }));
-          setTimeout(() => {
-            setState((prev) => ({ ...prev, copied: false }));
-          }, theme.behavior.toastDurationMs);
-        });
-      }
-      return;
-    }
-    if (key.ctrl && input === "d") {
-      setState((prev) => ({
-        ...prev,
-        input: state.input,
-        view: prev.view === "diff" ? "result" : "diff",
-      }));
-      return;
-    }
-    if (key.ctrl && input === "p") {
-      setState((prev) => ({ ...prev, input: state.input, modal: "profile" }));
-      return;
-    }
-    if (key.ctrl && input === "m") {
-      setState((prev) => ({ ...prev, input: state.input, modal: "model" }));
-      return;
-    }
-    if (key.ctrl && input === "l") {
-      setState((prev) => ({ ...prev, input: state.input, modal: "level" }));
-      return;
-    }
-    if (key.ctrl && input === "r") {
-      setState((prev) => ({ ...prev, input: state.input }));
-      void generate();
-      return;
-    }
-    if (key.ctrl && input === "k") {
-      setState((prev) => ({ ...prev, input: state.input, modal: "commands" }));
-      return;
-    }
-    if (key.ctrl && input === "e" && state.result) {
-      setState((prev) => ({ ...prev, input: state.input, view: "explain" }));
-      return;
-    }
-    if (input === "?" && state.input.length === 0) {
-      setState((prev) => ({ ...prev, input: state.input, modal: "help" }));
-      return;
-    }
-    if (key.escape || (key.ctrl && input === "c")) {
-      exit();
-    }
-  });
 
   const renderModal = (): React.JSX.Element | null => {
     switch (state.modal) {
@@ -317,13 +274,14 @@ export function App(): React.JSX.Element {
   const submitInput = (): void => {
     void generate();
   };
-  const copyResult = (): void => {
+  const clearCopied = (): void => {
+    setState((prev) => ({ ...prev, copied: false }));
+  };
+  const copyResult = (dismissModal: boolean): void => {
     if (!state.result) return;
     void writeClipboard(state.result.rewritten).then(() => {
-      setState((prev) => ({ ...prev, copied: true, modal: null }));
-      setTimeout(() => {
-        setState((prev) => ({ ...prev, copied: false }));
-      }, theme.behavior.toastDurationMs);
+      setState((prev) => ({ ...prev, copied: true, modal: dismissModal ? null : prev.modal }));
+      setTimeout(clearCopied, theme.behavior.toastDurationMs);
     });
   };
   const runCommand = (action: CommandAction): void => {
@@ -337,11 +295,72 @@ export function App(): React.JSX.Element {
       return;
     }
     if (action === "copy") {
-      copyResult();
+      copyResult(true);
       return;
     }
     setState((prev) => ({ ...prev, view: action as ViewMode, modal: null }));
   };
+
+  // Keyboard shortcuts pin the current input: the TextInput value must survive
+  // a state update triggered from outside the input itself.
+  const pinInput = (patch: Partial<AppState>): void => {
+    setState((prev) => ({ ...prev, input: state.input, ...patch }));
+  };
+  const toggleDiff = (): void => {
+    setState((prev) => ({
+      ...prev,
+      input: state.input,
+      view: prev.view === "diff" ? "result" : "diff",
+    }));
+  };
+
+  const shortcutHandlers: Record<ShortcutAction, () => void> = {
+    "close-modal": closeModal,
+    exit,
+    generate: submitInput,
+    regenerate: () => {
+      pinInput({});
+      void generate();
+    },
+    copy: () => {
+      pinInput({});
+      copyResult(false);
+    },
+    "toggle-diff": toggleDiff,
+    "show-explain": () => {
+      pinInput({ view: "explain" });
+    },
+    "open-profile": () => {
+      pinInput({ modal: "profile" });
+    },
+    "open-level": () => {
+      pinInput({ modal: "level" });
+    },
+    "open-model": () => {
+      pinInput({ modal: "model" });
+    },
+    "open-commands": () => {
+      pinInput({ modal: "commands" });
+    },
+    "open-help": () => {
+      pinInput({ modal: "help" });
+    },
+  };
+
+  useInput((input, key) => {
+    const action = resolveShortcut(
+      input,
+      { ctrl: key.ctrl, escape: key.escape },
+      {
+        hasModal: state.modal !== null,
+        hasResult: state.result !== null,
+        inputLength: state.input.length,
+      },
+    );
+    if (action) {
+      shortcutHandlers[action]();
+    }
+  });
 
   const renderResult = (): string => {
     if (!state.result) return "";
@@ -359,9 +378,32 @@ export function App(): React.JSX.Element {
   const resultText = renderResult();
   const layoutMode = getLayoutMode(columns);
   const compact = layoutMode !== "wide";
-  const resultTitle =
-    state.view === "diff" ? "Diff" : state.view === "explain" ? "Explication" : "Prompt amélioré";
+  const resultTitle = RESULT_TITLES[state.view];
   const frameWidth = getFrameWidth(columns);
+
+  const renderResultBody = (): React.JSX.Element => {
+    if (isLoading) {
+      return <Spinner />;
+    }
+    if (state.error) {
+      return <Notice tone="danger">{state.error}</Notice>;
+    }
+    if (state.result) {
+      return (
+        <>
+          <Text wrap="wrap">{resultText}</Text>
+          <MetaRow result={state.result} />
+          <QualityNotice quality={state.result.quality} />
+        </>
+      );
+    }
+    return (
+      <EmptyState
+        title={EMPTY_STATE_TITLES[state.view]}
+        action="Appuie sur Entrée pour générer une reformulation."
+      />
+    );
+  };
 
   if (!configReady) {
     return (
@@ -380,16 +422,7 @@ export function App(): React.JSX.Element {
     return (
       <AppFrame mode={layoutMode} width={frameWidth}>
         <HeaderBar provider={state.provider} model={state.model} compact={compact} />
-        <SectionCard
-          title={
-            state.modal === "help"
-              ? "Aide"
-              : state.modal === "commands"
-                ? "Palette d’actions"
-                : "Sélection"
-          }
-          tone="primary"
-        >
+        <SectionCard title={MODAL_TITLES[state.modal]} tone="primary">
           {renderModal()}
         </SectionCard>
       </AppFrame>
@@ -419,28 +452,7 @@ export function App(): React.JSX.Element {
         )}
       </Box>
       <SectionCard title={resultTitle} tone={state.result ? "primary" : "secondary"}>
-        {isLoading ? (
-          <Spinner />
-        ) : state.error ? (
-          <Notice tone="danger">{state.error}</Notice>
-        ) : state.result ? (
-          <>
-            <Text wrap="wrap">{resultText}</Text>
-            <MetaRow result={state.result} />
-            <QualityNotice quality={state.result.quality} />
-          </>
-        ) : (
-          <EmptyState
-            title={
-              state.view === "diff"
-                ? "Le diff sera disponible après une génération."
-                : state.view === "explain"
-                  ? "L’explication sera disponible après une génération."
-                  : "Aucun résultat pour le moment."
-            }
-            action="Appuie sur Entrée pour générer une reformulation."
-          />
-        )}
+        {renderResultBody()}
       </SectionCard>
       <ShortcutBar compact={compact} hasResult={Boolean(state.result)} />
 

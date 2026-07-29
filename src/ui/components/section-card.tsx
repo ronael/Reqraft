@@ -7,11 +7,11 @@ export function SectionCard({
   title,
   children,
   tone = "secondary",
-}: {
+}: Readonly<{
   title: string;
   children: React.ReactNode;
   tone?: PanelTone;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   if (tone === "inline") {
     return (
       <Box flexDirection="column" paddingX={1} marginBottom={1}>

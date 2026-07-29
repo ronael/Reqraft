@@ -8,7 +8,9 @@ const CLI = path.resolve(process.cwd(), "dist/cli.js");
 const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));
 
 function run(args: string): { stdout: string; stderr: string; exitCode: number } {
-  const result = spawnSync("node", [CLI, ...parseArgs(args)], {
+  // process.execPath is absolute and pins the child to the very interpreter
+  // running the suite, instead of whatever "node" PATH happens to resolve to.
+  const result = spawnSync(process.execPath, [CLI, ...parseArgs(args)], {
     encoding: "utf8",
     env: {
       ...process.env,
@@ -33,29 +35,23 @@ function parseArgs(args: string): string[] {
   return parsed;
 }
 
+/** Invocations that must succeed and print an identifying marker on stdout. */
+const stdoutCases: { name: string; args: string; expected: string | RegExp }[] = [
+  { name: "shows help", args: "--help", expected: "rp|reprompt" },
+  { name: "shows version", args: "--version", expected: /^\d+\.\d+\.\d+/ },
+  { name: "shows init in help", args: "--help", expected: "init" },
+  {
+    name: "reprompts a simple text with mock provider",
+    args: '"test" --provider mock',
+    expected: "[mock]",
+  },
+];
+
 describe("CLI e2e", () => {
-  it("shows help", () => {
-    const { stdout, exitCode } = run("--help");
+  it.each(stdoutCases)("$name", ({ args, expected }) => {
+    const { stdout, exitCode } = run(args);
     expect(exitCode).toBe(0);
-    expect(stdout).toContain("rp|reprompt");
-  });
-
-  it("shows version", () => {
-    const { stdout, exitCode } = run("--version");
-    expect(exitCode).toBe(0);
-    expect(stdout).toMatch(/^\d+\.\d+\.\d+/);
-  });
-
-  it("shows init in help", () => {
-    const { stdout, exitCode } = run("--help");
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("init");
-  });
-
-  it("reprompts a simple text with mock provider", () => {
-    const { stdout, exitCode } = run('"test" --provider mock');
-    expect(exitCode).toBe(0);
-    expect(stdout).toContain("[mock]");
+    expect(stdout).toMatch(expected);
   });
 
   it("outputs json", () => {

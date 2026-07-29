@@ -135,7 +135,7 @@ describe("OpenAI provider", () => {
     const call = vi.mocked(globalThis.fetch).mock.calls[0];
     if (!call?.[1]) throw new Error("fetch not called");
     const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
-    expect(body.temperature).toBe(0.2);
+    expect(body.temperature).toBeCloseTo(0.2, 10);
   });
 });
 

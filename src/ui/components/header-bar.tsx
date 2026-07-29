@@ -6,11 +6,11 @@ export function HeaderBar({
   provider,
   model,
   compact,
-}: {
+}: Readonly<{
   provider: string;
   model: string;
   compact: boolean;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   return (
     <Box justifyContent="space-between" marginBottom={1}>
       <Box>

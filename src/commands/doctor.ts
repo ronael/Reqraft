@@ -43,9 +43,10 @@ export async function runDoctor(): Promise<void> {
     try {
       const provider = createProvider(id as "mock", env, config);
       const health = await provider.validateConfiguration();
-      console.log(
-        `  ${id.padEnd(20)} : ${health.ok ? "OK" : `manque ${health.missingConfiguration?.join(", ") ?? "configuration"}`}`,
-      );
+      const status = health.ok
+        ? "OK"
+        : `manque ${health.missingConfiguration?.join(", ") ?? "configuration"}`;
+      console.log(`  ${id.padEnd(20)} : ${status}`);
     } catch {
       console.log(`  ${id.padEnd(20)} : erreur`);
     }

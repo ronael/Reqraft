@@ -14,10 +14,10 @@ const prefixes: Record<NoticeTone, string> = {
 export function Notice({
   tone,
   children,
-}: {
+}: Readonly<{
   tone: NoticeTone;
   children: React.ReactNode;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   return (
     <Box marginBottom={1}>
       <Text color={theme.color[tone]}>

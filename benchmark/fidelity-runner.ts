@@ -184,7 +184,8 @@ async function main(): Promise<void> {
   const provider = process.argv[2] ?? "mock";
   const model = process.argv[3];
 
-  console.log(`Fidelity benchmark provider=${provider}${model ? ` model=${model}` : ""}`);
+  const modelSuffix = model ? ` model=${model}` : "";
+  console.log(`Fidelity benchmark provider=${provider}${modelSuffix}`);
   const run = await runFidelityBenchmark(provider, model);
 
   const outDir = path.join(process.cwd(), "benchmark-results");

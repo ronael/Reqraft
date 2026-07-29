@@ -5,9 +5,9 @@ import { Notice } from "./notice.js";
 
 export function QualityNotice({
   quality,
-}: {
+}: Readonly<{
   quality: QualityAssessment;
-}): React.JSX.Element | null {
+}>): React.JSX.Element | null {
   if (quality.status === "good") return null;
 
   const tone = quality.status === "risky" ? "danger" : "warning";

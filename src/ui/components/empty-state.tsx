@@ -4,10 +4,10 @@ import { Box, Text } from "ink";
 export function EmptyState({
   title,
   action,
-}: {
+}: Readonly<{
   title: string;
   action: string;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   return (
     <Box flexDirection="column">
       <Text dimColor>{title}</Text>

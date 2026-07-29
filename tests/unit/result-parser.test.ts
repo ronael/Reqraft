@@ -10,6 +10,32 @@ describe("stripMarkdownFences", () => {
   it("keeps plain text", () => {
     expect(stripMarkdownFences("hello")).toBe("hello");
   });
+
+  it("removes fences without a language tag", () => {
+    expect(stripMarkdownFences('```\n{"rewritten":"hello"}\n```')).toBe('{"rewritten":"hello"}');
+  });
+
+  it("removes single-line fences", () => {
+    expect(stripMarkdownFences('```{"a":1}```')).toBe('{"a":1}');
+  });
+
+  it("keeps an empty fence untouched", () => {
+    expect(stripMarkdownFences("``````")).toBe("``````");
+    expect(stripMarkdownFences("```   ```")).toBe("```   ```");
+  });
+
+  it("stays linear on an unterminated fence", () => {
+    // The former regex combined `\s*\n?` with a lazy `[\s\S]*?` and an end
+    // anchor, which backtracked quadratically. This input took seconds then.
+    const payload = "```json" + "\n".repeat(6400) + "x```".repeat(64000) + "x";
+
+    const start = performance.now();
+    const result = stripMarkdownFences(payload);
+    const elapsed = performance.now() - start;
+
+    expect(result).toBe(payload);
+    expect(elapsed).toBeLessThan(500);
+  });
 });
 
 describe("parseResult", () => {

@@ -197,6 +197,10 @@ export function createInitConfig(input: InitConfigInput): Config {
 }
 
 export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
+  const maxOutputSummary =
+    config.maxOutputTokens === undefined
+      ? "adaptative"
+      : `${String(config.maxOutputTokens)} tokens`;
   const lines = [
     "Configuration Reqraft",
     "",
@@ -208,7 +212,7 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
     `Copie auto.    ${config.copyAfterGeneration ? "oui" : "non"}`,
     `Streaming      ${config.stream ? "oui" : "non"}`,
     `Timeout        ${String(config.timeoutMs)} ms`,
-    `Sortie max.    ${config.maxOutputTokens === undefined ? "adaptative" : `${String(config.maxOutputTokens)} tokens`}`,
+    `Sortie max.    ${maxOutputSummary}`,
     `Stats          ${config.showStats ? "oui" : "non"}`,
     "Télémétrie     désactivée",
   ];
@@ -245,6 +249,95 @@ export function buildPostInitSecurityNote(
   ].join("\n");
 }
 
+/** Asks for confirmation before discarding an existing configuration. */
+async function confirmOverwrite(io: InitIo, question: string): Promise<Config | null> {
+  const confirmed = await askConfirm(io, question, false);
+  if (!confirmed) {
+    io.write("Initialisation annulée.\n");
+    return null;
+  }
+  return DEFAULT_CONFIG;
+}
+
+/**
+ * Resolves the configuration the wizard starts from.
+ *
+ * Returns null when nothing should be written: the user cancelled, or only
+ * asked to display the existing configuration.
+ */
+async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | null> {
+  if (!existsSync(configPath())) {
+    writeIntro(io);
+    return DEFAULT_CONFIG;
+  }
+
+  const existingConfig = await loadConfig();
+
+  if (reset) {
+    writeIntro(io);
+    return await confirmOverwrite(
+      io,
+      "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ?",
+    );
+  }
+
+  const action = await askExistingConfigAction(io, existingConfig);
+  if (action === "cancel") {
+    io.write("Initialisation annulée.\n");
+    return null;
+  }
+  if (action === "show") {
+    io.write(`${JSON.stringify(existingConfig, null, 2)}\n`);
+    return null;
+  }
+  if (action === "reset") {
+    return await confirmOverwrite(io, "Confirmer l'écrasement de la configuration existante ?");
+  }
+  return existingConfig;
+}
+
+/** Collects choices, shows the summary, and loops until the user saves or cancels. */
+async function runConfigurationLoop(
+  io: InitIo,
+  baseConfig: Config,
+  env: NodeJS.ProcessEnv,
+  shell: string,
+): Promise<void> {
+  for (;;) {
+    const collected = await collectConfig(io, baseConfig, env, shell);
+    const config = createInitConfig({ ...collected, existing: baseConfig });
+    const keyStatus = buildApiKeyStatus(
+      collected.provider,
+      env,
+      collected.compatibleProvider?.apiKeyEnv,
+    );
+
+    io.write(`\n${buildSummary(config, keyStatus)}\n\n`);
+    const decision = await askMenu(io, "Que souhaites-tu faire ?", [
+      "Enregistrer la configuration",
+      "Modifier un choix",
+      "Annuler",
+    ]);
+
+    if (decision === 1) {
+      continue;
+    }
+    if (decision === 2) {
+      io.write("Initialisation annulée.\n");
+      return;
+    }
+
+    await saveConfig(config);
+    await verifySavedConfig(config, keyStatus, io);
+    const securityNote = buildPostInitSecurityNote(keyStatus, shell);
+    if (securityNote) {
+      io.write(`\n${securityNote}\n`);
+    }
+    await maybeRunConnectionTest(config, keyStatus, io, env);
+    return;
+  }
+}
+
 export async function runFirstRunSetup(options: RunFirstRunOptions = {}): Promise<void> {
   const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout);
   const env = options.env ?? process.env;
@@ -252,88 +345,38 @@ export async function runFirstRunSetup(options: RunFirstRunOptions = {}): Promis
   const shell = options.shell ?? process.env.SHELL ?? "";
 
   try {
-    const pathToConfig = configPath();
-    const hasExistingConfig = existsSync(pathToConfig);
-    const existingConfig = hasExistingConfig ? await loadConfig() : undefined;
-    let baseConfig = options.reset ? DEFAULT_CONFIG : (existingConfig ?? DEFAULT_CONFIG);
-
-    if (hasExistingConfig && options.reset) {
-      writeIntro(io);
-      const confirmed = await askConfirm(
-        io,
-        "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ?",
-        false,
-      );
-      if (!confirmed) {
-        io.write("Initialisation annulée.\n");
-        return;
-      }
-      baseConfig = DEFAULT_CONFIG;
-    } else if (hasExistingConfig) {
-      if (!existingConfig) {
-        throw new Error("Configuration existante introuvable.");
-      }
-      const action = await askExistingConfigAction(io, existingConfig);
-      if (action === "cancel") {
-        io.write("Initialisation annulée.\n");
-        return;
-      }
-      if (action === "show") {
-        io.write(`${JSON.stringify(existingConfig, null, 2)}\n`);
-        return;
-      }
-      if (action === "reset") {
-        const confirmed = await askConfirm(
-          io,
-          "Confirmer l'écrasement de la configuration existante ?",
-          false,
-        );
-        if (!confirmed) {
-          io.write("Initialisation annulée.\n");
-          return;
-        }
-        baseConfig = DEFAULT_CONFIG;
-      }
-    } else {
-      writeIntro(io);
-    }
-
-    for (;;) {
-      const collected = await collectConfig(io, baseConfig, env, shell);
-      const config = createInitConfig({ ...collected, existing: baseConfig });
-      const keyStatus = buildApiKeyStatus(
-        collected.provider,
-        env,
-        collected.compatibleProvider?.apiKeyEnv,
-      );
-
-      io.write(`\n${buildSummary(config, keyStatus)}\n\n`);
-      const decision = await askMenu(io, "Que souhaites-tu faire ?", [
-        "Enregistrer la configuration",
-        "Modifier un choix",
-        "Annuler",
-      ]);
-
-      if (decision === 1) {
-        continue;
-      }
-      if (decision === 2) {
-        io.write("Initialisation annulée.\n");
-        return;
-      }
-
-      await saveConfig(config);
-      await verifySavedConfig(config, keyStatus, io);
-      const securityNote = buildPostInitSecurityNote(keyStatus, shell);
-      if (securityNote) {
-        io.write(`\n${securityNote}\n`);
-      }
-      await maybeRunConnectionTest(config, keyStatus, io, env);
+    const baseConfig = await resolveBaseConfig(io, options.reset ?? false);
+    if (!baseConfig) {
       return;
     }
+    await runConfigurationLoop(io, baseConfig, env, shell);
   } finally {
     io.close();
   }
+}
+
+/**
+ * Asks for the model to use.
+ *
+ * A self-hosted or custom OpenAI-compatible endpoint publishes no preset
+ * catalogue, so the identifier is typed in. Every other case, including a
+ * compatible provider matching a known gateway, goes through the preset list.
+ */
+async function askModelIdentifier(
+  io: InitIo,
+  provider: InitProvider,
+  defaults: Config,
+  compatibleProvider: CompatibleProviderInput | undefined,
+): Promise<string> {
+  if (compatibleProvider?.baseUrl) {
+    if (compatibleProvider.id === "local") {
+      return await askText(io, "Identifiant du modèle", defaults.defaultModel || "local-model");
+    }
+    if (compatibleProvider.id === "custom") {
+      return await askText(io, "Identifiant du modèle", defaults.defaultModel);
+    }
+  }
+  return await askModel(io, provider, defaults.defaultModel);
 }
 
 async function collectConfig(
@@ -369,13 +412,12 @@ async function collectConfig(
       }
     }
 
-    const model = compatibleProvider?.baseUrl
-      ? compatibleProvider.id === "local"
-        ? await askText(io, "Identifiant du modèle", defaults.defaultModel || "local-model")
-        : compatibleProvider.id === "custom"
-          ? await askText(io, "Identifiant du modèle", defaults.defaultModel)
-          : await askModel(io, providerChoice.provider, defaults.defaultModel)
-      : await askModel(io, providerChoice.provider, defaults.defaultModel);
+    const model = await askModelIdentifier(
+      io,
+      providerChoice.provider,
+      defaults,
+      compatibleProvider,
+    );
 
     return {
       provider: providerChoice.provider,
@@ -707,6 +749,7 @@ async function askConfirm(io: InitIo, question: string, defaultValue: boolean): 
 }
 
 async function askText(io: InitIo, question: string, defaultValue: string): Promise<string> {
-  const answer = await io.question(`${question}${defaultValue ? ` (${defaultValue})` : ""} : `);
+  const defaultHint = defaultValue ? ` (${defaultValue})` : "";
+  const answer = await io.question(`${question}${defaultHint} : `);
   return answer ? answer : defaultValue;
 }

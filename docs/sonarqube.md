@@ -1,8 +1,31 @@
 # SonarQube
 
-Reqraft uses ESLint for immediate local TypeScript rules and SonarQube for
-repository-level maintainability, reliability, security and coverage analysis.
-They are complementary checks.
+Reqraft runs Sonar analysis at two levels, on purpose.
+
+`eslint-plugin-sonarjs` runs the Sonar rule set locally, inside ESLint, so a
+maintainability or reliability issue fails on the developer's machine during
+`pnpm lint` instead of in CI. Its `recommended` config is enabled as-is in
+`eslint.config.mjs`; no rule is disabled without a documented rationale in this
+file.
+
+SonarQube keeps what a local linter structurally cannot provide: coverage
+measurement, the new-code quality gate, cross-file duplication detection, and
+the historical trend across branches.
+
+The two overlap on rule findings, and that is intended: ESLint is the fast
+feedback loop, SonarQube is the gate of record.
+
+## Disabled rules
+
+One rule is suppressed, at a single call site, with the rationale inline:
+
+- `sonarjs/no-os-command-from-path` in `src/auth/credentials.ts`, on the
+  `secret-tool` invocation. The Secret Service CLI has no stable absolute path
+  across distributions, Nix and Homebrew, so pinning one would break legitimate
+  installs. It would also add no security boundary, since `rp` is itself
+  resolved from the same `PATH`. The command name is a fixed literal.
+
+Any new suppression belongs in this list, with its reasoning.
 
 ## Local quality suite
 

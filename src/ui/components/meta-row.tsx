@@ -2,7 +2,7 @@ import React from "react";
 import { Box, Text } from "ink";
 import type { RepromptResult } from "../../core/types.js";
 
-export function MetaRow({ result }: { result: RepromptResult }): React.JSX.Element {
+export function MetaRow({ result }: Readonly<{ result: RepromptResult }>): React.JSX.Element {
   const values = [
     result.latencyMs === undefined ? undefined : formatDuration(result.latencyMs),
     formatTokens("entrée", result.usage?.inputTokens),

@@ -106,7 +106,8 @@ async function main(): Promise<void> {
   const provider = process.argv[2] ?? "mock";
   const model = process.argv[3];
 
-  console.log(`Benchmark avec provider=${provider}${model ? ` model=${model}` : ""}`);
+  const modelSuffix = model ? ` model=${model}` : "";
+  console.log(`Benchmark avec provider=${provider}${modelSuffix}`);
   const run = await runBenchmark(provider, model);
 
   const outDir = path.join(process.cwd(), "benchmark-results");

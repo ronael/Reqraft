@@ -5,10 +5,10 @@ import { theme } from "../theme/tokens.js";
 export function ShortcutBar({
   compact,
   hasResult,
-}: {
+}: Readonly<{
   compact: boolean;
   hasResult: boolean;
-}): React.JSX.Element {
+}>): React.JSX.Element {
   const items = compact
     ? [
         ["Entrée", "Générer"],

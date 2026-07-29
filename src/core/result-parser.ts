@@ -13,15 +13,32 @@ export interface ParsedResult {
   format: "structured" | "raw";
 }
 
-const FENCE_REGEX = /^```(?:json)?\s*\n?([\s\S]*?)```$/;
+const FENCE = "```";
+const FENCE_LANGUAGE = "json";
 
+/**
+ * Removes a surrounding markdown code fence.
+ *
+ * Deliberately implemented with string slicing rather than a regular
+ * expression: the input is untrusted provider output, and a fence pattern
+ * combining a lazy `[\s\S]*?` with an end anchor backtracks super-linearly on
+ * an unterminated fence. Slicing keeps this linear, which matters because
+ * parseResult must always return.
+ */
 export function stripMarkdownFences(text: string): string {
   const trimmed = text.trim();
-  const match = FENCE_REGEX.exec(trimmed);
-  if (match?.[1]) {
-    return match[1].trim();
+  if (!trimmed.startsWith(FENCE) || !trimmed.endsWith(FENCE)) {
+    return trimmed;
   }
-  return trimmed;
+
+  const body = trimmed.slice(FENCE.length, -FENCE.length);
+  const withoutLanguage = body.startsWith(FENCE_LANGUAGE)
+    ? body.slice(FENCE_LANGUAGE.length)
+    : body;
+  const content = withoutLanguage.trim();
+
+  // An empty fence carries no payload; keep the original text unchanged.
+  return content === "" ? trimmed : content;
 }
 
 export function parseResult(text: string): ParsedResult {

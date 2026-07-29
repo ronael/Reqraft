@@ -65,17 +65,27 @@ export async function logout(provider: CredentialProvider): Promise<void> {
   console.log(`Clé ${provider} supprimée du stockage sécurisé.`);
 }
 
+/**
+ * Describes where a provider key comes from, honouring the documented
+ * precedence: an environment variable always wins over secure storage.
+ */
+async function describeCredentialSource(
+  provider: CredentialProvider,
+  envCredential: string | undefined,
+): Promise<string> {
+  if (envCredential) {
+    return isPlaceholderCredential(envCredential)
+      ? "variable d'environnement invalide (valeur d'exemple)"
+      : "variable d'environnement";
+  }
+  return (await getCredential(provider)) ? "stockage sécurisé" : "non configurée";
+}
+
 export async function credentialStatus(): Promise<void> {
   printScreen("Clés API", "Source active pour chaque provider");
   for (const provider of Object.keys(PROVIDER_ENV) as CredentialProvider[]) {
     const envCredential = process.env[PROVIDER_ENV[provider]];
-    const source = envCredential
-      ? isPlaceholderCredential(envCredential)
-        ? "variable d'environnement invalide (valeur d'exemple)"
-        : "variable d'environnement"
-      : (await getCredential(provider))
-        ? "stockage sécurisé"
-        : "non configurée";
+    const source = await describeCredentialSource(provider, envCredential);
     console.log(`${provider.padEnd(10)} ${source}`);
   }
 }
@@ -155,6 +165,14 @@ async function setCredential(provider: CredentialProvider, secret: string): Prom
 
 async function storeLinuxCredential(provider: CredentialProvider, secret: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
+    // sonarjs/no-os-command-from-path is disabled here on purpose.
+    // `secret-tool` is the Secret Service CLI and has no stable absolute path:
+    // it lives outside /usr/bin on Nix, Homebrew and several distributions, so
+    // pinning one would break legitimate installs. It also buys no security
+    // boundary — `rp` is itself resolved from the same PATH, so an attacker who
+    // controls it has already won before this line runs. The command name is a
+    // fixed literal; no part of it comes from user input.
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
     const child = spawn("secret-tool", [
       "store",
       "--label=Reqraft API key",
