@@ -1,13 +1,19 @@
 import type { Config } from "../config/schema.js";
 import { hydrateCredentials } from "../auth/credentials.js";
-import { rewrite } from "../core/engine.js";
+import { rewrite, type EngineOptions } from "../core/engine.js";
 import { prepareRewriteOptions } from "../core/rewrite-options.js";
 import type { FidelityMode, RepromptLevel, RepromptResult } from "../core/types.js";
 import { resolveProfile } from "../profiles/registry.js";
-import { resolveProviderRuntime } from "../providers/runtime.js";
+import {
+  resolveProviderRuntime,
+  type ProviderRuntime,
+  type ProviderRuntimeInput,
+} from "../providers/runtime.js";
 
 interface ExecuteRepromptDependencies {
   hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void>;
+  resolveProviderRuntime(input: ProviderRuntimeInput): ProviderRuntime;
+  rewrite(options: EngineOptions): Promise<RepromptResult>;
 }
 
 export interface ExecuteRepromptInput {
@@ -32,6 +38,8 @@ export interface ExecuteRepromptResult {
 
 const DEFAULT_DEPENDENCIES: ExecuteRepromptDependencies = {
   hydrateCredentials,
+  resolveProviderRuntime,
+  rewrite,
 };
 
 export async function executeReprompt(
@@ -41,7 +49,7 @@ export async function executeReprompt(
   await dependencies.hydrateCredentials(input.env);
 
   const { profile, detected } = resolveProfile(input.profileId, input.input);
-  const { provider, model, reasoningEffort } = resolveProviderRuntime({
+  const { provider, model, reasoningEffort } = dependencies.resolveProviderRuntime({
     providerId: input.providerId,
     requestedModel: input.requestedModel,
     defaultModel: input.defaultModel,
@@ -49,7 +57,7 @@ export async function executeReprompt(
     config: input.config,
   });
 
-  const result = await rewrite(
+  const result = await dependencies.rewrite(
     prepareRewriteOptions({
       input: input.input,
       profile,

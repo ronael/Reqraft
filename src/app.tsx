@@ -142,7 +142,7 @@ export function App(): React.JSX.Element {
         defaultModel: state.model,
         env: process.env,
         config: config ?? undefined,
-        stream: false,
+        stream: config?.stream ?? DEFAULT_CONFIG.stream,
         fidelityMode: config?.fidelityMode,
         timeoutMs: config?.timeoutMs,
         maxOutputTokens: config?.maxOutputTokens,
