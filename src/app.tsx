@@ -30,17 +30,14 @@ import {
 } from "./ui/app-state.js";
 import {
   AppFrame,
-  EmptyState,
+  AppModal,
   HeaderBar,
-  MetaRow,
   Notice,
-  QualityNotice,
+  ResultPanelBody,
   SectionCard,
   ShortcutBar,
-  Spinner,
   StatusBadge,
 } from "./ui/components/index.js";
-import { SelectModal } from "./ui/components/select-modal.js";
 import { formatUiError } from "./ui/errors.js";
 import {
   beginGeneration,
@@ -51,43 +48,12 @@ import {
 } from "./ui/generation-state.js";
 import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
-import {
-  getCommandOptions,
-  getFallbackModelForProvider,
-  getModelOptions,
-  getProfileOptions,
-  getProviderOptions,
-  HELP_OPTIONS,
-  LEVEL_OPTIONS,
-  type ModalCommandAction,
-} from "./ui/modal-options.js";
-import { formatResultView } from "./ui/result-view.js";
+import { getFallbackModelForProvider, type ModalCommandAction } from "./ui/modal-options.js";
 import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
 import { theme } from "./ui/theme/tokens.js";
+import { getModalTitle, getResultTitle } from "./ui/view-labels.js";
 
 type CommandAction = ModalCommandAction;
-
-/** Panel titles per view. Lookup tables keep the render path free of ladders. */
-const RESULT_TITLES: Record<ViewMode, string> = {
-  result: "Prompt amélioré",
-  diff: "Diff",
-  explain: "Explication",
-};
-
-const EMPTY_STATE_TITLES: Record<ViewMode, string> = {
-  result: "Aucun résultat pour le moment.",
-  diff: "Le diff sera disponible après une génération.",
-  explain: "L’explication sera disponible après une génération.",
-};
-
-const MODAL_TITLES: Record<NonNullable<ModalType>, string> = {
-  help: "Aide",
-  commands: "Palette d’actions",
-  profile: "Sélection",
-  level: "Sélection",
-  provider: "Sélection",
-  model: "Sélection",
-};
 
 export function App(): React.JSX.Element {
   const { exit } = useApp();
@@ -154,72 +120,6 @@ export function App(): React.JSX.Element {
       setIsLoading(false);
     }
   }, [state.input, state.profile, state.level, state.provider, state.model, config]);
-
-  const renderModal = (): React.JSX.Element | null => {
-    switch (state.modal) {
-      case "profile": {
-        return (
-          <SelectModal
-            title="Changer de profil"
-            options={getProfileOptions()}
-            onSelect={setProfile}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "level": {
-        return (
-          <SelectModal
-            title="Changer de niveau"
-            options={LEVEL_OPTIONS}
-            onSelect={setLevel}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "provider": {
-        return (
-          <SelectModal
-            title="Changer de provider"
-            options={getProviderOptions()}
-            onSelect={setProvider}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "model": {
-        return (
-          <SelectModal
-            title="Changer de modèle"
-            options={getModelOptions(state.provider)}
-            onSelect={setModel}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "commands": {
-        return (
-          <SelectModal
-            title="Actions"
-            options={getCommandOptions(Boolean(state.result))}
-            onSelect={runCommand}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "help":
-        return (
-          <SelectModal
-            title="Raccourcis"
-            options={HELP_OPTIONS}
-            onSelect={closeModal}
-            onCancel={closeModal}
-          />
-        );
-      default:
-        return null;
-    }
-  };
 
   const closeModal = (): void => {
     setState(closeModalState);
@@ -331,35 +231,10 @@ export function App(): React.JSX.Element {
     }
   });
 
-  const resultText = state.result ? formatResultView(state.result, state.view) : "";
   const layoutMode = getLayoutMode(columns);
   const compact = layoutMode !== "wide";
-  const resultTitle = RESULT_TITLES[state.view];
+  const resultTitle = getResultTitle(state.view);
   const frameWidth = getFrameWidth(columns);
-
-  const renderResultBody = (): React.JSX.Element => {
-    if (isLoading) {
-      return <Spinner />;
-    }
-    if (state.error) {
-      return <Notice tone="danger">{state.error}</Notice>;
-    }
-    if (state.result) {
-      return (
-        <>
-          <Text wrap="wrap">{resultText}</Text>
-          <MetaRow result={state.result} />
-          <QualityNotice quality={state.result.quality} />
-        </>
-      );
-    }
-    return (
-      <EmptyState
-        title={EMPTY_STATE_TITLES[state.view]}
-        action="Appuie sur Entrée pour générer une reformulation."
-      />
-    );
-  };
 
   if (!configReady) {
     return (
@@ -378,8 +253,18 @@ export function App(): React.JSX.Element {
     return (
       <AppFrame mode={layoutMode} width={frameWidth}>
         <HeaderBar provider={state.provider} model={state.model} compact={compact} />
-        <SectionCard title={MODAL_TITLES[state.modal]} tone="primary">
-          {renderModal()}
+        <SectionCard title={getModalTitle(state.modal)} tone="primary">
+          <AppModal
+            modal={state.modal}
+            provider={state.provider}
+            hasResult={Boolean(state.result)}
+            onSelectProfile={setProfile}
+            onSelectLevel={setLevel}
+            onSelectProvider={setProvider}
+            onSelectModel={setModel}
+            onRunCommand={runCommand}
+            onClose={closeModal}
+          />
         </SectionCard>
       </AppFrame>
     );
@@ -408,7 +293,12 @@ export function App(): React.JSX.Element {
         )}
       </Box>
       <SectionCard title={resultTitle} tone={state.result ? "primary" : "secondary"}>
-        {renderResultBody()}
+        <ResultPanelBody
+          isLoading={isLoading}
+          error={state.error}
+          result={state.result}
+          view={state.view}
+        />
       </SectionCard>
       <ShortcutBar compact={compact} hasResult={Boolean(state.result)} />
 

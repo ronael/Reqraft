@@ -26,6 +26,7 @@ import {
 } from "../../src/ui/modal-options.js";
 import { formatDiff, formatExplain, formatResultView } from "../../src/ui/result-view.js";
 import { shouldUseColor } from "../../src/ui/text.js";
+import { getEmptyStateTitle, getModalTitle, getResultTitle } from "../../src/ui/view-labels.js";
 import type { RepromptResult } from "../../src/core/types.js";
 import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js";
 import {
@@ -143,6 +144,17 @@ describe("modal options", () => {
       "explain",
       "copy",
     ]);
+  });
+});
+
+describe("view labels", () => {
+  it("keeps section titles centralized by view and modal", () => {
+    expect(getResultTitle("result")).toBe("Prompt amélioré");
+    expect(getResultTitle("diff")).toBe("Diff");
+    expect(getEmptyStateTitle("explain")).toBe(
+      "L’explication sera disponible après une génération.",
+    );
+    expect(getModalTitle("commands")).toBe("Palette d’actions");
   });
 });
 

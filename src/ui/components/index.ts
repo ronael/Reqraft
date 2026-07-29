@@ -1,9 +1,11 @@
 export { AppFrame } from "./app-frame.js";
+export { AppModal } from "./app-modal.js";
 export { EmptyState } from "./empty-state.js";
 export { HeaderBar } from "./header-bar.js";
 export { MetaRow } from "./meta-row.js";
 export { Notice } from "./notice.js";
 export { QualityNotice } from "./quality-notice.js";
+export { ResultPanelBody } from "./result-panel-body.js";
 export { SectionCard } from "./section-card.js";
 export { ShortcutBar } from "./shortcut-bar.js";
 export { Spinner } from "./spinner.js";
