@@ -8,7 +8,26 @@ import { executeReprompt } from "./application/reprompt.js";
 import { writeClipboard } from "./clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "./config/loader.js";
 import type { Config } from "./config/schema.js";
-import type { RepromptLevel, RepromptResult } from "./core/types.js";
+import type { RepromptLevel } from "./core/types.js";
+import {
+  applyLoadedConfig,
+  clearCopyToast,
+  closeModal as closeModalState,
+  completeGeneration,
+  createInitialAppState,
+  openModal,
+  pinInput as pinInputState,
+  selectLevel as selectLevelState,
+  selectModel as selectModelState,
+  selectProfile as selectProfileState,
+  selectProvider as selectProviderState,
+  showView,
+  toggleDiffView,
+  updatePromptInput,
+  type AppState,
+  type ModalType,
+  type ViewMode,
+} from "./ui/app-state.js";
 import {
   AppFrame,
   EmptyState,
@@ -42,12 +61,10 @@ import {
   LEVEL_OPTIONS,
   type ModalCommandAction,
 } from "./ui/modal-options.js";
-import { formatResultView, type ResultViewMode } from "./ui/result-view.js";
+import { formatResultView } from "./ui/result-view.js";
 import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
 import { theme } from "./ui/theme/tokens.js";
 
-type ViewMode = ResultViewMode;
-type ModalType = "profile" | "level" | "provider" | "model" | "commands" | "help" | null;
 type CommandAction = ModalCommandAction;
 
 /** Panel titles per view. Lookup tables keep the render path free of ladders. */
@@ -72,34 +89,10 @@ const MODAL_TITLES: Record<NonNullable<ModalType>, string> = {
   model: "Sélection",
 };
 
-interface AppState {
-  input: string;
-  profile: string;
-  level: RepromptLevel;
-  provider: string;
-  model: string;
-  result: RepromptResult | null;
-  error: string | null;
-  view: ViewMode;
-  modal: ModalType;
-  copied: boolean;
-}
-
 export function App(): React.JSX.Element {
   const { exit } = useApp();
   const { columns } = useTerminalSize();
-  const [state, setState] = useState<AppState>({
-    input: "",
-    profile: DEFAULT_CONFIG.defaultProfile,
-    level: DEFAULT_CONFIG.defaultLevel,
-    provider: DEFAULT_CONFIG.defaultProvider,
-    model: DEFAULT_CONFIG.defaultModel,
-    result: null,
-    error: null,
-    view: "result",
-    modal: null,
-    copied: false,
-  });
+  const [state, setState] = useState<AppState>(createInitialAppState(DEFAULT_CONFIG));
   const [isLoading, setIsLoading] = useState(false);
   const generationInFlight = useRef(false);
   const [config, setConfig] = useState<Config | null>(null);
@@ -112,14 +105,11 @@ export function App(): React.JSX.Element {
         const bootstrapError = getBootstrapError(result);
         setConfig(config);
         setState((prev) => ({
-          ...prev,
-          provider: config.defaultProvider,
-          model: config.defaultModel,
-          profile: config.defaultProfile,
-          level: config.defaultLevel,
-          error: bootstrapError
-            ? formatUiError(bootstrapError, config.defaultProvider)
-            : prev.error,
+          ...applyLoadedConfig(
+            prev,
+            config,
+            bootstrapError ? formatUiError(bootstrapError, config.defaultProvider) : null,
+          ),
         }));
       })
       .catch((error: unknown) => {
@@ -154,7 +144,7 @@ export function App(): React.JSX.Element {
         timeoutMs: config?.timeoutMs,
         maxOutputTokens: config?.maxOutputTokens,
       });
-      setState((prev) => ({ ...prev, result, view: "result" }));
+      setState((prev) => completeGeneration(prev, result));
     } catch (err) {
       setState((prev) => ({
         ...failGeneration(prev, formatUiError(err, state.provider)),
@@ -232,29 +222,29 @@ export function App(): React.JSX.Element {
   };
 
   const closeModal = (): void => {
-    setState((prev) => ({ ...prev, modal: null }));
+    setState(closeModalState);
   };
   const setProfile = (profile: string): void => {
-    setState((prev) => ({ ...prev, profile, modal: null }));
+    setState((prev) => selectProfileState(prev, profile));
   };
   const setLevel = (level: RepromptLevel): void => {
-    setState((prev) => ({ ...prev, level, modal: null }));
+    setState((prev) => selectLevelState(prev, level));
   };
   const setProvider = (provider: string): void => {
     const fallbackModel = getFallbackModelForProvider(provider);
-    setState((prev) => ({ ...prev, provider, model: fallbackModel, modal: null }));
+    setState((prev) => selectProviderState(prev, provider, fallbackModel));
   };
   const setModel = (model: string): void => {
-    setState((prev) => ({ ...prev, model, modal: null }));
+    setState((prev) => selectModelState(prev, model));
   };
   const updateInput = (input: string): void => {
-    setState((prev) => ({ ...prev, input }));
+    setState((prev) => updatePromptInput(prev, input));
   };
   const submitInput = (): void => {
     void generate();
   };
   const clearCopied = (): void => {
-    setState((prev) => ({ ...prev, copied: false }));
+    setState(clearCopyToast);
   };
   const copyResult = (dismissModal: boolean): void => {
     if (!state.result) return;
@@ -269,11 +259,11 @@ export function App(): React.JSX.Element {
   };
   const runCommand = (action: CommandAction): void => {
     if (["profile", "level", "provider", "model"].includes(action)) {
-      setState((prev) => ({ ...prev, modal: action as ModalType }));
+      setState((prev) => openModal(prev, action as NonNullable<ModalType>));
       return;
     }
     if (action === "generate") {
-      setState((prev) => ({ ...prev, modal: null }));
+      setState(closeModalState);
       void generate();
       return;
     }
@@ -281,20 +271,16 @@ export function App(): React.JSX.Element {
       copyResult(true);
       return;
     }
-    setState((prev) => ({ ...prev, view: action as ViewMode, modal: null }));
+    setState((prev) => showView(prev, action as ViewMode));
   };
 
   // Keyboard shortcuts pin the current input: the TextInput value must survive
   // a state update triggered from outside the input itself.
   const pinInput = (patch: Partial<AppState>): void => {
-    setState((prev) => ({ ...prev, input: state.input, ...patch }));
+    setState((prev) => pinInputState(prev, state.input, patch));
   };
   const toggleDiff = (): void => {
-    setState((prev) => ({
-      ...prev,
-      input: state.input,
-      view: prev.view === "diff" ? "result" : "diff",
-    }));
+    setState((prev) => toggleDiffView(prev, state.input));
   };
 
   const shortcutHandlers: Record<ShortcutAction, () => void> = {

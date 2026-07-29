@@ -1,4 +1,20 @@
 import { describe, expect, it } from "vitest";
+import {
+  applyLoadedConfig,
+  clearCopyToast,
+  closeModal,
+  completeGeneration,
+  createInitialAppState,
+  openModal,
+  pinInput,
+  selectLevel,
+  selectModel,
+  selectProfile,
+  selectProvider,
+  showView,
+  toggleDiffView,
+  updatePromptInput,
+} from "../../src/ui/app-state.js";
 import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
 import {
   getCommandOptions,
@@ -127,6 +143,103 @@ describe("modal options", () => {
       "explain",
       "copy",
     ]);
+  });
+});
+
+describe("app state transitions", () => {
+  const defaults = {
+    defaultProfile: "auto",
+    defaultLevel: "standard" as const,
+    defaultProvider: "openai",
+    defaultModel: "gpt-4.1-mini",
+  };
+
+  const result: RepromptResult = {
+    original: "test",
+    rewritten: "Test.",
+    profile: "auto",
+    level: "standard",
+    provider: "mock",
+    model: "mock-model",
+    changes: [],
+    warnings: [],
+    quality: { status: "good", signals: [] },
+  };
+
+  it("creates and hydrates the TUI state from config", () => {
+    const initial = createInitialAppState(defaults);
+    const loaded = applyLoadedConfig(
+      { ...initial, error: "ancienne erreur" },
+      {
+        defaultProfile: "code",
+        defaultLevel: "complete",
+        defaultProvider: "mock",
+        defaultModel: "mock-model",
+        providers: {},
+        stream: true,
+        showStats: true,
+        showChanges: true,
+        copyAfterGeneration: false,
+        telemetry: false,
+        fidelityMode: "balanced",
+        timeoutMs: 30_000,
+      },
+      null,
+    );
+
+    expect(initial).toMatchObject({
+      input: "",
+      profile: "auto",
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      view: "result",
+      modal: null,
+    });
+    expect(loaded).toMatchObject({
+      profile: "code",
+      level: "complete",
+      provider: "mock",
+      model: "mock-model",
+      error: "ancienne erreur",
+    });
+  });
+
+  it("keeps provider and modal transitions explicit", () => {
+    const state = openModal(createInitialAppState(defaults), "provider");
+    const selected = selectProvider(state, "mistral", "mistral-small-2603");
+
+    expect(selected).toMatchObject({
+      provider: "mistral",
+      model: "mistral-small-2603",
+      modal: null,
+    });
+    expect(selectProfile(state, "frontend").profile).toBe("frontend");
+    expect(selectLevel(state, "minimal").level).toBe("minimal");
+    expect(selectModel(state, "gpt-5-mini").model).toBe("gpt-5-mini");
+    expect(closeModal(state).modal).toBeNull();
+  });
+
+  it("handles input, views, copy toast and generation completion", () => {
+    const state = {
+      ...createInitialAppState(defaults),
+      input: "ancienne",
+      modal: "commands" as const,
+      copied: true,
+      view: "result" as const,
+    };
+
+    expect(updatePromptInput(state, "nouvelle").input).toBe("nouvelle");
+    expect(clearCopyToast(state).copied).toBe(false);
+    expect(pinInput(state, "courante", { modal: "help" })).toMatchObject({
+      input: "courante",
+      modal: "help",
+    });
+    expect(showView(state, "explain")).toMatchObject({ view: "explain", modal: null });
+    expect(toggleDiffView(state, "courante")).toMatchObject({
+      input: "courante",
+      view: "diff",
+    });
+    expect(completeGeneration(state, result)).toMatchObject({ result, view: "result" });
   });
 });
 
