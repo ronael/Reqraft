@@ -3,10 +3,10 @@ import TextInput from "ink-text-input";
 import process from "node:process";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
+import { bootstrapConfiguration, getBootstrapError } from "./application/bootstrap.js";
 import { executeReprompt } from "./application/reprompt.js";
-import { hydrateCredentials } from "./auth/credentials.js";
 import { writeClipboard } from "./clipboard/clipboard.js";
-import { DEFAULT_CONFIG, loadConfig } from "./config/loader.js";
+import { DEFAULT_CONFIG } from "./config/loader.js";
 import type { Config } from "./config/schema.js";
 import type { RepromptLevel, RepromptResult } from "./core/types.js";
 import { getPresetModels } from "./models/presets.js";
@@ -93,10 +93,10 @@ export function App(): React.JSX.Element {
   const [configReady, setConfigReady] = useState(false);
 
   useEffect(() => {
-    hydrateCredentials(process.env)
-      .catch(() => undefined)
-      .then(() => loadConfig())
-      .then((config) => {
+    void bootstrapConfiguration(process.env)
+      .then((result) => {
+        const { config } = result;
+        const bootstrapError = getBootstrapError(result);
         setConfig(config);
         setState((prev) => ({
           ...prev,
@@ -104,10 +104,16 @@ export function App(): React.JSX.Element {
           model: config.defaultModel,
           profile: config.defaultProfile,
           level: config.defaultLevel,
+          error: bootstrapError
+            ? formatUiError(bootstrapError, config.defaultProvider)
+            : prev.error,
         }));
       })
-      .catch(() => {
-        // Keep the validated defaults if the local file cannot be loaded.
+      .catch((error: unknown) => {
+        setState((prev) => ({
+          ...prev,
+          error: formatUiError(error, prev.provider),
+        }));
       })
       .finally(() => {
         setConfigReady(true);
