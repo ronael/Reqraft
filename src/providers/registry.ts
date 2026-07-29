@@ -89,6 +89,6 @@ function createOpenAICompatibleProvider(
   });
 }
 
-export function listProviders(): string[] {
+export function listProviders(): BuiltinProvider[] {
   return listProviderDefinitions().map((definition) => definition.id);
 }

@@ -41,13 +41,13 @@ export async function runDoctor(): Promise<void> {
   console.log("Providers");
   for (const id of listProviders()) {
     try {
-      const provider = createProvider(id as "mock", env, config);
+      const provider = createProvider(id, env, config);
       const health = await provider.validateConfiguration();
       const missing = health.missingConfiguration?.join(", ");
       const missingLabel =
         missing ?? (isCredentialProvider(id) ? getProviderEnvName(id) : "configuration");
       const status = health.ok ? "OK" : `manque ${missingLabel}`;
-      console.log(`  ${getProviderDefinition(id as "mock").label.padEnd(20)} : ${status}`);
+      console.log(`  ${getProviderDefinition(id).label.padEnd(20)} : ${status}`);
     } catch {
       console.log(`  ${id.padEnd(20)} : erreur`);
     }

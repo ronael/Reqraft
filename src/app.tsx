@@ -10,10 +10,10 @@ import { writeClipboard } from "./clipboard/clipboard.js";
 import { DEFAULT_CONFIG, loadConfig } from "./config/loader.js";
 import type { Config } from "./config/schema.js";
 import type { RepromptLevel, RepromptResult } from "./core/types.js";
-import { resolveModel } from "./models/model-resolver.js";
 import { getPresetModels } from "./models/presets.js";
 import { listProfiles, resolveProfile } from "./profiles/registry.js";
-import { createProvider, listProviders } from "./providers/registry.js";
+import { listProviders } from "./providers/registry.js";
+import { resolveProviderRuntime } from "./providers/runtime.js";
 import {
   AppFrame,
   EmptyState,
@@ -122,8 +122,13 @@ export function App(): React.JSX.Element {
     try {
       await hydrateCredentials(process.env);
       const { profile } = resolveProfile(state.profile, state.input);
-      const provider = createProvider(state.provider as "mock", process.env, config ?? undefined);
-      const { model, reasoningEffort } = resolveModel(state.provider, state.model, state.model);
+      const { provider, model, reasoningEffort } = resolveProviderRuntime({
+        providerId: state.provider,
+        requestedModel: state.model,
+        defaultModel: state.model,
+        env: process.env,
+        config: config ?? undefined,
+      });
       const result = await rewrite(
         prepareRewriteOptions({
           input: state.input,

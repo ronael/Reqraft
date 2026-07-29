@@ -4,8 +4,7 @@ import { rewrite } from "../core/engine.js";
 import { prepareRewriteOptions } from "../core/rewrite-options.js";
 import { parseLevel } from "../core/levels.js";
 import { resolveProfile } from "../profiles/registry.js";
-import { createProvider } from "../providers/registry.js";
-import { resolveModel } from "../models/model-resolver.js";
+import { resolveProviderRuntime } from "../providers/runtime.js";
 import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { readFileContent, readStdin } from "../utils/input.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
@@ -85,8 +84,13 @@ export async function runReprompt(options: RepromptCliOptions): Promise<void> {
     const level = parseLevel(options.level ?? config.defaultLevel);
     const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
     const providerId = options.provider ?? config.defaultProvider;
-    const provider = createProvider(providerId as "mock", process.env, config);
-    const { model, reasoningEffort } = resolveModel(providerId, options.model, config.defaultModel);
+    const { provider, model, reasoningEffort } = resolveProviderRuntime({
+      providerId,
+      requestedModel: options.model,
+      defaultModel: config.defaultModel,
+      env: process.env,
+      config,
+    });
 
     const result = await rewrite(
       prepareRewriteOptions({
