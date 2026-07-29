@@ -26,9 +26,8 @@ import {
   toggleDiffView,
   updatePromptInput,
   type AppState,
-  type ModalType,
-  type ViewMode,
 } from "./ui/app-state.js";
+import { resolveCommandIntent } from "./ui/command-intents.js";
 import {
   AppFrame,
   AppModal,
@@ -146,20 +145,21 @@ export function App(): React.JSX.Element {
       });
   };
   const runCommand = (action: CommandAction): void => {
-    if (["profile", "level", "provider", "model"].includes(action)) {
-      setState((prev) => openModal(prev, action as NonNullable<ModalType>));
-      return;
+    const intent = resolveCommandIntent(action);
+    switch (intent.type) {
+      case "open-modal":
+        setState((prev) => openModal(prev, intent.modal));
+        return;
+      case "generate":
+        setState(closeModalState);
+        void generate();
+        return;
+      case "copy":
+        copyResult(true);
+        return;
+      case "show-view":
+        setState((prev) => showView(prev, intent.view));
     }
-    if (action === "generate") {
-      setState(closeModalState);
-      void generate();
-      return;
-    }
-    if (action === "copy") {
-      copyResult(true);
-      return;
-    }
-    setState((prev) => showView(prev, action as ViewMode));
   };
 
   // Keyboard shortcuts pin the current input: the TextInput value must survive

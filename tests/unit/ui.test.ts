@@ -16,6 +16,7 @@ import {
   updatePromptInput,
 } from "../../src/ui/app-state.js";
 import { createUiRepromptInput, resolveUiStreamPreference } from "../../src/ui/app-actions.js";
+import { resolveCommandIntent } from "../../src/ui/command-intents.js";
 import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
 import {
   getCommandOptions,
@@ -145,6 +146,16 @@ describe("modal options", () => {
       "explain",
       "copy",
     ]);
+  });
+});
+
+describe("command intents", () => {
+  it("routes command palette actions without string casts in the TUI", () => {
+    expect(resolveCommandIntent("profile")).toEqual({ type: "open-modal", modal: "profile" });
+    expect(resolveCommandIntent("model")).toEqual({ type: "open-modal", modal: "model" });
+    expect(resolveCommandIntent("generate")).toEqual({ type: "generate" });
+    expect(resolveCommandIntent("copy")).toEqual({ type: "copy" });
+    expect(resolveCommandIntent("diff")).toEqual({ type: "show-view", view: "diff" });
   });
 });
 
