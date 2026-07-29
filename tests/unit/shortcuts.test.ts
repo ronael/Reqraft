@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveShortcut, type ShortcutContext } from "../../src/ui/shortcuts.js";
+import { resolveShortcutIntent } from "../../src/ui/shortcut-intents.js";
 
 const idle: ShortcutContext = { hasModal: false, hasResult: false, inputLength: 0 };
 const withResult: ShortcutContext = { ...idle, hasResult: true };
@@ -72,5 +73,35 @@ describe("resolveShortcut", () => {
 
   it("ignores ordinary typing", () => {
     expect(resolveShortcut("a", plain, typing)).toBeNull();
+  });
+});
+
+describe("resolveShortcutIntent", () => {
+  it("routes shortcut actions to typed app intentions", () => {
+    expect(resolveShortcutIntent("close-modal")).toEqual({ type: "close-modal" });
+    expect(resolveShortcutIntent("exit")).toEqual({ type: "exit" });
+    expect(resolveShortcutIntent("generate")).toEqual({
+      type: "generate",
+      preserveInput: false,
+    });
+    expect(resolveShortcutIntent("regenerate")).toEqual({
+      type: "generate",
+      preserveInput: true,
+    });
+    expect(resolveShortcutIntent("copy")).toEqual({
+      type: "copy",
+      preserveInput: true,
+      dismissModal: false,
+    });
+    expect(resolveShortcutIntent("open-commands")).toEqual({
+      type: "open-modal",
+      modal: "commands",
+      preserveInput: true,
+    });
+    expect(resolveShortcutIntent("show-explain")).toEqual({
+      type: "show-view",
+      view: "explain",
+      preserveInput: true,
+    });
   });
 });

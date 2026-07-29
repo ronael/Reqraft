@@ -50,6 +50,7 @@ import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
 import { getFallbackModelForProvider, type ModalCommandAction } from "./ui/modal-options.js";
 import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
+import { resolveShortcutIntent } from "./ui/shortcut-intents.js";
 import { theme } from "./ui/theme/tokens.js";
 import { getModalTitle, getResultTitle } from "./ui/view-labels.js";
 
@@ -170,38 +171,36 @@ export function App(): React.JSX.Element {
   const toggleDiff = (): void => {
     setState((prev) => toggleDiffView(prev, state.input));
   };
-
-  const shortcutHandlers: Record<ShortcutAction, () => void> = {
-    "close-modal": closeModal,
-    exit,
-    generate: submitInput,
-    regenerate: () => {
-      pinInput({});
-      void generate();
-    },
-    copy: () => {
-      pinInput({});
-      copyResult(false);
-    },
-    "toggle-diff": toggleDiff,
-    "show-explain": () => {
-      pinInput({ view: "explain" });
-    },
-    "open-profile": () => {
-      pinInput({ modal: "profile" });
-    },
-    "open-level": () => {
-      pinInput({ modal: "level" });
-    },
-    "open-model": () => {
-      pinInput({ modal: "model" });
-    },
-    "open-commands": () => {
-      pinInput({ modal: "commands" });
-    },
-    "open-help": () => {
-      pinInput({ modal: "help" });
-    },
+  const runShortcut = (action: ShortcutAction): void => {
+    const intent = resolveShortcutIntent(action);
+    switch (intent.type) {
+      case "close-modal":
+        closeModal();
+        return;
+      case "exit":
+        exit();
+        return;
+      case "generate":
+        if (intent.preserveInput) {
+          pinInput({});
+        }
+        void generate();
+        return;
+      case "copy":
+        if (intent.preserveInput) {
+          pinInput({});
+        }
+        copyResult(intent.dismissModal);
+        return;
+      case "toggle-diff":
+        toggleDiff();
+        return;
+      case "show-view":
+        pinInput({ view: intent.view });
+        return;
+      case "open-modal":
+        pinInput({ modal: intent.modal });
+    }
   };
 
   useInput((input, key) => {
@@ -215,7 +214,7 @@ export function App(): React.JSX.Element {
       },
     );
     if (action) {
-      shortcutHandlers[action]();
+      runShortcut(action);
     }
   });
 
