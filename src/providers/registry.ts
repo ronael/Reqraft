@@ -8,12 +8,7 @@ import { OpenAICompatibleProvider } from "./openai-compatible.js";
 import type { Config } from "../config/schema.js";
 
 export type BuiltinProvider =
-  | "anthropic"
-  | "openai"
-  | "deepseek"
-  | "mistral"
-  | "openai-compatible"
-  | "mock";
+  "anthropic" | "openai" | "deepseek" | "mistral" | "openai-compatible" | "mock";
 
 export function createProvider(
   id: BuiltinProvider,

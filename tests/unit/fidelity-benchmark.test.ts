@@ -9,7 +9,15 @@ describe("fidelity benchmark dataset", () => {
   it("covers every built-in task profile family", () => {
     const profiles = new Set(FIDELITY_BENCHMARK_CASES.map((testCase) => testCase.profile));
 
-    for (const profile of ["clean", "code", "frontend", "web-design", "debug", "review", "writing"]) {
+    for (const profile of [
+      "clean",
+      "code",
+      "frontend",
+      "web-design",
+      "debug",
+      "review",
+      "writing",
+    ]) {
       expect(profiles.has(profile)).toBe(true);
     }
   });

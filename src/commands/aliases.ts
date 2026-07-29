@@ -112,7 +112,9 @@ async function runRemove(
     }
 
     await removeAlias(configPath, shell, name, false);
-    console.log(`Alias '${name}' supprimé. Rechargez votre shell ou exécutez : source ${configPath}`);
+    console.log(
+      `Alias '${name}' supprimé. Rechargez votre shell ou exécutez : source ${configPath}`,
+    );
   } catch (error) {
     console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
     process.exit(EXIT_CODES.GENERAL_ERROR);

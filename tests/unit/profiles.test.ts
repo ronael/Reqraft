@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import { detectProfile } from "../../src/profiles/auto.js";
 import { getProfile, listProfiles, resolveProfile } from "../../src/profiles/registry.js";
 
-
 describe("profile registry", () => {
   it("lists built-in profiles", () => {
     const profiles = listProfiles();

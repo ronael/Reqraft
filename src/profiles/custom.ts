@@ -5,7 +5,9 @@ const CustomProfileSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
   description: z.string(),
-  extends: z.enum(["clean", "code", "frontend", "web-design", "debug", "review", "writing"]).optional(),
+  extends: z
+    .enum(["clean", "code", "frontend", "web-design", "debug", "review", "writing"])
+    .optional(),
   defaultLevel: z.enum(["minimal", "standard", "complete"]).default("standard"),
   instructions: z.string().optional(),
 });

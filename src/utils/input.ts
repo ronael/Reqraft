@@ -21,6 +21,8 @@ export async function readFileContent(path: string): Promise<string> {
     const content = await readFile(path, "utf8");
     return content.trim();
   } catch (error) {
-    throw new Error(`Impossible de lire le fichier ${path} : ${error instanceof Error ? error.message : String(error)}`);
+    throw new Error(
+      `Impossible de lire le fichier ${path} : ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
 }

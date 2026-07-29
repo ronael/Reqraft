@@ -17,7 +17,7 @@ describe("alias manager on temporary files", () => {
     const operation = await setAlias(configPath, "bash", "p", false);
     expect(operation.added).toContain("p");
     const content = readFileSync(configPath, "utf8");
-    expect(content).toContain("alias p=\"rp\"");
+    expect(content).toContain('alias p="rp"');
     expect(content).toContain("# >>> rp aliases >>>");
     expect(content).toContain("# <<< rp aliases <<<");
   });
@@ -26,8 +26,8 @@ describe("alias manager on temporary files", () => {
     await setAlias(configPath, "bash", "p", false);
     await setAlias(configPath, "bash", "ask", false);
     const content = readFileSync(configPath, "utf8");
-    expect(content).toContain("alias p=\"rp\"");
-    expect(content).toContain("alias ask=\"rp\"");
+    expect(content).toContain('alias p="rp"');
+    expect(content).toContain('alias ask="rp"');
   });
 
   it("lists aliases", async () => {
@@ -52,7 +52,7 @@ describe("alias manager on temporary files", () => {
     const content = readFileSync(configPath, "utf8");
     expect(content).toContain("# existing config");
     expect(content).toContain("export PATH=...");
-    expect(content).toContain("alias p=\"rp\"");
+    expect(content).toContain('alias p="rp"');
   });
 
   it("supports dry-run", async () => {

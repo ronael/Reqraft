@@ -216,10 +216,10 @@ describe("Anthropic provider", () => {
 
   it("raises a provider error emitted by a streaming response", async () => {
     mockFetch(
-      new Response(
-        'event: error\ndata: {"type":"error","error":{"message":"overloaded"}}\n\n',
-        { status: 200, headers: { "Content-Type": "text/event-stream" } },
-      ),
+      new Response('event: error\ndata: {"type":"error","error":{"message":"overloaded"}}\n\n', {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
     );
 
     const provider = new AnthropicProvider("test-key");
