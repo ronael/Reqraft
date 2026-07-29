@@ -28,7 +28,7 @@
     "typecheck": "tsc --noEmit",
     "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage && pnpm sonar",
     "sonar": "node scripts/run-sonar.mjs",
-    "pack:dry-run": "pnpm pack --dry-run",
+    "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",
     "release:check": "pnpm quality && pnpm pack:dry-run",
     "publish:public": "pnpm publish --access public",
     "prepublishOnly": "pnpm quality",
