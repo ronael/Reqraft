@@ -25,3 +25,29 @@ export function failGeneration<Result, State extends GenerationState<Result>>(
     error,
   };
 }
+
+export interface ClipboardState {
+  copied: boolean;
+  error: string | null;
+  modal: unknown;
+}
+
+export function completeCopy<State extends ClipboardState>(
+  state: State,
+  dismissModal: boolean,
+): State {
+  return {
+    ...state,
+    copied: true,
+    error: null,
+    modal: dismissModal ? null : state.modal,
+  };
+}
+
+export function failCopy<State extends ClipboardState>(state: State, error: string): State {
+  return {
+    ...state,
+    copied: false,
+    error,
+  };
+}

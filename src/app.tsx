@@ -26,7 +26,13 @@ import {
 } from "./ui/components/index.js";
 import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
 import { formatUiError } from "./ui/errors.js";
-import { beginGeneration, canStartGeneration, failGeneration } from "./ui/generation-state.js";
+import {
+  beginGeneration,
+  canStartGeneration,
+  completeCopy,
+  failCopy,
+  failGeneration,
+} from "./ui/generation-state.js";
 import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
 import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
 import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
@@ -284,10 +290,14 @@ export function App(): React.JSX.Element {
   };
   const copyResult = (dismissModal: boolean): void => {
     if (!state.result) return;
-    void writeClipboard(state.result.rewritten).then(() => {
-      setState((prev) => ({ ...prev, copied: true, modal: dismissModal ? null : prev.modal }));
-      setTimeout(clearCopied, theme.behavior.toastDurationMs);
-    });
+    void writeClipboard(state.result.rewritten)
+      .then(() => {
+        setState((prev) => completeCopy(prev, dismissModal));
+        setTimeout(clearCopied, theme.behavior.toastDurationMs);
+      })
+      .catch((error: unknown) => {
+        setState((prev) => failCopy(prev, formatUiError(error, state.provider)));
+      });
   };
   const runCommand = (action: CommandAction): void => {
     if (["profile", "level", "provider", "model"].includes(action)) {

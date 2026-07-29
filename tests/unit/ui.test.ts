@@ -5,6 +5,8 @@ import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js"
 import {
   beginGeneration,
   canStartGeneration,
+  completeCopy,
+  failCopy,
   failGeneration,
 } from "../../src/ui/generation-state.js";
 
@@ -64,5 +66,22 @@ describe("generation state", () => {
 
     expect(started).toEqual({ error: null, result: previous, modal: null });
     expect(failed).toEqual({ error: "nouvelle erreur", result: previous, modal: null });
+  });
+});
+
+describe("clipboard state", () => {
+  it("marks a successful copy and optionally closes the modal", () => {
+    const copied = completeCopy(
+      { copied: false, error: "ancienne erreur", modal: "commands" },
+      true,
+    );
+
+    expect(copied).toEqual({ copied: true, error: null, modal: null });
+  });
+
+  it("surfaces copy failures without changing the current modal", () => {
+    const failed = failCopy({ copied: true, error: null, modal: "commands" }, "copie impossible");
+
+    expect(failed).toEqual({ copied: false, error: "copie impossible", modal: "commands" });
   });
 });
