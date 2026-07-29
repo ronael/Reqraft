@@ -19,6 +19,6 @@ export const BASE_RULES = [
   "Produire une sortie directement copiable.",
 ] as const;
 
-export const BASE_SYSTEM_PROMPT = BASE_RULES.map((rule, index) => `${String(index + 1)}. ${rule}`).join(
-  "\n",
-);
+export const BASE_SYSTEM_PROMPT = BASE_RULES.map(
+  (rule, index) => `${String(index + 1)}. ${rule}`,
+).join("\n");

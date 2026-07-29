@@ -1,7 +1,9 @@
 import { z } from "zod";
-import type { RepromptLevel } from "./types.js";
 
-export const RepromptLevelSchema = z.enum(["minimal", "standard", "complete"]);
+export const REPROMPT_LEVELS = ["minimal", "standard", "complete"] as const;
+export type RepromptLevel = (typeof REPROMPT_LEVELS)[number];
+export const DEFAULT_REPROMPT_LEVEL = "standard" satisfies RepromptLevel;
+export const RepromptLevelSchema = z.enum(REPROMPT_LEVELS);
 
 export function parseLevel(level: string): RepromptLevel {
   const result = RepromptLevelSchema.safeParse(level);

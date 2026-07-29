@@ -89,20 +89,36 @@ rp "your request" --diff
 rp "your request" --explain
 ```
 
+### Quality diagnostics
+
+Reqraft always returns usable provider text, even when fidelity checks identify
+an expansion or an unsupported addition. Diagnostics are written to stderr and
+are available as structured data with `--json`.
+
+```bash
+rp "create a detailed architecture plan" --stats
+rp "..." --max-output-tokens 2000
+rp "..." --timeout 45000
+rp "..." --fail-on-quality
+```
+
+See [docs/reprompt-policy.md](docs/reprompt-policy.md) for the result, timeout,
+token-budget and fidelity contracts.
+
 ## Profiles
 
 Use `--profile <name>` to tune the rewriting style:
 
-| Profile      | Use case                          |
-|--------------|-----------------------------------|
-| `auto`       | Detect the best profile locally   |
-| `clean`      | Grammar and light clarification   |
-| `code`       | Developer agents                  |
-| `frontend`   | Frontend implementation           |
-| `web-design` | Visual design and landing pages   |
-| `debug`      | Bugs and errors                   |
-| `review`     | Code audits and reviews           |
-| `writing`    | Emails, messages, documents       |
+| Profile      | Use case                        |
+| ------------ | ------------------------------- |
+| `auto`       | Detect the best profile locally |
+| `clean`      | Grammar and light clarification |
+| `code`       | Developer agents                |
+| `frontend`   | Frontend implementation         |
+| `web-design` | Visual design and landing pages |
+| `debug`      | Bugs and errors                 |
+| `review`     | Code audits and reviews         |
+| `writing`    | Emails, messages, documents     |
 
 ## Levels
 
@@ -131,6 +147,16 @@ export DEEPSEEK_API_KEY=...
 export MISTRAL_API_KEY=...
 ```
 
+Or store it in the system credential manager:
+
+```bash
+rp auth login openai
+rp auth status
+rp auth logout openai
+```
+
+Environment variables take precedence over stored credentials. macOS uses Keychain and Linux uses Secret Service; Windows currently uses environment variables.
+
 ## Configuration
 
 ```bash
@@ -144,9 +170,9 @@ rp config setup              # same as rp init
 rp config setup --reset      # same as rp init --reset
 ```
 
-`rp init` never stores API keys. It checks environment variables such as
-`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `DEEPSEEK_API_KEY`, or `MISTRAL_API_KEY`
-and prints shell-specific setup instructions when a key is missing.
+`rp init` never stores API keys in `config.json`. When a key is missing, it recommends
+`rp auth login <provider>` for secure system storage and also prints shell-specific
+environment-variable instructions.
 
 ## Shell aliases
 
@@ -184,6 +210,8 @@ Benchmarks are never run automatically because they consume API credits.
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) and [docs/development.md](docs/development.md).
+Static analysis and coverage setup are documented in
+[docs/sonarqube.md](docs/sonarqube.md).
 
 ## License
 

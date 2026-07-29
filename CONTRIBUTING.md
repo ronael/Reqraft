@@ -7,7 +7,7 @@ Thank you for your interest in contributing!
 1. Fork the repository.
 2. Create a feature branch.
 3. Make your changes.
-4. Ensure `pnpm exec tsc --noEmit`, `pnpm lint`, `pnpm test`, and `pnpm build` pass.
+4. Run `pnpm quality`.
 5. Open a pull request.
 
 ## Code style
@@ -20,6 +20,9 @@ Thank you for your interest in contributing!
 ## Tests
 
 Add tests for new features and bug fixes. E2E tests should not require real API keys; use the `mock` provider.
+
+Coverage is generated with `pnpm test:coverage`. SonarQube setup is documented
+in [docs/sonarqube.md](docs/sonarqube.md).
 
 ## Reporting issues
 

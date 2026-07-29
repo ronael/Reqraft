@@ -1,16 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { detectProfile } from "../../src/profiles/auto.js";
+import { BUILTIN_PROFILE_IDS } from "../../src/profiles/profile-ids.js";
 import { getProfile, listProfiles, resolveProfile } from "../../src/profiles/registry.js";
-
 
 describe("profile registry", () => {
   it("lists built-in profiles", () => {
     const profiles = listProfiles();
-    expect(profiles.length).toBeGreaterThanOrEqual(7);
     const ids = profiles.map((p) => p.id);
-    expect(ids).toContain("clean");
-    expect(ids).toContain("code");
-    expect(ids).toContain("frontend");
+    expect(ids).toEqual([...BUILTIN_PROFILE_IDS]);
   });
 
   it("resolves profiles by id", () => {

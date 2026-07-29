@@ -1,17 +1,15 @@
 import process from "node:process";
-import type { RepromptResult } from "../core/types.js";
-import { rewrite } from "../core/engine.js";
+import type { FidelityMode, RepromptResult } from "../core/types.js";
 import { parseLevel } from "../core/levels.js";
-import { resolveProfile } from "../profiles/registry.js";
-import { createProvider } from "../providers/registry.js";
-import { resolveModel } from "../models/model-resolver.js";
 import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { readFileContent, readStdin } from "../utils/input.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 import { loadConfig } from "../config/loader.js";
 import { detectSecrets } from "../core/secret-detector.js";
 import { redactSecrets } from "../utils/redaction.js";
-import { hydrateCredentials } from "../auth/credentials.js";
+import { executeReprompt, type ExecuteRepromptInput } from "../application/reprompt.js";
+import type { Config } from "../config/schema.js";
+import { formatCost, formatDuration, formatTokenValue, qualityLabel } from "../ui/formatters.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -26,73 +24,129 @@ export interface RepromptCliOptions {
   diff?: boolean;
   explain?: boolean;
   stats?: boolean;
-  fidelity?: "permissive" | "balanced" | "strict";
+  fidelity?: FidelityMode;
   stream?: boolean;
   timeout?: string;
+  maxOutputTokens?: string;
+  failOnQuality?: boolean;
   verbose?: boolean;
   force?: boolean;
   redactSecrets?: boolean;
 }
 
-export async function runReprompt(options: RepromptCliOptions): Promise<void> {
+interface RepromptOutput {
+  log(message: string): void;
+  error(message: string): void;
+}
+
+/**
+ * Applies the local secret policy before any text leaves the machine.
+ *
+ * Returns the text to send: redacted on --redact-secrets, unchanged on
+ * --force. Otherwise the run stops with SECRET_DETECTED.
+ */
+function applySecretPolicy(
+  input: string,
+  options: RepromptCliOptions,
+  output: RepromptOutput,
+): { input?: string; exitCode?: number } {
+  const secrets = detectSecrets(input);
+  if (secrets.length === 0 || options.force) {
+    return { input };
+  }
+  if (options.redactSecrets) {
+    return { input: redactSecrets(input) };
+  }
+
+  output.error("Un secret potentiel a été détecté dans le texte.");
+  for (const secret of secrets) {
+    output.error(`  - ${secret.type}`);
+  }
+  output.error("Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.");
+  return { exitCode: EXIT_CODES.SECRET_DETECTED };
+}
+
+function reportFatalError(error: unknown, verbose: boolean, output: RepromptOutput): number {
+  const message = error instanceof Error ? error.message : String(error);
+  output.error(`Erreur : ${message}`);
+  if (verbose && error instanceof Error && error.stack) {
+    output.error(error.stack);
+  }
+  return EXIT_CODES.GENERAL_ERROR;
+}
+
+export async function runReprompt(
+  options: RepromptCliOptions,
+  output: RepromptOutput = console,
+): Promise<number> {
   try {
     const config = await loadConfig();
-    await hydrateCredentials(process.env);
-    let input = await resolveInput(options);
-    if (!input) {
-      console.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
-      process.exit(EXIT_CODES.INVALID_INPUT);
+    const rawInput = await resolveInput(options);
+    if (!rawInput) {
+      output.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
+      return EXIT_CODES.INVALID_INPUT;
     }
 
-    const secrets = detectSecrets(input);
-    if (secrets.length > 0 && !options.force) {
-      if (options.redactSecrets) {
-        input = redactSecrets(input);
-      } else {
-        console.error("Un secret potentiel a été détecté dans le texte.");
-        for (const secret of secrets) {
-          console.error(`  - ${secret.type}`);
-        }
-        console.error("Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.");
-        process.exit(EXIT_CODES.SECRET_DETECTED);
-      }
+    const secretPolicy = applySecretPolicy(rawInput, options, output);
+    if (secretPolicy.exitCode !== undefined) {
+      return secretPolicy.exitCode;
     }
-
-    const level = parseLevel(options.level ?? config.defaultLevel);
-    const { profile, detected } = resolveProfile(options.profile ?? config.defaultProfile, input);
-    const providerId = options.provider ?? config.defaultProvider;
-    const provider = createProvider(providerId as "mock", process.env, config);
-    const { model, reasoningEffort } = resolveModel(
-      providerId,
-      options.model,
-      config.defaultModel,
+    const input = secretPolicy.input ?? rawInput;
+    const { result, detectedProfile } = await executeReprompt(
+      createCliRepromptInput(input, config, options, process.env),
     );
 
-    const result = await rewrite({
-      input,
-      profile,
-      level,
-      provider,
-      model,
-      includeChanges: options.explain ?? options.json ?? config.showChanges,
-      stream: options.stream ?? config.stream,
-      reasoningEffort,
-      fidelityMode: options.fidelity ?? config.fidelityMode,
-    });
-
-    if (detected && options.verbose) {
-      console.error(`Profil détecté : ${profile.id}`);
+    if (detectedProfile && options.verbose) {
+      output.error(`Profil détecté : ${result.profile}`);
     }
 
-    await outputResult(result, options, config.showStats);
+    return await outputResult(result, options, config.showStats, output);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    console.error(`Erreur : ${message}`);
-    if (options.verbose && error instanceof Error && error.stack) {
-      console.error(error.stack);
-    }
-    process.exit(EXIT_CODES.GENERAL_ERROR);
+    return reportFatalError(error, options.verbose ?? false, output);
   }
+}
+
+export function createCliRepromptInput(
+  input: string,
+  config: Config,
+  options: RepromptCliOptions,
+  env: NodeJS.ProcessEnv,
+): ExecuteRepromptInput {
+  return {
+    input,
+    profileId: options.profile ?? config.defaultProfile,
+    level: parseLevel(options.level ?? config.defaultLevel),
+    providerId: options.provider ?? config.defaultProvider,
+    requestedModel: options.model ?? config.defaultModel,
+    defaultModel: config.defaultModel,
+    env,
+    config,
+    stream: options.stream ?? config.stream,
+    fidelityMode: options.fidelity ?? config.fidelityMode,
+    timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
+    maxOutputTokens: resolvePositiveInteger(
+      "La limite de sortie",
+      options.maxOutputTokens,
+      config.maxOutputTokens,
+    ),
+  };
+}
+
+function resolveTimeout(option: string | undefined, configured: number): number {
+  return resolvePositiveInteger("Le timeout", option, configured) ?? configured;
+}
+
+function resolvePositiveInteger(
+  label: string,
+  option: string | undefined,
+  configured: number | undefined,
+): number | undefined {
+  if (option === undefined) return configured;
+  const value = Number(option);
+  if (!Number.isInteger(value) || value <= 0) {
+    throw new Error(`${label} doit être un entier strictement positif.`);
+  }
+  return value;
 }
 
 async function resolveInput(options: RepromptCliOptions): Promise<string> {
@@ -111,34 +165,65 @@ async function resolveInput(options: RepromptCliOptions): Promise<string> {
   return "";
 }
 
+/**
+ * Writes the prompt itself.
+ *
+ * The rewritten prompt always goes to stdout so the command stays pipeable;
+ * only explanations are pushed to stderr.
+ */
+function writePrimaryOutput(
+  result: RepromptResult,
+  options: RepromptCliOptions,
+  output: RepromptOutput,
+): void {
+  if (options.json) {
+    output.log(JSON.stringify(result, null, 2));
+    return;
+  }
+  if (options.diff) {
+    output.log(formatDiff(result.original, result.rewritten));
+    return;
+  }
+  output.log(result.rewritten);
+  if (options.explain) {
+    output.error(formatExplain(result));
+  }
+}
+
 async function outputResult(
   result: RepromptResult,
   options: RepromptCliOptions,
   defaultShowStats: boolean,
-): Promise<void> {
-  if (options.json) {
-    console.log(JSON.stringify(result, null, 2));
-  } else if (options.diff) {
-    console.log(formatDiff(result.original, result.rewritten));
-  } else if (options.explain) {
-    console.log(result.rewritten);
-    console.error(formatExplain(result));
-  } else {
-    console.log(result.rewritten);
+  output: RepromptOutput,
+): Promise<number> {
+  writePrimaryOutput(result, options, output);
+
+  const showsDetailedQuality = !options.json && !options.explain && result.warnings.length > 0;
+  if (showsDetailedQuality) {
+    output.error("");
+    output.error(formatQuality(result));
   }
 
   if (!options.json && (options.stats ?? defaultShowStats)) {
-    console.error("");
-    console.error(formatStats(result));
+    output.error("");
+    output.error(formatStats(result, { includeQuality: !showsDetailedQuality }));
   }
 
   if (options.copy) {
     await writeClipboard(result.rewritten);
-    console.error("Résultat copié dans le presse-papiers.");
+    output.error("Résultat copié dans le presse-papiers.");
   }
+
+  if (options.failOnQuality && result.quality.status !== "good") {
+    return EXIT_CODES.QUALITY_REVIEW;
+  }
+  return EXIT_CODES.SUCCESS;
 }
 
-function formatStats(result: RepromptResult): string {
+export function formatStats(
+  result: RepromptResult,
+  options: { includeQuality?: boolean } = {},
+): string {
   const lines = ["Stats"];
   if (result.latencyMs !== undefined) {
     lines.push(`Durée ${formatDuration(result.latencyMs)}`);
@@ -155,23 +240,18 @@ function formatStats(result: RepromptResult): string {
   }
 
   lines.push(`Provider ${result.provider} · Modèle ${result.model}`);
+  if (options.includeQuality ?? true) {
+    lines.push(`Qualité ${qualityLabel(result.quality.status)}`);
+  }
   return lines.join("\n");
 }
 
-function formatTokenValue(value: number | undefined): string {
-  return value === undefined ? "non communiqué" : `${String(value)} tokens`;
-}
-
-function formatDuration(ms: number): string {
-  if (ms < 1000) {
-    return `${String(ms)} ms`;
+export function formatQuality(result: RepromptResult): string {
+  const lines = [`Qualité ${qualityLabel(result.quality.status)}`];
+  for (const warning of result.warnings) {
+    lines.push(`- ${warning}`);
   }
-  return `${(ms / 1000).toFixed(2)} s`;
-}
-
-function formatCost(cost: number, currency?: string): string {
-  const suffix = currency ? ` ${currency}` : "";
-  return `${cost.toFixed(6)}${suffix}`;
+  return lines.join("\n");
 }
 
 function formatDiff(original: string, rewritten: string): string {

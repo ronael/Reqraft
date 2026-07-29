@@ -1,11 +1,13 @@
 import type { ModelInfo } from "../core/types.js";
+import type { BuiltinProvider } from "../providers/catalog.js";
 
 export const MODEL_PRESETS_UPDATED_AT = "2026-07-28";
+export const DEFAULT_MODEL_ID = "claude-haiku-4-5";
 
 export interface ModelPreset {
   id: string;
   name: string;
-  provider: string;
+  provider: BuiltinProvider;
   description: string;
   recommended?: boolean;
   category: "budget" | "fast" | "openai" | "european" | "quality" | "custom";
@@ -16,7 +18,7 @@ export interface ModelPreset {
 
 export const MODEL_PRESETS: ModelPreset[] = [
   {
-    id: "claude-haiku-4-5",
+    id: DEFAULT_MODEL_ID,
     name: "Claude Haiku 4.5",
     provider: "anthropic",
     description: "Rapide et efficace pour le reprompting quotidien.",

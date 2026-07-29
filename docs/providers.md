@@ -2,6 +2,12 @@
 
 Reqraft uses native `fetch` and a small adapter layer so you can switch providers without changing the core logic.
 
+Provider metadata lives in `src/providers/catalog.ts`. That catalog is the
+single source of truth for built-in ids, public labels, API-key environment
+variables, init visibility, secure-auth support and test/custom flags.
+Commands, auth, doctor, init and runtime resolution consume the catalog instead
+of redeclaring provider maps.
+
 ## Supported providers
 
 - `anthropic` — Anthropic Messages API
@@ -24,17 +30,22 @@ RP_OPENAI_COMPATIBLE_API_KEY=...
 
 Keys are never written to `config.json` or logs.
 
+For credential providers, the environment variable name must be read from the
+catalog. Adapters receive an already-resolved key from the registry and stay
+focused on protocol details: endpoint, headers, payload, response parsing and
+provider-specific errors.
+
 ## Model presets
 
 Presets are recommendations, not hardcoded defaults. The registry is dated and can be updated.
 
-| Preset            | Provider   | Model                |
-|-------------------|------------|----------------------|
-| Recommended       | Anthropic  | claude-haiku-4-5     |
-| Budget            | DeepSeek   | deepseek-v4-flash    |
-| OpenAI            | OpenAI     | gpt-4.1-mini         |
-| European          | Mistral    | mistral-small-2603   |
-| Quality           | Anthropic  | claude-sonnet-5      |
+| Preset      | Provider  | Model              |
+| ----------- | --------- | ------------------ |
+| Recommended | Anthropic | claude-haiku-4-5   |
+| Budget      | DeepSeek  | deepseek-v4-flash  |
+| OpenAI      | OpenAI    | gpt-4.1-mini       |
+| European    | Mistral   | mistral-small-2603 |
+| Quality     | Anthropic | claude-sonnet-5    |
 
 You can use any model identifier with `--model`.
 
@@ -47,3 +58,6 @@ rp "test" --provider openai-compatible --model llama3
 ```
 
 Set `RP_OPENAI_COMPATIBLE_BASE_URL` to the endpoint root.
+
+`openai-compatible` is visible during `rp init` but is deliberately excluded
+from `rp auth login` because its credentials depend on custom gateway settings.

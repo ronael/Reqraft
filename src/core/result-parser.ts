@@ -10,17 +10,35 @@ export interface ParsedResult {
   rewritten: string;
   changes: string[];
   warnings: string[];
+  format: "structured" | "raw";
 }
 
-const FENCE_REGEX = /^```(?:json)?\s*\n?([\s\S]*?)```$/;
+const FENCE = "```";
+const FENCE_LANGUAGE = "json";
 
+/**
+ * Removes a surrounding markdown code fence.
+ *
+ * Deliberately implemented with string slicing rather than a regular
+ * expression: the input is untrusted provider output, and a fence pattern
+ * combining a lazy `[\s\S]*?` with an end anchor backtracks super-linearly on
+ * an unterminated fence. Slicing keeps this linear, which matters because
+ * parseResult must always return.
+ */
 export function stripMarkdownFences(text: string): string {
   const trimmed = text.trim();
-  const match = FENCE_REGEX.exec(trimmed);
-  if (match?.[1]) {
-    return match[1].trim();
+  if (!trimmed.startsWith(FENCE) || !trimmed.endsWith(FENCE)) {
+    return trimmed;
   }
-  return trimmed;
+
+  const body = trimmed.slice(FENCE.length, -FENCE.length);
+  const withoutLanguage = body.startsWith(FENCE_LANGUAGE)
+    ? body.slice(FENCE_LANGUAGE.length)
+    : body;
+  const content = withoutLanguage.trim();
+
+  // An empty fence carries no payload; keep the original text unchanged.
+  return content === "" ? trimmed : content;
 }
 
 export function parseResult(text: string): ParsedResult {
@@ -33,13 +51,15 @@ export function parseResult(text: string): ParsedResult {
       rewritten: validated.rewritten,
       changes: validated.changes,
       warnings: validated.warnings,
+      format: "structured",
     };
   } catch {
     // Fallback: treat the whole text as rewritten if JSON parsing fails.
     return {
       rewritten: cleaned,
       changes: ["Le modèle n'a pas retourné de JSON valide ; sortie brute conservée."],
-      warnings: ["Parsing JSON failed; fallback used."],
+      warnings: ["La réponse n’était pas structurée ; la sortie brute a été conservée."],
+      format: "raw",
     };
   }
 }

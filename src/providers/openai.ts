@@ -6,6 +6,8 @@ import type {
   ModelInfo,
 } from "../core/types.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
+import { providerFetch } from "./http.js";
+import { resolveModelCapabilities } from "../models/capabilities.js";
 
 interface OpenAIMessage {
   role: "system" | "user" | "assistant";
@@ -38,9 +40,11 @@ export class OpenAIProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = "https://api.openai.com/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {}
 
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
+    const capabilities = resolveModelCapabilities(this.id, request.model);
     const body: Record<string, unknown> = {
       model: request.model,
       messages: [
@@ -51,16 +55,20 @@ export class OpenAIProvider implements ProviderAdapter {
       response_format: { type: "json_object" },
     };
 
-    if (supportsTemperature(request.model)) {
+    if (capabilities.supportsTemperature) {
       body.temperature = request.temperature;
     }
 
-    if (request.reasoningEffort && supportsReasoningEffort(request.model, request.reasoningEffort)) {
+    if (
+      request.reasoningEffort &&
+      capabilities.reasoningEfforts.includes(request.reasoningEffort)
+    ) {
       body.reasoning_effort = request.reasoningEffort;
     }
 
-    const response = await fetch(`${this.baseUrl}/chat/completions`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/chat/completions`, {
       method: "POST",
+      signal: request.signal,
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${this.apiKey}`,
@@ -95,8 +103,9 @@ export class OpenAIProvider implements ProviderAdapter {
     };
   }
 
-  async listModels(): Promise<ModelInfo[]> {
-    const response = await fetch(`${this.baseUrl}/models`, {
+  async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
+      signal,
       headers: { Authorization: `Bearer ${this.apiKey}` },
     });
     const text = await response.text();
@@ -115,30 +124,12 @@ export class OpenAIProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API OpenAI manquante (OPENAI_API_KEY).",
-        missingConfiguration: ["OPENAI_API_KEY"],
+        message: `Clé API OpenAI manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({ ok: true, message: "OpenAI est configuré." });
   }
-}
-
-function supportsTemperature(model: string): boolean {
-  return !isGpt5Family(model);
-}
-
-function supportsReasoningEffort(
-  model: string,
-  effort: NonNullable<ProviderRequest["reasoningEffort"]>,
-): boolean {
-  if (effort === "none") {
-    return model.startsWith("gpt-5.1");
-  }
-  return isGpt5Family(model) || model.startsWith("o");
-}
-
-function isGpt5Family(model: string): boolean {
-  return model.startsWith("gpt-5");
 }
 
 function calculateVisibleOutputTokens(

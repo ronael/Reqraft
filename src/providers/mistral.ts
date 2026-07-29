@@ -16,6 +16,7 @@ export class MistralProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     baseUrl = "https://api.mistral.ai/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {
     this.adapter = new OpenAICompatibleProvider("Mistral", {
       baseUrl,
@@ -35,16 +36,16 @@ export class MistralProvider implements ProviderAdapter {
     }
   }
 
-  listModels(): Promise<ModelInfo[]> {
-    return this.adapter.listModels();
+  listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    return this.adapter.listModels(signal);
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API Mistral manquante (MISTRAL_API_KEY).",
-        missingConfiguration: ["MISTRAL_API_KEY"],
+        message: `Clé API Mistral manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({ ok: true, message: "Mistral est configuré." });
@@ -52,5 +53,5 @@ export class MistralProvider implements ProviderAdapter {
 }
 
 function isTransientMistralError(error: unknown): error is ProviderError {
-  return error instanceof ProviderError && error.message.startsWith("Provider error 503:");
+  return error instanceof ProviderError && error.httpStatus === 503;
 }

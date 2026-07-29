@@ -9,9 +9,10 @@ import { runConfig } from "./commands/config.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
-import { listProviders } from "./providers/registry.js";
-import { getPresetModels } from "./models/presets.js";
-import { credentialStatus, login, logout, type CredentialProvider } from "./auth/credentials.js";
+import { runModelsList, runProfilesList, runProvidersList } from "./commands/list.js";
+import { runAuth } from "./commands/auth.js";
+import { listCredentialProviders } from "./providers/catalog.js";
+import type { FidelityMode } from "./core/types.js";
 
 interface CliOptions {
   profile?: string;
@@ -25,13 +26,24 @@ interface CliOptions {
   diff?: boolean;
   explain?: boolean;
   stats?: boolean;
-  fidelity?: "permissive" | "balanced" | "strict";
+  fidelity?: FidelityMode;
   stream?: boolean;
   timeout?: string;
+  maxOutputTokens?: string;
+  failOnQuality?: boolean;
   verbose?: boolean;
 }
 
 const program = new Command();
+const AUTH_PROVIDER_HINT = listCredentialProviders()
+  .map((provider) => provider.id)
+  .join(", ");
+
+function applyExitCode(exitCode: number): void {
+  if (exitCode !== 0) {
+    process.exitCode = exitCode;
+  }
+}
 
 program
   .name("rp")
@@ -53,6 +65,8 @@ program
   .option("--fidelity <mode>", "Politique de fidélité (permissive, balanced, strict)")
   .option("--no-stream", "Désactiver le streaming")
   .option("--timeout <ms>", "Timeout en millisecondes")
+  .option("--max-output-tokens <tokens>", "Plafond de tokens de sortie pour cette génération")
+  .option("--fail-on-quality", "Retourner un code non nul si le résultat doit être vérifié")
   .option("--verbose", "Mode verbeux")
   .option("--force", "Forcer l'envoi malgré un secret détecté")
   .option("--redact-secrets", "Masquer automatiquement les secrets détectés")
@@ -61,57 +75,37 @@ program
       render(<App />);
       return;
     }
-    await runReprompt({ text, ...options });
+    applyExitCode(await runReprompt({ text, ...options }));
   });
 
 program
   .command("auth")
   .description("Gère les clés API dans le stockage sécurisé")
   .argument("<action>", "login, logout, status")
-  .argument("[provider]", "anthropic, openai, deepseek, mistral")
-  .action(async (action: string, provider?: CredentialProvider) => {
-    if (action === "status") { await credentialStatus(); return; }
-    if (!provider || !["anthropic", "openai", "deepseek", "mistral"].includes(provider)) throw new Error("Provider invalide.");
-    if (action === "login") { await login(provider); return; }
-    if (action === "logout") { await logout(provider); return; }
-    throw new Error("Action invalide : login, logout ou status.");
+  .argument("[provider]", AUTH_PROVIDER_HINT)
+  .action(async (action: string, provider?: string) => {
+    applyExitCode(await runAuth(action, provider));
   });
 
 program
   .command("profiles")
   .description("Liste les profils disponibles")
   .action(() => {
-    console.log("Profiles:");
-    console.log("  auto");
-    for (const profile of [
-      "clean",
-      "code",
-      "frontend",
-      "web-design",
-      "debug",
-      "review",
-      "writing",
-    ]) {
-      console.log(`  ${profile}`);
-    }
+    runProfilesList();
   });
 
 program
   .command("providers")
   .description("Liste les providers disponibles")
   .action(() => {
-    for (const id of listProviders()) {
-      console.log(id);
-    }
+    runProvidersList();
   });
 
 program
   .command("models")
   .description("Liste les modèles recommandés")
   .action(() => {
-    for (const preset of getPresetModels()) {
-      console.log(`${preset.provider}\t${preset.id}\t${preset.name}`);
-    }
+    runModelsList();
   });
 
 program
@@ -134,7 +128,7 @@ program
       await runFirstRunSetup({ reset: options?.reset });
       return;
     }
-    await runConfig(action, key, value);
+    applyExitCode(await runConfig(action, key, value));
   });
 
 program
@@ -151,7 +145,7 @@ program
   .argument("[name]", "Nom de l'alias")
   .option("--dry-run", "Afficher la modification sans l'appliquer")
   .action(async (action: string, name?: string, options?: { dryRun?: boolean }) => {
-    await runAlias(action, name, options ?? {});
+    applyExitCode(await runAlias(action, name, options ?? {}));
   });
 
 program
@@ -161,4 +155,9 @@ program
     console.log(version);
   });
 
-program.parse();
+try {
+  await program.parseAsync();
+} catch (error) {
+  console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
+  process.exitCode = 1;
+}

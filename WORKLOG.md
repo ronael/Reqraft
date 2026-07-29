@@ -2,7 +2,84 @@
 
 ## Lot en cours
 
-Publication — en attente de l'OTP npm ou de la configuration du token d'automation.
+Qualité professionnelle — branche `refactor/professional-cli-quality`.
+
+### Contrat de résultat et politiques
+
+- Les réponses provider utilisables ne sont plus masquées par les contrôles de
+  fidélité après consommation des tokens.
+- Les alertes sont structurées en `good`, `review` et `risky`, visibles dans le
+  TUI, sur stderr et dans la sortie JSON.
+- `--fail-on-quality` permet aux automatisations d’échouer sans supprimer la
+  réponse écrite sur stdout.
+- Timeouts, budgets adaptatifs, réserves par niveau et seuils de fidélité sont
+  centralisés et documentés dans `src/core/reprompt-policy.ts`.
+- Le timeout est réellement propagé aux appels réseau de tous les providers,
+  y compris la validation des identifiants.
+- Les capacités modèle OpenAI pilotent désormais `temperature`,
+  `reasoning_effort` et la limite de sortie depuis un module dédié.
+
+### Qualité et SonarQube
+
+- Suite `pnpm quality` ajoutée : TypeScript, ESLint, tests avec couverture et
+  build de production.
+- Baseline Prettier normalisée et contrôle de format intégré à la suite qualité.
+- Analyse SonarQube ajoutée avec rapport LCOV et quality gate bloquante.
+- Workflow GitHub Actions compatible Node.js 20, SonarQube Cloud et serveur
+  auto-hébergé ; l’analyse des pull requests reste activable selon l’édition.
+- Baseline de couverture assumée : 42,74 % sur tout `src`, plus de 92 % sur le
+  cœur commun. Le TUI et les commandes historiques restent la dette principale.
+
+### Validation du lot
+
+- `pnpm quality` : 18 fichiers, 114 tests réussis, couverture LCOV et build OK.
+- E2E isolés de la vraie configuration macOS, Linux et Windows via un HOME
+  temporaire.
+- Benchmark OpenAI réel du 29 juillet 2026 : 40 cas, 0 échec, score moyen
+  0,98125, médiane 1,036 s, P95 2,186 s.
+- 37 résultats `good`, 3 résultats `review`, 0 résultat `risky`; toutes les
+  réponses sont restituées.
+- Démarrage et fermeture du TUI de production vérifiés dans un pseudo-terminal.
+- `pnpm sonar` sans token : échec explicite attendu, sans fuite de secret.
+
+## Identité terminal
+
+### Lots A et B — direction et design system
+
+- Direction terminal-first documentée dans `docs/tui-design.md`.
+- Palette sémantique, tokens, types et seuils responsive centralisés.
+- Composants réutilisables ajoutés : frame, header, panneaux, badges, notices,
+  état vide, métadonnées, raccourcis, sélecteur et spinner.
+
+### Lots C et D — écran principal et interactions
+
+- Écran principal limité à 112 colonnes, sans hauteur artificielle ni grands
+  espaces vides.
+- États vide, chargement, résultat, diff, explication, succès et erreur harmonisés.
+- Métadonnées de durée et de tokens affichées après génération.
+- Palette `Ctrl+K`, aide `?`, navigation `Esc` et raccourcis de contexte validés
+  dans un pseudo-terminal réel.
+- Les erreurs provider brutes sont remplacées par une prochaine action claire.
+
+### Lots E et F — commandes et robustesse
+
+- Titres partagés appliqués à `doctor`, `auth`, `profiles`, `providers` et `models`.
+- `init` recommande désormais le coffre-fort via `rp auth login`.
+- Les valeurs d'exemple comme `ta-clé` sont refusées dans la saisie et dans
+  l'environnement avant tout appel provider.
+- Fallback `NO_COLOR` ajouté pour les logs, pipes et terminaux non interactifs.
+- Rendu manuel validé à 48 colonnes ; seuils automatisés pour 40, 52, 76 et
+  120 colonnes.
+
+### Validation
+
+- Tests ciblés auth, erreurs, responsive et fallback couleur ajoutés.
+- `pnpm exec tsc --noEmit` : succès.
+- `pnpm lint` : succès.
+- `pnpm test` : 16 fichiers, 102 tests réussis.
+- `pnpm build` : succès, bundle ESM généré.
+- Tests manuels : rendu étroit, palette, aide, retour `Esc`, commandes secondaires,
+  fallback `NO_COLOR` et refus interactif d'une clé `ta-clé`.
 
 ## Terminé
 

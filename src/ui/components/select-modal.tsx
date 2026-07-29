@@ -1,6 +1,7 @@
 import React from "react";
 import { Box, Text, useInput } from "ink";
 import SelectInput from "ink-select-input";
+import { theme } from "../theme/tokens.js";
 
 export interface SelectOption<T> {
   label: string;
@@ -19,7 +20,7 @@ export function SelectModal<T extends string>({
   options,
   onSelect,
   onCancel,
-}: SelectModalProps<T>): React.JSX.Element {
+}: Readonly<SelectModalProps<T>>): React.JSX.Element {
   const items = options.map((option) => ({ label: option.label, value: option.value }));
 
   useInput((input, key) => {
@@ -29,16 +30,26 @@ export function SelectModal<T extends string>({
   });
 
   return (
-    <Box flexDirection="column" borderStyle="single" padding={1}>
-      <Text bold>{title}</Text>
+    <Box flexDirection="column" paddingX={1}>
+      <Text bold color={theme.color.accent}>
+        {title}
+      </Text>
       <SelectInput
         items={items}
+        indicatorComponent={({ isSelected }) => (
+          <Text color={theme.color.accent}>{isSelected ? "> " : "  "}</Text>
+        )}
+        itemComponent={({ isSelected, label }) => (
+          <Text color={isSelected ? theme.color.text : theme.color.muted} bold={isSelected}>
+            {label}
+          </Text>
+        )}
         onSelect={(item) => {
           onSelect(item.value);
         }}
         onHighlight={() => undefined}
       />
-      <Text dimColor>Esc pour annuler</Text>
+      <Text dimColor>↑↓ naviguer Entrée choisir Esc revenir</Text>
     </Box>
   );
 }

@@ -15,7 +15,14 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
     input: "fais une landing page style apple",
     profile: "web-design",
     level: "standard",
-    forbiddenAdditions: ["témoignages", "pricing", "FAQ", "authentification", "base de données", "footer"],
+    forbiddenAdditions: [
+      "témoignages",
+      "pricing",
+      "FAQ",
+      "authentification",
+      "base de données",
+      "footer",
+    ],
     mustPreserve: ["landing page", "apple"],
   },
   {
@@ -39,7 +46,12 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
     input: "corrige la page login",
     profile: "frontend",
     level: "standard",
-    forbiddenAdditions: ["inscription", "authentification à deux facteurs", "base de données", "pricing"],
+    forbiddenAdditions: [
+      "inscription",
+      "authentification à deux facteurs",
+      "base de données",
+      "pricing",
+    ],
     mustPreserve: ["login"],
   },
   {
@@ -170,13 +182,14 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
   },
   ...Array.from({ length: 18 }, (_, index) => ({
     id: `short-regression-${String(index + 1)}`,
-    input: [
-      "ajoute une icône",
-      "corrige le padding",
-      "renomme ce bouton",
-      "améliore le titre",
-      "fix le bug mobile",
-    ][index % 5] ?? "corrige",
+    input:
+      [
+        "ajoute une icône",
+        "corrige le padding",
+        "renomme ce bouton",
+        "améliore le titre",
+        "fix le bug mobile",
+      ][index % 5] ?? "corrige",
     profile: ["frontend", "clean", "code", "web-design", "debug"][index % 5] ?? "clean",
     level: ["minimal", "standard", "complete"][index % 3] as RepromptLevel,
     forbiddenAdditions: ["témoignages", "pricing", "FAQ", "authentification", "base de données"],

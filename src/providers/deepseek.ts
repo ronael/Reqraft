@@ -15,6 +15,7 @@ export class DeepSeekProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     baseUrl = "https://api.deepseek.com/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {
     this.adapter = new OpenAICompatibleProvider("DeepSeek", {
       baseUrl,
@@ -28,16 +29,16 @@ export class DeepSeekProvider implements ProviderAdapter {
     return this.adapter.generate(request);
   }
 
-  listModels(): Promise<ModelInfo[]> {
-    return this.adapter.listModels();
+  listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    return this.adapter.listModels(signal);
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API DeepSeek manquante (DEEPSEEK_API_KEY).",
-        missingConfiguration: ["DEEPSEEK_API_KEY"],
+        message: `Clé API DeepSeek manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({

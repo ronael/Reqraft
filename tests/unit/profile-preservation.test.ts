@@ -44,7 +44,9 @@ describe("base rules coverage", () => {
   it("contains all common rules", () => {
     const rules = BASE_RULES;
     expect(rules).toContain("Conserver strictement l'intention de l'utilisateur.");
-    expect(rules).toContain("Ne jamais inventer de fonctionnalité, contrainte, fichier ou décision.");
+    expect(rules).toContain(
+      "Ne jamais inventer de fonctionnalité, contrainte, fichier ou décision.",
+    );
     expect(rules).toContain("Ne pas répondre à la demande : uniquement la reformuler.");
   });
 });

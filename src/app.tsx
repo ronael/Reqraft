@@ -1,338 +1,299 @@
-import React, { useState, useCallback, useEffect } from "react";
-import { Box, Text, useInput, useApp } from "ink";
+import { Box, Text, useApp, useInput } from "ink";
 import TextInput from "ink-text-input";
 import process from "node:process";
-import { rewrite } from "./core/engine.js";
+import React, { useCallback, useEffect, useRef, useState } from "react";
 
-import type { RepromptLevel, RepromptResult } from "./core/types.js";
-import { loadConfig } from "./config/loader.js";
-import { resolveProfile, listProfiles } from "./profiles/registry.js";
-import { createProvider, listProviders } from "./providers/registry.js";
-import { resolveModel } from "./models/model-resolver.js";
-import { getPresetModels } from "./models/presets.js";
+import { bootstrapConfiguration, getBootstrapError } from "./application/bootstrap.js";
+import { executeReprompt } from "./application/reprompt.js";
 import { writeClipboard } from "./clipboard/clipboard.js";
+import { DEFAULT_CONFIG } from "./config/loader.js";
+import type { Config } from "./config/schema.js";
+import type { RepromptLevel } from "./core/types.js";
+import { createUiRepromptInput } from "./ui/app-actions.js";
+import {
+  applyLoadedConfig,
+  clearCopyToast,
+  closeModal as closeModalState,
+  completeGeneration,
+  createInitialAppState,
+  openModal,
+  pinInput as pinInputState,
+  selectLevel as selectLevelState,
+  selectModel as selectModelState,
+  selectProfile as selectProfileState,
+  selectProvider as selectProviderState,
+  showView,
+  toggleDiffView,
+  updatePromptInput,
+  type AppState,
+} from "./ui/app-state.js";
+import { resolveCommandIntent } from "./ui/command-intents.js";
+import {
+  AppFrame,
+  AppModal,
+  HeaderBar,
+  Notice,
+  ResultPanelBody,
+  SectionCard,
+  ShortcutBar,
+  StatusBadge,
+} from "./ui/components/index.js";
+import { formatUiError } from "./ui/errors.js";
+import {
+  beginGeneration,
+  canStartGeneration,
+  completeCopy,
+  failCopy,
+  failGeneration,
+} from "./ui/generation-state.js";
 import { useTerminalSize } from "./ui/hooks/use-terminal-size.js";
-import { SelectModal, type SelectOption } from "./ui/components/select-modal.js";
+import { getFrameWidth, getLayoutMode } from "./ui/layout/responsive.js";
+import { getFallbackModelForProvider, type ModalCommandAction } from "./ui/modal-options.js";
+import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
+import { resolveShortcutIntent } from "./ui/shortcut-intents.js";
+import { theme } from "./ui/theme/tokens.js";
+import { getModalTitle, getResultTitle } from "./ui/view-labels.js";
 
-type ViewMode = "result" | "diff" | "explain";
-type ModalType = "profile" | "level" | "provider" | "model" | null;
-
-interface AppState {
-  input: string;
-  profile: string;
-  level: RepromptLevel;
-  provider: string;
-  model: string;
-  result: RepromptResult | null;
-  error: string | null;
-  view: ViewMode;
-  modal: ModalType;
-  copied: boolean;
-}
+type CommandAction = ModalCommandAction;
 
 export function App(): React.JSX.Element {
   const { exit } = useApp();
-  const { columns, rows } = useTerminalSize();
-  const [state, setState] = useState<AppState>({
-    input: "",
-    profile: "auto",
-    level: "standard",
-    provider: "mock",
-    model: "mock-model",
-    result: null,
-    error: null,
-    view: "result",
-    modal: null,
-    copied: false,
-  });
+  const { columns } = useTerminalSize();
+  const [state, setState] = useState<AppState>(createInitialAppState(DEFAULT_CONFIG));
   const [isLoading, setIsLoading] = useState(false);
+  const generationInFlight = useRef(false);
+  const [config, setConfig] = useState<Config | null>(null);
+  const [configReady, setConfigReady] = useState(false);
 
   useEffect(() => {
-    loadConfig()
-      .then((config) => {
+    void bootstrapConfiguration(process.env)
+      .then((result) => {
+        const { config } = result;
+        const bootstrapError = getBootstrapError(result);
+        setConfig(config);
         setState((prev) => ({
-          ...prev,
-          provider: config.defaultProvider,
-          model: config.defaultModel,
-          profile: config.defaultProfile,
-          level: config.defaultLevel,
+          ...applyLoadedConfig(
+            prev,
+            config,
+            bootstrapError ? formatUiError(bootstrapError, config.defaultProvider) : null,
+          ),
         }));
       })
-      .catch(() => {
-        // keep defaults
+      .catch((error: unknown) => {
+        setState((prev) => ({
+          ...prev,
+          error: formatUiError(error, prev.provider),
+        }));
+      })
+      .finally(() => {
+        setConfigReady(true);
       });
   }, []);
 
   const generate = useCallback(async () => {
-    if (!state.input.trim()) return;
+    if (!canStartGeneration(state.input, generationInFlight.current)) return;
+    generationInFlight.current = true;
     setIsLoading(true);
-    setState((prev) => ({ ...prev, error: null, result: null }));
+    setState((prev) => beginGeneration(prev));
 
     try {
-      const { profile } = resolveProfile(state.profile, state.input);
-      const provider = createProvider(state.provider as "mock", process.env);
-      const { model, reasoningEffort } = resolveModel(state.provider, state.model, state.model);
-      const result = await rewrite({
-        input: state.input,
-        profile,
-        level: state.level,
-        provider,
-        model,
-        includeChanges: true,
-        stream: false,
-        reasoningEffort,
-      });
-      setState((prev) => ({ ...prev, result, view: "result" }));
+      const { result } = await executeReprompt(createUiRepromptInput(state, config, process.env));
+      setState((prev) => completeGeneration(prev, result));
     } catch (err) {
       setState((prev) => ({
-        ...prev,
-        error: err instanceof Error ? err.message : String(err),
+        ...failGeneration(prev, formatUiError(err, state.provider)),
       }));
     } finally {
+      generationInFlight.current = false;
       setIsLoading(false);
     }
-  }, [state.input, state.profile, state.level, state.provider, state.model]);
-
-  useInput((input, key) => {
-    if (state.modal) {
-      if (key.escape) {
-        setState((prev) => ({ ...prev, modal: null }));
-      }
-      return;
-    }
-
-    if (key.ctrl && input === "\r") {
-      void generate();
-      return;
-    }
-    if (key.ctrl && key.shift && input === "C") {
-      if (state.result) {
-        void writeClipboard(state.result.rewritten).then(() => {
-          setState((prev) => ({ ...prev, copied: true }));
-          setTimeout(() => {
-            setState((prev) => ({ ...prev, copied: false }));
-          }, 1500);
-        });
-      }
-      return;
-    }
-    if (key.ctrl && input === "d") {
-      setState((prev) => ({ ...prev, view: prev.view === "diff" ? "result" : "diff" }));
-      return;
-    }
-    if (key.ctrl && input === "p") {
-      setState((prev) => ({ ...prev, modal: "profile" }));
-      return;
-    }
-    if (key.ctrl && input === "m") {
-      setState((prev) => ({ ...prev, modal: "model" }));
-      return;
-    }
-    if (key.ctrl && input === "l") {
-      setState((prev) => ({ ...prev, modal: "level" }));
-      return;
-    }
-    if (key.ctrl && input === "r") {
-      void generate();
-      return;
-    }
-    if (input === "?") {
-      setState((prev) => ({ ...prev, view: prev.view === "explain" ? "result" : "explain" }));
-      return;
-    }
-    if (key.escape || (key.ctrl && input === "c")) {
-      exit();
-    }
-  });
-
-  const renderModal = (): React.JSX.Element | null => {
-    switch (state.modal) {
-      case "profile": {
-        const profiles: SelectOption<string>[] = [
-          { label: "auto (détection)", value: "auto" },
-          ...listProfiles().map((p) => ({ label: `${p.name} — ${p.description}`, value: p.id })),
-        ];
-        return (
-          <SelectModal
-            title="Changer de profil"
-            options={profiles}
-            onSelect={setProfile}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "level": {
-        const levels: SelectOption<RepromptLevel>[] = [
-          { label: "minimal", value: "minimal" },
-          { label: "standard", value: "standard" },
-          { label: "complete", value: "complete" },
-        ];
-        return (
-          <SelectModal
-            title="Changer de niveau"
-            options={levels}
-            onSelect={setLevel}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "provider": {
-        const providers: SelectOption<string>[] = listProviders().map((id) => ({ label: id, value: id }));
-        return (
-          <SelectModal
-            title="Changer de provider"
-            options={providers}
-            onSelect={setProvider}
-            onCancel={closeModal}
-          />
-        );
-      }
-      case "model": {
-        const models: SelectOption<string>[] = getPresetModels()
-          .filter((m) => m.provider === state.provider)
-          .map((m) => ({ label: `${m.id} — ${m.name}`, value: m.id }));
-        return (
-          <SelectModal
-            title="Changer de modèle"
-            options={models}
-            onSelect={setModel}
-            onCancel={closeModal}
-          />
-        );
-      }
-      default:
-        return null;
-    }
-  };
-
+  }, [state, config]);
 
   const closeModal = (): void => {
-    setState((prev) => ({ ...prev, modal: null }));
+    setState(closeModalState);
   };
   const setProfile = (profile: string): void => {
-    setState((prev) => ({ ...prev, profile, modal: null }));
+    setState((prev) => selectProfileState(prev, profile));
   };
   const setLevel = (level: RepromptLevel): void => {
-    setState((prev) => ({ ...prev, level, modal: null }));
+    setState((prev) => selectLevelState(prev, level));
   };
   const setProvider = (provider: string): void => {
-    setState((prev) => ({ ...prev, provider, modal: null }));
+    const fallbackModel = getFallbackModelForProvider(provider);
+    setState((prev) => selectProviderState(prev, provider, fallbackModel));
   };
   const setModel = (model: string): void => {
-    setState((prev) => ({ ...prev, model, modal: null }));
+    setState((prev) => selectModelState(prev, model));
   };
   const updateInput = (input: string): void => {
-    setState((prev) => ({ ...prev, input }));
+    setState((prev) => updatePromptInput(prev, input));
   };
   const submitInput = (): void => {
     void generate();
   };
-
-  const renderResult = (): string => {
-    if (!state.result) return "";
-    switch (state.view) {
-      case "diff":
-        return formatDiff(state.result.original, state.result.rewritten);
-      case "explain":
-        return formatExplain(state.result);
-      case "result":
-      default:
-        return state.result.rewritten;
+  const clearCopied = (): void => {
+    setState(clearCopyToast);
+  };
+  const copyResult = (dismissModal: boolean): void => {
+    if (!state.result) return;
+    void writeClipboard(state.result.rewritten)
+      .then(() => {
+        setState((prev) => completeCopy(prev, dismissModal));
+        setTimeout(clearCopied, theme.behavior.toastDurationMs);
+      })
+      .catch((error: unknown) => {
+        setState((prev) => failCopy(prev, formatUiError(error, state.provider)));
+      });
+  };
+  const runCommand = (action: CommandAction): void => {
+    const intent = resolveCommandIntent(action);
+    switch (intent.type) {
+      case "open-modal":
+        setState((prev) => openModal(prev, intent.modal));
+        return;
+      case "generate":
+        setState(closeModalState);
+        void generate();
+        return;
+      case "copy":
+        copyResult(true);
+        return;
+      case "show-view":
+        setState((prev) => showView(prev, intent.view));
     }
   };
 
-  const resultText = renderResult();
-  const maxHeight = Math.max(3, Math.floor(rows / 3));
+  // Keyboard shortcuts pin the current input: the TextInput value must survive
+  // a state update triggered from outside the input itself.
+  const pinInput = (patch: Partial<AppState>): void => {
+    setState((prev) => pinInputState(prev, state.input, patch));
+  };
+  const toggleDiff = (): void => {
+    setState((prev) => toggleDiffView(prev, state.input));
+  };
+  const runShortcut = (action: ShortcutAction): void => {
+    const intent = resolveShortcutIntent(action);
+    switch (intent.type) {
+      case "close-modal":
+        closeModal();
+        return;
+      case "exit":
+        exit();
+        return;
+      case "generate":
+        if (intent.preserveInput) {
+          pinInput({});
+        }
+        void generate();
+        return;
+      case "copy":
+        if (intent.preserveInput) {
+          pinInput({});
+        }
+        copyResult(intent.dismissModal);
+        return;
+      case "toggle-diff":
+        toggleDiff();
+        return;
+      case "show-view":
+        pinInput({ view: intent.view });
+        return;
+      case "open-modal":
+        pinInput({ modal: intent.modal });
+    }
+  };
+
+  useInput((input, key) => {
+    const action = resolveShortcut(
+      input,
+      { ctrl: key.ctrl, escape: key.escape },
+      {
+        hasModal: state.modal !== null,
+        hasResult: state.result !== null,
+        inputLength: state.input.length,
+      },
+    );
+    if (action) {
+      runShortcut(action);
+    }
+  });
+
+  const layoutMode = getLayoutMode(columns);
+  const compact = layoutMode !== "wide";
+  const resultTitle = getResultTitle(state.view);
+  const frameWidth = getFrameWidth(columns);
+
+  if (!configReady) {
+    return (
+      <AppFrame mode={layoutMode} width={frameWidth}>
+        <Box>
+          <Text bold color={theme.color.accent}>
+            reqraft
+          </Text>
+          <Text dimColor> chargement de la configuration...</Text>
+        </Box>
+      </AppFrame>
+    );
+  }
+
+  if (state.modal) {
+    return (
+      <AppFrame mode={layoutMode} width={frameWidth}>
+        <HeaderBar provider={state.provider} model={state.model} compact={compact} />
+        <SectionCard title={getModalTitle(state.modal)} tone="primary">
+          <AppModal
+            modal={state.modal}
+            provider={state.provider}
+            hasResult={Boolean(state.result)}
+            onSelectProfile={setProfile}
+            onSelectLevel={setLevel}
+            onSelectProvider={setProvider}
+            onSelectModel={setModel}
+            onRunCommand={runCommand}
+            onClose={closeModal}
+          />
+        </SectionCard>
+      </AppFrame>
+    );
+  }
 
   return (
-    <Box flexDirection="column" height={rows}>
-      <Box justifyContent="space-between">
-        <Text bold>rp</Text>
-        <Text>{state.provider} · {state.model}</Text>
-      </Box>
-
-      <Box flexDirection="column" borderStyle="single" padding={1} minHeight={3}>
-        <Text dimColor>Prompt original</Text>
+    <AppFrame mode={layoutMode} width={frameWidth}>
+      <HeaderBar provider={state.provider} model={state.model} compact={compact} />
+      <SectionCard title="Demande brute" tone="primary">
         <TextInput
           value={state.input}
           onChange={updateInput}
           onSubmit={submitInput}
-          placeholder="Écris ta demande brute..."
+          focus={!isLoading}
+          placeholder="Écris ta demande brute, même imparfaite…"
         />
-      </Box>
-
-      <Box justifyContent="space-between" paddingX={1}>
-        <Text>Profil : {state.profile}</Text>
-        <Text>Niveau : {state.level}</Text>
-      </Box>
-
-      <Box flexDirection="column" borderStyle="single" padding={1} flexGrow={1} minHeight={maxHeight}>
-        <Text dimColor>
-          {state.view === "result" && "Prompt amélioré"}
-          {state.view === "diff" && "Diff"}
-          {state.view === "explain" && "Explication"}
-        </Text>
-        {isLoading ? (
-          <Text>Génération...</Text>
-        ) : state.error ? (
-          <Text color="red">{state.error}</Text>
-        ) : (
-          <Text wrap="wrap">{resultText || "Appuie sur Ctrl+Enter pour générer."}</Text>
+      </SectionCard>
+      <Box paddingX={1} marginBottom={1} flexWrap="wrap">
+        <StatusBadge label="Profil" value={state.profile} />
+        <StatusBadge label="Niveau" value={state.level} />
+        {!compact && (
+          <>
+            <StatusBadge label="Provider" value={state.provider} />
+            <StatusBadge label="Modèle" value={state.model} />
+          </>
         )}
       </Box>
-
-      <Box justifyContent="space-between" paddingX={1}>
-        <Text dimColor>
-          Ctrl+Enter générer · Ctrl+P profil · Ctrl+L niveau · Ctrl+M modèle · Ctrl+D diff · Ctrl+R régénérer · ? explication · Esc quitter
-        </Text>
-      </Box>
+      <SectionCard title={resultTitle} tone={state.result ? "primary" : "secondary"}>
+        <ResultPanelBody
+          isLoading={isLoading}
+          error={state.error}
+          result={state.result}
+          view={state.view}
+        />
+      </SectionCard>
+      <ShortcutBar compact={compact} hasResult={Boolean(state.result)} />
 
       {state.copied && (
         <Box>
-          <Text color="green">Copié dans le presse-papiers.</Text>
+          <Notice tone="success">Copié dans le presse-papiers.</Notice>
         </Box>
       )}
-
-      {state.modal && (
-        <Box position="absolute" marginTop={Math.floor(rows / 4)} marginLeft={Math.floor(columns / 4)}>
-          {renderModal()}
-        </Box>
-      )}
-    </Box>
+    </AppFrame>
   );
-}
-
-function formatDiff(original: string, rewritten: string): string {
-  const originalLines = original.split("\n");
-  const rewrittenLines = rewritten.split("\n");
-  const output: string[] = [];
-  const maxLines = Math.max(originalLines.length, rewrittenLines.length);
-
-  for (let i = 0; i < maxLines; i++) {
-    const originalLine = originalLines[i] ?? "";
-    const rewrittenLine = rewrittenLines[i] ?? "";
-    if (originalLine !== rewrittenLine) {
-      output.push(`- ${originalLine}`);
-      output.push(`+ ${rewrittenLine}`);
-    } else {
-      output.push(`  ${originalLine}`);
-    }
-  }
-
-  return output.join("\n");
-}
-
-function formatExplain(result: RepromptResult): string {
-  const lines = ["Modifications :"];
-  for (const change of result.changes) {
-    lines.push(`- ${change}`);
-  }
-  if (result.warnings.length > 0) {
-    lines.push("");
-    lines.push("Avertissements :");
-    for (const warning of result.warnings) {
-      lines.push(`- ${warning}`);
-    }
-  }
-  return lines.join("\n");
 }

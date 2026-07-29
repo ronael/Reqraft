@@ -1,76 +1,70 @@
-import process from "node:process";
 import { loadConfig, saveConfig, configPath } from "../config/loader.js";
-import { ConfigSchema, configKeys, type ConfigKey } from "../config/schema.js";
+import { ConfigSchema, configKeys, parseConfigValue, type ConfigKey } from "../config/schema.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 
-export async function runConfig(action?: string, key?: string, value?: string): Promise<void> {
+interface ConfigOutput {
+  log(message: string): void;
+  error(message: string): void;
+}
+
+export async function runConfig(
+  action?: string,
+  key?: string,
+  value?: string,
+  output: ConfigOutput = console,
+): Promise<number> {
   try {
     switch (action) {
       case undefined:
       case "get":
-        await showConfig(key);
-        break;
+        return await showConfig(key, output);
       case "set":
         if (!key || value === undefined) {
-          console.error("Usage : rp config set <clé> <valeur>");
-          process.exit(EXIT_CODES.INVALID_INPUT);
+          output.error("Usage : rp config set <clé> <valeur>");
+          return EXIT_CODES.INVALID_INPUT;
         }
-        await setConfig(key, value);
-        break;
+        return await setConfig(key, value, output);
       case "path":
-        console.log(configPath());
-        break;
+        output.log(configPath());
+        return EXIT_CODES.SUCCESS;
       default:
-        console.error(`Action inconnue : ${action}. Actions : get, set, path`);
-        process.exit(EXIT_CODES.INVALID_INPUT);
+        output.error(`Action inconnue : ${action}. Actions : get, set, path`);
+        return EXIT_CODES.INVALID_INPUT;
     }
   } catch (error) {
-    console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(EXIT_CODES.INVALID_CONFIGURATION);
+    output.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
+    return EXIT_CODES.INVALID_CONFIGURATION;
   }
 }
 
-async function showConfig(key?: string): Promise<void> {
+async function showConfig(key: string | undefined, output: ConfigOutput): Promise<number> {
   const config = await loadConfig();
   if (key) {
     if (!isConfigKey(key)) {
-      console.error(`Clé inconnue : ${key}`);
-      process.exit(EXIT_CODES.INVALID_CONFIGURATION);
+      output.error(`Clé inconnue : ${key}`);
+      return EXIT_CODES.INVALID_CONFIGURATION;
     }
-    console.log(String(config[key]));
+    output.log(String(config[key]));
   } else {
-    console.log(JSON.stringify(config, null, 2));
+    output.log(JSON.stringify(config, null, 2));
   }
+  return EXIT_CODES.SUCCESS;
 }
 
-async function setConfig(key: string, value: string): Promise<void> {
+async function setConfig(key: string, value: string, output: ConfigOutput): Promise<number> {
   if (!isConfigKey(key)) {
-    console.error(`Clé inconnue : ${key}`);
-    process.exit(EXIT_CODES.INVALID_CONFIGURATION);
+    output.error(`Clé inconnue : ${key}`);
+    return EXIT_CODES.INVALID_CONFIGURATION;
   }
   const config = await loadConfig();
-  const parsedValue = parseValue(key, value);
+  const parsedValue = parseConfigValue(key, value);
   const updated = { ...config, [key]: parsedValue };
 
   // Validate the whole config before saving.
   ConfigSchema.parse(updated);
   await saveConfig(updated);
-  console.log(`${key} = ${value}`);
-}
-
-function parseValue(key: ConfigKey, value: string): unknown {
-  switch (key) {
-    case "copyAfterGeneration":
-    case "stream":
-    case "showChanges":
-    case "showStats":
-    case "telemetry":
-      return value === "true";
-    case "timeoutMs":
-      return Number(value);
-    default:
-      return value;
-  }
+  output.log(`${key} = ${value}`);
+  return EXIT_CODES.SUCCESS;
 }
 
 function isConfigKey(key: string): key is ConfigKey {

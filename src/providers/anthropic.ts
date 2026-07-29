@@ -6,6 +6,7 @@ import type {
   ModelInfo,
 } from "../core/types.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
+import { providerFetch } from "./http.js";
 
 interface AnthropicContent {
   type: string;
@@ -29,11 +30,13 @@ export class AnthropicProvider implements ProviderAdapter {
   constructor(
     private readonly apiKey: string,
     private readonly baseUrl = "https://api.anthropic.com/v1",
+    private readonly missingConfiguration = ["apiKey"],
   ) {}
 
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
-    const response = await fetch(`${this.baseUrl}/messages`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/messages`, {
       method: "POST",
+      signal: request.signal,
       headers: {
         "Content-Type": "application/json",
         "x-api-key": this.apiKey,
@@ -82,8 +85,9 @@ export class AnthropicProvider implements ProviderAdapter {
     };
   }
 
-  async listModels(): Promise<ModelInfo[]> {
-    const response = await fetch(`${this.baseUrl}/models`, {
+  async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
+      signal,
       headers: { "x-api-key": this.apiKey, "anthropic-version": "2023-06-01" },
     });
     const text = await response.text();
@@ -102,8 +106,8 @@ export class AnthropicProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: "Clé API Anthropic manquante (ANTHROPIC_API_KEY).",
-        missingConfiguration: ["ANTHROPIC_API_KEY"],
+        message: `Clé API Anthropic manquante (${this.missingConfiguration.join(", ")}).`,
+        missingConfiguration: this.missingConfiguration,
       });
     }
     return Promise.resolve({ ok: true, message: "Anthropic est configuré." });
@@ -122,7 +126,10 @@ function parseStreamingResponse(stream: string, requestedModel: string): Provide
 
     const event = JSON.parse(line.slice("data: ".length)) as AnthropicStreamEvent;
     if (event.type === "error") {
-      throw new ProviderError(`Anthropic streaming error: ${event.error?.message ?? "unknown error"}`, 4);
+      throw new ProviderError(
+        `Anthropic streaming error: ${event.error?.message ?? "unknown error"}`,
+        4,
+      );
     }
     if (event.type === "message_start") {
       inputTokens = event.message?.usage?.input_tokens;

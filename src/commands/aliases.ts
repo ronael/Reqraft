@@ -17,42 +17,54 @@ function ask(question: string): Promise<string> {
 export async function runAlias(
   action: string | undefined,
   name: string | undefined,
-  options: { dryRun?: boolean } = {},
-): Promise<void> {
-  const shell = detectShell();
+  options: AliasCommandOptions = {},
+): Promise<number> {
+  const output = options.output ?? console;
+  const confirm = options.confirm ?? ask;
+  const shell = options.shell ?? detectShell();
   if (shell === "unknown") {
-    console.error("Shell non reconnu. Shells supportés : Bash, Zsh, Fish, PowerShell.");
-    process.exit(EXIT_CODES.INVALID_CONFIGURATION);
+    output.error("Shell non reconnu. Shells supportés : Bash, Zsh, Fish, PowerShell.");
+    return EXIT_CODES.INVALID_CONFIGURATION;
   }
 
-  const configPath = getShellConfigPath(shell);
+  const configPath = options.configPath ?? getShellConfigPath(shell);
   if (!configPath) {
-    console.error("Impossible de déterminer le fichier de configuration du shell.");
-    process.exit(EXIT_CODES.INVALID_CONFIGURATION);
+    output.error("Impossible de déterminer le fichier de configuration du shell.");
+    return EXIT_CODES.INVALID_CONFIGURATION;
   }
 
   switch (action) {
     case "set":
       if (!name) {
-        console.error("Usage : rp alias set <nom>");
-        process.exit(EXIT_CODES.INVALID_INPUT);
+        output.error("Usage : rp alias set <nom>");
+        return EXIT_CODES.INVALID_INPUT;
       }
-      await runSet(configPath, shell, name, options.dryRun ?? false);
-      break;
+      return await runSet(configPath, shell, name, options.dryRun ?? false, output, confirm);
     case "remove":
       if (!name) {
-        console.error("Usage : rp alias remove <nom>");
-        process.exit(EXIT_CODES.INVALID_INPUT);
+        output.error("Usage : rp alias remove <nom>");
+        return EXIT_CODES.INVALID_INPUT;
       }
-      await runRemove(configPath, shell, name, options.dryRun ?? false);
-      break;
+      return await runRemove(configPath, shell, name, options.dryRun ?? false, output, confirm);
     case "list":
-      await runList(configPath, shell);
-      break;
+      return await runList(configPath, shell, output);
     default:
-      console.error("Usage : rp alias set|remove|list [nom]");
-      process.exit(EXIT_CODES.INVALID_INPUT);
+      output.error("Usage : rp alias set|remove|list [nom]");
+      return EXIT_CODES.INVALID_INPUT;
   }
+}
+
+interface AliasOutput {
+  log(message: string): void;
+  error(message: string): void;
+}
+
+interface AliasCommandOptions {
+  dryRun?: boolean;
+  shell?: ShellType;
+  configPath?: string;
+  output?: AliasOutput;
+  confirm?: (question: string) => Promise<string>;
 }
 
 async function runSet(
@@ -60,30 +72,33 @@ async function runSet(
   shell: Exclude<ShellType, "unknown">,
   name: string,
   dryRun: boolean,
-): Promise<void> {
+  output: AliasOutput,
+  confirm: (question: string) => Promise<string>,
+): Promise<number> {
   try {
     const operation = await setAlias(configPath, shell, name, dryRun);
-    console.log(`Alias à ajouter : ${name}`);
-    console.log(`Shell : ${operation.shell}`);
-    console.log(`Fichier : ${operation.path}`);
+    output.log(`Alias à ajouter : ${name}`);
+    output.log(`Shell : ${operation.shell}`);
+    output.log(`Fichier : ${operation.path}`);
     if (dryRun) {
-      console.log("\n[--dry-run] Aucune modification appliquée.");
-      console.log("Contenu prévu :");
-      console.log(operation.content);
-      return;
+      output.log("\n[--dry-run] Aucune modification appliquée.");
+      output.log("Contenu prévu :");
+      output.log(operation.content);
+      return EXIT_CODES.SUCCESS;
     }
 
-    const answer = await ask("Appliquer la modification ? (y/N) ");
+    const answer = await confirm("Appliquer la modification ? (y/N) ");
     if (answer !== "y" && answer !== "yes") {
-      console.log("Modification annulée.");
-      return;
+      output.log("Modification annulée.");
+      return EXIT_CODES.SUCCESS;
     }
 
     await setAlias(configPath, shell, name, false);
-    console.log(`Alias '${name}' ajouté. Rechargez votre shell ou exécutez : source ${configPath}`);
+    output.log(`Alias '${name}' ajouté. Rechargez votre shell ou exécutez : source ${configPath}`);
+    return EXIT_CODES.SUCCESS;
   } catch (error) {
-    console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(EXIT_CODES.GENERAL_ERROR);
+    output.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
+    return EXIT_CODES.GENERAL_ERROR;
   }
 }
 
@@ -92,45 +107,55 @@ async function runRemove(
   shell: Exclude<ShellType, "unknown">,
   name: string,
   dryRun: boolean,
-): Promise<void> {
+  output: AliasOutput,
+  confirm: (question: string) => Promise<string>,
+): Promise<number> {
   try {
     const operation = await removeAlias(configPath, shell, name, dryRun);
-    console.log(`Alias à supprimer : ${name}`);
-    console.log(`Shell : ${operation.shell}`);
-    console.log(`Fichier : ${operation.path}`);
+    output.log(`Alias à supprimer : ${name}`);
+    output.log(`Shell : ${operation.shell}`);
+    output.log(`Fichier : ${operation.path}`);
     if (dryRun) {
-      console.log("\n[--dry-run] Aucune modification appliquée.");
-      console.log("Contenu prévu :");
-      console.log(operation.content);
-      return;
+      output.log("\n[--dry-run] Aucune modification appliquée.");
+      output.log("Contenu prévu :");
+      output.log(operation.content);
+      return EXIT_CODES.SUCCESS;
     }
 
-    const answer = await ask("Confirmer la suppression ? (y/N) ");
+    const answer = await confirm("Confirmer la suppression ? (y/N) ");
     if (answer !== "y" && answer !== "yes") {
-      console.log("Suppression annulée.");
-      return;
+      output.log("Suppression annulée.");
+      return EXIT_CODES.SUCCESS;
     }
 
     await removeAlias(configPath, shell, name, false);
-    console.log(`Alias '${name}' supprimé. Rechargez votre shell ou exécutez : source ${configPath}`);
+    output.log(
+      `Alias '${name}' supprimé. Rechargez votre shell ou exécutez : source ${configPath}`,
+    );
+    return EXIT_CODES.SUCCESS;
   } catch (error) {
-    console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(EXIT_CODES.GENERAL_ERROR);
+    output.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
+    return EXIT_CODES.GENERAL_ERROR;
   }
 }
 
-async function runList(configPath: string, shell: Exclude<ShellType, "unknown">): Promise<void> {
+async function runList(
+  configPath: string,
+  shell: Exclude<ShellType, "unknown">,
+  output: AliasOutput,
+): Promise<number> {
   try {
     const aliases = await listAliases(configPath, shell);
     if (aliases.length === 0) {
-      console.log("Aucun alias rp configuré.");
-      return;
+      output.log("Aucun alias rp configuré.");
+      return EXIT_CODES.SUCCESS;
     }
     for (const alias of aliases) {
-      console.log(alias);
+      output.log(alias);
     }
+    return EXIT_CODES.SUCCESS;
   } catch (error) {
-    console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
-    process.exit(EXIT_CODES.GENERAL_ERROR);
+    output.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
+    return EXIT_CODES.GENERAL_ERROR;
   }
 }

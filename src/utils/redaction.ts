@@ -8,7 +8,10 @@ export function redactSecrets(input: string): string {
   const sorted = [...matches].sort((a, b) => b.position - a.position);
   for (const match of sorted) {
     const replacement = "[REDACTED]";
-    result = result.slice(0, match.position) + replacement + result.slice(match.position + match.value.length);
+    result =
+      result.slice(0, match.position) +
+      replacement +
+      result.slice(match.position + match.value.length);
   }
 
   return result;

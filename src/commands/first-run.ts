@@ -6,8 +6,22 @@ import { ConfigSchema, type Config } from "../config/schema.js";
 import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "../config/loader.js";
 import { getPresetModels } from "../models/presets.js";
 import { createProvider } from "../providers/registry.js";
-
-type InitProvider = Exclude<Config["defaultProvider"], "mock">;
+import { hydrateCredentials } from "../auth/credentials.js";
+import { formatUiError } from "../ui/errors.js";
+import { REPROMPT_LEVELS } from "../core/levels.js";
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import { listProfiles } from "../profiles/registry.js";
+import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
+import {
+  type CredentialProvider,
+  type InitProvider,
+  getProviderDefinition,
+  getProviderEnvName,
+  isCredentialProvider,
+  listCredentialProviders,
+  listProviderDefinitions,
+  OPENAI_COMPATIBLE_PROVIDER_ID,
+} from "../providers/catalog.js";
 
 interface InitProviderChoice {
   label: string;
@@ -50,40 +64,29 @@ interface RunFirstRunOptions {
   shell?: string;
 }
 
-const BUILTIN_PROFILES = [
-  "auto",
-  "clean",
-  "code",
-  "frontend",
-  "web-design",
-  "debug",
-  "review",
-  "writing",
-];
+const MODEL_ID_PROMPT = "Identifiant du modèle";
+const SETUP_CANCELLED = "Initialisation annulée.\n";
+const RESTART_TERMINAL_NOTE = "Relance ton terminal pour une configuration permanente.";
 
-const PROVIDER_ENV: Partial<Record<InitProvider, string>> = {
-  anthropic: "ANTHROPIC_API_KEY",
-  openai: "OPENAI_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-};
-
-const PROVIDER_LABEL: Record<InitProvider, string> = {
-  anthropic: "Anthropic",
-  openai: "OpenAI",
-  deepseek: "DeepSeek",
-  mistral: "Mistral",
-  "openai-compatible": "OpenAI Compatible",
-};
+export function getInitProfileChoices(): string[] {
+  return [AUTO_PROFILE_ID, ...listProfiles().map((profile) => profile.id)];
+}
 
 export function getInitProviderChoices(): InitProviderChoice[] {
+  const choices = listProviderDefinitions()
+    .filter((definition) => definition.visibleInInit)
+    .map((definition) => ({
+      label: definition.label,
+      provider: definition.id as InitProvider,
+    }));
+
   return [
-    { label: "Anthropic", provider: "anthropic" },
-    { label: "OpenAI", provider: "openai" },
-    { label: "DeepSeek", provider: "deepseek" },
-    { label: "Mistral", provider: "mistral" },
-    { label: "OpenAI Compatible", provider: "openai-compatible" },
-    { label: "Serveur local compatible OpenAI", provider: "openai-compatible", local: true },
+    ...choices,
+    {
+      label: "Serveur local compatible OpenAI",
+      provider: OPENAI_COMPATIBLE_PROVIDER_ID,
+      local: true,
+    },
   ];
 }
 
@@ -92,8 +95,9 @@ export function buildApiKeyStatus(
   env: NodeJS.ProcessEnv,
   apiKeyEnv?: string,
 ): ApiKeyStatus {
-  const envName = apiKeyEnv ?? PROVIDER_ENV[provider];
-  const optional = provider === "openai-compatible";
+  const definition = getProviderDefinition(provider);
+  const envName = apiKeyEnv ?? definition.apiKeyEnvName;
+  const optional = !definition.requiresApiKey;
   if (!envName) {
     return {
       detected: false,
@@ -121,7 +125,7 @@ export function buildShellInstructions(envName: string, shell = process.env.SHEL
       `set -Ux ${envName} "votre-clé"`,
       "```",
       "",
-      "Relance ton terminal pour une configuration permanente.",
+      RESTART_TERMINAL_NOTE,
     ].join("\n");
   }
 
@@ -143,7 +147,7 @@ export function buildShellInstructions(envName: string, shell = process.env.SHEL
       ")",
       "```",
       "",
-      "Relance ton terminal pour une configuration permanente.",
+      RESTART_TERMINAL_NOTE,
     ].join("\n");
   }
 
@@ -161,7 +165,7 @@ export function buildShellInstructions(envName: string, shell = process.env.SHEL
     `echo 'export ${envName}="votre-clé"' >> ${rcFile}`,
     "```",
     "",
-    "Relance ton terminal pour une configuration permanente.",
+    RESTART_TERMINAL_NOTE,
   ].join("\n");
 }
 
@@ -169,7 +173,7 @@ export function createInitConfig(input: InitConfigInput): Config {
   const providers = { ...(input.existing?.providers ?? {}) };
   if (input.compatibleProvider) {
     providers[input.compatibleProvider.id] = {
-      type: "openai-compatible",
+      type: OPENAI_COMPATIBLE_PROVIDER_ID,
       name: input.compatibleProvider.name,
       baseUrl: input.compatibleProvider.baseUrl,
       apiKeyEnv: input.compatibleProvider.apiKeyEnv,
@@ -194,6 +198,10 @@ export function createInitConfig(input: InitConfigInput): Config {
 }
 
 export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
+  const maxOutputSummary =
+    config.maxOutputTokens === undefined
+      ? "adaptative"
+      : `${String(config.maxOutputTokens)} tokens`;
   const lines = [
     "Configuration Reqraft",
     "",
@@ -205,6 +213,7 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
     `Copie auto.    ${config.copyAfterGeneration ? "oui" : "non"}`,
     `Streaming      ${config.stream ? "oui" : "non"}`,
     `Timeout        ${String(config.timeoutMs)} ms`,
+    `Sortie max.    ${maxOutputSummary}`,
     `Stats          ${config.showStats ? "oui" : "non"}`,
     "Télémétrie     désactivée",
   ];
@@ -213,111 +222,172 @@ export function buildSummary(config: Config, keyStatus: ApiKeyStatus): string {
   if (compatible) {
     lines.splice(5, 0, `Base URL       ${compatible.baseUrl}`);
     lines.splice(6, 0, `Variable clé   ${compatible.apiKeyEnv ?? "aucune"}`);
-    lines.splice(7, 0, `Nom provider   ${compatible.name ?? "OpenAI Compatible"}`);
+    lines.splice(
+      7,
+      0,
+      `Nom provider   ${compatible.name ?? getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label}`,
+    );
   }
 
   return lines.join("\n");
 }
 
-export function buildPostInitSecurityNote(keyStatus: ApiKeyStatus, shell = process.env.SHELL ?? ""): string {
+export function buildPostInitSecurityNote(
+  keyStatus: ApiKeyStatus,
+  shell = process.env.SHELL ?? "",
+): string {
   if (!keyStatus.envName || keyStatus.detected) {
     return "";
   }
+  const credentialProvider = credentialProviderFromEnvName(keyStatus.envName);
+  const secureStorageLines = credentialProvider
+    ? [
+        "Méthode recommandée, avec le coffre-fort sécurisé du système :",
+        "",
+        `rp auth login ${credentialProvider}`,
+        "",
+      ]
+    : [];
 
   return [
-    "Note sécurité",
+    "Clé API à configurer",
     "",
-    "Reqraft ne t'a pas demandé ta clé API pendant l'initialisation.",
-    "Pour éviter de stocker un secret en clair, ajoute-la via une variable d'environnement.",
+    "La configuration est enregistrée, mais la connexion au provider nécessite encore une clé.",
+    ...secureStorageLines,
+    "Alternative par variable d'environnement :",
     "",
     buildShellInstructions(keyStatus.envName, shell),
   ].join("\n");
 }
 
+/** Asks for confirmation before discarding an existing configuration. */
+async function confirmOverwrite(io: InitIo, question: string): Promise<Config | null> {
+  const confirmed = await askConfirm(io, question, false);
+  if (!confirmed) {
+    io.write(SETUP_CANCELLED);
+    return null;
+  }
+  return DEFAULT_CONFIG;
+}
+
+/**
+ * Resolves the configuration the wizard starts from.
+ *
+ * Returns null when nothing should be written: the user cancelled, or only
+ * asked to display the existing configuration.
+ */
+async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | null> {
+  if (!existsSync(configPath())) {
+    writeIntro(io);
+    return DEFAULT_CONFIG;
+  }
+
+  const existingConfig = await loadConfig();
+
+  if (reset) {
+    writeIntro(io);
+    return await confirmOverwrite(
+      io,
+      "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ?",
+    );
+  }
+
+  const action = await askExistingConfigAction(io, existingConfig);
+  if (action === "cancel") {
+    io.write(SETUP_CANCELLED);
+    return null;
+  }
+  if (action === "show") {
+    io.write(`${JSON.stringify(existingConfig, null, 2)}\n`);
+    return null;
+  }
+  if (action === "reset") {
+    return await confirmOverwrite(io, "Confirmer l'écrasement de la configuration existante ?");
+  }
+  return existingConfig;
+}
+
+/** Collects choices, shows the summary, and loops until the user saves or cancels. */
+async function runConfigurationLoop(
+  io: InitIo,
+  baseConfig: Config,
+  env: NodeJS.ProcessEnv,
+  shell: string,
+): Promise<void> {
+  for (;;) {
+    const collected = await collectConfig(io, baseConfig, env, shell);
+    const config = createInitConfig({ ...collected, existing: baseConfig });
+    const keyStatus = buildApiKeyStatus(
+      collected.provider,
+      env,
+      collected.compatibleProvider?.apiKeyEnv,
+    );
+
+    io.write(`\n${buildSummary(config, keyStatus)}\n\n`);
+    const decision = await askMenu(io, "Que souhaites-tu faire ?", [
+      "Enregistrer la configuration",
+      "Modifier un choix",
+      "Annuler",
+    ]);
+
+    if (decision === 1) {
+      continue;
+    }
+    if (decision === 2) {
+      io.write(SETUP_CANCELLED);
+      return;
+    }
+
+    await saveConfig(config);
+    await verifySavedConfig(config, keyStatus, io);
+    const securityNote = buildPostInitSecurityNote(keyStatus, shell);
+    if (securityNote) {
+      io.write(`\n${securityNote}\n`);
+    }
+    await maybeRunConnectionTest(config, keyStatus, io, env);
+    return;
+  }
+}
+
 export async function runFirstRunSetup(options: RunFirstRunOptions = {}): Promise<void> {
   const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout);
   const env = options.env ?? process.env;
+  await hydrateCredentials(env);
   const shell = options.shell ?? process.env.SHELL ?? "";
 
   try {
-    const pathToConfig = configPath();
-    const hasExistingConfig = existsSync(pathToConfig);
-    const existingConfig = hasExistingConfig ? await loadConfig() : undefined;
-    let baseConfig = options.reset ? DEFAULT_CONFIG : (existingConfig ?? DEFAULT_CONFIG);
-
-    if (hasExistingConfig && options.reset) {
-      writeIntro(io);
-      const confirmed = await askConfirm(
-        io,
-        "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ?",
-        false,
-      );
-      if (!confirmed) {
-        io.write("Initialisation annulée.\n");
-        return;
-      }
-      baseConfig = DEFAULT_CONFIG;
-    } else if (hasExistingConfig) {
-      if (!existingConfig) {
-        throw new Error("Configuration existante introuvable.");
-      }
-      const action = await askExistingConfigAction(io, existingConfig);
-      if (action === "cancel") {
-        io.write("Initialisation annulée.\n");
-        return;
-      }
-      if (action === "show") {
-        io.write(`${JSON.stringify(existingConfig, null, 2)}\n`);
-        return;
-      }
-      if (action === "reset") {
-        const confirmed = await askConfirm(io, "Confirmer l'écrasement de la configuration existante ?", false);
-        if (!confirmed) {
-          io.write("Initialisation annulée.\n");
-          return;
-        }
-        baseConfig = DEFAULT_CONFIG;
-      }
-    } else {
-      writeIntro(io);
-    }
-
-    for (;;) {
-      const collected = await collectConfig(io, baseConfig, env, shell);
-      const config = createInitConfig({ ...collected, existing: baseConfig });
-      const keyStatus = buildApiKeyStatus(
-        collected.provider,
-        env,
-        collected.compatibleProvider?.apiKeyEnv,
-      );
-
-      io.write(`\n${buildSummary(config, keyStatus)}\n\n`);
-      const decision = await askMenu(io, "Que souhaites-tu faire ?", [
-        "Enregistrer la configuration",
-        "Modifier un choix",
-        "Annuler",
-      ]);
-
-      if (decision === 1) {
-        continue;
-      }
-      if (decision === 2) {
-        io.write("Initialisation annulée.\n");
-        return;
-      }
-
-      await saveConfig(config);
-      await verifySavedConfig(config, keyStatus, io);
-      const securityNote = buildPostInitSecurityNote(keyStatus, shell);
-      if (securityNote) {
-        io.write(`\n${securityNote}\n`);
-      }
-      await maybeRunConnectionTest(config, keyStatus, io, env);
+    const baseConfig = await resolveBaseConfig(io, options.reset ?? false);
+    if (!baseConfig) {
       return;
     }
+    await runConfigurationLoop(io, baseConfig, env, shell);
   } finally {
     io.close();
   }
+}
+
+/**
+ * Asks for the model to use.
+ *
+ * A self-hosted or custom OpenAI-compatible endpoint publishes no preset
+ * catalogue, so the identifier is typed in. Every other case, including a
+ * compatible provider matching a known gateway, goes through the preset list.
+ */
+async function askModelIdentifier(
+  io: InitIo,
+  provider: InitProvider,
+  defaults: Config,
+  compatibleProvider: CompatibleProviderInput | undefined,
+): Promise<string> {
+  if (compatibleProvider?.baseUrl) {
+    if (compatibleProvider.id === "local") {
+      return await askText(io, MODEL_ID_PROMPT, defaults.defaultModel || "local-model");
+    }
+    if (compatibleProvider.id === "custom") {
+      return await askText(io, MODEL_ID_PROMPT, defaults.defaultModel);
+    }
+  }
+  return await askModel(io, provider, defaults.defaultModel);
 }
 
 async function collectConfig(
@@ -328,10 +398,15 @@ async function collectConfig(
 ): Promise<Omit<InitConfigInput, "existing">> {
   for (;;) {
     const providerChoice = await askProvider(io, defaults);
-    const compatibleProvider = providerChoice.provider === "openai-compatible"
-      ? await askCompatibleProvider(io, defaults, providerChoice.local)
-      : undefined;
-    const keyStatus = buildApiKeyStatus(providerChoice.provider, env, compatibleProvider?.apiKeyEnv);
+    const compatibleProvider =
+      providerChoice.provider === OPENAI_COMPATIBLE_PROVIDER_ID
+        ? await askCompatibleProvider(io, defaults, providerChoice.local)
+        : undefined;
+    const keyStatus = buildApiKeyStatus(
+      providerChoice.provider,
+      env,
+      compatibleProvider?.apiKeyEnv,
+    );
     io.write(`${keyStatus.message}\n`);
 
     if (!keyStatus.detected && !keyStatus.optional) {
@@ -348,13 +423,12 @@ async function collectConfig(
       }
     }
 
-    const model = compatibleProvider?.baseUrl
-      ? compatibleProvider.id === "local"
-        ? await askText(io, "Identifiant du modèle", defaults.defaultModel || "local-model")
-        : compatibleProvider.id === "custom"
-          ? await askText(io, "Identifiant du modèle", defaults.defaultModel)
-          : await askModel(io, providerChoice.provider, defaults.defaultModel)
-      : await askModel(io, providerChoice.provider, defaults.defaultModel);
+    const model = await askModelIdentifier(
+      io,
+      providerChoice.provider,
+      defaults,
+      compatibleProvider,
+    );
 
     return {
       provider: providerChoice.provider,
@@ -362,20 +436,33 @@ async function collectConfig(
       model,
       profile: await askProfile(io, defaults.defaultProfile),
       level: await askLevel(io, defaults.defaultLevel),
-      copyAfterGeneration: await askConfirm(io, "Copier automatiquement le résultat dans le presse-papiers ?", defaults.copyAfterGeneration),
-      stream: await askConfirm(io, "Afficher progressivement la réponse lorsque le provider le permet ?", defaults.stream),
+      copyAfterGeneration: await askConfirm(
+        io,
+        "Copier automatiquement le résultat dans le presse-papiers ?",
+        defaults.copyAfterGeneration,
+      ),
+      stream: await askConfirm(
+        io,
+        "Afficher progressivement la réponse lorsque le provider le permet ?",
+        defaults.stream,
+      ),
       timeoutMs: await askTimeout(io, defaults.timeoutMs),
     };
   }
 }
 
 function writeIntro(io: InitIo): void {
-  io.write("Bienvenue dans Reqraft.\n\n");
-  io.write("Cet assistant va configurer ton provider, ton modèle et tes préférences locales.\n");
-  io.write("Aucun prompt n'est conservé et aucune clé API ne sera enregistrée dans config.json.\n\n");
+  io.write("reqraft init\n");
+  io.write("Configuration guidée\n");
+  io.write("----------------------------------------\n\n");
+  io.write("Configure ton provider, ton modèle et tes préférences locales.\n");
+  io.write("Aucun prompt ni aucune clé API ne sera écrit dans config.json.\n\n");
 }
 
-async function askExistingConfigAction(io: InitIo, existingConfig: Config): Promise<"modify" | "reset" | "show" | "cancel"> {
+async function askExistingConfigAction(
+  io: InitIo,
+  existingConfig: Config,
+): Promise<"modify" | "reset" | "show" | "cancel"> {
   io.write("Une configuration Reqraft existe déjà.\n\n");
   const choice = await askMenu(io, "", [
     "Modifier la configuration existante",
@@ -398,7 +485,12 @@ async function askProvider(io: InitIo, defaults: Config): Promise<InitProviderCh
     choices.findIndex((choice) => choice.provider === defaults.defaultProvider),
     0,
   );
-  const index = await askMenu(io, "Quel provider souhaites-tu utiliser ?", choices.map((choice) => choice.label), defaultIndex);
+  const index = await askMenu(
+    io,
+    "Quel provider souhaites-tu utiliser ?",
+    choices.map((choice) => choice.label),
+    defaultIndex,
+  );
   const fallback = choices[0];
   if (!fallback) {
     throw new Error("Aucun provider disponible.");
@@ -409,18 +501,27 @@ async function askProvider(io: InitIo, defaults: Config): Promise<InitProviderCh
 async function askCompatibleProvider(
   io: InitIo,
   defaults: Config,
-  local?: boolean,
+  local = false,
 ): Promise<CompatibleProviderInput> {
   const existing = firstCompatibleProvider(defaults);
   const idDefault = local ? "local" : "custom";
   const id = await askText(io, "Identifiant interne du provider", existing?.id ?? idDefault);
-  const name = await askText(io, "Nom personnalisé du provider", existing?.name ?? (local ? "Serveur local" : "OpenAI Compatible"));
+  const name = await askText(
+    io,
+    "Nom personnalisé du provider",
+    existing?.name ??
+      (local ? "Serveur local" : getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label),
+  );
   const baseUrl = await askText(
     io,
     "Base URL",
     existing?.baseUrl ?? (local ? "http://localhost:11434/v1" : "https://example.com/v1"),
   );
-  const apiKeyEnv = await askText(io, "Variable d'environnement contenant la clé (optionnelle)", existing?.apiKeyEnv ?? "");
+  const apiKeyEnv = await askText(
+    io,
+    "Variable d'environnement contenant la clé (optionnelle)",
+    existing?.apiKeyEnv ?? "",
+  );
   const headersInput = await askText(io, "Headers personnalisés JSON (optionnel)", "");
   const customHeaders = parseHeaders(headersInput);
   return {
@@ -435,7 +536,7 @@ async function askCompatibleProvider(
 async function askModel(io: InitIo, provider: InitProvider, currentModel: string): Promise<string> {
   const presets = getPresetModels().filter((preset) => preset.provider === provider);
   if (presets.length === 0) {
-    return await askText(io, "Identifiant du modèle", currentModel);
+    return await askText(io, MODEL_ID_PROMPT, currentModel);
   }
 
   const recommended = presets.find((preset) => preset.recommended);
@@ -448,19 +549,23 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
 
   const index = await askMenu(io, "Quel modèle souhaites-tu utiliser ?", labels);
   if (index === labels.length - 1) {
-    return await askText(io, "Identifiant du modèle", currentModel);
+    return await askText(io, MODEL_ID_PROMPT, currentModel);
   }
   return ordered[index]?.id ?? currentModel;
 }
 
 async function askProfile(io: InitIo, currentProfile: string): Promise<string> {
-  const defaultIndex = Math.max(BUILTIN_PROFILES.indexOf(currentProfile), 0);
-  const index = await askMenu(io, "Profil par défaut", BUILTIN_PROFILES, defaultIndex);
-  return BUILTIN_PROFILES[index] ?? "auto";
+  const profiles = getInitProfileChoices();
+  const defaultIndex = Math.max(profiles.indexOf(currentProfile), 0);
+  const index = await askMenu(io, "Profil par défaut", profiles, defaultIndex);
+  return profiles[index] ?? AUTO_PROFILE_ID;
 }
 
-async function askLevel(io: InitIo, currentLevel: Config["defaultLevel"]): Promise<Config["defaultLevel"]> {
-  const levels: Config["defaultLevel"][] = ["minimal", "standard", "complete"];
+async function askLevel(
+  io: InitIo,
+  currentLevel: Config["defaultLevel"],
+): Promise<Config["defaultLevel"]> {
+  const levels = [...REPROMPT_LEVELS];
   const defaultIndex = Math.max(levels.indexOf(currentLevel), 1);
   const index = await askMenu(io, "Niveau", levels, defaultIndex);
   return levels[index] ?? "standard";
@@ -468,7 +573,11 @@ async function askLevel(io: InitIo, currentLevel: Config["defaultLevel"]): Promi
 
 async function askTimeout(io: InitIo, currentTimeout: number): Promise<number> {
   for (;;) {
-    const answer = await askText(io, "Timeout en millisecondes", String(currentTimeout > 0 ? currentTimeout : 30000));
+    const answer = await askText(
+      io,
+      "Timeout en millisecondes",
+      String(currentTimeout > 0 ? currentTimeout : REPROMPT_POLICY.runtime.defaultTimeoutMs),
+    );
     const timeout = Number(answer);
     if (Number.isInteger(timeout) && timeout > 0) {
       return timeout;
@@ -477,7 +586,11 @@ async function askTimeout(io: InitIo, currentTimeout: number): Promise<number> {
   }
 }
 
-async function verifySavedConfig(expected: Config, keyStatus: ApiKeyStatus, io: InitIo): Promise<void> {
+async function verifySavedConfig(
+  expected: Config,
+  keyStatus: ApiKeyStatus,
+  io: InitIo,
+): Promise<void> {
   const saved = await loadConfig();
   ConfigSchema.parse(saved);
   if (
@@ -503,7 +616,7 @@ async function maybeRunConnectionTest(
   io: InitIo,
   env: NodeJS.ProcessEnv,
 ): Promise<void> {
-  if (!keyStatus.detected && config.defaultProvider !== "openai-compatible") {
+  if (!keyStatus.detected && config.defaultProvider !== OPENAI_COMPATIBLE_PROVIDER_ID) {
     return;
   }
 
@@ -519,25 +632,22 @@ async function maybeRunConnectionTest(
       systemPrompt: "Réponds brièvement.",
       userPrompt: "Test de connexion Reqraft.",
       model: config.defaultModel,
-      temperature: 0,
-      maxOutputTokens: 16,
+      temperature: REPROMPT_POLICY.runtime.connectionCheckTemperature,
+      maxOutputTokens: REPROMPT_POLICY.runtime.connectionCheckMaxOutputTokens,
       stream: false,
+      signal: AbortSignal.timeout(
+        Math.min(config.timeoutMs, REPROMPT_POLICY.runtime.connectionCheckTimeoutMs),
+      ),
     });
     io.write(`Connexion réussie en ${String(Date.now() - startedAt)} ms.\n`);
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    if (message.toLowerCase().includes("auth") || message.includes("401") || message.includes("403")) {
-      io.write("Authentification refusée.\n");
-      if (keyStatus.envName) {
-        io.write(`Vérifie la variable ${keyStatus.envName} puis relance \`rp doctor\`.\n`);
-      }
-      return;
-    }
-    io.write(`Test de connexion échoué : ${message}\n`);
+    io.write(`Test de connexion échoué : ${formatUiError(error, config.defaultProvider)}\n`);
   }
 }
 
-function firstCompatibleProvider(config: Config): (CompatibleProviderInput & { id: string }) | undefined {
+function firstCompatibleProvider(
+  config: Config,
+): (CompatibleProviderInput & { id: string }) | undefined {
   const providers = config.providers ?? {};
   const entry = Object.entries(providers)[0];
   if (!entry) {
@@ -563,7 +673,15 @@ function formatKeySummary(status: ApiKeyStatus): string {
 }
 
 function providerLabel(provider: Config["defaultProvider"]): string {
-  return provider === "mock" ? "mock" : PROVIDER_LABEL[provider];
+  return getProviderDefinition(provider).label;
+}
+
+function credentialProviderFromEnvName(envName: string): CredentialProvider | undefined {
+  const match = listCredentialProviders().find(
+    (definition) =>
+      isCredentialProvider(definition.id) && getProviderEnvName(definition.id) === envName,
+  );
+  return match?.id;
 }
 
 function parseHeaders(input: string): Record<string, string> | undefined {
@@ -574,9 +692,7 @@ function parseHeaders(input: string): Record<string, string> | undefined {
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
     throw new Error("Les headers personnalisés doivent être un objet JSON.");
   }
-  return Object.fromEntries(
-    Object.entries(parsed).map(([key, value]) => [key, String(value)]),
-  );
+  return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
 }
 
 interface InitIo {
@@ -649,6 +765,7 @@ async function askConfirm(io: InitIo, question: string, defaultValue: boolean): 
 }
 
 async function askText(io: InitIo, question: string, defaultValue: string): Promise<string> {
-  const answer = await io.question(`${question}${defaultValue ? ` (${defaultValue})` : ""} : `);
+  const defaultHint = defaultValue ? ` (${defaultValue})` : "";
+  const answer = await io.question(`${question}${defaultHint} : `);
   return answer ? answer : defaultValue;
 }

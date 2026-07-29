@@ -2,82 +2,258 @@ import process from "node:process";
 import readline from "node:readline";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
+import { createProvider } from "../providers/registry.js";
+import { printScreen } from "../ui/text.js";
+import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import {
+  type CredentialProvider,
+  getProviderEnvName,
+  listCredentialProviders,
+} from "../providers/catalog.js";
 
 const execFileAsync = promisify(execFile);
 
-const PROVIDER_ENV = {
-  anthropic: "ANTHROPIC_API_KEY",
-  openai: "OPENAI_API_KEY",
-  deepseek: "DEEPSEEK_API_KEY",
-  mistral: "MISTRAL_API_KEY",
-} as const;
+/** Linux Secret Service CLI, and the attribute pair identifying a Reqraft key. */
+const SECRET_TOOL = "secret-tool";
+const SECRET_TOOL_KEYS = ["service", "reqraft", "provider"] as const;
 
-export type CredentialProvider = keyof typeof PROVIDER_ENV;
+const PLACEHOLDER_CREDENTIALS = new Set([
+  "ta-cle",
+  "ta-clé",
+  "votre-cle",
+  "votre-clé",
+  "your-api-key",
+  "api-key",
+]);
 
 export async function hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void> {
-  for (const provider of Object.keys(PROVIDER_ENV) as CredentialProvider[]) {
-    const envName = PROVIDER_ENV[provider];
-    if (!env[envName]) {
+  assertEnvironmentCredentials(env);
+  for (const { id: provider } of listCredentialProviders()) {
+    const envName = getProviderEnvName(provider);
+    const envCredential = env[envName];
+    if (!envCredential) {
       const secret = await getCredential(provider);
       if (secret) env[envName] = secret;
     }
   }
 }
 
-export async function login(provider: CredentialProvider): Promise<void> {
-  console.log(`\nConnexion sécurisée à ${provider}`);
-  console.log("La clé sera stockée dans le coffre-fort du système, jamais dans config.json.\n");
-  const secret = await readSecret(`Clé API ${provider} (saisie masquée) : `);
+interface CredentialOutput {
+  log(message: string): void;
+}
+
+interface CredentialLoginOutput extends CredentialOutput {
+  write(message: string): void;
+}
+
+interface LoginDependencies {
+  env?: NodeJS.ProcessEnv;
+  output?: CredentialLoginOutput;
+  readSecret?: (question: string) => Promise<string>;
+  validateCredential?: (provider: CredentialProvider, secret: string) => Promise<void>;
+  setCredential?: (provider: CredentialProvider, secret: string) => Promise<void>;
+}
+
+interface LogoutDependencies {
+  output?: CredentialOutput;
+  deleteCredential?: (provider: CredentialProvider) => Promise<void>;
+}
+
+export async function login(
+  provider: CredentialProvider,
+  dependencies: LoginDependencies = {},
+): Promise<void> {
+  const output = dependencies.output ?? {
+    log: console.log,
+    write: process.stdout.write.bind(process.stdout),
+  };
+  const env = dependencies.env ?? process.env;
+  printScreen(`Connexion à ${provider}`, "Stockage sécurisé du système", output);
+  output.log("La clé ne sera jamais écrite dans config.json.\n");
+  const secret = await (dependencies.readSecret ?? readSecret)(
+    `Clé API ${provider} (saisie masquée) : `,
+  );
   if (!secret) throw new Error("Aucune clé fournie.");
-  await setCredential(provider, secret);
-  console.log(`Clé ${provider} enregistrée dans le stockage sécurisé du système.`);
-}
-
-export async function logout(provider: CredentialProvider): Promise<void> {
-  await deleteCredential(provider);
-  console.log(`Clé ${provider} supprimée du stockage sécurisé.`);
-}
-
-export async function credentialStatus(): Promise<void> {
-  for (const provider of Object.keys(PROVIDER_ENV) as CredentialProvider[]) {
-    const source = process.env[PROVIDER_ENV[provider]] ? "variable d'environnement" : (await getCredential(provider)) ? "stockage sécurisé" : "non configurée";
-    console.log(`${provider.padEnd(10)} ${source}`);
+  assertCredentialIsNotPlaceholder(secret);
+  output.write("Vérification de la clé… ");
+  await (dependencies.validateCredential ?? validateCredential)(provider, secret);
+  output.log("valide.");
+  await (dependencies.setCredential ?? setCredential)(provider, secret);
+  output.log(`Clé ${provider} enregistrée dans le stockage sécurisé du système.`);
+  const envName = getProviderEnvName(provider);
+  if (env[envName]) {
+    output.log(
+      `Attention : ${envName} est déjà définie et reste prioritaire sur le stockage sécurisé.`,
+    );
+    output.log(
+      `Supprime cette variable si elle contient une ancienne clé, puis relance ton terminal.`,
+    );
   }
 }
 
-function service(provider: CredentialProvider): string { return `reqraft:${provider}`; }
+export async function logout(
+  provider: CredentialProvider,
+  dependencies: LogoutDependencies = {},
+): Promise<void> {
+  const output = dependencies.output ?? console;
+  await (dependencies.deleteCredential ?? deleteCredential)(provider);
+  output.log(`Clé ${provider} supprimée du stockage sécurisé.`);
+}
+
+/**
+ * Describes where a provider key comes from, honouring the documented
+ * precedence: an environment variable always wins over secure storage.
+ */
+async function describeCredentialSource(
+  provider: CredentialProvider,
+  envCredential: string | undefined,
+  readCredential: (provider: CredentialProvider) => Promise<string | undefined> = getCredential,
+): Promise<string> {
+  if (envCredential) {
+    return isPlaceholderCredential(envCredential)
+      ? "variable d'environnement invalide (valeur d'exemple)"
+      : "variable d'environnement";
+  }
+  return (await readCredential(provider)) ? "stockage sécurisé" : "non configurée";
+}
+
+interface CredentialStatusDependencies {
+  env?: NodeJS.ProcessEnv;
+  output?: CredentialOutput;
+  readCredential?: (provider: CredentialProvider) => Promise<string | undefined>;
+}
+
+export async function credentialStatus(
+  dependencies: CredentialStatusDependencies = {},
+): Promise<void> {
+  const env = dependencies.env ?? process.env;
+  const output = dependencies.output ?? console;
+  const readCredential = dependencies.readCredential ?? getCredential;
+  printScreen("Clés API", "Source active pour chaque provider", output);
+  for (const { id: provider } of listCredentialProviders()) {
+    const envCredential = env[getProviderEnvName(provider)];
+    const source = await describeCredentialSource(provider, envCredential, readCredential);
+    output.log(`${provider.padEnd(10)} ${source}`);
+  }
+}
+
+export function assertCredentialIsNotPlaceholder(secret: string): void {
+  if (isPlaceholderCredential(secret)) {
+    throw new Error("Cette valeur ressemble à un exemple, pas à une véritable clé API.");
+  }
+}
+
+export function assertEnvironmentCredentials(env: NodeJS.ProcessEnv): void {
+  for (const { id: provider } of listCredentialProviders()) {
+    const envName = getProviderEnvName(provider);
+    const secret = env[envName];
+    if (secret && isPlaceholderCredential(secret)) {
+      throw new Error(
+        `${envName} contient une valeur d’exemple invalide. Corrige-la ou supprime-la avant de relancer Reqraft.`,
+      );
+    }
+  }
+}
+
+function isPlaceholderCredential(secret: string): boolean {
+  return PLACEHOLDER_CREDENTIALS.has(secret.trim().toLowerCase());
+}
+
+async function validateCredential(provider: CredentialProvider, secret: string): Promise<void> {
+  const envName = getProviderEnvName(provider);
+  const adapter = createProvider(provider, { [envName]: secret });
+  if (!adapter.listModels) {
+    throw new Error(`Le provider ${provider} ne permet pas de vérifier la clé.`);
+  }
+  await adapter.listModels(AbortSignal.timeout(REPROMPT_POLICY.runtime.connectionCheckTimeoutMs));
+}
+
+function service(provider: CredentialProvider): string {
+  return `reqraft:${provider}`;
+}
 
 async function getCredential(provider: CredentialProvider): Promise<string | undefined> {
   try {
-    if (process.platform === "darwin") return (await execFileAsync("security", ["find-generic-password", "-s", service(provider), "-w"])).stdout.trim();
-    if (process.platform === "linux") return (await execFileAsync("secret-tool", ["lookup", "service", "reqraft", "provider", provider])).stdout.trim();
-  } catch { return undefined; }
+    if (process.platform === "darwin")
+      return (
+        await execFileAsync("security", ["find-generic-password", "-s", service(provider), "-w"])
+      ).stdout.trim();
+    if (process.platform === "linux")
+      return (
+        await execFileAsync(SECRET_TOOL, ["lookup", ...SECRET_TOOL_KEYS, provider])
+      ).stdout.trim();
+  } catch {
+    return undefined;
+  }
   return undefined;
 }
 
 async function setCredential(provider: CredentialProvider, secret: string): Promise<void> {
-  if (process.platform === "darwin") { await execFileAsync("security", ["add-generic-password", "-U", "-s", service(provider), "-a", "reqraft", "-w", secret]); return; }
-  if (process.platform === "linux") { await storeLinuxCredential(provider, secret); return; }
-  throw new Error("Le stockage sécurisé Windows n'est pas encore disponible. Utilise une variable d'environnement.");
+  if (process.platform === "darwin") {
+    await execFileAsync("security", [
+      "add-generic-password",
+      "-U",
+      "-s",
+      service(provider),
+      "-a",
+      "reqraft",
+      "-w",
+      secret,
+    ]);
+    return;
+  }
+  if (process.platform === "linux") {
+    await storeLinuxCredential(provider, secret);
+    return;
+  }
+  throw new Error(
+    "Le stockage sécurisé Windows n'est pas encore disponible. Utilise une variable d'environnement.",
+  );
 }
 
 async function storeLinuxCredential(provider: CredentialProvider, secret: string): Promise<void> {
   await new Promise<void>((resolve, reject) => {
-    const child = spawn("secret-tool", ["store", "--label=Reqraft API key", "service", "reqraft", "provider", provider]);
+    // sonarjs/no-os-command-from-path is disabled here on purpose.
+    // `secret-tool` is the Secret Service CLI and has no stable absolute path:
+    // it lives outside /usr/bin on Nix, Homebrew and several distributions, so
+    // pinning one would break legitimate installs. It also buys no security
+    // boundary — `rp` is itself resolved from the same PATH, so an attacker who
+    // controls it has already won before this line runs. The command name is a
+    // fixed literal; no part of it comes from user input.
+    // eslint-disable-next-line sonarjs/no-os-command-from-path
+    const child = spawn(SECRET_TOOL, [
+      "store",
+      "--label=Reqraft API key",
+      ...SECRET_TOOL_KEYS,
+      provider,
+    ]);
     child.once("error", reject);
-    child.once("close", (code) => { if (code === 0) resolve(); else reject(new Error("secret-tool n'a pas pu enregistrer la clé.")); });
+    child.once("close", (code) => {
+      if (code === 0) resolve();
+      else reject(new Error("secret-tool n'a pas pu enregistrer la clé."));
+    });
     child.stdin.end(secret);
   });
 }
 
 async function deleteCredential(provider: CredentialProvider): Promise<void> {
-  if (process.platform === "darwin") { await execFileAsync("security", ["delete-generic-password", "-s", service(provider)]); return; }
-  if (process.platform === "linux") { await execFileAsync("secret-tool", ["clear", "service", "reqraft", "provider", provider]); return; }
+  if (process.platform === "darwin") {
+    await execFileAsync("security", ["delete-generic-password", "-s", service(provider)]);
+    return;
+  }
+  if (process.platform === "linux") {
+    await execFileAsync(SECRET_TOOL, ["clear", ...SECRET_TOOL_KEYS, provider]);
+    return;
+  }
   throw new Error("Le stockage sécurisé Windows n'est pas encore disponible.");
 }
 
 async function readSecret(question: string): Promise<string> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout, terminal: true });
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+  });
   const original = (rl as unknown as { _writeToOutput: (value: string) => void })._writeToOutput;
   let promptWritten = false;
   (rl as unknown as { _writeToOutput: (value: string) => void })._writeToOutput = (value) => {
@@ -87,7 +263,9 @@ async function readSecret(question: string): Promise<string> {
     }
     // Hide secret input after the prompt.
   };
-  const answer = await new Promise<string>((resolve) => { rl.question(question, resolve); });
+  const answer = await new Promise<string>((resolve) => {
+    rl.question(question, resolve);
+  });
   (rl as unknown as { _writeToOutput: (value: string) => void })._writeToOutput = original;
   rl.close();
   process.stdout.write("\n");

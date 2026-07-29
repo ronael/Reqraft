@@ -3,6 +3,8 @@ import { AnthropicProvider } from "../../src/providers/anthropic.js";
 import { OpenAIProvider } from "../../src/providers/openai.js";
 import { MistralProvider } from "../../src/providers/mistral.js";
 import { DeepSeekProvider } from "../../src/providers/deepseek.js";
+import { createProvider } from "../../src/providers/registry.js";
+import type { ProviderError } from "../../src/providers/errors.js";
 
 function mockFetch(response: Response): void {
   globalThis.fetch = vi.fn().mockResolvedValue(response);
@@ -135,7 +137,27 @@ describe("OpenAI provider", () => {
     const call = vi.mocked(globalThis.fetch).mock.calls[0];
     if (!call?.[1]) throw new Error("fetch not called");
     const body = JSON.parse(call[1].body as string) as Record<string, unknown>;
-    expect(body.temperature).toBe(0.2);
+    expect(body.temperature).toBeCloseTo(0.2, 10);
+  });
+
+  it("normalizes network failures before any HTTP response", async () => {
+    globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
+
+    const provider = new OpenAIProvider("test-key");
+    await expect(
+      provider.generate({
+        model: "gpt-4.1-mini",
+        systemPrompt: "sys",
+        userPrompt: "user",
+        temperature: 0.2,
+        maxOutputTokens: 100,
+        stream: false,
+      }),
+    ).rejects.toMatchObject({
+      name: "ProviderError",
+      message:
+        "OpenAI est inaccessible. Vérifie ta connexion réseau, la base URL du provider et réessaie.",
+    } satisfies Partial<ProviderError>);
   });
 });
 
@@ -216,10 +238,10 @@ describe("Anthropic provider", () => {
 
   it("raises a provider error emitted by a streaming response", async () => {
     mockFetch(
-      new Response(
-        'event: error\ndata: {"type":"error","error":{"message":"overloaded"}}\n\n',
-        { status: 200, headers: { "Content-Type": "text/event-stream" } },
-      ),
+      new Response('event: error\ndata: {"type":"error","error":{"message":"overloaded"}}\n\n', {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      }),
     );
 
     const provider = new AnthropicProvider("test-key");
@@ -238,7 +260,7 @@ describe("Anthropic provider", () => {
 
 describe("Provider configuration health", () => {
   it("OpenAI reports missing key", async () => {
-    const provider = new OpenAIProvider("");
+    const provider = createProvider("openai", {});
     const health = await provider.validateConfiguration();
     expect(health.ok).toBe(false);
     expect(health.missingConfiguration).toContain("OPENAI_API_KEY");

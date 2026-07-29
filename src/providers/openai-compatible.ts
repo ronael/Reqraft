@@ -6,6 +6,7 @@ import type {
   ModelInfo,
 } from "../core/types.js";
 import { raiseProviderError } from "./errors.js";
+import { providerFetch } from "./http.js";
 
 interface OpenAICompatibleChoice {
   message: { role: string; content: string };
@@ -46,8 +47,9 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
       headers.Authorization = `Bearer ${this.options.apiKey}`;
     }
 
-    const response = await fetch(`${this.options.baseUrl}/chat/completions`, {
+    const response = await providerFetch(this.name, `${this.options.baseUrl}/chat/completions`, {
       method: "POST",
+      signal: request.signal,
       headers,
       body: JSON.stringify({
         model: request.model,
@@ -84,11 +86,10 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     };
   }
 
-  async listModels(): Promise<ModelInfo[]> {
-    const response = await fetch(`${this.options.baseUrl}/models`, {
-      headers: this.options.apiKey
-        ? { Authorization: `Bearer ${this.options.apiKey}` }
-        : undefined,
+  async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
+    const response = await providerFetch(this.name, `${this.options.baseUrl}/models`, {
+      signal,
+      headers: this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : undefined,
     });
     const text = await response.text();
     if (!response.ok) {

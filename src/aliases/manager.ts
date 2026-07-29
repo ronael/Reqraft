@@ -33,7 +33,10 @@ export function validateAlias(name: string): void {
   }
 }
 
-export async function listAliases(configPath: string, shell: Exclude<ShellType, "unknown">): Promise<string[]> {
+export async function listAliases(
+  configPath: string,
+  shell: Exclude<ShellType, "unknown">,
+): Promise<string[]> {
   const handler = HANDLERS[shell];
   if (!existsSync(configPath)) return [];
   const content = await readFile(configPath, "utf8");
@@ -67,7 +70,8 @@ export async function setAlias(
   }
 
   const newInside = [...existingAliases, alias].map((a) => handler.formatAlias(a)).join("\n");
-  const newContent = `${before.trimEnd()}\n\n${handler.beginMarker}\n${newInside}\n${handler.endMarker}\n${after.trimStart()}`.trim();
+  const newContent =
+    `${before.trimEnd()}\n\n${handler.beginMarker}\n${newInside}\n${handler.endMarker}\n${after.trimStart()}`.trim();
 
   const operation: AliasOperation = {
     path: configPath,
@@ -110,7 +114,8 @@ export async function removeAlias(
     newContent = `${before.trimEnd()}\n${after.trimStart()}`.trim();
   } else {
     const newInside = remainingAliases.map((a) => handler.formatAlias(a)).join("\n");
-    newContent = `${before.trimEnd()}\n\n${handler.beginMarker}\n${newInside}\n${handler.endMarker}\n${after.trimStart()}`.trim();
+    newContent =
+      `${before.trimEnd()}\n\n${handler.beginMarker}\n${newInside}\n${handler.endMarker}\n${after.trimStart()}`.trim();
   }
 
   const operation: AliasOperation = {

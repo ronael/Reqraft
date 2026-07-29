@@ -90,7 +90,9 @@ async function runFidelityBenchmark(providerId: string, modelId?: string): Promi
     }
   }
 
-  const failures = results.filter((result) => result.error !== undefined || !result.score.nonEmpty).length;
+  const failures = results.filter(
+    (result) => result.error !== undefined || !result.score.nonEmpty,
+  ).length;
   const meanScore = results.reduce((sum, result) => sum + result.score.total, 0) / results.length;
 
   return {
@@ -108,10 +110,13 @@ async function runFidelityBenchmark(providerId: string, modelId?: string): Promi
   };
 }
 
-function scoreCase(benchmarkCase: FidelityBenchmarkCase, output: string): FidelityCaseResult["score"] {
+function scoreCase(
+  benchmarkCase: FidelityBenchmarkCase,
+  output: string,
+): FidelityCaseResult["score"] {
   const preservedTerms = benchmarkCase.mustPreserve
-    ? benchmarkCase.mustPreserve.filter((term) => output.toLowerCase().includes(term.toLowerCase())).length /
-      benchmarkCase.mustPreserve.length
+    ? benchmarkCase.mustPreserve.filter((term) => output.toLowerCase().includes(term.toLowerCase()))
+        .length / benchmarkCase.mustPreserve.length
     : 1;
   const forbiddenAdditions = [
     ...new Set([
@@ -121,7 +126,11 @@ function scoreCase(benchmarkCase: FidelityBenchmarkCase, output: string): Fideli
       ...detectUnsupportedAdditions(benchmarkCase.input, output),
     ]),
   ];
-  const disproportionateExpansion = isDisproportionateExpansion(benchmarkCase.input, output);
+  const disproportionateExpansion = isDisproportionateExpansion(
+    benchmarkCase.input,
+    output,
+    benchmarkCase.level,
+  );
   const nonEmpty = output.trim().length > 0;
 
   const noForbiddenScore = forbiddenAdditions.length === 0 ? 1 : 0;
@@ -156,7 +165,8 @@ function formatMarkdown(run: FidelityRun): string {
   ];
 
   for (const result of run.results) {
-    const latency = result.output?.latencyMs !== undefined ? `${String(result.output.latencyMs)} ms` : "-";
+    const latency =
+      result.output?.latencyMs !== undefined ? `${String(result.output.latencyMs)} ms` : "-";
     const forbidden = result.score.forbiddenAdditions.join(", ") || "-";
     const output = (result.error ?? result.output?.rewritten ?? "")
       .replace(/\|/g, "\\|")
@@ -174,7 +184,8 @@ async function main(): Promise<void> {
   const provider = process.argv[2] ?? "mock";
   const model = process.argv[3];
 
-  console.log(`Fidelity benchmark provider=${provider}${model ? ` model=${model}` : ""}`);
+  const modelSuffix = model ? ` model=${model}` : "";
+  console.log(`Fidelity benchmark provider=${provider}${modelSuffix}`);
   const run = await runFidelityBenchmark(provider, model);
 
   const outDir = path.join(process.cwd(), "benchmark-results");

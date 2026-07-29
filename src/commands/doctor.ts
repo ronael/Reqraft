@@ -1,40 +1,78 @@
 import process from "node:process";
-import { loadConfig, configPath } from "../config/loader.js";
-import { createProvider, listProviders } from "../providers/registry.js";
+import { loadConfig, configPath as getConfigPath } from "../config/loader.js";
+import type { Config } from "../config/schema.js";
+import type { ProviderAdapter } from "../core/types.js";
+import { createProvider } from "../providers/registry.js";
+import { hydrateCredentials } from "../auth/credentials.js";
+import { printKeyValue, printScreen } from "../ui/text.js";
+import {
+  getProviderEnvName,
+  isCredentialProvider,
+  listCredentialProviders,
+  listProviderDefinitions,
+  type BuiltinProvider,
+} from "../providers/catalog.js";
 
-export async function runDoctor(): Promise<void> {
-  const config = await loadConfig();
-  const env = process.env;
+interface DoctorOutput {
+  log(message: string): void;
+}
 
-  console.log("Configuration");
-  console.log(`  Fichier : ${configPath()}`);
-  console.log(`  Provider par défaut : ${config.defaultProvider}`);
-  console.log(`  Modèle par défaut : ${config.defaultModel}`);
-  console.log(`  Profil par défaut : ${config.defaultProfile}`);
-  console.log("");
+interface DoctorDependencies {
+  env?: NodeJS.ProcessEnv;
+  output?: DoctorOutput;
+  loadConfig?: () => Promise<Config>;
+  configPath?: () => string;
+  hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
+  createProvider?: (
+    id: BuiltinProvider,
+    env: NodeJS.ProcessEnv,
+    config?: Config,
+  ) => ProviderAdapter;
+}
 
-  console.log("Clés API");
-  const keys = [
-    { name: "Anthropic", env: "ANTHROPIC_API_KEY" },
-    { name: "OpenAI", env: "OPENAI_API_KEY" },
-    { name: "DeepSeek", env: "DEEPSEEK_API_KEY" },
-    { name: "Mistral", env: "MISTRAL_API_KEY" },
-  ] as const;
+export async function runDoctor(dependencies: DoctorDependencies = {}): Promise<void> {
+  const output = dependencies.output ?? console;
+  const config = await (dependencies.loadConfig ?? loadConfig)();
+  const env = dependencies.env ?? process.env;
+  await (dependencies.hydrateCredentials ?? hydrateCredentials)(env);
 
-  for (const { name, env: key } of keys) {
+  printScreen("reqraft doctor", "État de la configuration et des providers", output);
+  output.log("Configuration");
+  printKeyValue("Fichier", (dependencies.configPath ?? getConfigPath)(), output);
+  printKeyValue("Provider", config.defaultProvider, output);
+  printKeyValue("Modèle", config.defaultModel, output);
+  printKeyValue("Profil", config.defaultProfile, output);
+  printKeyValue("Timeout", `${String(config.timeoutMs)} ms`, output);
+  printKeyValue(
+    "Sortie max.",
+    config.maxOutputTokens === undefined
+      ? "adaptative"
+      : `${String(config.maxOutputTokens)} tokens`,
+    output,
+  );
+  output.log("");
+
+  output.log("Clés API");
+  for (const definition of listCredentialProviders()) {
+    const key = getProviderEnvName(definition.id);
     const present = env[key] ? "configuré" : "non configuré";
-    console.log(`  ${name.padEnd(10)} : ${present}`);
+    output.log(`  ${definition.label.padEnd(10)} : ${present}`);
   }
-  console.log("");
+  output.log("");
 
-  console.log("Providers");
-  for (const id of listProviders()) {
+  output.log("Providers");
+  for (const definition of listProviderDefinitions()) {
+    const { id } = definition;
     try {
-      const provider = createProvider(id as "mock", env, config);
+      const provider = (dependencies.createProvider ?? createProvider)(id, env, config);
       const health = await provider.validateConfiguration();
-      console.log(`  ${id.padEnd(20)} : ${health.ok ? "OK" : `manque ${health.missingConfiguration?.join(", ") ?? "configuration"}`}`);
+      const missing = health.missingConfiguration?.join(", ");
+      const missingLabel =
+        missing ?? (isCredentialProvider(id) ? getProviderEnvName(id) : "configuration");
+      const status = health.ok ? "OK" : `manque ${missingLabel}`;
+      output.log(`  ${definition.label.padEnd(20)} : ${status}`);
     } catch {
-      console.log(`  ${id.padEnd(20)} : erreur`);
+      output.log(`  ${id.padEnd(20)} : erreur`);
     }
   }
 }
