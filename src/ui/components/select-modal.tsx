@@ -1,16 +1,16 @@
 import React from "react";
-import { Box, Text, useInput } from "ink";
-import SelectInput from "ink-select-input";
+import { Box, Text } from "ink";
 import { theme } from "../theme/tokens.js";
+import type { SelectItem } from "../select-list.js";
+import { SelectList } from "./select-list.js";
 
-export interface SelectOption<T> {
-  label: string;
-  value: T;
-}
+/** Kept as the shared option shape used by modal-options.ts. */
+export type SelectOption<T> = SelectItem<T>;
 
 interface SelectModalProps<T> {
   title: string;
   options: SelectOption<T>[];
+  currentValue?: T;
   onSelect: (value: T) => void;
   onCancel: () => void;
 }
@@ -18,38 +18,21 @@ interface SelectModalProps<T> {
 export function SelectModal<T extends string>({
   title,
   options,
+  currentValue,
   onSelect,
   onCancel,
 }: Readonly<SelectModalProps<T>>): React.JSX.Element {
-  const items = options.map((option) => ({ label: option.label, value: option.value }));
-
-  useInput((input, key) => {
-    if (key.escape || (key.ctrl && input === "c")) {
-      onCancel();
-    }
-  });
-
   return (
     <Box flexDirection="column" paddingX={1}>
       <Text bold color={theme.color.accent}>
         {title}
       </Text>
-      <SelectInput
-        items={items}
-        indicatorComponent={({ isSelected }) => (
-          <Text color={theme.color.accent}>{isSelected ? "> " : "  "}</Text>
-        )}
-        itemComponent={({ isSelected, label }) => (
-          <Text color={isSelected ? theme.color.text : theme.color.textMuted} bold={isSelected}>
-            {label}
-          </Text>
-        )}
-        onSelect={(item) => {
-          onSelect(item.value);
-        }}
-        onHighlight={() => undefined}
+      <SelectList
+        items={options}
+        currentValue={currentValue}
+        onSelect={onSelect}
+        onCancel={onCancel}
       />
-      <Text dimColor>↑↓ naviguer Entrée choisir Esc revenir</Text>
     </Box>
   );
 }

@@ -16,6 +16,9 @@ import { SelectModal } from "./select-modal.js";
 interface AppModalProps {
   modal: NonNullable<ModalType>;
   provider: string;
+  profile: string;
+  level: RepromptLevel;
+  model: string;
   hasResult: boolean;
   onSelectProfile: (profile: string) => void;
   onSelectLevel: (level: RepromptLevel) => void;
@@ -28,6 +31,9 @@ interface AppModalProps {
 export function AppModal({
   modal,
   provider,
+  profile,
+  level,
+  model,
   hasResult,
   onSelectProfile,
   onSelectLevel,
@@ -42,6 +48,7 @@ export function AppModal({
         <SelectModal
           title="Changer de profil"
           options={getProfileOptions()}
+          currentValue={profile}
           onSelect={onSelectProfile}
           onCancel={onClose}
         />
@@ -51,6 +58,7 @@ export function AppModal({
         <SelectModal
           title="Changer de niveau"
           options={LEVEL_OPTIONS}
+          currentValue={level}
           onSelect={onSelectLevel}
           onCancel={onClose}
         />
@@ -60,6 +68,7 @@ export function AppModal({
         <SelectModal
           title="Changer de provider"
           options={getProviderOptions()}
+          currentValue={provider}
           onSelect={onSelectProvider}
           onCancel={onClose}
         />
@@ -69,6 +78,7 @@ export function AppModal({
         <SelectModal
           title="Changer de modèle"
           options={getModelOptions(provider)}
+          currentValue={model}
           onSelect={onSelectModel}
           onCancel={onClose}
         />

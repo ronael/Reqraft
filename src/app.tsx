@@ -268,6 +268,9 @@ export function App(): React.JSX.Element {
           <AppModal
             modal={state.modal}
             provider={state.provider}
+            profile={state.profile}
+            level={state.level}
+            model={state.model}
             hasResult={Boolean(state.result)}
             onSelectProfile={setProfile}
             onSelectLevel={setLevel}

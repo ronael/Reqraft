@@ -2,7 +2,29 @@
 
 ## Lot en cours
 
-Refonte TUI (DA.md) — **Lots A, B et C terminés**, Lot D en cours.
+Refonte TUI (DA.md) — **Lots A, B, C et D terminés**, Lot G à venir.
+
+### Lot D — Sélecteurs et overlays
+
+`SelectList` remplace `ink-select-input`, qui ne savait ni filtrer ni faire
+défiler. Le §9 réclamait trois choses absentes : recherche locale, défilement
+quand la liste dépasse la hauteur, et marquage de l'élément en cours.
+
+Logique pure dans `select-list.ts` : `filterItems` (insensible à la casse et
+aux accents, cherche aussi dans la description — « recommande » trouve
+« recommandé »), `moveIndex` (navigation circulaire), `computeWindow` (fenêtre
+centrée sur l'élément actif, avec indicateurs ↑ ↓). 14 tests, dont un qui
+vérifie sur les 20 positions que l'élément actif ne sort jamais de la fenêtre.
+
+La recherche n'apparaît qu'à partir de 8 entrées : filtrer trois niveaux coûte
+plus que ça ne rapporte.
+
+L'élément courant est marqué `●` contre `○`, donc on voit ce qu'on s'apprête à
+changer. `AppModal` reçoit profil, niveau, provider et modèle courants.
+
+Dépendance `ink-select-input` retirée.
+
+Validation : `pnpm quality` exit 0 — 37 fichiers, 296 tests, couverture 61,22 %.
 
 ### Lot C — Écran principal
 

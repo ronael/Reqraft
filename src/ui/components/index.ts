@@ -5,6 +5,7 @@ export { EmptyState } from "./empty-state.js";
 export { ErrorState } from "./error-state.js";
 export { KeyHint } from "./key-hint.js";
 export { Panel } from "./panel.js";
+export { SelectList } from "./select-list.js";
 export { PromptField, PromptFieldHint } from "./prompt-field.js";
 export { Toast } from "./toast.js";
 export { HeaderBar } from "./header-bar.js";
