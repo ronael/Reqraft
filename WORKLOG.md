@@ -4,6 +4,27 @@
 
 Refonte TUI (DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
 
+### Streaming réel
+
+Constat : le streaming n'existait pas. OpenAI ne le faisait pas du tout, et
+Anthropic appelait `await response.text()` avant de parser le SSE — il
+attendait donc le corps complet. `stream: true` ne changeait rien pour
+l'utilisateur.
+
+`providers/sse.ts` lit le corps de façon incrémentale. `createLineSplitter`
+gère les lignes coupées entre deux chunks réseau, ce qui est le piège classique
+du SSE : un fragment JSON peut arriver en deux morceaux.
+
+`ProviderRequest.onDelta` traverse le moteur et le cas d'usage jusqu'à l'app.
+L'accumulateur Anthropic est partagé entre le chemin incrémental et le chemin
+bufferisé, donc les deux s'accordent forcément sur l'interprétation du flux.
+
+Dans l'interface, le spinner cède la place au texte dès le premier fragment,
+suivi de « … réception des tokens ». Les providers qui ne diffusent pas
+n'envoient jamais de fragment et gardent le spinner — aucune régression.
+
+Validation : `pnpm quality` exit 0 — 40 fichiers, 328 tests, couverture 62,67 %.
+
 ### Lot G — Responsive et robustesse
 
 Bug réel trouvé par les tests de rendu : à 80 colonnes le header débordait, Ink

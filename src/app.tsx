@@ -67,6 +67,7 @@ export function App(): React.JSX.Element {
   const [isLoading, setIsLoading] = useState(false);
   const generationInFlight = useRef(false);
   const abortController = useRef<AbortController | null>(null);
+  const [partialText, setPartialText] = useState("");
   const [config, setConfig] = useState<Config | null>(null);
   const [configReady, setConfigReady] = useState(false);
 
@@ -101,12 +102,16 @@ export function App(): React.JSX.Element {
     const controller = new AbortController();
     abortController.current = controller;
     setIsLoading(true);
+    setPartialText("");
     setState((prev) => beginGeneration(prev));
 
     try {
       const { result } = await executeReprompt({
         ...createUiRepromptInput(state, config, process.env),
         signal: controller.signal,
+        onDelta: (chunk) => {
+          setPartialText((previous) => previous + chunk);
+        },
       });
       setState((prev) => completeGeneration(prev, result));
     } catch (err) {
@@ -120,6 +125,7 @@ export function App(): React.JSX.Element {
     } finally {
       abortController.current = null;
       generationInFlight.current = false;
+      setPartialText("");
       setIsLoading(false);
     }
   }, [state, config]);
@@ -339,6 +345,7 @@ export function App(): React.JSX.Element {
           result={state.result}
           view={state.view}
           maxLines={resultRowBudget(rows)}
+          partialText={partialText}
         />
       </Panel>
       <ShortcutBar compact={compact} hasResult={Boolean(state.result)} isGenerating={isLoading} />

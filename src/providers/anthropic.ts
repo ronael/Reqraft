@@ -5,6 +5,7 @@ import type {
   ProviderResponse,
   ModelInfo,
 } from "../core/types.js";
+import { parseDataLine, streamLines } from "./sse.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 
@@ -57,6 +58,9 @@ export class AnthropicProvider implements ProviderAdapter {
       raiseProviderError(response, text);
     }
 
+    if (request.stream && response.body) {
+      return await consumeStream(response.body, request);
+    }
     if (request.stream) {
       return parseStreamingResponse(await response.text(), request.model);
     }
@@ -114,46 +118,90 @@ export class AnthropicProvider implements ProviderAdapter {
   }
 }
 
-function parseStreamingResponse(stream: string, requestedModel: string): ProviderResponse {
+/**
+ * Reads the event stream as it arrives, publishing each fragment.
+ *
+ * The accumulator is shared with the buffered parser so both paths agree on
+ * how an Anthropic stream maps to a ProviderResponse.
+ */
+async function consumeStream(
+  body: ReadableStream<Uint8Array>,
+  request: ProviderRequest,
+): Promise<ProviderResponse> {
+  const accumulator = createStreamAccumulator();
+
+  for await (const line of streamLines(body)) {
+    const fragment = accumulator.consume(line);
+    if (fragment !== undefined && fragment !== "") {
+      request.onDelta?.(fragment);
+    }
+  }
+
+  return accumulator.finish(request.model);
+}
+
+interface StreamAccumulator {
+  /** Returns the visible text carried by this line, if any. */
+  consume(line: string): string | undefined;
+  finish(requestedModel: string): ProviderResponse;
+}
+
+export function createStreamAccumulator(): StreamAccumulator {
   let text = "";
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
   let model: string | undefined;
   let finishReason: string | undefined;
 
-  for (const line of stream.split(/\r?\n/)) {
-    if (!line.startsWith("data: ")) continue;
-
-    const event = JSON.parse(line.slice("data: ".length)) as AnthropicStreamEvent;
-    if (event.type === "error") {
-      throw new ProviderError(
-        `Anthropic streaming error: ${event.error?.message ?? "unknown error"}`,
-        4,
-      );
-    }
-    if (event.type === "message_start") {
-      inputTokens = event.message?.usage?.input_tokens;
-      model = event.message?.model;
-    }
-    if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
-      text += event.delta.text ?? "";
-    }
-    if (event.type === "message_delta") {
-      outputTokens = event.usage?.output_tokens;
-      finishReason = event.delta?.stop_reason;
-    }
-  }
-
-  if (!text) {
-    throw new ProviderError("Anthropic streaming response contained no text", 5);
-  }
-
   return {
-    text,
-    usage: { inputTokens, outputTokens, visibleOutputTokens: outputTokens },
-    model: model ?? requestedModel,
-    finishReason,
+    consume(line) {
+      const payload = parseDataLine(line);
+      if (payload === undefined || payload === "") {
+        return undefined;
+      }
+
+      const event = JSON.parse(payload) as AnthropicStreamEvent;
+      if (event.type === "error") {
+        throw new ProviderError(
+          `Anthropic streaming error: ${event.error?.message ?? "unknown error"}`,
+          4,
+        );
+      }
+      if (event.type === "message_start") {
+        inputTokens = event.message?.usage?.input_tokens;
+        model = event.message?.model;
+      }
+      if (event.type === "message_delta") {
+        outputTokens = event.usage?.output_tokens;
+        finishReason = event.delta?.stop_reason;
+      }
+      if (event.type === "content_block_delta" && event.delta?.type === "text_delta") {
+        const fragment = event.delta.text ?? "";
+        text += fragment;
+        return fragment;
+      }
+      return undefined;
+    },
+    finish(requestedModel) {
+      if (!text) {
+        throw new ProviderError("Anthropic streaming response contained no text", 5);
+      }
+      return {
+        text,
+        usage: { inputTokens, outputTokens, visibleOutputTokens: outputTokens },
+        model: model ?? requestedModel,
+        finishReason,
+      };
+    },
   };
+}
+
+function parseStreamingResponse(stream: string, requestedModel: string): ProviderResponse {
+  const accumulator = createStreamAccumulator();
+  for (const line of stream.split(/\r?\n/)) {
+    accumulator.consume(line);
+  }
+  return accumulator.finish(requestedModel);
 }
 
 interface AnthropicStreamEvent {

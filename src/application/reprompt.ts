@@ -31,6 +31,8 @@ export interface ExecuteRepromptInput {
   maxOutputTokens?: number;
   /** Cancellation owned by the caller, for interactive interrupts. */
   signal?: AbortSignal;
+  /** Receives text as it arrives when streaming is enabled. */
+  onDelta?: (chunk: string) => void;
 }
 
 export interface ExecuteRepromptResult {
@@ -72,6 +74,7 @@ export async function executeReprompt(
       timeoutMs: input.timeoutMs,
       maxOutputTokens: input.maxOutputTokens,
       signal: input.signal,
+      onDelta: input.onDelta,
     }),
   );
 

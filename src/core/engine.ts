@@ -31,6 +31,8 @@ export interface EngineOptions {
   timeoutMs?: number;
   /** Caller-owned cancellation, combined with the timeout. */
   signal?: AbortSignal;
+  /** Receives text as it arrives when streaming is enabled. */
+  onDelta?: (chunk: string) => void;
 }
 
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
@@ -63,6 +65,7 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     stream: options.stream ?? false,
     reasoningEffort: options.reasoningEffort,
     signal,
+    onDelta: options.onDelta,
   };
 
   let response: Awaited<ReturnType<ProviderAdapter["generate"]>>;

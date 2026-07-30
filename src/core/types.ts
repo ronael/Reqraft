@@ -74,6 +74,11 @@ export interface ProviderRequest {
   stream: boolean;
   reasoningEffort?: "none" | "low" | "medium" | "high";
   signal?: AbortSignal;
+  /**
+   * Called with each fragment as it arrives, when `stream` is set.
+   * Adapters that cannot stream simply never call it.
+   */
+  onDelta?: (chunk: string) => void;
 }
 
 export interface ProviderResponse {

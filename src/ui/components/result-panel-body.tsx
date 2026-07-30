@@ -20,6 +20,8 @@ interface ResultPanelBodyProps {
   view: ViewMode;
   /** Rows the panel may use for the text itself. */
   maxLines: number;
+  /** Text received so far while a stream is in flight. */
+  partialText?: string;
 }
 
 /**
@@ -32,9 +34,10 @@ export function ResultPanelBody({
   result,
   view,
   maxLines,
+  partialText = "",
 }: Readonly<ResultPanelBodyProps>): React.JSX.Element {
   if (isLoading) {
-    return <Spinner />;
+    return <StreamingBody partialText={partialText} maxLines={maxLines} />;
   }
   if (error) {
     return <ErrorState error={error} />;
@@ -59,5 +62,29 @@ export function ResultPanelBody({
       title={getEmptyStateTitle(view)}
       action="Appuie sur Entrée pour générer une reformulation."
     />
+  );
+}
+
+/**
+ * What the panel shows while the provider is answering.
+ *
+ * Once text starts arriving the spinner gives way to the text itself: seeing
+ * the answer form is the whole point of streaming. Providers that cannot
+ * stream never send a fragment, so they keep the spinner.
+ */
+function StreamingBody({
+  partialText,
+  maxLines,
+}: Readonly<{ partialText: string; maxLines: number }>): React.JSX.Element {
+  if (partialText === "") {
+    return <Spinner />;
+  }
+
+  const clipped = clipLines(partialText, maxLines);
+  return (
+    <>
+      <Text wrap="wrap">{clipped.lines.join("\n")}</Text>
+      <Text dimColor>{"\u2026 réception des tokens"}</Text>
+    </>
   );
 }
