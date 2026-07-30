@@ -2,6 +2,23 @@
 
 ## Lot en cours
 
+Audit de reprise OpenTUI — stratégie retenue : refactorisation progressive avec
+remplacement du renderer principal, pas réécriture du projet. Le produit actif
+reste Ink ; `spikes/opentui` est un prototype Bun mocké, utile comme preuve de
+capacité mais non connecté au moteur réel.
+
+Document ajouté : `docs/tui-opentui-recovery-audit.md`.
+
+Tests manuels effectués hors sandbox : `pnpm dev "corrige cette phrase"
+--provider mock --stats`, `pnpm dev doctor`, `pnpm dev profiles`,
+`pnpm dev models`, `pnpm dev providers`, `pnpm dev init`, `pnpm dev`.
+Constats clés : commandes non interactives OK ; init reste readline ; TUI active
+Ink ; picker profil OK ; l'éditeur multiline actuel reste fragile ; aucune
+intégration OpenTUI réelle dans le package principal.
+
+Validation à lancer après ce lot : `pnpm exec tsc --noEmit`, `pnpm lint`,
+`pnpm test`, `pnpm build`.
+
 Refonte TUI (DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
 
 ### Correction des raccourcis clavier

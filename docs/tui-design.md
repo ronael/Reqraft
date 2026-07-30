@@ -89,7 +89,7 @@ the input or result loses space.
 ## Interaction contract
 
 `Enter` generates, `Ctrl+K` opens the action palette, `Ctrl+P`, `Ctrl+L` and
-`Ctrl+M` change context, `Ctrl+D` opens the diff, `Ctrl+Y` copies, `?` opens
+`Ctrl+O` change context, `Ctrl+D` opens the diff, `Ctrl+Y` copies, `?` opens
 help, and `Esc` returns or exits. Every modal repeats its navigation footer.
 
 Loading, empty, success and error states keep the same footprint. Provider
