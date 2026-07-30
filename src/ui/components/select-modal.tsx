@@ -40,7 +40,7 @@ export function SelectModal<T extends string>({
           <Text color={theme.color.accent}>{isSelected ? "> " : "  "}</Text>
         )}
         itemComponent={({ isSelected, label }) => (
-          <Text color={isSelected ? theme.color.text : theme.color.muted} bold={isSelected}>
+          <Text color={isSelected ? theme.color.text : theme.color.textMuted} bold={isSelected}>
             {label}
           </Text>
         )}

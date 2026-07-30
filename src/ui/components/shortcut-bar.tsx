@@ -34,7 +34,7 @@ export function ShortcutBar({
         const disabled = !hasResult && (key === "^D" || key === "^Y");
         return (
           <Box key={key} marginRight={1}>
-            <Text color={disabled ? theme.color.muted : theme.color.accent}>{key}</Text>
+            <Text color={disabled ? theme.color.textMuted : theme.color.accent}>{key}</Text>
             <Text dimColor> {label}</Text>
           </Box>
         );

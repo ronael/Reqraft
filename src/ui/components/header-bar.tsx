@@ -20,7 +20,7 @@ export function HeaderBar({
         {!compact && <Text dimColor> atelier de formulation</Text>}
       </Box>
       <Text wrap="truncate-end">
-        <Text color={theme.color.accentSoft}>{provider}</Text>
+        <Text color={theme.color.textMuted}>{provider}</Text>
         {!compact && <Text dimColor> / {model}</Text>}
       </Text>
     </Box>

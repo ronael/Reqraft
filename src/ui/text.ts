@@ -1,4 +1,5 @@
 import process from "node:process";
+import { detectColor } from "./theme/capabilities.js";
 
 interface TextOutput {
   log(message: string): void;
@@ -14,12 +15,14 @@ export function printKeyValue(label: string, value: string, output: TextOutput =
   output.log(`  ${color(label.padEnd(18), "2")} ${value}`);
 }
 
-export function shouldUseColor(streamIsTty: boolean, noColor: string | undefined): boolean {
-  return streamIsTty && noColor === undefined;
-}
-
+/**
+ * Colour policy for the non-interactive renderer.
+ *
+ * Delegates to the same detection the TUI theme uses, so both surfaces answer
+ * identically for a given terminal.
+ */
 export function supportsColor(): boolean {
-  return shouldUseColor(process.stdout.isTTY, process.env.NO_COLOR);
+  return detectColor(process.env, process.stdout.isTTY);
 }
 
 function color(value: string, code: string): string {

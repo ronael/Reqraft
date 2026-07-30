@@ -7,16 +7,41 @@ of the structure.
 
 ## Visual roles
 
-- Cyan marks the product, focused panels, active shortcuts and selection.
-- Blue identifies contextual values such as provider, model, profile and level.
+The palette comes from `reqraft-cli-ui.html`.
+
+- Violet (`#a78bfa`, strong `#8b5cf6`) marks the product, focused panels, active
+  shortcuts and selection. It is the identity colour.
+- Contextual values — provider, model, profile, level — stay neutral. Colour is
+  spent on focus and status, not on data.
 - Gray is reserved for borders, secondary copy and unavailable actions.
-- Green, yellow and red communicate success, warning and failure with a textual
-  prefix so meaning never depends on color alone.
+- Emerald, amber and rose communicate success, warning and failure, always with
+  a symbol so meaning never depends on colour alone.
 - Primary panels use rounded borders. Secondary panels use simple borders.
   Context rows and shortcuts remain unframed.
 
-The palette and semantic types live in `src/ui/theme/`. Shared components live
-in `src/ui/components/`; no component should hardcode a semantic color.
+Body text sets no colour at all: the terminal foreground is inherited so the
+interface stays readable on light and dark themes alike. Backgrounds are never
+painted.
+
+## Degradation
+
+`src/ui/theme/capabilities.ts` resolves what the terminal can do, once per run.
+
+Colour is dropped entirely when `NO_COLOR` is set, when `TERM=dumb`, or when
+stdout is not a TTY. Every role then collapses to the terminal default, and the
+status symbols carry the meaning on their own:
+
+```text
+✓ success   ! warning   × error   ● active   ○ inactive
+```
+
+Unicode is assumed only under a UTF-8 locale, and on Windows only under Windows
+Terminal or a known host. Otherwise the ASCII set replaces the glyphs
+(`+ ! x * o`) and borders fall back to the `classic` style (`+---+`).
+
+The palette, symbols and capability detection live in `src/ui/theme/`. Shared
+components live in `src/ui/components/`; no component should hardcode a
+semantic colour, a symbol or a border style.
 
 ## Components
 

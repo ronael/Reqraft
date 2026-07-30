@@ -1,24 +1,66 @@
-export type ThemeColor = "white" | "gray" | "cyan" | "blue" | "green" | "yellow" | "red";
+/**
+ * A colour Ink can render: a name, a hex value, or `undefined` to inherit the
+ * terminal foreground. Inheriting matters — forcing a foreground would break
+ * readability on light terminal themes (DA.md section 21).
+ */
+export type ThemeColor = string | undefined;
 
 export type PanelTone = "primary" | "secondary" | "inline";
 
+export type StatusTone = "success" | "warning" | "danger" | "info";
+
+export interface ThemeColors {
+  text: ThemeColor;
+  textMuted: ThemeColor;
+  textSubtle: ThemeColor;
+  accent: ThemeColor;
+  accentStrong: ThemeColor;
+  border: ThemeColor;
+  borderFocused: ThemeColor;
+  success: ThemeColor;
+  warning: ThemeColor;
+  danger: ThemeColor;
+  info: ThemeColor;
+}
+
+export interface ThemeSpacing {
+  xs: number;
+  sm: number;
+  md: number;
+  lg: number;
+}
+
+/**
+ * Glyphs that carry meaning. Every status has one so colour is never the only
+ * signal (DA.md section 5), and every glyph has an ASCII fallback for terminals
+ * with unreliable Unicode (DA.md section 19).
+ */
+export interface ThemeSymbols {
+  success: string;
+  warning: string;
+  danger: string;
+  info: string;
+  active: string;
+  inactive: string;
+  /** Leads the input panel title. */
+  caret: string;
+  /** Leads the result panel title. */
+  diamond: string;
+  /** Points at the suggested next action in empty states. */
+  arrow: string;
+}
+
+/** Ink border styles, split so the ASCII fallback stays a single decision. */
+export interface ThemeBorders {
+  primary: "round" | "classic";
+  secondary: "single" | "classic";
+}
+
 export interface TerminalTheme {
-  color: {
-    text: ThemeColor;
-    muted: ThemeColor;
-    border: ThemeColor;
-    accent: ThemeColor;
-    accentSoft: ThemeColor;
-    success: ThemeColor;
-    warning: ThemeColor;
-    danger: ThemeColor;
-    info: ThemeColor;
-  };
-  spacing: {
-    compact: number;
-    normal: number;
-    roomy: number;
-  };
+  color: ThemeColors;
+  spacing: ThemeSpacing;
+  symbol: ThemeSymbols;
+  border: ThemeBorders;
   behavior: {
     toastDurationMs: number;
     spinnerFrameIntervalMs: number;

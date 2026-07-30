@@ -17,7 +17,6 @@ import {
 } from "../../src/ui/app-state.js";
 import { createUiRepromptInput, resolveUiStreamPreference } from "../../src/ui/app-actions.js";
 import { resolveCommandIntent } from "../../src/ui/command-intents.js";
-import { getFrameWidth, getLayoutMode } from "../../src/ui/layout/responsive.js";
 import {
   getCommandOptions,
   getFallbackModelForProvider,
@@ -28,7 +27,6 @@ import {
   LEVEL_OPTIONS,
 } from "../../src/ui/modal-options.js";
 import { formatDiff, formatExplain, formatResultView } from "../../src/ui/result-view.js";
-import { shouldUseColor } from "../../src/ui/text.js";
 import { getEmptyStateTitle, getModalTitle, getResultTitle } from "../../src/ui/view-labels.js";
 import type { RepromptResult } from "../../src/core/types.js";
 import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js";
@@ -40,31 +38,8 @@ import {
   failGeneration,
 } from "../../src/ui/generation-state.js";
 
-describe("terminal layout", () => {
-  it.each([
-    [40, "narrow"],
-    [52, "compact"],
-    [75, "compact"],
-    [76, "wide"],
-    [120, "wide"],
-  ] as const)("uses the expected mode at %i columns", (columns, expected) => {
-    expect(getLayoutMode(columns)).toBe(expected);
-  });
-
-  it("constrains large terminals without overflowing small ones", () => {
-    expect(getFrameWidth(48)).toBe(48);
-    expect(getFrameWidth(80)).toBe(80);
-    expect(getFrameWidth(160)).toBe(112);
-  });
-});
-
-describe("terminal color fallback", () => {
-  it("only uses colors on a TTY when NO_COLOR is absent", () => {
-    expect(shouldUseColor(true, undefined)).toBe(true);
-    expect(shouldUseColor(false, undefined)).toBe(false);
-    expect(shouldUseColor(true, "1")).toBe(false);
-  });
-});
+// Layout sizing lives in tests/unit/responsive.test.ts, colour and symbol
+// fallbacks in tests/unit/theme.test.ts.
 
 describe("quality notice", () => {
   it("keeps React keys unique when several model warnings share the same code", () => {

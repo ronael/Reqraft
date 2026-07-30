@@ -24,8 +24,8 @@ export function SectionCard({
   return (
     <Box
       flexDirection="column"
-      borderStyle={tone === "primary" ? "round" : "single"}
-      borderColor={tone === "primary" ? theme.color.accent : theme.color.border}
+      borderStyle={tone === "primary" ? theme.border.primary : theme.border.secondary}
+      borderColor={tone === "primary" ? theme.color.borderFocused : theme.color.border}
       paddingX={1}
       marginBottom={1}
     >

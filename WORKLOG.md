@@ -2,7 +2,63 @@
 
 ## Lot en cours
 
-Qualité professionnelle — branche `refactor/professional-cli-quality`.
+Refonte TUI (DA.md) — **Lot A terminé**, Lot B à venir.
+
+### Lot A — Audit et fondations
+
+Audit complet dans `docs/tui-implementation.md`. Constat principal : seuls les
+écrans 1 à 11 de `reqraft-cli-ui.html` sont en Ink ; les écrans 12 à 31 (`init`,
+`doctor`, `config`, listes, confirmations) sont du `console.log` et du
+`readline`. Les lots E et F sont donc un portage, pas un restylage — reportés
+après validation du design system.
+
+Fichiers créés : `src/ui/theme/capabilities.ts`, `src/ui/theme/symbols.ts`,
+`tests/unit/theme.test.ts`, `tests/unit/responsive.test.ts`,
+`docs/tui-implementation.md`, `docs/code-quality.md`.
+
+Fichiers réécrits : `src/ui/theme/types.ts`, `palette.ts`, `tokens.ts`,
+`src/ui/layout/responsive.ts`, `src/ui/hooks/use-terminal-size.ts`,
+`docs/tui-design.md`.
+
+Décisions de design, détaillées dans `docs/tui-implementation.md` :
+
+- **Enter génère, `\` + Enter insère un saut de ligne.** `Ctrl+Enter` est
+  indistinguable d'`Enter` dans la quasi-totalité des terminaux ; le binding
+  mort `Ctrl+\r` sera retiré au lot C plutôt qu'affiché.
+- Accent **violet** `#a78bfa` / `#8b5cf6`, repris de la maquette.
+- Le texte courant n'impose aucune couleur : le premier plan du terminal est
+  hérité, pour rester lisible en thème clair.
+- Les valeurs contextuelles (provider, modèle, profil, niveau) redeviennent
+  neutres. La couleur est réservée au focus et au statut.
+- `Ctrl+C` interrompra une génération en cours (à câbler au lot C).
+- Baseline retenue : « Shape the request. Keep the intent. »
+
+Écarts assumés avec le HTML : fonds teintés, ombres et halos non portés (§21
+interdit de présumer un fond) ; chrome de fenêtre de la maquette ignoré ;
+`Ctrl+Shift+C` remplacé par `Ctrl+Y`, la plupart des émulateurs interceptant
+cette combinaison.
+
+Robustesse ajoutée : repli ASCII complet (symboles et bordures `classic`) sous
+locale non UTF-8 ou console Windows héritée ; mode monochrome sous `NO_COLOR`,
+`TERM=dumb` ou hors TTY ; `normalizeSize` corrige le `undefined` que Node
+renvoie pour `stdout.columns` hors TTY ; `getHeightMode` prépare le §17.
+
+Doublon supprimé : `shouldUseColor` de `ui/text.ts` déléguait la même logique
+que `detectColor` ; le renderer non interactif et le thème TUI répondent
+désormais de façon identique.
+
+Validation : `pnpm quality` exit 0 — 33 fichiers, 242 tests, couverture 60,25 %.
+
+Prochaine action : Lot B, composants de base sur ces tokens.
+
+### Nettoyage Sonar
+
+Analyse serveur retirée (coût non justifié) : `scripts/`,
+`sonar-project.properties`, workflow `sonar.yml`, dépendance `@sonar/scan` et
+`tests/unit/sonar-env.test.ts` supprimés. `eslint-plugin-sonarjs` conservé, 272
+règles actives, documenté dans `docs/code-quality.md`.
+
+### Qualité professionnelle — branche `refactor/professional-cli-quality`
 
 ### Contrat de résultat et politiques
 

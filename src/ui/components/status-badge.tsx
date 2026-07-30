@@ -9,7 +9,7 @@ export function StatusBadge({
   return (
     <Box marginRight={2}>
       <Text dimColor>{label} </Text>
-      <Text color={theme.color.accentSoft}>{value}</Text>
+      <Text color={theme.color.textMuted}>{value}</Text>
     </Box>
   );
 }

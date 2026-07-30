@@ -1,23 +1,17 @@
 import { useState, useEffect } from "react";
 import process from "node:process";
+import { normalizeSize, type TerminalSize } from "../layout/responsive.js";
 
-export interface TerminalSize {
-  columns: number;
-  rows: number;
+function readSize(): TerminalSize {
+  return normalizeSize({ columns: process.stdout.columns, rows: process.stdout.rows });
 }
 
 export function useTerminalSize(): TerminalSize {
-  const [size, setSize] = useState<TerminalSize>({
-    columns: process.stdout.columns,
-    rows: process.stdout.rows,
-  });
+  const [size, setSize] = useState<TerminalSize>(readSize);
 
   useEffect(() => {
     const handleResize = (): void => {
-      setSize({
-        columns: process.stdout.columns,
-        rows: process.stdout.rows,
-      });
+      setSize(readSize());
     };
 
     process.stdout.on("resize", handleResize);
@@ -28,3 +22,5 @@ export function useTerminalSize(): TerminalSize {
 
   return size;
 }
+
+export type { TerminalSize };

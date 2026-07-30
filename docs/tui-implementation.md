@@ -86,21 +86,25 @@ DA.md sections 21 and 25:
   this combination for their own copy action, so the application never receives
   it. The existing `Ctrl+Y` is kept and displayed instead.
 
-## Open decisions
+## Resolved decisions
 
-Recorded here rather than guessed:
-
-1. **Accent colour.** The mockup uses violet (`#8b5cf6`). `docs/tui-design.md`
-   currently documents cyan, and `theme/palette.ts` implements it. Adopting
-   violet means updating that document, otherwise two specifications conflict.
-2. **`Ctrl+C` semantics.** DA.md section 7 asks it to cancel a running
-   generation before quitting. Today it always exits, and no cancellation path
-   exists: `core/engine.ts` only wires `AbortSignal.timeout`. Supporting this
-   means threading an `AbortController` from the UI through
-   `application/reprompt.ts` into the provider adapters.
-3. **Baseline copy.** The mockup shows two different taglines, "Shape the
-   request. Keep the intent." and "Refine before you send.". One must be chosen.
-4. **Scope of Lots E and F**, given the port finding above.
+1. **Enter versus Ctrl+Enter.** The mockup advertises `Ctrl+Enter` to generate,
+   and section 6 requires the input to accept newlines. Both cannot hold: nearly
+   every terminal emulator sends the same byte (`CR`, `0x0D`) for Enter and
+   Ctrl+Enter, with no modifier flag, so they are indistinguishable without the
+   Kitty keyboard protocol or `modifyOtherKeys`. **Enter generates, and a
+   trailing `\` before Enter inserts a newline.** The shortcut bar shows
+   `Enter`, never `Ctrl+Enter`. The dead `Ctrl+\r` binding in `ui/shortcuts.ts`
+   is removed rather than advertised.
+2. **Accent colour: violet**, from the mockup. `docs/tui-design.md` was updated
+   in the same change so a single specification remains.
+3. **`Ctrl+C` cancels a running generation**, then quits when idle. This
+   requires threading an `AbortController` from the UI through
+   `application/reprompt.ts` into the provider adapters, which section 28 allows
+   as necessary plumbing.
+4. **Scope: Lots A to D first.** Lots E and F are a port, not a restyle, and are
+   deferred until the design system is proven on the main screen.
+5. **Baseline: "Shape the request. Keep the intent."**
 
 ## Naming
 
