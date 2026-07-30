@@ -35,25 +35,35 @@ export interface ShortcutContext {
 }
 
 /**
- * Ctrl+Enter is deliberately absent. Terminals send the same byte for Enter
- * and Ctrl+Enter, so the binding could never fire; generation is triggered by
- * the prompt field's own submit instead (see ui/prompt-input.ts).
+ * Control keys a terminal cannot deliver as a shortcut.
+ *
+ * Ctrl+letter is the letter's code minus 64, and four of those collide with
+ * characters the terminal already means something by. Ink resolves them before
+ * it ever considers a control combination, so `key.ctrl` stays false and the
+ * binding is indistinguishable from the plain key:
+ *
+ *   Ctrl+H = 0x08 = Backspace
+ *   Ctrl+I = 0x09 = Tab
+ *   Ctrl+J = 0x0A = line feed
+ *   Ctrl+M = 0x0D = carriage return, i.e. Enter
+ *
+ * Binding any of them silently does nothing, which is worse than not offering
+ * the shortcut. `Ctrl+Enter` is absent for the same reason.
  */
+export const RESERVED_CTRL_KEYS = new Set(["h", "i", "j", "m"]);
+
 const CTRL_SHORTCUTS: Record<string, ShortcutAction> = {
   d: "toggle-diff",
   k: "open-commands",
   l: "open-level",
-  m: "open-model",
+  // Ctrl+M would be Enter, so the model picker uses the "o" of "mOdèle".
+  o: "open-model",
   p: "open-profile",
   r: "regenerate",
   y: "copy",
 };
 
 function resolveCtrlShortcut(input: string, context: ShortcutContext): ShortcutAction | null {
-  // Ctrl+C interrupts a running generation before it means "quit".
-  if (input === "c") {
-    return context.isGenerating ? "cancel" : "exit";
-  }
   // Explaining a result is only meaningful once one exists.
   if (input === "e") {
     return context.hasResult ? "show-explain" : null;
@@ -66,7 +76,13 @@ export function resolveShortcut(
   key: ShortcutKey,
   context: ShortcutContext,
 ): ShortcutAction | null {
-  // A modal captures every key: only Escape gets through, to dismiss it.
+  // Ctrl+C is the escape hatch and must work from any state, modal included:
+  // it interrupts a running generation, and quits otherwise (DA.md section 7).
+  if (key.ctrl && input === "c") {
+    return context.isGenerating ? "cancel" : "exit";
+  }
+
+  // Otherwise a modal captures every key: only Escape gets through.
   if (context.hasModal) {
     return key.escape ? "close-modal" : null;
   }

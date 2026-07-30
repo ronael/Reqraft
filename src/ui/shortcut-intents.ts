@@ -1,13 +1,18 @@
 import type { ModalType, ViewMode } from "./app-state.js";
 import type { ShortcutAction } from "./shortcuts.js";
 
+/**
+ * Every control-key action carries `preserveInput`, and every one of them sets
+ * it: ink-text-input inserts the letter of any control combination it does not
+ * filter, so the app must pin the prompt back to its pre-keystroke value.
+ */
 export type ShortcutIntent =
   | { type: "close-modal" }
   | { type: "exit" }
   | { type: "cancel" }
   | { type: "generate"; preserveInput: boolean }
   | { type: "copy"; preserveInput: boolean; dismissModal: boolean }
-  | { type: "toggle-diff" }
+  | { type: "toggle-diff"; preserveInput: boolean }
   | { type: "show-view"; view: ViewMode; preserveInput: boolean }
   | { type: "open-modal"; modal: NonNullable<ModalType>; preserveInput: boolean };
 
@@ -33,7 +38,7 @@ export function resolveShortcutIntent(action: ShortcutAction): ShortcutIntent {
     case "copy":
       return { type: "copy", preserveInput: PRESERVE_CURRENT_INPUT, dismissModal: false };
     case "toggle-diff":
-      return { type: "toggle-diff" };
+      return { type: "toggle-diff", preserveInput: PRESERVE_CURRENT_INPUT };
     case "show-explain":
       return { type: "show-view", view: "explain", preserveInput: PRESERVE_CURRENT_INPUT };
     case "open-profile":

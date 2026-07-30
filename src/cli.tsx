@@ -72,7 +72,9 @@ program
   .option("--redact-secrets", "Masquer automatiquement les secrets détectés")
   .action(async (text: string | undefined, options: CliOptions) => {
     if (process.stdin.isTTY && !text && !options.clipboard && !options.file) {
-      render(<App />);
+      // Ctrl+C must reach the app: Ink would otherwise exit on its own and the
+      // interrupt could never cancel a running generation.
+      render(<App />, { exitOnCtrlC: false });
       return;
     }
     applyExitCode(await runReprompt({ text, ...options }));

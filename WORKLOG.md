@@ -4,6 +4,35 @@
 
 Refonte TUI (DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
 
+### Correction des raccourcis clavier
+
+Ctrl+M ne produisait qu'un Entrée. Cause : `Ctrl+lettre` vaut le code de la
+lettre moins 64, et M donne 13, soit CR. Ink résout `\r` avant même
+d'envisager une combinaison ctrl, donc `key.ctrl` reste faux et la touche est
+indistinguable d'Entrée. Quatre touches sont dans ce cas : H (Backspace),
+I (Tab), J (LF) et M (CR). DA.md §7 listait pourtant `Ctrl+M` pour le modèle.
+
+Le sélecteur de modèle passe sur **Ctrl+O**. `RESERVED_CTRL_KEYS` recense les
+quatre touches inutilisables et un test vérifie qu'aucun binding ni aucun
+libellé de la barre ne les emploie.
+
+**Deuxième bug, introduit par moi au lot précédent.** `render` d'Ink applique
+`exitOnCtrlC: true` par défaut et ne transmet alors jamais Ctrl+C à `useInput` :
+l'interruption livrée juste avant était du code mort. `cli.tsx` passe désormais
+`exitOnCtrlC: false`, et Ctrl+C est résolu avant le test de modale pour
+fonctionner depuis n'importe quel état, comme le §7 l'exige.
+
+**Troisième défaut, latent.** `ink-text-input` ne filtre que les flèches, Ctrl+C
+et Tab ; toute autre combinaison ctrl voit sa lettre insérée dans la valeur.
+Comme Ink appelle le handler du champ avant celui de l'app, chaque raccourci
+laissait sa lettre dans le prompt. Ce qui sauvait la mise était `pinInput`, qui
+restaure la valeur d'avant la frappe — un invariant porteur mais nulle part
+exprimé. Toutes les intentions déclenchées par une touche ctrl portent
+maintenant `preserveInput`, `toggle-diff` compris, et un test énumère les
+touches liées pour que ça reste vrai.
+
+Validation : `pnpm quality` exit 0 — 41 fichiers, 369 tests, couverture 63,75 %.
+
 ### Correction du streaming
 
 Trois défauts constatés en usage réel, captures à l'appui.

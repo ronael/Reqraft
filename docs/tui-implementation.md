@@ -106,6 +106,44 @@ DA.md sections 21 and 25:
    deferred until the design system is proven on the main screen.
 5. **Baseline: "Shape the request. Keep the intent."**
 
+## Control keys the terminal cannot deliver
+
+`Ctrl+letter` is the letter's code minus 64, and four of those collide with
+characters the terminal already assigns a meaning to. Ink resolves them before
+it considers a control combination, so `key.ctrl` stays false and the binding
+is indistinguishable from the plain key:
+
+```text
+Ctrl+H = 0x08 = Backspace
+Ctrl+I = 0x09 = Tab
+Ctrl+J = 0x0A = line feed
+Ctrl+M = 0x0D = carriage return, i.e. Enter
+```
+
+DA.md section 7 lists `Ctrl+M` for the model picker, which therefore cannot
+work: pressing it produced a plain Enter. The picker moved to **`Ctrl+O`**, for
+the "o" of "mOdèle". `RESERVED_CTRL_KEYS` in `ui/shortcuts.ts` holds the four,
+and a test asserts no binding and no advertised hint uses them.
+
+`Ctrl+Enter`, covered above, is the same class of problem.
+
+## Ctrl+C has to be claimed
+
+Ink's `render` defaults to `exitOnCtrlC: true` and then never forwards Ctrl+C to
+`useInput`. Any in-app handling of it is dead code until the option is turned
+off, which is why the interrupt is rendered with `exitOnCtrlC: false`. Ctrl+C is
+resolved before the modal check so it works from every state, as section 7
+requires.
+
+## The prompt has to be pinned back
+
+`ink-text-input` filters only the arrows, `Ctrl+C` and `Tab`; every other
+control combination has its letter inserted into the value. Ink dispatches the
+field's handler before the app's, so a shortcut would leave its letter in the
+prompt. Every control-triggered intent therefore carries `preserveInput: true`,
+and the app restores the pre-keystroke value. This is load-bearing, not
+cosmetic, and a test enumerates the bound keys to keep it that way.
+
 ## Naming
 
 DA.md section 4 lists PascalCase component files. The project uses kebab-case

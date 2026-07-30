@@ -38,7 +38,7 @@ export function getShortcutHints(context: ShortcutHintContext): ShortcutHint[] {
         ["^K", "Actions"],
         ["^P", "Profil"],
         ["^L", "Niveau"],
-        ["^M", "Modèle"],
+        ["^O", "Modèle"],
         ["^D", "Diff"],
         ["^E", "Explication"],
         ["^Y", "Copier"],
