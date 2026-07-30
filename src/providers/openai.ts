@@ -5,6 +5,7 @@ import type {
   ProviderResponse,
   ModelInfo,
 } from "../core/types.js";
+import { consumeChatCompletionStream } from "./openai-stream.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 import { resolveModelCapabilities } from "../models/capabilities.js";
@@ -55,6 +56,13 @@ export class OpenAIProvider implements ProviderAdapter {
       response_format: { type: "json_object" },
     };
 
+    if (request.stream) {
+      body.stream = true;
+      // Without this the stream carries no usage at all, and the stats panel
+      // would go blank whenever streaming is on.
+      body.stream_options = { include_usage: true };
+    }
+
     if (capabilities.supportsTemperature) {
       body.temperature = request.temperature;
     }
@@ -76,12 +84,20 @@ export class OpenAIProvider implements ProviderAdapter {
       body: JSON.stringify(body),
     });
 
-    const text = await response.text();
     if (!response.ok) {
-      raiseProviderError(response, text);
+      raiseProviderError(response, await response.text());
     }
 
-    const data = JSON.parse(text) as OpenAIResponse;
+    if (request.stream && response.body) {
+      return await consumeChatCompletionStream(
+        response.body,
+        this.name,
+        request.model,
+        request.onDelta,
+      );
+    }
+
+    const data = JSON.parse(await response.text()) as OpenAIResponse;
     const choice = data.choices[0];
     if (!choice) {
       throw new ProviderError("OpenAI returned no choices", 5);

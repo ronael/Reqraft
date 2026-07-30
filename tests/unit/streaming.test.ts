@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createLineSplitter, parseDataLine, streamLines } from "../../src/providers/sse.js";
 import { createStreamAccumulator } from "../../src/providers/anthropic.js";
+import { createChatCompletionAccumulator } from "../../src/providers/openai-stream.js";
 
 function streamOf(...chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
@@ -113,5 +114,76 @@ describe("anthropic stream accumulator", () => {
 
   it("refuses an empty stream rather than returning a blank prompt", () => {
     expect(() => createStreamAccumulator().finish("claude-haiku-4-5")).toThrow();
+  });
+});
+
+describe("chat completion accumulator", () => {
+  const chunk = (payload: unknown): string => `data: ${JSON.stringify(payload)}`;
+
+  it("publishes each content fragment", () => {
+    const accumulator = createChatCompletionAccumulator("OpenAI");
+
+    expect(accumulator.consume(chunk({ choices: [{ delta: { content: "Bon" } }] }))).toBe("Bon");
+    expect(accumulator.consume(chunk({ choices: [{ delta: { content: "jour" } }] }))).toBe("jour");
+  });
+
+  it("ignores the closing sentinel", () => {
+    const accumulator = createChatCompletionAccumulator("OpenAI");
+    accumulator.consume(chunk({ choices: [{ delta: { content: "ok" } }] }));
+
+    expect(accumulator.consume("data: [DONE]")).toBeUndefined();
+    expect(accumulator.finish("gpt-4.1-mini").text).toBe("ok");
+  });
+
+  it("ignores the role-only opening chunk", () => {
+    const accumulator = createChatCompletionAccumulator("OpenAI");
+
+    expect(accumulator.consume(chunk({ choices: [{ delta: {} }] }))).toBeUndefined();
+  });
+
+  it("collects usage from the trailing chunk", () => {
+    const accumulator = createChatCompletionAccumulator("OpenAI");
+    accumulator.consume(chunk({ model: "gpt-4.1-mini", choices: [{ delta: { content: "ok" } }] }));
+    accumulator.consume(
+      chunk({
+        choices: [],
+        usage: {
+          prompt_tokens: 10,
+          completion_tokens: 30,
+          completion_tokens_details: { reasoning_tokens: 8 },
+        },
+      }),
+    );
+
+    const response = accumulator.finish("fallback");
+
+    expect(response.model).toBe("gpt-4.1-mini");
+    expect(response.usage).toMatchObject({
+      inputTokens: 10,
+      outputTokens: 30,
+      reasoningTokens: 8,
+      // Reasoning tokens are billed but never shown, so they leave the visible count.
+      visibleOutputTokens: 22,
+    });
+  });
+
+  it("keeps the visible count equal to the total when nothing was reasoned", () => {
+    const accumulator = createChatCompletionAccumulator("OpenAI");
+    accumulator.consume(chunk({ choices: [{ delta: { content: "ok" } }] }));
+    accumulator.consume(chunk({ choices: [], usage: { completion_tokens: 12 } }));
+
+    expect(accumulator.finish("m").usage?.visibleOutputTokens).toBe(12);
+  });
+
+  it("records why the stream stopped", () => {
+    const accumulator = createChatCompletionAccumulator("OpenAI");
+    accumulator.consume(chunk({ choices: [{ delta: { content: "ok" } }] }));
+    accumulator.consume(chunk({ choices: [{ delta: {}, finish_reason: "stop" }] }));
+
+    expect(accumulator.finish("m").finishReason).toBe("stop");
+  });
+
+  it("refuses an empty stream rather than returning a blank prompt", () => {
+    expect(() => createChatCompletionAccumulator("OpenAI").finish("m")).toThrow();
   });
 });

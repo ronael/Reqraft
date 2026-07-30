@@ -5,6 +5,7 @@ import type {
   ProviderResponse,
   ModelInfo,
 } from "../core/types.js";
+import { consumeChatCompletionStream } from "./openai-stream.js";
 import { raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 
@@ -60,16 +61,27 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
         temperature: request.temperature,
         max_tokens: request.maxOutputTokens,
         ...(this.options.responseFormat ? { response_format: this.options.responseFormat } : {}),
+        // Self-hosted gateways vary in their support for stream_options, so
+        // usage is left to whatever the endpoint volunteers.
+        ...(request.stream ? { stream: true } : {}),
         ...this.options.extraBody,
       }),
     });
 
-    const text = await response.text();
     if (!response.ok) {
-      raiseProviderError(response, text);
+      raiseProviderError(response, await response.text());
     }
 
-    const data = JSON.parse(text) as OpenAICompatibleResponse;
+    if (request.stream && response.body) {
+      return await consumeChatCompletionStream(
+        response.body,
+        this.name,
+        request.model,
+        request.onDelta,
+      );
+    }
+
+    const data = JSON.parse(await response.text()) as OpenAICompatibleResponse;
     const choice = data.choices[0];
     if (!choice) {
       throw new Error("OpenAI-compatible endpoint returned no choices");

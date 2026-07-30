@@ -25,6 +25,24 @@ n'envoient jamais de fragment et gardent le spinner — aucune régression.
 
 Validation : `pnpm quality` exit 0 — 40 fichiers, 328 tests, couverture 62,67 %.
 
+Étendu ensuite aux cinq providers. `providers/openai-stream.ts` porte
+l'accumulateur du dialecte `chat/completions`, partagé par OpenAI et
+OpenAI-compatible ; DeepSeek et Mistral délèguent à ce dernier et en héritent
+sans modification. Les quatre providers de cette famille ne peuvent donc pas
+diverger.
+
+Deux détails qui comptent : OpenAI reçoit `stream_options.include_usage`, sans
+quoi le flux ne porte aucune donnée d'usage et le panneau de stats se vide dès
+qu'on active le streaming ; et les tokens de raisonnement, facturés mais jamais
+affichés, sortent du compte visible comme dans le chemin bufferisé.
+
+`stream_options` n'est pas envoyé sur OpenAI-compatible : les passerelles
+auto-hébergées le supportent inégalement, l'usage reste donc ce que l'endpoint
+veut bien donner.
+
+Validation finale : `pnpm quality` exit 0 — 40 fichiers, 335 tests,
+couverture 62,68 %.
+
 ### Lot G — Responsive et robustesse
 
 Bug réel trouvé par les tests de rendu : à 80 colonnes le header débordait, Ink
