@@ -1,15 +1,14 @@
 import React from "react";
 import { Box, Text } from "ink";
-import TextInput from "ink-text-input";
+import { TextInput } from "./text-input.js";
 import { theme } from "../theme/tokens.js";
 
 /**
  * Multiline prompt field.
  *
- * `ink-text-input` only edits a single line, so the committed lines are
- * rendered above it and the last line stays editable. The full value, newlines
- * included, is owned by the caller — this component never rewrites it beyond
- * the line being typed.
+ * The underlying single-line input edits the last line only; committed lines are
+ * rendered above it. The full value, newlines included, is owned by the caller —
+ * this component never rewrites it beyond the line being typed.
  */
 export function PromptField({
   value,

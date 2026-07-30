@@ -19,11 +19,13 @@ export function SelectList<T extends string>({
   currentValue,
   onSelect,
   onCancel,
+  isActive = true,
 }: Readonly<{
   items: SelectItem<T>[];
   currentValue?: T;
   onSelect: (value: T) => void;
   onCancel: () => void;
+  isActive?: boolean;
 }>): React.JSX.Element {
   const [query, setQuery] = React.useState("");
   const [highlighted, setHighlighted] = React.useState(0);
@@ -62,7 +64,7 @@ export function SelectList<T extends string>({
       setQuery((value) => value + input);
       setHighlighted(0);
     }
-  });
+  }, { isActive });
 
   return (
     <Box flexDirection="column">
