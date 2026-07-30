@@ -2,7 +2,40 @@
 
 ## Lot en cours
 
-Refonte TUI (DA.md) — **Lots A et B terminés**, Lot C à venir.
+Refonte TUI (DA.md) — **Lots A, B et C terminés**, Lot D en cours.
+
+### Lot C — Écran principal
+
+L'écran principal suit désormais la hiérarchie de la maquette : header avec
+version, baseline et pastille d'état ; panneau « Prompt original » avec compteur
+lignes/mots dans l'en-tête ; barre de contexte ; panneau « Prompt amélioré »
+dont le ton suit le déroulé (violet en cours, émeraude au succès, rose à
+l'échec) et dont l'en-tête affiche tokens et durée.
+
+`SectionCard` est remplacé par `Panel` partout, modales comprises.
+
+Champ de saisie multiligne (`prompt-field.tsx`) : `ink-text-input` étant
+monoligne, les lignes validées sont rendues au-dessus et la dernière reste
+éditable. `resolveSubmit` est câblé — Entrée génère, `\` final passe à la ligne.
+
+`AppState.error` passe de `string` à `UiError` structuré, et `ErrorState`
+remplace le `Notice` générique dans le panneau résultat : titre, message, cause,
+action suivante (§13).
+
+Barre de raccourcis reconstruite sur `KeyHint` via `shortcut-hints.ts` : les
+actions indisponibles restent visibles mais grisées pour que la barre ne
+reflowe pas, et pendant une génération elle se réduit à « ^C Interrompre ».
+
+Modules purs ajoutés, tous testés : `header-status.ts`, `result-meta.ts`,
+`shortcut-hints.ts`, `prompt-input.ts`.
+
+Vérification manuelle du §2 : `stdout` ne contient que le prompt (12 octets pour
+`[mock] test`), les stats restent sur `stderr`.
+
+Validation : `pnpm quality` exit 0 — 36 fichiers, 282 tests, couverture 61,9 %.
+
+Reste au lot C : streaming progressif et `Ctrl+C` interrupteur, qui demandent
+le câblage `AbortController` jusqu'aux adaptateurs.
 
 ### Lot B — Composants de base
 

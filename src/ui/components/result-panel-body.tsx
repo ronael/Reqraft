@@ -5,19 +5,24 @@ import type { RepromptResult } from "../../core/types.js";
 import type { ViewMode } from "../app-state.js";
 import { formatResultView } from "../result-view.js";
 import { getEmptyStateTitle } from "../view-labels.js";
+import type { UiError } from "../errors.js";
 import { EmptyState } from "./empty-state.js";
+import { ErrorState } from "./error-state.js";
 import { MetaRow } from "./meta-row.js";
-import { Notice } from "./notice.js";
 import { QualityNotice } from "./quality-notice.js";
 import { Spinner } from "./spinner.js";
 
 interface ResultPanelBodyProps {
   isLoading: boolean;
-  error: string | null;
+  error: UiError | null;
   result: RepromptResult | null;
   view: ViewMode;
 }
 
+/**
+ * Order matters: a failure hides a stale result, and the spinner wins over
+ * both so a retry never shows the previous run as if it were current.
+ */
 export function ResultPanelBody({
   isLoading,
   error,
@@ -28,7 +33,7 @@ export function ResultPanelBody({
     return <Spinner />;
   }
   if (error) {
-    return <Notice tone="danger">{error}</Notice>;
+    return <ErrorState error={error} />;
   }
   if (result) {
     return (

@@ -1,6 +1,7 @@
 import type { Config } from "../config/schema.js";
 import type { RepromptLevel, RepromptResult } from "../core/types.js";
 import type { ResultViewMode } from "./result-view.js";
+import type { UiError } from "./errors.js";
 
 export type ViewMode = ResultViewMode;
 export type ModalType = "profile" | "level" | "provider" | "model" | "commands" | "help" | null;
@@ -19,7 +20,7 @@ export interface AppState {
   provider: string;
   model: string;
   result: RepromptResult | null;
-  error: string | null;
+  error: UiError | null;
   view: ViewMode;
   modal: ModalType;
   copied: boolean;
@@ -40,7 +41,11 @@ export function createInitialAppState(defaults: AppDefaults): AppState {
   };
 }
 
-export function applyLoadedConfig(state: AppState, config: Config, error: string | null): AppState {
+export function applyLoadedConfig(
+  state: AppState,
+  config: Config,
+  error: UiError | null,
+): AppState {
   return {
     ...state,
     provider: config.defaultProvider,

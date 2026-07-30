@@ -1,5 +1,7 @@
+import type { UiError } from "./errors.js";
+
 export interface GenerationState<Result> {
-  error: string | null;
+  error: UiError | null;
   result: Result | null;
 }
 
@@ -18,7 +20,7 @@ export function beginGeneration<Result, State extends GenerationState<Result>>(
 
 export function failGeneration<Result, State extends GenerationState<Result>>(
   state: State,
-  error: string,
+  error: UiError,
 ): State {
   return {
     ...state,
@@ -28,7 +30,7 @@ export function failGeneration<Result, State extends GenerationState<Result>>(
 
 export interface ClipboardState {
   copied: boolean;
-  error: string | null;
+  error: UiError | null;
   modal: unknown;
 }
 
@@ -44,7 +46,7 @@ export function completeCopy<State extends ClipboardState>(
   };
 }
 
-export function failCopy<State extends ClipboardState>(state: State, error: string): State {
+export function failCopy<State extends ClipboardState>(state: State, error: UiError): State {
   return {
     ...state,
     copied: false,

@@ -1,44 +1,27 @@
 import React from "react";
-import { Box, Text } from "ink";
-import { theme } from "../theme/tokens.js";
+import { Box } from "ink";
+import { getShortcutHints } from "../shortcut-hints.js";
+import { KeyHint } from "./key-hint.js";
 
 export function ShortcutBar({
   compact,
   hasResult,
+  isGenerating = false,
 }: Readonly<{
   compact: boolean;
   hasResult: boolean;
+  isGenerating?: boolean;
 }>): React.JSX.Element {
-  const items = compact
-    ? [
-        ["Entrée", "Générer"],
-        ["^K", "Actions"],
-        ["?", "Aide"],
-        ["Esc", "Quitter"],
-      ]
-    : [
-        ["Entrée", "Générer"],
-        ["^K", "Actions"],
-        ["^P", "Profil"],
-        ["^L", "Niveau"],
-        ["^M", "Modèle"],
-        ["^D", "Diff"],
-        ["^Y", "Copier"],
-        ["?", "Aide"],
-        ["Esc", "Quitter"],
-      ];
-
   return (
     <Box flexWrap="wrap">
-      {items.map(([key, label]) => {
-        const disabled = !hasResult && (key === "^D" || key === "^Y");
-        return (
-          <Box key={key} marginRight={1}>
-            <Text color={disabled ? theme.color.textMuted : theme.color.accent}>{key}</Text>
-            <Text dimColor> {label}</Text>
-          </Box>
-        );
-      })}
+      {getShortcutHints({ compact, hasResult, isGenerating }).map((hint) => (
+        <KeyHint
+          key={hint.keyLabel}
+          keyLabel={hint.keyLabel}
+          action={hint.action}
+          disabled={hint.disabled}
+        />
+      ))}
     </Box>
   );
 }

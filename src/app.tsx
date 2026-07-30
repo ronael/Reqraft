@@ -1,5 +1,4 @@
 import { Box, Text, useApp, useInput } from "ink";
-import TextInput from "ink-text-input";
 import process from "node:process";
 import React, { useCallback, useEffect, useRef, useState } from "react";
 
@@ -33,12 +32,13 @@ import {
   AppModal,
   Badge,
   HeaderBar,
-  Notice,
+  Panel,
+  PromptField,
   ResultPanelBody,
-  SectionCard,
   ShortcutBar,
+  Toast,
 } from "./ui/components/index.js";
-import { formatUiError } from "./ui/errors.js";
+import { describeUiError } from "./ui/errors.js";
 import {
   beginGeneration,
   canStartGeneration,
@@ -53,6 +53,9 @@ import { resolveShortcut, type ShortcutAction } from "./ui/shortcuts.js";
 import { resolveShortcutIntent } from "./ui/shortcut-intents.js";
 import { theme } from "./ui/theme/tokens.js";
 import { getModalTitle, getResultTitle } from "./ui/view-labels.js";
+import { getHeaderStatus } from "./ui/header-status.js";
+import { describeInput, resolveSubmit } from "./ui/prompt-input.js";
+import { describeResultMeta, getResultPanelTone } from "./ui/result-meta.js";
 
 type CommandAction = ModalCommandAction;
 
@@ -75,14 +78,14 @@ export function App(): React.JSX.Element {
           ...applyLoadedConfig(
             prev,
             config,
-            bootstrapError ? formatUiError(bootstrapError, config.defaultProvider) : null,
+            bootstrapError ? describeUiError(bootstrapError, config.defaultProvider) : null,
           ),
         }));
       })
       .catch((error: unknown) => {
         setState((prev) => ({
           ...prev,
-          error: formatUiError(error, prev.provider),
+          error: describeUiError(error, prev.provider),
         }));
       })
       .finally(() => {
@@ -101,7 +104,7 @@ export function App(): React.JSX.Element {
       setState((prev) => completeGeneration(prev, result));
     } catch (err) {
       setState((prev) => ({
-        ...failGeneration(prev, formatUiError(err, state.provider)),
+        ...failGeneration(prev, describeUiError(err, state.provider)),
       }));
     } finally {
       generationInFlight.current = false;
@@ -129,6 +132,11 @@ export function App(): React.JSX.Element {
     setState((prev) => updatePromptInput(prev, input));
   };
   const submitInput = (): void => {
+    const outcome = resolveSubmit(state.input);
+    if (outcome.type === "newline") {
+      setState((prev) => updatePromptInput(prev, outcome.input));
+      return;
+    }
     void generate();
   };
   const clearCopied = (): void => {
@@ -142,7 +150,7 @@ export function App(): React.JSX.Element {
         setTimeout(clearCopied, theme.behavior.toastDurationMs);
       })
       .catch((error: unknown) => {
-        setState((prev) => failCopy(prev, formatUiError(error, state.provider)));
+        setState((prev) => failCopy(prev, describeUiError(error, state.provider)));
       });
   };
   const runCommand = (action: CommandAction): void => {
@@ -222,6 +230,17 @@ export function App(): React.JSX.Element {
   const compact = layoutMode !== "wide";
   const resultTitle = getResultTitle(state.view);
   const frameWidth = getFrameWidth(columns);
+  const headerStatus = getHeaderStatus({
+    isLoading,
+    hasError: state.error !== null,
+    hasResult: state.result !== null,
+  });
+  const resultMeta = describeResultMeta(state.result, isLoading);
+  const resultTone = getResultPanelTone({
+    isLoading,
+    hasError: state.error !== null,
+    hasResult: state.result !== null,
+  });
 
   if (!configReady) {
     return (
@@ -239,8 +258,13 @@ export function App(): React.JSX.Element {
   if (state.modal) {
     return (
       <AppFrame mode={layoutMode} width={frameWidth}>
-        <HeaderBar provider={state.provider} model={state.model} compact={compact} />
-        <SectionCard title={getModalTitle(state.modal)} tone="primary">
+        <HeaderBar
+          provider={state.provider}
+          model={state.model}
+          compact={compact}
+          status={headerStatus}
+        />
+        <Panel title={getModalTitle(state.modal)} glyph={theme.symbol.caret} tone="primary">
           <AppModal
             modal={state.modal}
             provider={state.provider}
@@ -252,24 +276,34 @@ export function App(): React.JSX.Element {
             onRunCommand={runCommand}
             onClose={closeModal}
           />
-        </SectionCard>
+        </Panel>
       </AppFrame>
     );
   }
 
   return (
     <AppFrame mode={layoutMode} width={frameWidth}>
-      <HeaderBar provider={state.provider} model={state.model} compact={compact} />
-      <SectionCard title="Demande brute" tone="primary">
-        <TextInput
+      <HeaderBar
+        provider={state.provider}
+        model={state.model}
+        compact={compact}
+        status={headerStatus}
+      />
+      <Panel
+        title="Prompt original"
+        glyph={theme.symbol.caret}
+        meta={describeInput(state.input)}
+        tone="primary"
+      >
+        <PromptField
           value={state.input}
           onChange={updateInput}
           onSubmit={submitInput}
           focus={!isLoading}
           placeholder="Écris ta demande brute, même imparfaite…"
         />
-      </SectionCard>
-      <Box paddingX={1} marginBottom={1} flexWrap="wrap">
+      </Panel>
+      <Box paddingX={1} marginBottom={theme.spacing.sm} flexWrap="wrap">
         <Badge label="Profil" value={state.profile} />
         <Badge label="Niveau" value={state.level} />
         {!compact && (
@@ -279,21 +313,16 @@ export function App(): React.JSX.Element {
           </>
         )}
       </Box>
-      <SectionCard title={resultTitle} tone={state.result ? "primary" : "secondary"}>
+      <Panel title={resultTitle} glyph={theme.symbol.diamond} meta={resultMeta} tone={resultTone}>
         <ResultPanelBody
           isLoading={isLoading}
           error={state.error}
           result={state.result}
           view={state.view}
         />
-      </SectionCard>
-      <ShortcutBar compact={compact} hasResult={Boolean(state.result)} />
-
-      {state.copied && (
-        <Box>
-          <Notice tone="success">Copié dans le presse-papiers.</Notice>
-        </Box>
-      )}
+      </Panel>
+      <ShortcutBar compact={compact} hasResult={Boolean(state.result)} isGenerating={isLoading} />
+      <Toast message={state.copied ? "Copié dans le presse-papiers." : null} />
     </AppFrame>
   );
 }

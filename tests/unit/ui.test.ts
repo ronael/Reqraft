@@ -37,6 +37,11 @@ import {
   failCopy,
   failGeneration,
 } from "../../src/ui/generation-state.js";
+import type { UiError } from "../../src/ui/errors.js";
+
+const OLD_ERROR: UiError = { title: "Erreur", message: "ancienne erreur" };
+const NEW_ERROR: UiError = { title: "Erreur", message: "nouvelle erreur" };
+const COPY_ERROR: UiError = { title: "Erreur", message: "copie impossible" };
 
 // Layout sizing lives in tests/unit/responsive.test.ts, colour and symbol
 // fallbacks in tests/unit/theme.test.ts.
@@ -177,7 +182,7 @@ describe("app state transitions", () => {
   it("creates and hydrates the TUI state from config", () => {
     const initial = createInitialAppState(defaults);
     const loaded = applyLoadedConfig(
-      { ...initial, error: "ancienne erreur" },
+      { ...initial, error: OLD_ERROR },
       {
         defaultProfile: "code",
         defaultLevel: "complete",
@@ -208,7 +213,7 @@ describe("app state transitions", () => {
       level: "complete",
       provider: "mock",
       model: "mock-model",
-      error: "ancienne erreur",
+      error: OLD_ERROR,
     });
   });
 
@@ -317,27 +322,24 @@ describe("generation state", () => {
 
   it("keeps the previous result visible while a new request starts or fails", () => {
     const previous = { rewritten: "Résultat payé" };
-    const started = beginGeneration({ error: "ancienne erreur", result: previous, modal: null });
-    const failed = failGeneration(started, "nouvelle erreur");
+    const started = beginGeneration({ error: OLD_ERROR, result: previous, modal: null });
+    const failed = failGeneration(started, NEW_ERROR);
 
     expect(started).toEqual({ error: null, result: previous, modal: null });
-    expect(failed).toEqual({ error: "nouvelle erreur", result: previous, modal: null });
+    expect(failed).toEqual({ error: NEW_ERROR, result: previous, modal: null });
   });
 });
 
 describe("clipboard state", () => {
   it("marks a successful copy and optionally closes the modal", () => {
-    const copied = completeCopy(
-      { copied: false, error: "ancienne erreur", modal: "commands" },
-      true,
-    );
+    const copied = completeCopy({ copied: false, error: OLD_ERROR, modal: "commands" }, true);
 
     expect(copied).toEqual({ copied: true, error: null, modal: null });
   });
 
   it("surfaces copy failures without changing the current modal", () => {
-    const failed = failCopy({ copied: true, error: null, modal: "commands" }, "copie impossible");
+    const failed = failCopy({ copied: true, error: null, modal: "commands" }, COPY_ERROR);
 
-    expect(failed).toEqual({ copied: false, error: "copie impossible", modal: "commands" });
+    expect(failed).toEqual({ copied: false, error: COPY_ERROR, modal: "commands" });
   });
 });
