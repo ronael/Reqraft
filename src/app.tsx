@@ -56,12 +56,13 @@ import { getModalTitle, getResultTitle } from "./ui/view-labels.js";
 import { getHeaderStatus } from "./ui/header-status.js";
 import { describeInput, resolveSubmit } from "./ui/prompt-input.js";
 import { describeResultMeta, getResultPanelTone } from "./ui/result-meta.js";
+import { resultRowBudget } from "./ui/viewport.js";
 
 type CommandAction = ModalCommandAction;
 
 export function App(): React.JSX.Element {
   const { exit } = useApp();
-  const { columns } = useTerminalSize();
+  const { columns, rows } = useTerminalSize();
   const [state, setState] = useState<AppState>(createInitialAppState(DEFAULT_CONFIG));
   const [isLoading, setIsLoading] = useState(false);
   const generationInFlight = useRef(false);
@@ -276,7 +277,7 @@ export function App(): React.JSX.Element {
         <HeaderBar
           provider={state.provider}
           model={state.model}
-          compact={compact}
+          width={frameWidth}
           status={headerStatus}
         />
         <Panel title={getModalTitle(state.modal)} glyph={theme.symbol.caret} tone="primary">
@@ -304,7 +305,7 @@ export function App(): React.JSX.Element {
       <HeaderBar
         provider={state.provider}
         model={state.model}
-        compact={compact}
+        width={frameWidth}
         status={headerStatus}
       />
       <Panel
@@ -337,6 +338,7 @@ export function App(): React.JSX.Element {
           error={state.error}
           result={state.result}
           view={state.view}
+          maxLines={resultRowBudget(rows)}
         />
       </Panel>
       <ShortcutBar compact={compact} hasResult={Boolean(state.result)} isGenerating={isLoading} />

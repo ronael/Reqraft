@@ -1,6 +1,6 @@
 import React from "react";
 import { describe, expect, it } from "vitest";
-import { render } from "ink-testing-library";
+import { frameOf } from "../helpers/render.js";
 import { Badge, StatusPill } from "../../src/ui/components/badge.js";
 import { EmptyState } from "../../src/ui/components/empty-state.js";
 import { ErrorState } from "../../src/ui/components/error-state.js";
@@ -9,13 +9,6 @@ import { Panel } from "../../src/ui/components/panel.js";
 import { Toast } from "../../src/ui/components/toast.js";
 import { Notice } from "../../src/ui/components/notice.js";
 import { theme } from "../../src/ui/theme/tokens.js";
-
-/** Rendered frame, with ANSI styling stripped so assertions read plainly. */
-function frameOf(element: React.ReactElement): string {
-  const { lastFrame } = render(element);
-  // eslint-disable-next-line no-control-regex -- stripping ANSI is the point
-  return (lastFrame() ?? "").replaceAll(/\[[0-9;]*m/g, "");
-}
 
 describe("Panel", () => {
   it("shows the title and the metadata side by side", () => {

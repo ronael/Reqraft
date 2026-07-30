@@ -2,7 +2,31 @@
 
 ## Lot en cours
 
-Refonte TUI (DA.md) — **Lots A, B, C et D terminés**, Lot G à venir.
+Refonte TUI (DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
+
+### Lot G — Responsive et robustesse
+
+Bug réel trouvé par les tests de rendu : à 80 colonnes le header débordait, Ink
+rognait l'identité (« reqraf ») et les deux côtés se percutaient. Le mode
+`wide` démarre à 76, mais le header complet a besoin d'environ 96 avec un
+identifiant de modèle long. Le seuil grossier est remplacé par `getHeaderLayout`,
+qui mesure la place réelle et lâche la baseline puis le modèle, dans l'ordre de
+priorité du §16. L'identité et l'état ne sont jamais sacrifiés.
+
+`viewport.ts` : `clipLines` borne le résultat aux lignes disponibles et
+retourne le nombre de lignes masquées — le §18 interdit de tronquer
+silencieusement, donc le panneau affiche « … N lignes masquées · ^Y copie le
+résultat complet ». La valeur sous-jacente n'est jamais amputée, la copie rend
+tout. `resultRowBudget` calcule la place selon la hauteur du terminal.
+
+Tests de rendu aux largeurs 40, 60 et 80. Le cas 120 reste couvert par les
+tests purs : `ink-testing-library` câble un terminal de 100 colonnes en dur, un
+cadre de 112 ne peut pas y être dessiné.
+
+Aide de rendu factorisée dans `tests/helpers/render.tsx`, dupliquée entre deux
+fichiers de tests.
+
+Validation : `pnpm quality` exit 0 — 39 fichiers, 315 tests, couverture 62,56 %.
 
 ### Lot D — Sélecteurs et overlays
 

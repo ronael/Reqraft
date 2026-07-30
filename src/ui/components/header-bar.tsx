@@ -2,28 +2,29 @@ import React from "react";
 import { Box, Text } from "ink";
 import { theme } from "../theme/tokens.js";
 import { version } from "../../version.js";
-import type { HeaderStatus } from "../header-status.js";
+import { getHeaderLayout, HEADER_BASELINE, type HeaderStatus } from "../header-status.js";
 import { StatusPill } from "./badge.js";
-
-const BASELINE = "Shape the request. Keep the intent.";
 
 /**
  * Product identity and current context.
  *
- * Metadata is shed before the identity: on a narrow terminal the baseline goes
- * first, then the model, so the header never wraps (DA.md section 16).
+ * The identity and the state are never dropped. Everything else yields to the
+ * available width, measured rather than guessed from a layout mode.
  */
 export function HeaderBar({
   provider,
   model,
-  compact,
+  width,
   status,
 }: Readonly<{
   provider: string;
   model: string;
-  compact: boolean;
+  width: number;
   status: HeaderStatus;
 }>): React.JSX.Element {
+  const identity = `reqraft ${version}`;
+  const layout = getHeaderLayout(width, identity, provider, model, status.label);
+
   return (
     <Box justifyContent="space-between" marginBottom={theme.spacing.sm}>
       <Box>
@@ -31,12 +32,12 @@ export function HeaderBar({
           reqraft
         </Text>
         <Text dimColor> {version}</Text>
-        {!compact && <Text dimColor> · {BASELINE}</Text>}
+        {layout.showBaseline && <Text dimColor> · {HEADER_BASELINE}</Text>}
       </Box>
       <Box>
         <Text dimColor wrap="truncate-end">
           {provider}
-          {compact ? "" : ` · ${model}`}
+          {layout.showModel ? ` · ${model}` : ""}
         </Text>
         <Text> </Text>
         <StatusPill tone={status.tone} label={status.label} />
