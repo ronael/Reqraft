@@ -65,6 +65,7 @@ export function App(): React.JSX.Element {
   const [state, setState] = useState<AppState>(createInitialAppState(DEFAULT_CONFIG));
   const [isLoading, setIsLoading] = useState(false);
   const generationInFlight = useRef(false);
+  const abortController = useRef<AbortController | null>(null);
   const [config, setConfig] = useState<Config | null>(null);
   const [configReady, setConfigReady] = useState(false);
 
@@ -96,17 +97,27 @@ export function App(): React.JSX.Element {
   const generate = useCallback(async () => {
     if (!canStartGeneration(state.input, generationInFlight.current)) return;
     generationInFlight.current = true;
+    const controller = new AbortController();
+    abortController.current = controller;
     setIsLoading(true);
     setState((prev) => beginGeneration(prev));
 
     try {
-      const { result } = await executeReprompt(createUiRepromptInput(state, config, process.env));
+      const { result } = await executeReprompt({
+        ...createUiRepromptInput(state, config, process.env),
+        signal: controller.signal,
+      });
       setState((prev) => completeGeneration(prev, result));
     } catch (err) {
-      setState((prev) => ({
-        ...failGeneration(prev, describeUiError(err, state.provider)),
-      }));
+      // An interrupt is a user decision, not a failure: leave the panel as it
+      // was rather than showing an error the user just caused on purpose.
+      if (!controller.signal.aborted) {
+        setState((prev) => ({
+          ...failGeneration(prev, describeUiError(err, state.provider)),
+        }));
+      }
     } finally {
+      abortController.current = null;
       generationInFlight.current = false;
       setIsLoading(false);
     }
@@ -188,6 +199,9 @@ export function App(): React.JSX.Element {
       case "exit":
         exit();
         return;
+      case "cancel":
+        abortController.current?.abort();
+        return;
       case "generate":
         if (intent.preserveInput) {
           pinInput({});
@@ -219,6 +233,7 @@ export function App(): React.JSX.Element {
         hasModal: state.modal !== null,
         hasResult: state.result !== null,
         inputLength: state.input.length,
+        isGenerating: isLoading,
       },
     );
     if (action) {

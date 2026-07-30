@@ -1,6 +1,6 @@
 import type { PromptProfile } from "../profiles/types.js";
 import { resolveModelCapabilities } from "../models/capabilities.js";
-import { RequestTimeoutError } from "./errors.js";
+import { RequestCancelledError, RequestTimeoutError } from "./errors.js";
 import { assessFidelity, buildQualityAssessment } from "./fidelity.js";
 import { buildPrompt } from "./prompt-builder.js";
 import { REPROMPT_POLICY, resolveOutputTokenBudget } from "./reprompt-policy.js";
@@ -29,6 +29,8 @@ export interface EngineOptions {
   reasoningEffort?: "none" | "low" | "medium" | "high";
   fidelityMode?: FidelityMode;
   timeoutMs?: number;
+  /** Caller-owned cancellation, combined with the timeout. */
+  signal?: AbortSignal;
 }
 
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
@@ -43,7 +45,8 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   });
 
   const timeoutMs = options.timeoutMs ?? REPROMPT_POLICY.runtime.defaultTimeoutMs;
-  const signal = AbortSignal.timeout(timeoutMs);
+  const timeoutSignal = AbortSignal.timeout(timeoutMs);
+  const signal = options.signal ? AbortSignal.any([timeoutSignal, options.signal]) : timeoutSignal;
   const modelCapabilities = resolveModelCapabilities(options.provider.id, options.model);
   const providerRequest: ProviderRequest = {
     model: options.model,
@@ -66,7 +69,12 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   try {
     response = await options.provider.generate(providerRequest);
   } catch (error) {
-    if (signal.aborted) {
+    // The caller's cancellation takes precedence: an interrupted run is not a
+    // failure, and must not be reported as one.
+    if (options.signal?.aborted) {
+      throw new RequestCancelledError();
+    }
+    if (timeoutSignal.aborted) {
       throw new RequestTimeoutError(timeoutMs);
     }
     throw error;

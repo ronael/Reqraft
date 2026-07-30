@@ -4,6 +4,7 @@ import type { ShortcutAction } from "./shortcuts.js";
 export type ShortcutIntent =
   | { type: "close-modal" }
   | { type: "exit" }
+  | { type: "cancel" }
   | { type: "generate"; preserveInput: boolean }
   | { type: "copy"; preserveInput: boolean; dismissModal: boolean }
   | { type: "toggle-diff" }
@@ -23,6 +24,8 @@ export function resolveShortcutIntent(action: ShortcutAction): ShortcutIntent {
       return { type: "close-modal" };
     case "exit":
       return { type: "exit" };
+    case "cancel":
+      return { type: "cancel" };
     case "generate":
       return { type: "generate", preserveInput: USE_SUBMITTED_INPUT };
     case "regenerate":

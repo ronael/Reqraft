@@ -34,7 +34,12 @@ describe("resolveSubmit", () => {
 
 describe("Ctrl+Enter is not advertised", () => {
   it("has no control binding for carriage return", () => {
-    const context = { hasModal: false, hasResult: false, inputLength: 0 };
+    const context = {
+      hasModal: false,
+      hasResult: false,
+      inputLength: 0,
+      isGenerating: false,
+    };
     expect(resolveShortcut("\r", { ctrl: true, escape: false }, context)).toBeNull();
   });
 });

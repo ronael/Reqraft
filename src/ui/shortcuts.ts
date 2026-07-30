@@ -9,6 +9,7 @@
 export type ShortcutAction =
   | "close-modal"
   | "exit"
+  | "cancel"
   | "generate"
   | "regenerate"
   | "copy"
@@ -29,6 +30,8 @@ export interface ShortcutContext {
   hasModal: boolean;
   hasResult: boolean;
   inputLength: number;
+  /** A generation is in flight, so Ctrl+C interrupts instead of quitting. */
+  isGenerating: boolean;
 }
 
 /**
@@ -37,7 +40,6 @@ export interface ShortcutContext {
  * the prompt field's own submit instead (see ui/prompt-input.ts).
  */
 const CTRL_SHORTCUTS: Record<string, ShortcutAction> = {
-  c: "exit",
   d: "toggle-diff",
   k: "open-commands",
   l: "open-level",
@@ -48,6 +50,10 @@ const CTRL_SHORTCUTS: Record<string, ShortcutAction> = {
 };
 
 function resolveCtrlShortcut(input: string, context: ShortcutContext): ShortcutAction | null {
+  // Ctrl+C interrupts a running generation before it means "quit".
+  if (input === "c") {
+    return context.isGenerating ? "cancel" : "exit";
+  }
   // Explaining a result is only meaningful once one exists.
   if (input === "e") {
     return context.hasResult ? "show-explain" : null;

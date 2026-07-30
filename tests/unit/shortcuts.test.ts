@@ -2,7 +2,12 @@ import { describe, expect, it } from "vitest";
 import { resolveShortcut, type ShortcutContext } from "../../src/ui/shortcuts.js";
 import { resolveShortcutIntent } from "../../src/ui/shortcut-intents.js";
 
-const idle: ShortcutContext = { hasModal: false, hasResult: false, inputLength: 0 };
+const idle: ShortcutContext = {
+  hasModal: false,
+  hasResult: false,
+  inputLength: 0,
+  isGenerating: false,
+};
 const withResult: ShortcutContext = { ...idle, hasResult: true };
 const typing: ShortcutContext = { ...idle, inputLength: 4 };
 
@@ -12,7 +17,6 @@ const escapeKey = { ctrl: false, escape: true };
 
 describe("resolveShortcut", () => {
   it.each([
-    ["c", "exit"],
     ["d", "toggle-diff"],
     ["k", "open-commands"],
     ["l", "open-level"],
@@ -65,7 +69,19 @@ describe("resolveShortcut", () => {
       expect(resolveShortcut("", escapeKey, idle)).toBe("exit");
     });
 
-    it("resolves from Ctrl+C", () => {
+    it("resolves from Ctrl+C when idle", () => {
+      expect(resolveShortcut("c", ctrl, idle)).toBe("exit");
+    });
+  });
+
+  describe("interrupt", () => {
+    const generating: ShortcutContext = { ...idle, isGenerating: true };
+
+    it("turns Ctrl+C into a cancellation while a run is in flight", () => {
+      expect(resolveShortcut("c", ctrl, generating)).toBe("cancel");
+    });
+
+    it("still quits once the run is over", () => {
       expect(resolveShortcut("c", ctrl, idle)).toBe("exit");
     });
   });
@@ -79,6 +95,7 @@ describe("resolveShortcutIntent", () => {
   it("routes shortcut actions to typed app intentions", () => {
     expect(resolveShortcutIntent("close-modal")).toEqual({ type: "close-modal" });
     expect(resolveShortcutIntent("exit")).toEqual({ type: "exit" });
+    expect(resolveShortcutIntent("cancel")).toEqual({ type: "cancel" });
     expect(resolveShortcutIntent("generate")).toEqual({
       type: "generate",
       preserveInput: false,

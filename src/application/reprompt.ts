@@ -29,6 +29,8 @@ export interface ExecuteRepromptInput {
   fidelityMode?: FidelityMode;
   timeoutMs?: number;
   maxOutputTokens?: number;
+  /** Cancellation owned by the caller, for interactive interrupts. */
+  signal?: AbortSignal;
 }
 
 export interface ExecuteRepromptResult {
@@ -69,6 +71,7 @@ export async function executeReprompt(
       fidelityMode: input.fidelityMode,
       timeoutMs: input.timeoutMs,
       maxOutputTokens: input.maxOutputTokens,
+      signal: input.signal,
     }),
   );
 
