@@ -28,7 +28,7 @@ Le POC est isolé :
 - `Ctrl+L` : picker niveau.
 - `Ctrl+I` : picker provider.
 - `Ctrl+O` : picker modèle.
-- `Ctrl+E` : état erreur.
+- `Ctrl+E` : bascule état erreur / retour au dernier résultat.
 - `Ctrl+R` : reset.
 - `Ctrl+Y` : copie mock.
 - `?` : aide.
@@ -50,6 +50,8 @@ bordures et états interactifs OpenTUI.
 - Pas de grille web fixe : le layout se réduit selon la largeur du terminal.
 - La copie est simulée : le POC prouve le feedback visuel, pas le presse-papiers.
 - Le streaming est simulé avec des deltas textuels pour valider le renderer.
+- Les zones longues sont bornées au viewport et affichent un indicateur de
+  lignes masquées pour éviter tout débordement terminal.
 
 ## Critère de validation
 

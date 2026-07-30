@@ -63,9 +63,11 @@ interface MouseZone {
 interface Layout {
   width: number;
   height: number;
+  textWidth: number;
   compact: boolean;
   editorRows: number;
   resultRows: number;
+  warningRows: number;
   badgeRow: number;
   badgeZones: MouseZone[];
   pickerTop: number;
@@ -231,7 +233,7 @@ function App(): React.ReactNode {
             controller.setInput(editorValue());
           }}
           onSubmit={generate}
-          style={{ minHeight: layout.editorRows, marginTop: 1 }}
+          style={{ height: layout.editorRows, flexGrow: 0, marginTop: 1 }}
         />
       </Panel>
 
@@ -244,19 +246,19 @@ function App(): React.ReactNode {
       />
 
       <Panel
-        title={resultTitle(state.status)}
+        title={resultTitle(state.status, state.result)}
         meta={resultMeta(state)}
         tone={resultTone(state.status)}
         focused={state.focusedElement === "result" && !state.activeOverlay}
-        grow={!layout.compact}
       >
         <ResultArea
           result={state.result}
           warning={state.warning}
           error={state.error}
           status={state.status}
-          focused={state.focusedElement === "result" && !state.activeOverlay}
           rows={layout.resultRows}
+          warningRows={layout.warningRows}
+          textWidth={layout.textWidth}
         />
       </Panel>
 
@@ -430,24 +432,26 @@ function ResultArea({
   warning,
   error,
   status,
-  focused,
   rows,
+  warningRows,
+  textWidth,
 }: {
   result: string;
   warning?: string;
   error?: string;
   status: string;
-  focused: boolean;
   rows: number;
+  warningRows: number;
+  textWidth: number;
 }): React.ReactNode {
-  if (error) {
+  if (error && !result) {
     return (
       <box style={{ flexDirection: "column", marginTop: 1, rowGap: 1 }}>
         <text fg={COLOR.error} attributes={TextAttributes.BOLD}>
-          Authentification impossible
+          Provider mock indisponible
         </text>
         <text fg={COLOR.error}>{error}</text>
-        <text attributes={TextAttributes.DIM}>Action : ouvre un picker modèle ou relance le mock.</text>
+        <text attributes={TextAttributes.DIM}>Ctrl+E revient à l’état précédent. Ctrl+G relance.</text>
       </box>
     );
   }
@@ -472,10 +476,54 @@ function ResultArea({
 
   return (
     <box style={{ flexDirection: "column", rowGap: 1, marginTop: 1, flexGrow: 0 }}>
-      {warning && <text fg={COLOR.warning}>! {warning}</text>}
-      <scrollbox focused={focused} style={{ height: rows, flexGrow: 0, border: false }}>
-        <text>{result}</text>
-      </scrollbox>
+      {error && (
+        <TextViewport
+          text={`! ${error} Ctrl+E revient au résultat.`}
+          rows={warningRows}
+          width={textWidth}
+          tone="error"
+        />
+      )}
+      {!error && warning && (
+        <TextViewport text={`! ${warning}`} rows={warningRows} width={textWidth} tone="warning" />
+      )}
+      <TextViewport text={result} rows={rows} width={textWidth} />
+    </box>
+  );
+}
+
+function TextViewport({
+  text,
+  rows,
+  width,
+  tone = "text",
+}: {
+  text: string;
+  rows: number;
+  width: number;
+  tone?: "text" | "warning" | "error";
+}): React.ReactNode {
+  const lines = wrapText(text, width);
+  const visibleRows = Math.max(1, rows);
+  const hiddenCount = Math.max(0, lines.length - visibleRows);
+  const visibleLines =
+    hiddenCount > 0
+      ? [...lines.slice(0, Math.max(0, visibleRows - 1)), `… ${hiddenCount} ligne${hiddenCount > 1 ? "s" : ""} masquée${hiddenCount > 1 ? "s" : ""}`]
+      : lines.slice(0, visibleRows);
+
+  return (
+    <box
+      style={{
+        flexDirection: "column",
+        height: visibleRows,
+        flexGrow: 0,
+      }}
+    >
+      {visibleLines.map((line, index) => (
+        <text key={`${index}-${line}`} fg={toneColorForText(tone)}>
+          {line || " "}
+        </text>
+      ))}
     </box>
   );
 }
@@ -713,8 +761,8 @@ function pickerTitle(overlay: Exclude<OverlayId, null | "help">): string {
   return "Changer de modèle";
 }
 
-function resultTitle(status: string): string {
-  if (status === "error") return "Erreur";
+function resultTitle(status: string, result: string): string {
+  if (status === "error" && !result) return "Erreur";
   if (status === "loading" || status === "streaming") return "Génération";
   return "Prompt amélioré";
 }
@@ -745,16 +793,60 @@ function toneColor(tone: "accent" | "neutral" | "success" | "warning" | "error")
   return COLOR.border;
 }
 
+function toneColorForText(tone: "text" | "warning" | "error"): string {
+  if (tone === "warning") return COLOR.warning;
+  if (tone === "error") return COLOR.error;
+  return COLOR.text;
+}
+
 function shortModel(model: string): string {
   return model.length > 14 ? `${model.slice(0, 11)}…` : model;
+}
+
+function wrapText(text: string, width: number): string[] {
+  const safeWidth = Math.max(12, width);
+  return text.split("\n").flatMap((line) => wrapLine(line, safeWidth));
+}
+
+function wrapLine(line: string, width: number): string[] {
+  if (!line) return [""];
+  const chunks: string[] = [];
+  let current = line;
+  while (current.length > width) {
+    const slice = current.slice(0, width + 1);
+    const breakAt = Math.max(slice.lastIndexOf(" "), slice.lastIndexOf("\t"));
+    const end = breakAt > 8 ? breakAt : width;
+    chunks.push(current.slice(0, end).trimEnd());
+    current = current.slice(end).trimStart();
+  }
+  chunks.push(current);
+  return chunks;
 }
 
 function createLayout(width: number, height: number, provider: string, model: string): Layout {
   const normalizedWidth = Math.max(48, Math.min(width || 100, 118));
   const normalizedHeight = Math.max(18, height || 30);
   const compact = normalizedWidth < 92 || normalizedHeight < 28;
-  const editorRows = compact ? 2 : 6;
-  const resultRows = compact ? 3 : Math.max(5, normalizedHeight - 18);
+  const warningRows = compact ? 1 : 2;
+  const rootPaddingRows = compact ? 0 : 2;
+  const interSectionGaps = compact ? 0 : 4;
+  const headerRows = 1;
+  const actionRows = compact ? 2 : 1;
+  const contextRows = compact ? 1 : 3;
+  const panelChromeRows = 4;
+  const resultInternalRows = 2;
+  const fixedRows =
+    rootPaddingRows +
+    interSectionGaps +
+    headerRows +
+    actionRows +
+    contextRows +
+    panelChromeRows * 2 +
+    warningRows +
+    resultInternalRows;
+  const contentRows = Math.max(6, normalizedHeight - fixedRows);
+  const editorRows = Math.max(2, Math.min(compact ? 3 : 8, Math.floor(contentRows * 0.35)));
+  const resultRows = Math.max(2, contentRows - editorRows - (compact ? 3 : 0));
   const badgeRow = compact ? 13 : 14;
   const pickerTop = compact ? 2 : 4;
   const pickerLeft = compact ? 1 : 4;
@@ -775,9 +867,11 @@ function createLayout(width: number, height: number, provider: string, model: st
   return {
     width: normalizedWidth,
     height: normalizedHeight,
+    textWidth: Math.max(24, normalizedWidth - (compact ? 6 : 10)),
     compact,
     editorRows,
     resultRows,
+    warningRows,
     badgeRow,
     badgeZones,
     pickerTop,

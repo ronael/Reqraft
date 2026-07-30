@@ -141,12 +141,15 @@ export function useTuiController(): TuiController {
     runId.current += 1;
     setState((prev) => ({
       ...prev,
-      status: "error",
-      result: "",
-      warning: undefined,
+      status: prev.status === "error" ? (prev.result ? "success" : "idle") : "error",
       error:
-        "Provider mock indisponible : cet état vérifie le rendu erreur, les actions et la restauration du focus.",
-      stats: { ...prev.stats, elapsedMs: 842, outputTokens: 0 },
+        prev.status === "error"
+          ? undefined
+          : "Provider mock indisponible : cet état vérifie le rendu erreur sans perdre le dernier résultat.",
+      stats:
+        prev.status === "error"
+          ? prev.stats
+          : { ...prev.stats, elapsedMs: 842, outputTokens: prev.stats.outputTokens },
     }));
   }, []);
 
