@@ -25,6 +25,8 @@
     "test:watch": "vitest",
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
+    "poc:opentui": "pnpm --dir poc/opentui dev",
+    "poc:opentui:typecheck": "pnpm --dir poc/opentui typecheck",
     "typecheck": "tsc --noEmit",
     "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage",
     "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",

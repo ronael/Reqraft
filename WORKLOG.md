@@ -372,6 +372,17 @@ règles actives, documenté dans `docs/code-quality.md`.
 
 ## Terminé
 
+### POC OpenTUI isolé
+
+- ✅ Création d'un POC OpenTUI dans `poc/opentui`, séparé de la TUI Ink principale.
+- ✅ Commande dédiée ajoutée : `pnpm poc:opentui`.
+- ✅ Données mockées uniquement : aucun provider réel, aucune clé API, aucune migration produit.
+- ✅ Écran principal interactif : éditeur multiline, badges de contexte, pickers, scrollbox résultat, états vide/loading/streaming/succès/erreur/warning.
+- ✅ Raccourcis Ctrl traités hors textarea : génération, profils, niveaux, provider, modèle, erreur, reset, copie mock, aide et focus.
+- ✅ Typecheck dédié ajouté : `pnpm poc:opentui:typecheck`.
+- ✅ Capture texte documentée dans `poc/opentui/docs/capture.md`.
+- ⏸️ Migration réelle non démarrée : attente de validation visuelle du POC.
+
 ### Optimisation OpenAI / init dev
 
 - ✅ Correction du cas où OpenAI consomme toute la limite de sortie en reasoning tokens sans produire de texte visible.
