@@ -12,7 +12,6 @@ const escapeKey = { ctrl: false, escape: true };
 
 describe("resolveShortcut", () => {
   it.each([
-    ["\r", "generate"],
     ["c", "exit"],
     ["d", "toggle-diff"],
     ["k", "open-commands"],
@@ -36,7 +35,7 @@ describe("resolveShortcut", () => {
       expect(resolveShortcut("", escapeKey, modal)).toBe("close-modal");
     });
 
-    it.each(["y", "d", "p", "r", "\r"])("swallows Ctrl+%s", (input) => {
+    it.each(["y", "d", "p", "r"])("swallows Ctrl+%s", (input) => {
       expect(resolveShortcut(input, ctrl, modal)).toBeNull();
     });
   });

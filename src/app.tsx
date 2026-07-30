@@ -31,12 +31,12 @@ import { resolveCommandIntent } from "./ui/command-intents.js";
 import {
   AppFrame,
   AppModal,
+  Badge,
   HeaderBar,
   Notice,
   ResultPanelBody,
   SectionCard,
   ShortcutBar,
-  StatusBadge,
 } from "./ui/components/index.js";
 import { formatUiError } from "./ui/errors.js";
 import {
@@ -270,12 +270,12 @@ export function App(): React.JSX.Element {
         />
       </SectionCard>
       <Box paddingX={1} marginBottom={1} flexWrap="wrap">
-        <StatusBadge label="Profil" value={state.profile} />
-        <StatusBadge label="Niveau" value={state.level} />
+        <Badge label="Profil" value={state.profile} />
+        <Badge label="Niveau" value={state.level} />
         {!compact && (
           <>
-            <StatusBadge label="Provider" value={state.provider} />
-            <StatusBadge label="Modèle" value={state.model} />
+            <Badge label="Provider" value={state.provider} />
+            <Badge label="Modèle" value={state.model} />
           </>
         )}
       </Box>

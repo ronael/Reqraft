@@ -31,8 +31,12 @@ export interface ShortcutContext {
   inputLength: number;
 }
 
+/**
+ * Ctrl+Enter is deliberately absent. Terminals send the same byte for Enter
+ * and Ctrl+Enter, so the binding could never fire; generation is triggered by
+ * the prompt field's own submit instead (see ui/prompt-input.ts).
+ */
 const CTRL_SHORTCUTS: Record<string, ShortcutAction> = {
-  "\r": "generate",
   c: "exit",
   d: "toggle-diff",
   k: "open-commands",

@@ -5,7 +5,14 @@
  */
 export type ThemeColor = string | undefined;
 
-export type PanelTone = "primary" | "secondary" | "inline";
+/**
+ * Panel emphasis.
+ *
+ * `primary` marks the focused panel, `success` and `danger` mark a finished
+ * generation or a failure, `secondary` is the resting state, and `inline`
+ * drops the border entirely for dense areas.
+ */
+export type PanelTone = "primary" | "secondary" | "success" | "danger" | "inline";
 
 export type StatusTone = "success" | "warning" | "danger" | "info";
 

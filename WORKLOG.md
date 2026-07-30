@@ -2,7 +2,42 @@
 
 ## Lot en cours
 
-Refonte TUI (DA.md) — **Lot A terminé**, Lot B à venir.
+Refonte TUI (DA.md) — **Lots A et B terminés**, Lot C à venir.
+
+### Lot B — Composants de base
+
+Composants créés : `panel.tsx` (l'unité structurelle de la maquette : bordure,
+en-tête à deux zones titre/métadonnées, ton porté par la bordure et le titre),
+`badge.tsx` (`Badge` + `StatusPill`), `key-hint.tsx`, `error-state.tsx`,
+`toast.tsx`. `empty-state.tsx` reprend le glyphe flèche.
+
+`ui/errors.ts` produit désormais un `UiError` structuré — titre, message, cause,
+action suivante — comme l'exige le §13. `formatUiError` devient un aplatissement
+pour les surfaces à une seule ligne, donc les appelants existants et leurs tests
+restent valides.
+
+Le toast réserve sa ligne en permanence : son apparition ne décale plus la mise
+en page (§15).
+
+Dette supprimée : `status-badge.tsx` faisait doublon avec `badge.tsx`, il est
+retiré et `app.tsx` migré.
+
+**Generate** — le binding `Ctrl+\r` est retiré de `ui/shortcuts.ts` : il ne
+pouvait jamais se déclencher. `ui/prompt-input.ts` porte la logique pure,
+`resolveSubmit` (Enter génère, `\` final insère un saut de ligne et n'apparaît
+jamais dans le prompt) et `describeInput` (compteur lignes/mots de l'en-tête).
+Le rendu multiligne réel demande un champ de saisie maison, `ink-text-input`
+étant monoligne : câblage au lot C, pour ne pas injecter un `\n` dans un champ
+incapable de l'afficher.
+
+`ink-testing-library` ajouté en devDependency : le §26 réclame des tests de
+composants, et `src/ui/components` était à 0 %. 14 tests de rendu ajoutés ; les
+nouveaux composants sont à 100 %.
+
+Validation : `pnpm quality` exit 0 — 35 fichiers, 264 tests, couverture 61,72 %.
+
+Prochaine action : Lot C, écran principal — champ multiligne, streaming,
+panneaux au format maquette, `Ctrl+C` interrupteur.
 
 ### Lot A — Audit et fondations
 
