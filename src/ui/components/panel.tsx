@@ -18,8 +18,15 @@ export interface PanelProps {
   title: string;
   /** Glyph before the title. Pass a theme symbol, never a literal. */
   glyph?: string;
-  /** Right side of the header: counts, timings, state. */
-  meta?: string;
+  /** Right side of the header: counts, timings, state. Accepts a live node. */
+  meta?: React.ReactNode;
+  /**
+   * Rows the body keeps even when it has less to show.
+   *
+   * Prevents the panel from jumping between an empty state and a long result
+   * (DA.md section 15).
+   */
+  minBodyHeight?: number;
   tone?: PanelTone;
   children: React.ReactNode;
 }
@@ -35,6 +42,7 @@ export function Panel({
   title,
   glyph,
   meta,
+  minBodyHeight,
   tone = "secondary",
   children,
 }: Readonly<PanelProps>): React.JSX.Element {
@@ -63,12 +71,22 @@ export function Panel({
           {title}
         </Text>
         {meta !== undefined && meta !== "" && (
-          <Text dimColor wrap="truncate-end">
-            {meta}
-          </Text>
+          <Box flexShrink={0}>
+            {/* A plain string is wrapped here so callers stay terse; Ink
+                refuses bare text outside a Text node. */}
+            {typeof meta === "string" ? (
+              <Text dimColor wrap="truncate-end">
+                {meta}
+              </Text>
+            ) : (
+              meta
+            )}
+          </Box>
         )}
       </Box>
-      {children}
+      <Box flexDirection="column" minHeight={minBodyHeight}>
+        {children}
+      </Box>
     </Box>
   );
 }

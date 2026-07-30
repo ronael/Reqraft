@@ -1,20 +1,31 @@
 import React from "react";
 import { Text } from "ink";
+import process from "node:process";
+import { detectUnicode } from "../theme/capabilities.js";
+import { getSpinnerFrames } from "../theme/symbols.js";
 import { theme } from "../theme/tokens.js";
 
-const frames = [".", "o", "O", "o"];
+const FRAMES = getSpinnerFrames(detectUnicode(process.env, process.platform));
 
-export function Spinner(): React.JSX.Element {
+/**
+ * Owns its ticking state, so a turning spinner never re-renders the screen
+ * around it (DA.md section 22).
+ */
+export function Spinner({ label }: Readonly<{ label?: string }>): React.JSX.Element {
   const [frame, setFrame] = React.useState(0);
 
   React.useEffect(() => {
     const id = setInterval(() => {
-      setFrame((value) => (value + 1) % frames.length);
+      setFrame((value) => (value + 1) % FRAMES.length);
     }, theme.behavior.spinnerFrameIntervalMs);
     return () => {
       clearInterval(id);
     };
   }, []);
 
-  return <Text color={theme.color.accent}>{frames[frame]} Génération en cours...</Text>;
+  return (
+    <Text color={theme.color.accent}>
+      {FRAMES[frame]} {label ?? "Génération en cours"}
+    </Text>
+  );
 }

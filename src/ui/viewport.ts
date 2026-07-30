@@ -1,6 +1,7 @@
 export interface ClippedText {
   lines: string[];
   hiddenBelow: number;
+  hiddenAbove?: number;
 }
 
 /**
@@ -28,4 +29,23 @@ export function resultRowBudget(rows: number): number {
   const CHROME_ROWS = 14;
   const MINIMUM = 3;
   return Math.max(MINIMUM, rows - CHROME_ROWS);
+}
+
+/**
+ * Keeps the end of a growing text instead of its beginning.
+ *
+ * While a stream is in flight the newest lines are the interesting ones:
+ * clipping the head would freeze the view once the text passes the budget, and
+ * the sense of the answer being written would be lost.
+ */
+export function clipTailLines(text: string, maxLines: number): ClippedText {
+  const lines = text.split("\n");
+  if (maxLines <= 0 || lines.length <= maxLines) {
+    return { lines, hiddenBelow: 0 };
+  }
+  return {
+    lines: lines.slice(lines.length - maxLines),
+    hiddenBelow: 0,
+    hiddenAbove: lines.length - maxLines,
+  };
 }

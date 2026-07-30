@@ -4,6 +4,40 @@
 
 Refonte TUI (DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
 
+### Correction du streaming
+
+Trois défauts constatés en usage réel, captures à l'appui.
+
+**Le JSON brut s'affichait.** Erreur de conception de ma part : je diffusais ce
+que le provider envoie, or il envoie une enveloppe JSON, pas de la prose. On
+voyait `{"rewritten":"… :\n\n– Objectif…"}` avec les échappements littéraux,
+puis une bascule brutale vers le résultat formaté.
+
+`core/stream-preview.ts` extrait la valeur de `rewritten` au fil de
+l'assemblage et décode les échappements. `rewritten` étant déclaré en premier
+dans le prompt, la prose apparaît presque immédiatement. Trois garde-fous : une
+séquence coupée par la frontière de chunk n'est jamais émise à moitié décodée,
+les champs arrivant dans le désordre font attendre au lieu de fuir du JSON, et
+un provider ignorant la consigne JSON voit son texte affiché tel quel. Onze
+tests, dont un qui rejoue le flux caractère par caractère pour vérifier qu'aucune
+étape ne laisse échapper de `\` ni de `u00`.
+
+**Le temps mort.** `GenerationMeta` affiche la phase et le temps écoulé — « envoi
+· 0.8 s » puis « réception · 1.4 s ». Il possède son propre intervalle, donc
+l'horloge ne rerend pas l'écran autour (§22).
+
+**Le saut de hauteur.** `Panel` accepte `minBodyHeight` ; le panneau résultat
+garde 8 lignes en permanence et ne bondit plus de 2 à 20. Pendant le flux,
+`clipTailLines` garde la fin du texte et non le début, sinon la vue se figeait
+dès que la réponse dépassait le budget.
+
+Le spinner passe en braille avec repli ASCII de même largeur.
+
+Quatre tests de rendu verrouillent le cas exact constaté : l'enveloppe JSON ne
+doit jamais atteindre l'écran.
+
+Validation : `pnpm quality` exit 0 — 41 fichiers, 350 tests, couverture 63,67 %.
+
 ### Streaming réel
 
 Constat : le streaming n'existait pas. OpenAI ne le faisait pas du tout, et

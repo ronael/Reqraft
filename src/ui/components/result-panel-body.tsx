@@ -4,7 +4,8 @@ import React from "react";
 import type { RepromptResult } from "../../core/types.js";
 import type { ViewMode } from "../app-state.js";
 import { formatResultView } from "../result-view.js";
-import { clipLines } from "../viewport.js";
+import { clipLines, clipTailLines } from "../viewport.js";
+import { previewRewritten } from "../../core/stream-preview.js";
 import { getEmptyStateTitle } from "../view-labels.js";
 import type { UiError } from "../errors.js";
 import { EmptyState } from "./empty-state.js";
@@ -20,7 +21,7 @@ interface ResultPanelBodyProps {
   view: ViewMode;
   /** Rows the panel may use for the text itself. */
   maxLines: number;
-  /** Text received so far while a stream is in flight. */
+  /** Raw provider output received so far while a stream is in flight. */
   partialText?: string;
 }
 
@@ -76,15 +77,13 @@ function StreamingBody({
   partialText,
   maxLines,
 }: Readonly<{ partialText: string; maxLines: number }>): React.JSX.Element {
-  if (partialText === "") {
-    return <Spinner />;
+  const preview = previewRewritten(partialText);
+  if (preview.kind === "pending" || preview.text === "") {
+    return <Spinner label="Reformulation en cours" />;
   }
 
-  const clipped = clipLines(partialText, maxLines);
-  return (
-    <>
-      <Text wrap="wrap">{clipped.lines.join("\n")}</Text>
-      <Text dimColor>{"\u2026 réception des tokens"}</Text>
-    </>
-  );
+  // The tail is what matters while text streams in: clipping the head would
+  // freeze the view as soon as the answer passes the budget.
+  const clipped = clipTailLines(preview.text, maxLines);
+  return <Text wrap="wrap">{clipped.lines.join("\n")}</Text>;
 }

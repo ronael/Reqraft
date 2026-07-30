@@ -8,6 +8,7 @@ import { KeyHint } from "../../src/ui/components/key-hint.js";
 import { Panel } from "../../src/ui/components/panel.js";
 import { Toast } from "../../src/ui/components/toast.js";
 import { Notice } from "../../src/ui/components/notice.js";
+import { ResultPanelBody } from "../../src/ui/components/result-panel-body.js";
 import { theme } from "../../src/ui/theme/tokens.js";
 
 describe("Panel", () => {
@@ -136,5 +137,43 @@ describe("Toast", () => {
 describe("Notice", () => {
   it("carries the meaning in the symbol, not only in the colour", () => {
     expect(frameOf(<Notice tone="danger">Échec</Notice>)).toContain(`${theme.symbol.danger} Échec`);
+  });
+});
+
+describe("streaming body", () => {
+  const streaming = (partialText: string): string =>
+    frameOf(
+      <ResultPanelBody
+        isLoading
+        error={null}
+        result={null}
+        view="result"
+        maxLines={20}
+        partialText={partialText}
+      />,
+    );
+
+  it("never shows the JSON envelope the provider actually sends", () => {
+    const frame = streaming('{"rewritten":"Je souhaite un projet');
+
+    expect(frame).toContain("Je souhaite un projet");
+    expect(frame).not.toContain('"rewritten"');
+    expect(frame).not.toContain("{");
+  });
+
+  it("shows real line breaks rather than escaped ones", () => {
+    const frame = streaming('{"rewritten":"Objectif :\\n- Domaine');
+
+    expect(frame).not.toContain("\\n");
+    expect(frame).toContain("Objectif :");
+    expect(frame).toContain("- Domaine");
+  });
+
+  it("spins instead of leaking a bare opening brace", () => {
+    expect(streaming('{"chang')).not.toContain("{");
+  });
+
+  it("spins while nothing has arrived", () => {
+    expect(streaming("")).toContain("Reformulation en cours");
   });
 });

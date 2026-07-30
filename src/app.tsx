@@ -31,6 +31,7 @@ import {
   AppFrame,
   AppModal,
   Badge,
+  GenerationMeta,
   HeaderBar,
   Panel,
   PromptField,
@@ -60,6 +61,14 @@ import { resultRowBudget } from "./ui/viewport.js";
 
 type CommandAction = ModalCommandAction;
 
+/**
+ * Rows the result panel always keeps.
+ *
+ * Without a floor the panel jumps from two lines to twenty the moment a result
+ * lands, which reads as the interface flinching.
+ */
+const RESULT_MIN_ROWS = 8;
+
 export function App(): React.JSX.Element {
   const { exit } = useApp();
   const { columns, rows } = useTerminalSize();
@@ -68,6 +77,7 @@ export function App(): React.JSX.Element {
   const generationInFlight = useRef(false);
   const abortController = useRef<AbortController | null>(null);
   const [partialText, setPartialText] = useState("");
+  const [startedAt, setStartedAt] = useState(0);
   const [config, setConfig] = useState<Config | null>(null);
   const [configReady, setConfigReady] = useState(false);
 
@@ -103,6 +113,7 @@ export function App(): React.JSX.Element {
     abortController.current = controller;
     setIsLoading(true);
     setPartialText("");
+    setStartedAt(Date.now());
     setState((prev) => beginGeneration(prev));
 
     try {
@@ -257,7 +268,13 @@ export function App(): React.JSX.Element {
     hasError: state.error !== null,
     hasResult: state.result !== null,
   });
-  const resultMeta = describeResultMeta(state.result, isLoading);
+  // A live counter cannot be a plain string: GenerationMeta owns its own
+  // interval so the clock does not re-render the whole screen.
+  const resultMeta = isLoading ? (
+    <GenerationMeta startedAt={startedAt} receiving={partialText !== ""} />
+  ) : (
+    describeResultMeta(state.result, isLoading)
+  );
   const resultTone = getResultPanelTone({
     isLoading,
     hasError: state.error !== null,
@@ -338,7 +355,13 @@ export function App(): React.JSX.Element {
           </>
         )}
       </Box>
-      <Panel title={resultTitle} glyph={theme.symbol.diamond} meta={resultMeta} tone={resultTone}>
+      <Panel
+        title={resultTitle}
+        glyph={theme.symbol.diamond}
+        meta={resultMeta}
+        tone={resultTone}
+        minBodyHeight={RESULT_MIN_ROWS}
+      >
         <ResultPanelBody
           isLoading={isLoading}
           error={state.error}

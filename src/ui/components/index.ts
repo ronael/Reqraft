@@ -2,6 +2,7 @@ export { AppFrame } from "./app-frame.js";
 export { AppModal } from "./app-modal.js";
 export { Badge, StatusPill } from "./badge.js";
 export { EmptyState } from "./empty-state.js";
+export { GenerationMeta } from "./generation-meta.js";
 export { ErrorState } from "./error-state.js";
 export { KeyHint } from "./key-hint.js";
 export { Panel } from "./panel.js";
