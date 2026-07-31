@@ -11,6 +11,7 @@ import {
   useTerminalDimensions,
 } from "@opentui/react";
 import React, { useEffect, useMemo, useRef, useState } from "react";
+import { ScrollView } from "./components/scroll-view.js";
 import {
   LEVEL_OPTIONS,
   MODEL_OPTIONS,
@@ -603,21 +604,14 @@ function TextViewport({
   tone?: "text" | "warning" | "error";
   scrollable?: boolean;
 }): React.ReactNode {
-  const lines = wrapText(text, width);
   const visibleRows = Math.max(1, rows);
-  const maxOffset = Math.max(0, lines.length - visibleRows);
+  const lineWidth = Math.max(1, width - (scrollable ? 1 : 0));
+  const viewportLines = wrapText(text, lineWidth);
+  const maxOffset = Math.max(0, viewportLines.length - visibleRows);
   const offset = Math.min(maxOffset, Math.max(0, scrollOffset));
-  const hiddenAbove = offset;
-  const hiddenBelow = Math.max(0, lines.length - offset - visibleRows);
-  const shouldShowIndicator = scrollable && (hiddenAbove > 0 || hiddenBelow > 0);
-  const contentRows = shouldShowIndicator ? Math.max(1, visibleRows - 1) : visibleRows;
-  const visibleLines = lines.slice(offset, offset + contentRows);
-  if (shouldShowIndicator) {
-    visibleLines.push(scrollIndicator(hiddenAbove, hiddenBelow));
-  }
-  while (visibleLines.length < visibleRows) {
-    visibleLines.push("");
-  }
+  const shouldShowScrollbar = scrollable && viewportLines.length > visibleRows;
+  const renderLines = [...viewportLines];
+  while (renderLines.length < visibleRows) renderLines.push("");
 
   return (
     <box
@@ -627,11 +621,20 @@ function TextViewport({
         flexGrow: 0,
       }}
     >
-      {visibleLines.map((line, index) => (
-        <text key={`${index}-${line}`} fg={toneColorForText(tone)} style={{ width }}>
-          {line.slice(0, width).padEnd(width, " ") || " ".repeat(width)}
-        </text>
-      ))}
+      <ScrollView
+        height={visibleRows}
+        contentHeight={viewportLines.length}
+        scrollTop={offset}
+        showScrollbar={shouldShowScrollbar}
+        scrollbarColor={COLOR.border}
+        thumbColor={tone === "error" ? COLOR.error : COLOR.accent}
+      >
+        {renderLines.map((line, index) => (
+          <text key={`${index}-${line}`} fg={toneColorForText(tone)} style={{ width: lineWidth }}>
+            {line.slice(0, lineWidth).padEnd(lineWidth, " ") || " ".repeat(lineWidth)}
+          </text>
+        ))}
+      </ScrollView>
     </box>
   );
 }
@@ -930,15 +933,9 @@ function wrapLine(line: string, width: number): string[] {
   return chunks;
 }
 
-function scrollIndicator(hiddenAbove: number, hiddenBelow: number): string {
-  const parts: string[] = [];
-  if (hiddenAbove > 0) parts.push(`↑ ${hiddenAbove}`);
-  if (hiddenBelow > 0) parts.push(`↓ ${hiddenBelow}`);
-  return parts.join(" · ");
-}
-
 function maxScroll(text: string, width: number, rows: number): number {
-  return Math.max(0, wrapText(text, width).length - Math.max(1, rows));
+  const lineWidth = Math.max(1, width - 1);
+  return Math.max(0, wrapText(text, lineWidth).length - Math.max(1, rows));
 }
 
 function clampScroll(offset: number, text: string, width: number, rows: number): number {

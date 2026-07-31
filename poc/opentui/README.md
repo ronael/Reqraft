@@ -53,11 +53,12 @@ bordures et états interactifs OpenTUI.
 - La copie est simulée : le POC prouve le feedback visuel, pas le presse-papiers.
 - Le streaming est simulé avec des deltas textuels pour valider le renderer.
 - Les zones longues sont bornées au viewport, scrollables au clavier, et
-  affichent un indicateur `↑` / `↓` quand du contenu existe hors écran.
+  affichent une scrollbar inspirée du composant Termcn `opentui/scroll-view`.
 - La barre d’actions est rendue dans une zone réservée du layout pour rester
   visible après le streaming et les changements d’état.
 - Le POC force un repaint complet des lignes de viewport pour éviter les traces
   visuelles après streaming, erreur ou resize.
+- La registry `@termcn` est configurée via shadcn dans `components.json`.
 
 ## Critère de validation
 
