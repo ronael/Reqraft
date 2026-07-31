@@ -65,6 +65,7 @@ interface Layout {
   editorRows: number;
   resultRows: number;
   warningRows: number;
+  actionRows: number;
   badgeRow: number;
   badgeZones: MouseZone[];
   pickerTop: number;
@@ -238,7 +239,7 @@ function App(): React.ReactNode {
     <box
       style={{
         width: layout.width,
-        minHeight: layout.height,
+        height: layout.height,
         flexDirection: "column",
         padding: layout.compact ? 0 : 1,
         rowGap: layout.compact ? 0 : 1,
@@ -294,7 +295,12 @@ function App(): React.ReactNode {
         />
       </Panel>
 
-      <ActionBar compact={layout.compact} status={state.status} width={layout.width} />
+      <ActionBar
+        compact={layout.compact}
+        status={state.status}
+        width={layout.width}
+        rows={layout.actionRows}
+      />
       {state.copied && <Toast message="Résultat copié dans le presse-papiers mock." />}
 
       <Picker
@@ -602,19 +608,19 @@ function ActionBar({
   compact,
   status,
   width,
+  rows,
 }: {
   compact: boolean;
   status: string;
   width: number;
+  rows: number;
 }): React.ReactNode {
   const visible = compact ? SHORTCUTS.slice(0, 7) : SHORTCUTS;
   return (
     <box
       style={{
-        position: "absolute",
-        bottom: 0,
-        left: 0,
         width,
+        height: rows,
         flexDirection: "row",
         columnGap: compact ? 1 : 2,
         flexWrap: "wrap",
@@ -966,16 +972,16 @@ function createLayout(width: number, height: number, provider: string, model: st
   const headerRows = 1;
   const actionRows = compact ? 2 : 1;
   const contextRows = compact ? 1 : 3;
-  const panelChromeRows = 4;
-  const resultInternalRows = 2;
+  const panelChromeRows = 6;
+  const resultInternalRows = warningRows + 2;
+  const footerReserveRows = actionRows + 1;
   const fixedRows =
     rootPaddingRows +
     interSectionGaps +
     headerRows +
-    actionRows +
+    footerReserveRows +
     contextRows +
     panelChromeRows * 2 +
-    warningRows +
     resultInternalRows;
   const contentRows = Math.max(6, normalizedHeight - fixedRows);
   const editorRows = Math.max(2, Math.min(compact ? 3 : 8, Math.floor(contentRows * 0.35)));
@@ -1005,6 +1011,7 @@ function createLayout(width: number, height: number, provider: string, model: st
     editorRows,
     resultRows,
     warningRows,
+    actionRows,
     badgeRow,
     badgeZones,
     pickerTop,
