@@ -1,13 +1,13 @@
-import { Text } from "ink";
+import {Box, Text } from "ink";
 import React from "react";
 
+import { previewRewritten } from "../../core/stream-preview.js";
 import type { RepromptResult } from "../../core/types.js";
 import type { ViewMode } from "../app-state.js";
-import { formatResultView } from "../result-view.js";
-import { clipLines, clipTailLines } from "../viewport.js";
-import { previewRewritten } from "../../core/stream-preview.js";
-import { getEmptyStateTitle } from "../view-labels.js";
 import type { UiError } from "../errors.js";
+import { formatResultView } from "../result-view.js";
+import { getEmptyStateTitle } from "../view-labels.js";
+import { clipLines, clipTailLines } from "../viewport.js";
 import { EmptyState } from "./empty-state.js";
 import { ErrorState } from "./error-state.js";
 import { MetaRow } from "./meta-row.js";
@@ -46,7 +46,7 @@ export function ResultPanelBody({
   if (result) {
     const clipped = clipLines(formatResultView(result, view), maxLines);
     return (
-      <>
+      <Box>
         <Text wrap="wrap">{clipped.lines.join("\n")}</Text>
         {clipped.hiddenBelow > 0 && (
           <Text dimColor>
@@ -55,7 +55,7 @@ export function ResultPanelBody({
         )}
         <MetaRow result={result} />
         <QualityNotice quality={result.quality} />
-      </>
+      </Box>
     );
   }
   return (
