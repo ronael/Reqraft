@@ -48,6 +48,29 @@ const SHORTCUTS = [
   "Tab Focus",
 ] as const;
 
+const LAYOUT = {
+  minWidth: 48,
+  maxWidth: 118,
+  minHeight: 18,
+  compactWidth: 92,
+  compactHeight: 28,
+  rootPaddingRows: { compact: 0, regular: 2 },
+  sectionGapRows: { compact: 0, regular: 4 },
+  headerRows: 1,
+  contextRows: { compact: 1, regular: 3 },
+  panelFrameRows: 5,
+  resultExtraRows: 2,
+  footerRows: { compact: 2, regular: 1 },
+  footerSafetyRows: 1,
+  warningRows: { compact: 1, regular: 2 },
+  textHorizontalInset: { compact: 6, regular: 10 },
+  picker: {
+    top: { compact: 2, regular: 4 },
+    left: { compact: 1, regular: 4 },
+    width: { compact: 62, regular: 74 },
+  },
+} as const;
+
 type BadgeId = "profile" | "level" | "provider" | "model";
 
 interface MouseZone {
@@ -66,7 +89,7 @@ interface Layout {
   resultRows: number;
   warningRows: number;
   actionRows: number;
-  badgeRow: number;
+  contextRow: number;
   badgeZones: MouseZone[];
   pickerTop: number;
   pickerLeft: number;
@@ -140,6 +163,11 @@ function App(): React.ReactNode {
   }, [controller, layout, renderer, state.activeOverlay, state.provider]);
 
   useKeyboard((key: KeyEvent) => {
+    if (key.ctrl && key.name === "c") {
+      renderer.stop();
+      return;
+    }
+
     if (state.activeOverlay) {
       handleOverlayKey({
         key,
@@ -156,10 +184,6 @@ function App(): React.ReactNode {
       return;
     }
 
-    if (key.ctrl && key.name === "c") {
-      renderer.stop();
-      return;
-    }
     if (key.name === "escape") {
       renderer.stop();
       return;
@@ -215,6 +239,10 @@ function App(): React.ReactNode {
       return;
     }
     if (key.ctrl && key.name === "e") {
+      if (state.status !== "error") {
+        controller.setFocus("result");
+        setResultScroll(0);
+      }
       controller.simulateError();
       return;
     }
@@ -296,7 +324,6 @@ function App(): React.ReactNode {
       </Panel>
 
       <ActionBar
-        compact={layout.compact}
         status={state.status}
         width={layout.width}
         rows={layout.actionRows}
@@ -484,9 +511,11 @@ function ResultArea({
   textWidth: number;
   scrollOffset: number;
 }): React.ReactNode {
+  const stateRows = rows + warningRows + 2;
+
   if (error && !result) {
     return (
-      <box style={{ flexDirection: "column", marginTop: 1, rowGap: 1 }}>
+      <box style={{ flexDirection: "column", height: stateRows, marginTop: 1, rowGap: 1 }}>
         <text fg={COLOR.error} attributes={TextAttributes.BOLD}>
           Provider mock indisponible
         </text>
@@ -498,7 +527,7 @@ function ResultArea({
 
   if (!result && status === "idle") {
     return (
-      <box style={{ flexDirection: "column", marginTop: 2, alignItems: "center" }}>
+      <box style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}>
         <text attributes={TextAttributes.DIM}>Aucun résultat pour le moment.</text>
         <text attributes={TextAttributes.DIM}>Appuie sur Ctrl+G pour lancer le faux streaming.</text>
       </box>
@@ -507,7 +536,7 @@ function ResultArea({
 
   if (!result && status === "loading") {
     return (
-      <box style={{ flexDirection: "column", marginTop: 2, alignItems: "center" }}>
+      <box style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}>
         <text fg={COLOR.accent}>Préparation de la génération mock…</text>
         <text attributes={TextAttributes.DIM}>Le premier delta arrive dans un instant.</text>
       </box>
@@ -586,6 +615,9 @@ function TextViewport({
   if (shouldShowIndicator) {
     visibleLines.push(scrollIndicator(hiddenAbove, hiddenBelow));
   }
+  while (visibleLines.length < visibleRows) {
+    visibleLines.push("");
+  }
 
   return (
     <box
@@ -597,46 +629,29 @@ function TextViewport({
     >
       {visibleLines.map((line, index) => (
         <text key={`${index}-${line}`} fg={toneColorForText(tone)} style={{ width }}>
-          {line.slice(0, width) || " "}
+          {line.slice(0, width).padEnd(width, " ") || " ".repeat(width)}
         </text>
       ))}
     </box>
   );
 }
 
-function ActionBar({
-  compact,
-  status,
-  width,
-  rows,
-}: {
-  compact: boolean;
-  status: string;
-  width: number;
-  rows: number;
-}): React.ReactNode {
-  const visible = compact ? SHORTCUTS.slice(0, 7) : SHORTCUTS;
+function ActionBar({ status, width, rows }: { status: string; width: number; rows: number }): React.ReactNode {
+  const lines = actionLines(width, rows, status);
   return (
     <box
       style={{
         width,
         height: rows,
-        flexDirection: "row",
-        columnGap: compact ? 1 : 2,
-        flexWrap: "wrap",
+        flexDirection: "column",
         backgroundColor: COLOR.bg,
       }}
     >
-      {visible.map((shortcut) => (
-        <text key={shortcut} attributes={TextAttributes.DIM}>
-          {shortcut}
+      {lines.map((line, index) => (
+        <text key={`${index}-${line}`} attributes={TextAttributes.DIM} style={{ width }}>
+          {line}
         </text>
       ))}
-      {!compact && (
-        <text fg={status === "streaming" ? COLOR.accent : COLOR.muted}>
-          {status === "streaming" ? "réception des tokens…" : "prêt"}
-        </text>
-      )}
     </box>
   );
 }
@@ -943,6 +958,29 @@ function scrollStep(key: KeyEvent, rows: number): number {
   return Math.max(1, rows - 1);
 }
 
+function actionLines(width: number, rows: number, status: string): string[] {
+  const statusText = status === "streaming" ? "réception des tokens…" : "prêt";
+  const items = [...SHORTCUTS, statusText];
+  const lines: string[] = [];
+  let current = "";
+  for (const item of items) {
+    const candidate = current ? `${current}  ${item}` : item;
+    if (candidate.length <= width) {
+      current = candidate;
+      continue;
+    }
+    if (current) lines.push(current);
+    current = item.length > width ? item.slice(0, width) : item;
+  }
+  if (current) lines.push(current);
+
+  const visible = lines.slice(0, rows);
+  while (visible.length < rows) {
+    visible.push("");
+  }
+  return visible.map((line) => line.padEnd(width, " "));
+}
+
 function handleEditorKey(
   key: KeyEvent,
   setInput: (input: string) => void,
@@ -963,33 +1001,37 @@ function handleEditorKey(
 }
 
 function createLayout(width: number, height: number, provider: string, model: string): Layout {
-  const normalizedWidth = Math.max(48, Math.min(width || 100, 118));
-  const normalizedHeight = Math.max(18, height || 30);
-  const compact = normalizedWidth < 92 || normalizedHeight < 28;
-  const warningRows = compact ? 1 : 2;
-  const rootPaddingRows = compact ? 0 : 2;
-  const interSectionGaps = compact ? 0 : 4;
-  const headerRows = 1;
-  const actionRows = compact ? 2 : 1;
-  const contextRows = compact ? 1 : 3;
-  const panelChromeRows = 6;
-  const resultInternalRows = warningRows + 2;
-  const footerReserveRows = actionRows + 1;
+  const normalizedWidth = Math.max(LAYOUT.minWidth, Math.min(width || 100, LAYOUT.maxWidth));
+  const normalizedHeight = Math.max(LAYOUT.minHeight, height || 30);
+  const compact = normalizedWidth < LAYOUT.compactWidth || normalizedHeight < LAYOUT.compactHeight;
+  const warningRows = compact ? LAYOUT.warningRows.compact : LAYOUT.warningRows.regular;
+  const rootPaddingRows = compact ? LAYOUT.rootPaddingRows.compact : LAYOUT.rootPaddingRows.regular;
+  const interSectionGaps = compact ? LAYOUT.sectionGapRows.compact : LAYOUT.sectionGapRows.regular;
+  const actionRows = compact ? LAYOUT.footerRows.compact : LAYOUT.footerRows.regular;
+  const contextRows = compact ? LAYOUT.contextRows.compact : LAYOUT.contextRows.regular;
+  const resultInternalRows = warningRows + LAYOUT.resultExtraRows;
+  const footerReserveRows = actionRows + LAYOUT.footerSafetyRows;
   const fixedRows =
     rootPaddingRows +
     interSectionGaps +
-    headerRows +
+    LAYOUT.headerRows +
     footerReserveRows +
     contextRows +
-    panelChromeRows * 2 +
+    LAYOUT.panelFrameRows * 2 +
     resultInternalRows;
-  const contentRows = Math.max(6, normalizedHeight - fixedRows);
+  const contentRows = Math.max(4, normalizedHeight - fixedRows);
   const editorRows = Math.max(2, Math.min(compact ? 3 : 8, Math.floor(contentRows * 0.35)));
   const resultRows = Math.max(2, contentRows - editorRows - (compact ? 3 : 0));
-  const badgeRow = compact ? 13 : 14;
-  const pickerTop = compact ? 2 : 4;
-  const pickerLeft = compact ? 1 : 4;
-  const pickerWidth = compact ? 62 : 74;
+  const contextRow =
+    Math.floor(rootPaddingRows / 2) +
+    LAYOUT.headerRows +
+    (compact ? 0 : 1) +
+    LAYOUT.panelFrameRows +
+    editorRows +
+    (compact ? 0 : 1);
+  const pickerTop = compact ? LAYOUT.picker.top.compact : LAYOUT.picker.top.regular;
+  const pickerLeft = compact ? LAYOUT.picker.left.compact : LAYOUT.picker.left.regular;
+  const pickerWidth = compact ? LAYOUT.picker.width.compact : LAYOUT.picker.width.regular;
   const labels = [
     ["profile", "profil auto ^P"],
     ["level", "niveau standard ^L"],
@@ -1001,7 +1043,7 @@ function createLayout(width: number, height: number, provider: string, model: st
     const start = cursor;
     const end = cursor + label.length + 3;
     cursor = end + 2;
-    return { id, row: badgeRow, start, end };
+    return { id, row: contextRow, start, end };
   });
   return {
     width: normalizedWidth,
@@ -1012,7 +1054,7 @@ function createLayout(width: number, height: number, provider: string, model: st
     resultRows,
     warningRows,
     actionRows,
-    badgeRow,
+    contextRow,
     badgeZones,
     pickerTop,
     pickerLeft,

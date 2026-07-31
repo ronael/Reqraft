@@ -382,6 +382,7 @@ règles actives, documenté dans `docs/code-quality.md`.
 - ✅ Typecheck dédié ajouté : `pnpm poc:opentui:typecheck`.
 - ✅ Capture texte documentée dans `poc/opentui/docs/capture.md`.
 - ✅ Viewports texte bornés et scrollables au clavier : prompt/résultat ne peuvent plus pousser le layout hors écran, et le footer reste réservé hors des panneaux.
+- ✅ Passe de durcissement OpenTUI : footer en lignes déterministes, viewports paddés pour nettoyer les anciens caractères, raccourci Ctrl+C global, état erreur lisible après un résultat long.
 - ✅ État erreur réversible : `Ctrl+E` affiche une erreur mock sans perdre le dernier résultat, puis revient au résultat.
 - ⏸️ Migration réelle non démarrée : attente de validation visuelle du POC.
 

@@ -56,6 +56,8 @@ bordures et états interactifs OpenTUI.
   affichent un indicateur `↑` / `↓` quand du contenu existe hors écran.
 - La barre d’actions est rendue dans une zone réservée du layout pour rester
   visible après le streaming et les changements d’état.
+- Le POC force un repaint complet des lignes de viewport pour éviter les traces
+  visuelles après streaming, erreur ou resize.
 
 ## Critère de validation
 
