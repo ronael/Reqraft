@@ -381,7 +381,7 @@ règles actives, documenté dans `docs/code-quality.md`.
 - ✅ Raccourcis Ctrl traités hors textarea : génération, profils, niveaux, provider, modèle, erreur, reset, copie mock, aide et focus.
 - ✅ Typecheck dédié ajouté : `pnpm poc:opentui:typecheck`.
 - ✅ Capture texte documentée dans `poc/opentui/docs/capture.md`.
-- ✅ Viewports texte bornés : prompt/résultat ne peuvent plus pousser le layout hors écran.
+- ✅ Viewports texte bornés et scrollables au clavier : prompt/résultat ne peuvent plus pousser le layout hors écran.
 - ✅ État erreur réversible : `Ctrl+E` affiche une erreur mock sans perdre le dernier résultat, puis revient au résultat.
 - ⏸️ Migration réelle non démarrée : attente de validation visuelle du POC.
 

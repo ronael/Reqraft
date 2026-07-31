@@ -33,6 +33,8 @@ Le POC est isolé :
 - `Ctrl+Y` : copie mock.
 - `?` : aide.
 - `Tab` : focus éditeur / résultat.
+- `↑` / `↓` : scroll ligne par ligne dans la zone active.
+- `PageUp` / `PageDown` ou `Ctrl+U` / `Ctrl+D` : scroll par page dans la zone active.
 - `Esc` ou `Ctrl+C` : fermeture propre.
 - Souris : clic sur les badges profil, niveau, provider, modèle, puis clic sur
   une ligne du picker.
@@ -50,8 +52,8 @@ bordures et états interactifs OpenTUI.
 - Pas de grille web fixe : le layout se réduit selon la largeur du terminal.
 - La copie est simulée : le POC prouve le feedback visuel, pas le presse-papiers.
 - Le streaming est simulé avec des deltas textuels pour valider le renderer.
-- Les zones longues sont bornées au viewport et affichent un indicateur de
-  lignes masquées pour éviter tout débordement terminal.
+- Les zones longues sont bornées au viewport, scrollables au clavier, et
+  affichent un indicateur `↑` / `↓` quand du contenu existe hors écran.
 
 ## Critère de validation
 

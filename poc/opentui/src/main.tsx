@@ -1,6 +1,5 @@
 import {
   createCliRenderer,
-  TextareaRenderable,
   TextAttributes,
   type KeyEvent,
   type MouseEvent,
@@ -44,11 +43,9 @@ const SHORTCUTS = [
   "^I Provider",
   "^O Modèle",
   "^E Erreur",
+  "↑↓ Scroll",
   "^R Reset",
-  "^Y Copier",
-  "? Aide",
   "Tab Focus",
-  "Esc Fermer",
 ] as const;
 
 type BadgeId = "profile" | "level" | "provider" | "model";
@@ -83,9 +80,10 @@ function App(): React.ReactNode {
     () => createLayout(terminalWidth, terminalHeight, state.provider, state.model),
     [terminalWidth, terminalHeight, state.provider, state.model],
   );
-  const editorRef = useRef<TextareaRenderable | null>(null);
   const renderer = useRenderer();
   const [pickerIndex, setPickerIndex] = useState(0);
+  const [editorScroll, setEditorScroll] = useState(0);
+  const [resultScroll, setResultScroll] = useState(0);
 
   const openOverlay = (overlay: Exclude<OverlayId, null>): void => {
     controller.setOverlay(overlay);
@@ -96,13 +94,20 @@ function App(): React.ReactNode {
     controller.setOverlay(null);
   };
 
-  const editorValue = (): string => {
-    return editorRef.current?.editBuffer?.getText() ?? state.input;
+  const generate = (): void => {
+    void controller.generate(state.input);
   };
 
-  const generate = (): void => {
-    void controller.generate(editorValue());
-  };
+  useEffect(() => {
+    setEditorScroll((previous) => clampScroll(previous, state.input, layout.textWidth, layout.editorRows));
+  }, [layout.editorRows, layout.textWidth, state.input]);
+
+  useEffect(() => {
+    if (state.status === "loading") setResultScroll(0);
+    if (state.status === "streaming") {
+      setResultScroll(maxScroll(state.result, layout.textWidth, layout.resultRows));
+    }
+  }, [layout.resultRows, layout.textWidth, state.result, state.status]);
 
   useEffect(() => {
     const onMouse = (event: MouseEvent) => {
@@ -162,6 +167,32 @@ function App(): React.ReactNode {
       controller.setFocus(state.focusedElement === "editor" ? "result" : "editor");
       return;
     }
+    if (isScrollUpKey(key)) {
+      if (state.focusedElement === "editor") {
+        setEditorScroll((previous) => Math.max(0, previous - scrollStep(key, layout.editorRows)));
+      } else {
+        setResultScroll((previous) => Math.max(0, previous - scrollStep(key, layout.resultRows)));
+      }
+      return;
+    }
+    if (isScrollDownKey(key)) {
+      if (state.focusedElement === "editor") {
+        setEditorScroll((previous) =>
+          Math.min(
+            maxScroll(state.input, layout.textWidth, layout.editorRows),
+            previous + scrollStep(key, layout.editorRows),
+          ),
+        );
+      } else {
+        setResultScroll((previous) =>
+          Math.min(
+            maxScroll(state.result, layout.textWidth, layout.resultRows),
+            previous + scrollStep(key, layout.resultRows),
+          ),
+        );
+      }
+      return;
+    }
     if (key.ctrl && key.name === "g") {
       generate();
       return;
@@ -196,6 +227,10 @@ function App(): React.ReactNode {
     }
     if (key.name === "?" || key.sequence === "?") {
       openOverlay("help");
+      return;
+    }
+    if (state.focusedElement === "editor") {
+      handleEditorKey(key, controller.setInput, state.input);
     }
   });
 
@@ -220,20 +255,16 @@ function App(): React.ReactNode {
 
       <Panel
         title="Prompt original"
-        meta={describeInput(editorValue())}
+        meta={describeInput(state.input)}
         tone="accent"
         focused={state.focusedElement === "editor" && !state.activeOverlay}
       >
-        <textarea
-          ref={editorRef}
+        <EditorViewport
+          text={state.input}
+          rows={layout.editorRows}
+          width={layout.textWidth}
+          scrollOffset={editorScroll}
           focused={state.focusedElement === "editor" && !state.activeOverlay}
-          placeholder="Écris ta demande brute, même imparfaite…"
-          initialValue={state.input}
-          onContentChange={() => {
-            controller.setInput(editorValue());
-          }}
-          onSubmit={generate}
-          style={{ height: layout.editorRows, flexGrow: 0, marginTop: 1 }}
         />
       </Panel>
 
@@ -259,10 +290,11 @@ function App(): React.ReactNode {
           rows={layout.resultRows}
           warningRows={layout.warningRows}
           textWidth={layout.textWidth}
+          scrollOffset={resultScroll}
         />
       </Panel>
 
-      <ActionBar compact={layout.compact} status={state.status} />
+      <ActionBar compact={layout.compact} status={state.status} width={layout.width} />
       {state.copied && <Toast message="Résultat copié dans le presse-papiers mock." />}
 
       <Picker
@@ -435,6 +467,7 @@ function ResultArea({
   rows,
   warningRows,
   textWidth,
+  scrollOffset,
 }: {
   result: string;
   warning?: string;
@@ -443,6 +476,7 @@ function ResultArea({
   rows: number;
   warningRows: number;
   textWidth: number;
+  scrollOffset: number;
 }): React.ReactNode {
   if (error && !result) {
     return (
@@ -485,9 +519,36 @@ function ResultArea({
         />
       )}
       {!error && warning && (
-        <TextViewport text={`! ${warning}`} rows={warningRows} width={textWidth} tone="warning" />
+        <TextViewport
+          text={`! ${warning}`}
+          rows={warningRows}
+          width={textWidth}
+          tone="warning"
+          scrollable={false}
+        />
       )}
-      <TextViewport text={result} rows={rows} width={textWidth} />
+      <TextViewport text={result} rows={rows} width={textWidth} scrollOffset={scrollOffset} />
+    </box>
+  );
+}
+
+function EditorViewport({
+  text,
+  rows,
+  width,
+  scrollOffset,
+  focused,
+}: {
+  text: string;
+  rows: number;
+  width: number;
+  scrollOffset: number;
+  focused: boolean;
+}): React.ReactNode {
+  const value = focused ? `${text}█` : text;
+  return (
+    <box style={{ marginTop: 1 }}>
+      <TextViewport text={value} rows={rows} width={width} scrollOffset={scrollOffset} />
     </box>
   );
 }
@@ -496,20 +557,29 @@ function TextViewport({
   text,
   rows,
   width,
+  scrollOffset = 0,
   tone = "text",
+  scrollable = true,
 }: {
   text: string;
   rows: number;
   width: number;
+  scrollOffset?: number;
   tone?: "text" | "warning" | "error";
+  scrollable?: boolean;
 }): React.ReactNode {
   const lines = wrapText(text, width);
   const visibleRows = Math.max(1, rows);
-  const hiddenCount = Math.max(0, lines.length - visibleRows);
-  const visibleLines =
-    hiddenCount > 0
-      ? [...lines.slice(0, Math.max(0, visibleRows - 1)), `… ${hiddenCount} ligne${hiddenCount > 1 ? "s" : ""} masquée${hiddenCount > 1 ? "s" : ""}`]
-      : lines.slice(0, visibleRows);
+  const maxOffset = Math.max(0, lines.length - visibleRows);
+  const offset = Math.min(maxOffset, Math.max(0, scrollOffset));
+  const hiddenAbove = offset;
+  const hiddenBelow = Math.max(0, lines.length - offset - visibleRows);
+  const shouldShowIndicator = scrollable && (hiddenAbove > 0 || hiddenBelow > 0);
+  const contentRows = shouldShowIndicator ? Math.max(1, visibleRows - 1) : visibleRows;
+  const visibleLines = lines.slice(offset, offset + contentRows);
+  if (shouldShowIndicator) {
+    visibleLines.push(scrollIndicator(hiddenAbove, hiddenBelow));
+  }
 
   return (
     <box
@@ -520,8 +590,8 @@ function TextViewport({
       }}
     >
       {visibleLines.map((line, index) => (
-        <text key={`${index}-${line}`} fg={toneColorForText(tone)}>
-          {line || " "}
+        <text key={`${index}-${line}`} fg={toneColorForText(tone)} style={{ width }}>
+          {line.slice(0, width) || " "}
         </text>
       ))}
     </box>
@@ -531,21 +601,36 @@ function TextViewport({
 function ActionBar({
   compact,
   status,
+  width,
 }: {
   compact: boolean;
   status: string;
+  width: number;
 }): React.ReactNode {
   const visible = compact ? SHORTCUTS.slice(0, 7) : SHORTCUTS;
   return (
-    <box style={{ flexDirection: "row", columnGap: 2, flexWrap: "wrap" }}>
+    <box
+      style={{
+        position: "absolute",
+        bottom: 0,
+        left: 0,
+        width,
+        flexDirection: "row",
+        columnGap: compact ? 1 : 2,
+        flexWrap: "wrap",
+        backgroundColor: COLOR.bg,
+      }}
+    >
       {visible.map((shortcut) => (
         <text key={shortcut} attributes={TextAttributes.DIM}>
           {shortcut}
         </text>
       ))}
-      <text fg={status === "streaming" ? COLOR.accent : COLOR.muted}>
-        {status === "streaming" ? "réception des tokens…" : "prêt"}
-      </text>
+      {!compact && (
+        <text fg={status === "streaming" ? COLOR.accent : COLOR.muted}>
+          {status === "streaming" ? "réception des tokens…" : "prêt"}
+        </text>
+      )}
     </box>
   );
 }
@@ -669,7 +754,8 @@ function HelpOverlay({
         Ce POC ne contacte aucun provider. Il valide seulement renderer, clavier, souris,
         textarea, scrollbox et états.
       </text>
-      <text>Ctrl+G lance un faux streaming. Ctrl+E affiche l’état erreur. Tab change le focus.</text>
+      <text>Ctrl+G lance un faux streaming. Ctrl+E bascule l’erreur. Tab change le focus.</text>
+      <text>↑↓, PageUp/PageDown ou Ctrl+U/Ctrl+D scrollent la zone active.</text>
       <text>Les badges sont cliquables : profil, niveau, provider, modèle.</text>
       <text attributes={TextAttributes.DIM}>Esc ferme cette aide.</text>
     </box>
@@ -821,6 +907,53 @@ function wrapLine(line: string, width: number): string[] {
   }
   chunks.push(current);
   return chunks;
+}
+
+function scrollIndicator(hiddenAbove: number, hiddenBelow: number): string {
+  const parts: string[] = [];
+  if (hiddenAbove > 0) parts.push(`↑ ${hiddenAbove}`);
+  if (hiddenBelow > 0) parts.push(`↓ ${hiddenBelow}`);
+  return parts.join(" · ");
+}
+
+function maxScroll(text: string, width: number, rows: number): number {
+  return Math.max(0, wrapText(text, width).length - Math.max(1, rows));
+}
+
+function clampScroll(offset: number, text: string, width: number, rows: number): number {
+  return Math.min(Math.max(0, offset), maxScroll(text, width, rows));
+}
+
+function isScrollUpKey(key: KeyEvent): boolean {
+  return key.name === "pageup" || key.name === "up" || (key.ctrl && key.name === "u");
+}
+
+function isScrollDownKey(key: KeyEvent): boolean {
+  return key.name === "pagedown" || key.name === "down" || (key.ctrl && key.name === "d");
+}
+
+function scrollStep(key: KeyEvent, rows: number): number {
+  if (key.name === "up" || key.name === "down") return 1;
+  return Math.max(1, rows - 1);
+}
+
+function handleEditorKey(
+  key: KeyEvent,
+  setInput: (input: string) => void,
+  currentInput: string,
+): void {
+  if (key.name === "backspace" || key.name === "delete") {
+    setInput(currentInput.slice(0, -1));
+    return;
+  }
+  if (key.name === "return") {
+    setInput(`${currentInput}\n`);
+    return;
+  }
+  if (key.ctrl || key.meta) return;
+  if (!key.sequence || key.sequence.length !== 1) return;
+  if (key.sequence < " ") return;
+  setInput(`${currentInput}${key.sequence}`);
 }
 
 function createLayout(width: number, height: number, provider: string, model: string): Layout {
