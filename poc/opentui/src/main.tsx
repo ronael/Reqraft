@@ -10,7 +10,7 @@ import {
   useRenderer,
   useTerminalDimensions,
 } from "@opentui/react";
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { ScrollView } from "./components/scroll-view.js";
 import {
   LEVEL_OPTIONS,
@@ -19,7 +19,7 @@ import {
   PROVIDER_OPTIONS,
   useTuiController,
 } from "./controller.js";
-import type { FocusElement, Option, OverlayId, ProfileId, ProviderId, RepromptLevel } from "./types.js";
+import type { Option, OverlayId, ProfileId, ProviderId, RepromptLevel } from "./types.js";
 
 const COLOR = {
   bg: "#09090b",
@@ -107,8 +107,6 @@ function App(): React.ReactNode {
   );
   const renderer = useRenderer();
   const [pickerIndex, setPickerIndex] = useState(0);
-  const [editorScroll, setEditorScroll] = useState(0);
-  const [resultScroll, setResultScroll] = useState(0);
 
   const openOverlay = (overlay: Exclude<OverlayId, null>): void => {
     controller.setOverlay(overlay);
@@ -122,17 +120,6 @@ function App(): React.ReactNode {
   const generate = (): void => {
     void controller.generate(state.input);
   };
-
-  useEffect(() => {
-    setEditorScroll((previous) => clampScroll(previous, state.input, layout.textWidth, layout.editorRows));
-  }, [layout.editorRows, layout.textWidth, state.input]);
-
-  useEffect(() => {
-    if (state.status === "loading") setResultScroll(0);
-    if (state.status === "streaming") {
-      setResultScroll(maxScroll(state.result, layout.textWidth, layout.resultRows));
-    }
-  }, [layout.resultRows, layout.textWidth, state.result, state.status]);
 
   useEffect(() => {
     const onMouse = (event: MouseEvent) => {
@@ -193,32 +180,6 @@ function App(): React.ReactNode {
       controller.setFocus(state.focusedElement === "editor" ? "result" : "editor");
       return;
     }
-    if (isScrollUpKey(key)) {
-      if (state.focusedElement === "editor") {
-        setEditorScroll((previous) => Math.max(0, previous - scrollStep(key, layout.editorRows)));
-      } else {
-        setResultScroll((previous) => Math.max(0, previous - scrollStep(key, layout.resultRows)));
-      }
-      return;
-    }
-    if (isScrollDownKey(key)) {
-      if (state.focusedElement === "editor") {
-        setEditorScroll((previous) =>
-          Math.min(
-            maxScroll(state.input, layout.textWidth, layout.editorRows),
-            previous + scrollStep(key, layout.editorRows),
-          ),
-        );
-      } else {
-        setResultScroll((previous) =>
-          Math.min(
-            maxScroll(state.result, layout.textWidth, layout.resultRows),
-            previous + scrollStep(key, layout.resultRows),
-          ),
-        );
-      }
-      return;
-    }
     if (key.ctrl && key.name === "g") {
       generate();
       return;
@@ -242,7 +203,6 @@ function App(): React.ReactNode {
     if (key.ctrl && key.name === "e") {
       if (state.status !== "error") {
         controller.setFocus("result");
-        setResultScroll(0);
       }
       controller.simulateError();
       return;
@@ -293,7 +253,6 @@ function App(): React.ReactNode {
           text={state.input}
           rows={layout.editorRows}
           width={layout.textWidth}
-          scrollOffset={editorScroll}
           focused={state.focusedElement === "editor" && !state.activeOverlay}
         />
       </Panel>
@@ -320,7 +279,7 @@ function App(): React.ReactNode {
           rows={layout.resultRows}
           warningRows={layout.warningRows}
           textWidth={layout.textWidth}
-          scrollOffset={resultScroll}
+          focused={state.focusedElement === "result" && !state.activeOverlay}
         />
       </Panel>
 
@@ -501,7 +460,7 @@ function ResultArea({
   rows,
   warningRows,
   textWidth,
-  scrollOffset,
+  focused,
 }: {
   result: string;
   warning?: string;
@@ -510,7 +469,7 @@ function ResultArea({
   rows: number;
   warningRows: number;
   textWidth: number;
-  scrollOffset: number;
+  focused: boolean;
 }): React.ReactNode {
   const stateRows = rows + warningRows + 2;
 
@@ -563,7 +522,7 @@ function ResultArea({
           scrollable={false}
         />
       )}
-      <TextViewport text={result} rows={rows} width={textWidth} scrollOffset={scrollOffset} />
+      <TextViewport text={result} rows={rows} width={textWidth} focused={focused} />
     </box>
   );
 }
@@ -572,19 +531,17 @@ function EditorViewport({
   text,
   rows,
   width,
-  scrollOffset,
   focused,
 }: {
   text: string;
   rows: number;
   width: number;
-  scrollOffset: number;
   focused: boolean;
 }): React.ReactNode {
   const value = focused ? `${text}█` : text;
   return (
     <box style={{ marginTop: 1 }}>
-      <TextViewport text={value} rows={rows} width={width} scrollOffset={scrollOffset} />
+      <TextViewport text={value} rows={rows} width={width} focused={focused} />
     </box>
   );
 }
@@ -593,22 +550,20 @@ function TextViewport({
   text,
   rows,
   width,
-  scrollOffset = 0,
   tone = "text",
   scrollable = true,
+  focused = false,
 }: {
   text: string;
   rows: number;
   width: number;
-  scrollOffset?: number;
   tone?: "text" | "warning" | "error";
   scrollable?: boolean;
+  focused?: boolean;
 }): React.ReactNode {
   const visibleRows = Math.max(1, rows);
   const lineWidth = Math.max(1, width - (scrollable ? 1 : 0));
   const viewportLines = wrapText(text, lineWidth);
-  const maxOffset = Math.max(0, viewportLines.length - visibleRows);
-  const offset = Math.min(maxOffset, Math.max(0, scrollOffset));
   const shouldShowScrollbar = scrollable && viewportLines.length > visibleRows;
   const renderLines = [...viewportLines];
   while (renderLines.length < visibleRows) renderLines.push("");
@@ -623,8 +578,7 @@ function TextViewport({
     >
       <ScrollView
         height={visibleRows}
-        contentHeight={viewportLines.length}
-        scrollTop={offset}
+        focused={focused && scrollable}
         showScrollbar={shouldShowScrollbar}
         scrollbarColor={COLOR.border}
         thumbColor={tone === "error" ? COLOR.error : COLOR.accent}
@@ -931,28 +885,6 @@ function wrapLine(line: string, width: number): string[] {
   }
   chunks.push(current);
   return chunks;
-}
-
-function maxScroll(text: string, width: number, rows: number): number {
-  const lineWidth = Math.max(1, width - 1);
-  return Math.max(0, wrapText(text, lineWidth).length - Math.max(1, rows));
-}
-
-function clampScroll(offset: number, text: string, width: number, rows: number): number {
-  return Math.min(Math.max(0, offset), maxScroll(text, width, rows));
-}
-
-function isScrollUpKey(key: KeyEvent): boolean {
-  return key.name === "pageup" || key.name === "up" || (key.ctrl && key.name === "u");
-}
-
-function isScrollDownKey(key: KeyEvent): boolean {
-  return key.name === "pagedown" || key.name === "down" || (key.ctrl && key.name === "d");
-}
-
-function scrollStep(key: KeyEvent, rows: number): number {
-  if (key.name === "up" || key.name === "down") return 1;
-  return Math.max(1, rows - 1);
 }
 
 function actionLines(width: number, rows: number, status: string): string[] {
