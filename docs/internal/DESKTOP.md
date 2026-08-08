@@ -4,7 +4,8 @@ Brief d'exécution pour une IA. Objectif : construire l'application de bureau en
 une passe, sans rouvrir les décisions déjà tranchées et sans retomber dans les
 pièges déjà identifiés.
 
-Référence visuelle : `docs/design/reqraft-native-ui.html` à la racine.
+Référence visuelle : `docs/design/reqraft-native-ui.html`.
+Prérequis : `docs/internal/CAPABILITIES.md` doit être réalisé avant le lot 1.
 Référence de qualité de code : `docs/code-quality.md`.
 
 ---
@@ -110,6 +111,49 @@ définition du violet Reqraft dans tout le dépôt.
 **Règle de dépendance :** `desktop/renderer/` ne doit importer aucun module de
 `src/core/`, `src/providers/` ou `src/auth/`. Ajouter une règle ESLint
 `no-restricted-imports` qui échoue si c'est le cas.
+
+---
+
+## 4.1 Avec quoi construire le renderer
+
+**React + Tailwind**, avec les tokens de `docs/design/reqraft-native-ui.html`.
+Aucune bibliothèque de composants.
+
+La capsule s'ouvre des dizaines de fois par jour : chaque dépendance
+d'interface se paie en temps d'apparition. Les composants nécessaires — panneau,
+badge, indice de touche, liste — sont une centaine de lignes chacun et existent
+déjà en version Ink, dont la structure peut être transposée.
+
+`AGENTS.md` demande de privilégier les composants Termcn. **Cette règle ne
+s'applique qu'aux surfaces terminal.** Termcn est une bibliothèque de composants
+pour terminal ; elle n'a pas d'objet dans un renderer DOM.
+
+## 4.2 Règle de pureté
+
+Deux règles ESLint symétriques, toutes deux bloquantes :
+
+1. `desktop/renderer/**` ne peut importer ni `src/core/`, ni `src/providers/`,
+   ni `src/auth/`, ni `src/application/`.
+2. Les modules purs de `src/ui/` — tout ce qui n'est pas sous `components/` ni
+   `hooks/` — ne peuvent importer ni `ink` ni `react-dom`.
+
+La seconde protège les 1 504 lignes de logique de présentation réutilisables
+entre la TUI et le desktop. Un seul `import { Box } from "ink"` dans
+`header-status.ts` referme la porte sans que personne ne le remarque.
+
+## 4.3 Dimensions
+
+Reprises de la maquette, à respecter :
+
+| Surface | Largeur | Hauteur |
+|---|---|---|
+| Capsule | 560 | contenu, minimum 8 lignes de corps |
+| Popover | 320 | contenu |
+| Réglages | 560 | 480 |
+
+La capsule ne se redimensionne pas au contenu pendant le streaming : la hauteur
+minimale est réservée dès l'ouverture, sinon la fenêtre saute pendant que le
+texte arrive.
 
 ---
 
@@ -293,8 +337,16 @@ presse-papiers intact après coup, comportement correct sans permission.
 
 ## Lot 6 — Packaging et signature
 
+- **Deux configurations TypeScript et deux builds.** Le CLI reste un bundle ESM
+  via tsup. Le main Electron a besoin d'un format que le runtime accepte et de
+  dépendances natives non bundlées. Un seul build qui essaie de couvrir les deux
+  échoue ; ne pas tenter.
+- Le module d'injection clavier est natif : il doit être **exclu de l'archive
+  asar** (`asarUnpack`), sinon il ne se charge pas à l'exécution.
 - `electron-builder`, cibles macOS et Windows, Linux en `AppImage`.
-- Durcissement, entitlements, notarisation macOS.
+- Durcissement, entitlements d'automatisation, notarisation macOS. Posés dès
+  cette configuration, jamais après : les ajouter plus tard oblige à resigner et
+  renotariser.
 - Mise à jour automatique préparée mais désactivée par défaut.
 
 **Sortie :** un binaire signé qui démarre sur une machine vierge.
@@ -321,6 +373,75 @@ contenant une image, Wayland.
 
 Le chemin heureux ne prouve rien sur ce produit : sa difficulté est entièrement
 dans les cas dégradés.
+
+---
+
+# 8.1 Contrat IPC
+
+Un seul fichier de définition, `desktop/main/ipc.ts`, importé par le main et par
+le preload. Aucun canal ne se déclare ailleurs.
+
+**Renderer → main, avec réponse :**
+
+| Canal | Entrée | Sortie |
+|---|---|---|
+| `reprompt:start` | `{ input, profileId?, level?, providerId?, model? }` | `{ runId }` |
+| `reprompt:cancel` | `{ runId }` | `void` |
+| `capture:selection` | `void` | `{ text, sourceApp } \| { empty: true }` |
+| `result:accept` | `{ runId, mode: "replace" \| "copy" }` | `{ applied: boolean }` |
+| `config:read` | `void` | `Config` sans aucune clé |
+| `config:write` | `Partial<Config>` | `Config` |
+| `providers:status` | `void` | `{ id, configured, source }[]` |
+| `doctor:run` | `void` | `DoctorReport` |
+| `permissions:state` | `void` | `{ accessibility, canReplace, reason? }` |
+| `permissions:request` | `void` | `{ accessibility }` |
+
+**Main → renderer, poussés :**
+
+| Canal | Payload |
+|---|---|
+| `run:delta` | `{ runId, chunk }` |
+| `run:done` | `{ runId, result }` |
+| `run:error` | `{ runId, error: UiError }` |
+| `run:cancelled` | `{ runId }` |
+
+Règles :
+
+- Le `runId` est obligatoire sur tous les messages poussés. Sans lui, une
+  réponse tardive d'une génération annulée se mélange à la suivante.
+- Tout message entrant est validé par un schéma Zod côté main avant usage.
+- `config:read` ne renvoie jamais de clé, même masquée. Le renderer reçoit
+  `configured: true` et la source, jamais la valeur.
+- Le preload expose des fonctions nommées correspondant à ces canaux, jamais
+  `ipcRenderer` ni un `invoke` générique.
+
+---
+
+# 8.2 Machine à états de la capsule
+
+Un seul état actif à la fois. Toute transition absente de cette table est un
+bug, pas une improvisation.
+
+| Depuis | Événement | Vers |
+|---|---|---|
+| `fermée` | raccourci déclenché | `capture` |
+| `capture` | texte capturé | `analyse` |
+| `capture` | rien à capturer | `saisie` |
+| `capture` | presse-papiers non textuel | `saisie` |
+| `saisie` | validation | `analyse` |
+| `analyse` | profil détecté | `génération` |
+| `génération` | premier fragment | `streaming` |
+| `génération` \| `streaming` | résultat complet | `prêt` |
+| `génération` \| `streaming` | interruption | `prêt` si texte partiel, sinon `fermée` |
+| `génération` \| `streaming` | erreur | `erreur` |
+| `prêt` | `⌥` maintenu | `comparaison` |
+| `comparaison` | `⌥` relâché | `prêt` |
+| `prêt` | accepter | `application` puis `fermée` |
+| `prêt` | relancer | `analyse` |
+| `prêt` \| `erreur` | `esc` | `fermée` |
+
+`analyse` est un état distinct de `génération` parce que la détection de profil
+est locale et instantanée : elle doit s'afficher avant le premier octet réseau.
 
 ---
 
@@ -392,3 +513,9 @@ les écarts assumés, les mesures, la prochaine action.
   capsule s'ouvre des dizaines de fois par jour et doit apparaître instantanément.
 - Réécrire `stream-preview.ts`, `select-list.ts`, `shortcuts.ts` ou
   `header-status.ts`. Ces modules sont purs, testés, et réutilisables tels quels.
+- Inventer un canal IPC hors de la table de la section 8.1.
+- Inventer un état de capsule hors de la table de la section 8.2.
+- Appliquer la règle Termcn d'`AGENTS.md` au renderer : elle ne vaut que pour
+  les surfaces terminal.
+- Faire transiter une clé API par l'IPC, même masquée, même « juste pour
+  afficher ».
