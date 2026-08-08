@@ -29,7 +29,7 @@ import {
 import { formatDiff, formatExplain, formatResultView } from "../../src/ui/result-view.js";
 import { getEmptyStateTitle, getModalTitle, getResultTitle } from "../../src/ui/view-labels.js";
 import type { RepromptResult } from "../../src/core/types.js";
-import { qualitySignalViewKey } from "../../src/ui/components/quality-notice.js";
+import { qualitySignalViewKey } from "../../src/ui/quality.js";
 import {
   beginGeneration,
   canStartGeneration,

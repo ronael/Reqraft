@@ -4,7 +4,11 @@ import { getPresetModels } from "../models/presets.js";
 import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
 import { listProfiles } from "../profiles/registry.js";
 import { listProviderDefinitions } from "../providers/catalog.js";
-import type { SelectOption } from "./components/select-modal.js";
+
+export interface SelectOption<T extends string> {
+  label: string;
+  value: T;
+}
 
 export type ModalCommandAction =
   "generate" | "profile" | "level" | "provider" | "model" | "result" | "diff" | "explain" | "copy";

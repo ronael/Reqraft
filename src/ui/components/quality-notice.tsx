@@ -1,14 +1,8 @@
 import React from "react";
 import { Box, Text } from "ink";
 import type { QualityAssessment } from "../../core/types.js";
+import { qualitySignalViewKey } from "../quality.js";
 import { Notice } from "./notice.js";
-
-export function qualitySignalViewKey(
-  signal: QualityAssessment["signals"][number],
-  index: number,
-): string {
-  return `${signal.code}:${String(index)}`;
-}
 
 export function QualityNotice({
   quality,

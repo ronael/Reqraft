@@ -1,8 +1,5 @@
 import process from "node:process";
 import { Command } from "commander";
-import React from "react";
-import { render } from "ink";
-import { App } from "./app.js";
 import { version } from "./version.js";
 import { runReprompt } from "./commands/reprompt.js";
 import { runConfig } from "./commands/config.js";
@@ -13,6 +10,7 @@ import { runModelsList, runProfilesList, runProvidersList } from "./commands/lis
 import { runAuth } from "./commands/auth.js";
 import { listCredentialProviders } from "./providers/catalog.js";
 import type { FidelityMode } from "./core/types.js";
+import { runOpenTuiAppLauncher } from "./opentui/launcher.js";
 
 interface CliOptions {
   profile?: string;
@@ -72,9 +70,7 @@ program
   .option("--redact-secrets", "Masquer automatiquement les secrets détectés")
   .action(async (text: string | undefined, options: CliOptions) => {
     if (process.stdin.isTTY && !text && !options.clipboard && !options.file) {
-      // Ctrl+C must reach the app: Ink would otherwise exit on its own and the
-      // interrupt could never cancel a running generation.
-      render(<App />, { exitOnCtrlC: false });
+      applyExitCode(runOpenTuiAppLauncher());
       return;
     }
     applyExitCode(await runReprompt({ text, ...options }));
