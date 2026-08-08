@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reqraft — système d'interaction natif macOS</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = { theme: { extend: {
+  colors: {
+    rq:{100:'#ede9fe',200:'#ddd6fe',300:'#c4b5fd',400:'#a78bfa',500:'#8b5cf6',600:'#7c3aed'},
+    ink:{950:'#07070a',900:'#0b0b10',850:'#101017',800:'#14141d',750:'#1a1a25'}
+  },
+  boxShadow:{
+    caps:'0 24px 70px rgba(0,0,0,.62), 0 0 0 1px rgba(167,139,250,.20), 0 0 60px rgba(139,92,246,.10)',
+    win:'0 30px 80px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.07)',
+    pop:'0 18px 50px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08)'
+  }
+}}}
+</script>
+<style>
+  :root{color-scheme:dark}
+  *{box-sizing:border-box}
+  body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif}
+  .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,monospace}
+  .hidden-layer{opacity:0;pointer-events:none;transform:translateY(6px) scale(.985)}
+  .layer{transition:opacity .18s cubic-bezier(.2,.7,.3,1),transform .18s cubic-bezier(.2,.7,.3,1)}
+  .caret{display:inline-block;width:7px;height:15px;background:#a78bfa;vertical-align:-2px;animation:bl 1s steps(2) infinite}
+  @keyframes bl{50%{opacity:0}}
+  .pulse{animation:pl 1.4s ease-in-out infinite}
+  @keyframes pl{0%,100%{opacity:.35}50%{opacity:1}}
+  .sel{background:rgba(139,92,246,.30);box-shadow:0 0 0 1px rgba(167,139,250,.45);border-radius:3px}
+  .swap{animation:sw .5s cubic-bezier(.2,.7,.3,1)}
+  @keyframes sw{0%{background:rgba(52,211,153,.35)}100%{background:transparent}}
+  .bar{height:2px;background:linear-gradient(90deg,#8b5cf6,#a78bfa,#8b5cf6);background-size:200% 100%;animation:sl 1.1s linear infinite}
+  @keyframes sl{to{background-position:-200% 0}}
+  kbd{font-family:ui-monospace,monospace;font-size:10px;padding:1px 5px;border-radius:4px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:#d4d4d8}
+</style>
+</head>
+<body class="bg-[#050508] text-zinc-300">
+
+<!-- ══════════ EN-TÊTE ══════════ -->
+<div class="mx-auto max-w-[1180px] px-6 pt-8 pb-4">
+  <h1 class="text-xl font-semibold text-white">Reqraft — système d'interaction</h1>
+  <p class="mt-1 text-[13px] text-zinc-500">
+    Une seule capsule, deux ancrages. Clique les scénarios : tout est jouable.
+  </p>
+</div>
+
+<!-- ══════════ BUREAU macOS SIMULÉ ══════════ -->
+<div class="mx-auto max-w-[1180px] px-6">
+<div id="desktop" class="relative overflow-hidden rounded-xl"
+     style="height:660px;background:
+     radial-gradient(1000px 500px at 20% -10%,rgba(124,58,237,.30),transparent 60%),
+     radial-gradient(800px 500px at 90% 110%,rgba(14,116,144,.28),transparent 60%),
+     linear-gradient(160deg,#12101c,#0a0a12 60%,#08080d)">
+
+  <!-- ── Menu bar ── -->
+  <div class="relative z-30 flex h-7 items-center justify-between border-b border-white/[.06] bg-black/35 px-3 text-[12px] text-zinc-300 backdrop-blur-xl">
+    <div class="flex items-center gap-4">
+      <span class="text-[13px]"></span>
+      <span class="font-semibold">Mail</span>
+      <span class="text-zinc-400">Fichier</span><span class="text-zinc-400">Édition</span><span class="text-zinc-400">Format</span>
+    </div>
+    <div class="flex items-center gap-3.5">
+      <!-- Icône Reqraft : le seul élément persistant du produit -->
+      <button id="mb-icon" class="flex items-center gap-1.5 rounded px-1.5 py-0.5 hover:bg-white/10">
+        <span id="mb-dot" class="inline-block h-[7px] w-[7px] rounded-full bg-rq-400"></span>
+        <span class="mono text-[11px] text-zinc-300">rq</span>
+      </button>
+      <span class="text-zinc-500">􀙇</span><span class="text-zinc-500">􀋂</span>
+      <span class="text-[11px] text-zinc-400">14:32</span>
+    </div>
+  </div>
+
+  <!-- ── Fenêtre de l'app hôte (Mail) ── -->
+  <div class="absolute left-1/2 top-14 w-[620px] -translate-x-1/2 overflow-hidden rounded-lg bg-ink-900/95 shadow-win backdrop-blur-xl">
+    <div class="flex h-9 items-center gap-2 border-b border-white/[.07] bg-white/[.03] px-3">
+      <span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57]"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-[#febc2e]"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-[#28c840]"></span>
+      <span class="ml-2 text-[12px] text-zinc-400">Nouveau message</span>
+    </div>
+    <div class="px-4 py-3 text-[13px] leading-[22px] text-zinc-300">
+      <div class="mb-3 border-b border-white/[.06] pb-2 text-[12px] text-zinc-500">À : équipe@atelier.fr</div>
+      <p>Bonjour,</p>
+      <p class="mt-2">
+        <span id="host-text" class="sel">fais moi un truc pour le site qui montre les avis clients et faut que ca soit responsive</span>
+      </p>
+      <p class="mt-2 text-zinc-500">Merci d'avance.</p>
+    </div>
+  </div>
+
+  <!-- ── CAPSULE : la surface principale du produit ── -->
+  <div id="capsule" class="layer hidden-layer absolute left-1/2 top-[248px] z-40 w-[560px] -translate-x-1/2 overflow-hidden rounded-xl bg-ink-850/95 shadow-caps backdrop-blur-2xl">
+
+    <!-- Bandeau : origine du texte + profil détecté localement -->
+    <div class="flex items-center justify-between border-b border-white/[.07] px-3.5 py-2">
+      <div class="flex items-center gap-2 text-[11px]">
+        <span class="mono font-semibold text-rq-300">rq</span>
+        <span id="cap-origin" class="text-zinc-500">sélection · Mail</span>
+      </div>
+      <div id="cap-profile" class="flex items-center gap-1.5 text-[11px] text-zinc-600">
+        <span class="pulse">analyse locale…</span>
+      </div>
+    </div>
+    <div id="cap-bar" class="bar"></div>
+
+    <!-- Corps -->
+    <div class="px-3.5 py-3">
+      <!-- Original, replié en une ligne : consultable, jamais encombrant -->
+      <div id="cap-src" class="mb-2.5 flex items-start gap-2 text-[11px] leading-4 text-zinc-600">
+        <span class="mt-px shrink-0 text-zinc-700">avant</span>
+        <span class="line-clamp-1 italic">fais moi un truc pour le site qui montre les avis clients et faut que ca soit responsive</span>
+      </div>
+
+      <div id="cap-body" class="mono min-h-[76px] text-[13px] leading-[21px] text-zinc-100"></div>
+
+      <!-- Vue comparaison -->
+      <div id="cap-diff" class="hidden mono space-y-0.5 text-[12px] leading-[19px]">
+        <div class="rounded bg-rose-400/[.07] px-2 py-1 text-rose-200/90">− fais moi un truc pour le site qui montre les avis clients et faut que ca soit responsive</div>
+        <div class="rounded bg-emerald-400/[.07] px-2 py-1 text-emerald-200/90">+ Ajoute une section « avis clients » au site, responsive, en réutilisant les composants existants.</div>
+      </div>
+
+      <!-- Erreur -->
+      <div id="cap-error" class="hidden">
+        <div class="text-[13px] font-medium text-rose-300">× Aucune clé API configurée</div>
+        <p class="mt-1 text-[12px] leading-5 text-zinc-400">OPENAI_API_KEY est absente de l'environnement et du trousseau.</p>
+        <button class="mt-2.5 rounded-md border border-rq-400/30 bg-rq-500/15 px-2.5 py-1 text-[11px] text-rq-200">Configurer un provider →</button>
+      </div>
+    </div>
+
+    <!-- Pied : le verdict occupe sa propre rangée, les actions la suivante.
+         Les serrer ensemble contredisait la hiérarchie : le verdict est
+         l'information signature du produit, pas une annotation. -->
+    <div class="border-t border-white/[.07] bg-black/25">
+      <div id="cap-verdict" class="flex items-center gap-2 px-3.5 py-2 text-[12px] text-zinc-600"></div>
+      <div id="cap-actions" class="flex items-center gap-4 border-t border-white/[.05] px-3.5 py-1.5 text-[11px] text-zinc-500"></div>
+    </div>
+  </div>
+
+  <!-- ── Popover menu bar (niveau 2) ── -->
+  <div id="popover" class="layer hidden-layer absolute right-3 top-8 z-50 w-[320px] overflow-hidden rounded-xl bg-ink-850/95 shadow-pop backdrop-blur-2xl">
+    <div class="border-b border-white/[.07] px-3 py-2.5">
+      <textarea class="mono w-full resize-none bg-transparent text-[12px] leading-5 text-zinc-200 outline-none placeholder:text-zinc-600" rows="2" placeholder="Écris, ou ⌘V pour coller…"></textarea>
+    </div>
+    <div class="flex items-center gap-1 border-b border-white/[.07] px-2.5 py-1.5">
+      <button class="rounded-md bg-rq-500/20 px-2 py-1 text-[11px] text-rq-200">auto</button>
+      <button class="rounded-md px-2 py-1 text-[11px] text-zinc-500 hover:bg-white/[.05]">code</button>
+      <button class="rounded-md px-2 py-1 text-[11px] text-zinc-500 hover:bg-white/[.05]">writing</button>
+      <span class="ml-auto mono text-[10px] text-zinc-600">standard</span>
+    </div>
+    <div class="px-3 py-2">
+      <div class="text-[10px] uppercase tracking-wider text-zinc-600">Dernier résultat</div>
+      <p class="mono mt-1 line-clamp-2 text-[11px] leading-4 text-zinc-400">Ajoute une section « avis clients » au site, responsive, en réutilisant les composants existants.</p>
+    </div>
+    <div class="flex items-center justify-between border-t border-white/[.07] bg-black/20 px-3 py-2 text-[10px] text-zinc-600">
+      <span><kbd>⌘⏎</kbd> reformuler</span>
+      <button id="open-settings" class="text-zinc-400 hover:text-white">Réglages…</button>
+    </div>
+  </div>
+
+  <!-- ── Fenêtre complète (niveau 3) ── -->
+  <div id="settings" class="layer hidden-layer absolute left-1/2 top-16 z-50 w-[560px] -translate-x-1/2 overflow-hidden rounded-xl bg-ink-900/[.97] shadow-win backdrop-blur-2xl">
+    <div class="flex h-10 items-center gap-2 border-b border-white/[.07] px-3">
+      <span class="h-2.5 w-2.5 rounded-full bg-[#ff5f57] cursor-pointer" id="close-settings"></span>
+      <span class="h-2.5 w-2.5 rounded-full bg-white/15"></span><span class="h-2.5 w-2.5 rounded-full bg-white/15"></span>
+      <span class="ml-2 text-[12px] text-zinc-400">Reqraft — Réglages</span>
+    </div>
+    <div class="flex gap-1 border-b border-white/[.07] px-3 py-2 text-[11px]">
+      <span class="rounded-md bg-white/[.07] px-2.5 py-1 text-zinc-200">Raccourcis</span>
+      <span class="rounded-md px-2.5 py-1 text-zinc-500">Providers</span>
+      <span class="rounded-md px-2.5 py-1 text-zinc-500">Modèles</span>
+      <span class="rounded-md px-2.5 py-1 text-zinc-500">Profils</span>
+      <span class="rounded-md px-2.5 py-1 text-zinc-500">Diagnostic</span>
+    </div>
+    <div class="space-y-1 p-3">
+      <div class="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-white/[.02]">
+        <div><div class="text-[12px] text-zinc-200">Reformuler la sélection</div><div class="text-[11px] text-zinc-600">Capsule ancrée sous le texte</div></div>
+        <kbd>⌥ Espace</kbd>
+      </div>
+      <div class="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-white/[.02]">
+        <div><div class="text-[12px] text-zinc-200">Ouvrir sans sélection</div><div class="text-[11px] text-zinc-600">Capsule centrée, aspire le presse-papiers</div></div>
+        <kbd>⌥⇧ Espace</kbd>
+      </div>
+      <div class="flex items-center justify-between rounded-lg px-2 py-2 hover:bg-white/[.02]">
+        <div><div class="text-[12px] text-zinc-200">Remplacer sans confirmer</div><div class="text-[11px] text-zinc-600">Ignore l'étape de vérification</div></div>
+        <div class="h-5 w-9 rounded-full bg-white/10 p-0.5"><div class="h-4 w-4 rounded-full bg-zinc-500"></div></div>
+      </div>
+      <div class="mt-2 rounded-lg border border-amber-400/20 bg-amber-400/[.05] px-2.5 py-2 text-[11px] leading-4 text-amber-200/90">
+        ! Désactiver la vérification supprime l'affichage des signaux de fidélité. Le contrôle d'expansion continue de tourner, mais tu ne le verras plus.
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Toast système ── -->
+  <div id="toast" class="layer hidden-layer absolute bottom-5 left-1/2 z-50 -translate-x-1/2 rounded-full bg-black/70 px-3.5 py-1.5 text-[11px] text-emerald-200 backdrop-blur-xl" style="box-shadow:0 0 0 1px rgba(52,211,153,.22)">
+    ✓ Texte remplacé · <span class="text-zinc-500">⌘Z pour annuler</span>
+  </div>
+</div>
+</div>
+
+<!-- ══════════ SCÉNARIOS ══════════ -->
+<div class="mx-auto max-w-[1180px] px-6 py-6">
+  <div class="mb-2 text-[11px] uppercase tracking-wider text-zinc-600">Niveau 1 — utilisation instantanée</div>
+  <div class="flex flex-wrap gap-1.5">
+    <button data-s="repos"     class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">1 · Texte sélectionné</button>
+    <button data-s="analyse"   class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">2 · Déclenchement ⌥Espace</button>
+    <button data-s="generation"class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">3 · Génération</button>
+    <button data-s="pret"      class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">4 · Résultat + verdict</button>
+    <button data-s="diff"      class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">5 · Comparer ⌥</button>
+    <button data-s="accepte"   class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">6 · Accepter ⏎</button>
+    <button data-s="expansion" class="sc rounded-lg border border-amber-400/25 bg-amber-400/[.06] px-3 py-1.5 text-[12px] text-amber-200 hover:bg-amber-400/[.12]">7 · Expansion détectée</button>
+    <button data-s="erreur"    class="sc rounded-lg border border-rose-400/25 bg-rose-400/[.06] px-3 py-1.5 text-[12px] text-rose-200 hover:bg-rose-400/[.12]">8 · Aucune clé API</button>
+  </div>
+
+  <div class="mt-4 mb-2 text-[11px] uppercase tracking-wider text-zinc-600">Niveaux 2 et 3</div>
+  <div class="flex flex-wrap gap-1.5">
+    <button data-s="popover"  class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">Popover menu bar</button>
+    <button data-s="reglages" class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">Fenêtre complète</button>
+    <button data-s="fond"     class="sc rounded-lg border border-white/[.09] bg-white/[.03] px-3 py-1.5 text-[12px] text-zinc-300 hover:bg-white/[.07]">Travail en arrière-plan</button>
+  </div>
+
+  <p id="note" class="mt-4 min-h-[36px] max-w-[760px] text-[12px] leading-5 text-zinc-500"></p>
+</div>
+
+<script>
+const RESULT = "Ajoute une section « avis clients » au site, responsive, en réutilisant les composants existants.";
+const EXPANDED = "Ajoute une section « avis clients » au site avec carrousel, notation par étoiles, filtres par produit, pagination, animations d'apparition, et un back-office de modération complet.";
+
+const el = (id) => document.getElementById(id);
+const show = (node, on) => node.classList.toggle('hidden-layer', !on);
+let timer = null;
+
+function stopTyping(){ if(timer){ clearInterval(timer); timer = null; } }
+
+function type(text, done){
+  stopTyping();
+  const body = el('cap-body');
+  body.textContent = '';
+  let i = 0;
+  timer = setInterval(() => {
+    i += 2;
+    body.innerHTML = text.slice(0, i).replace(/</g,'&lt;') + '<span class="caret"></span>';
+    if (i >= text.length){ stopTyping(); body.textContent = text; if(done) done(); }
+  }, 18);
+}
+
+function actions(html){ el('cap-actions').innerHTML = html; }
+function verdict(html){ el('cap-verdict').innerHTML = html; }
+
+// Deux actions primaires en tête, le reste ensuite : « remplacer » est le geste
+// qui termine le trajet, « comparer » celui qui le vérifie.
+const ACT_READY = `
+  <span class="text-zinc-300"><kbd>⏎</kbd> remplacer</span>
+  <span class="text-zinc-300"><kbd>⌥</kbd> comparer</span>
+  <span class="ml-auto"><kbd>⌘C</kbd> copier</span>
+  <span><kbd>⌘R</kbd> relancer</span>
+  <span><kbd>⇥</kbd> niveau</span>`;
+
+const SCENES = {
+  repos(){
+    reset();
+    note("Le texte est sélectionné dans Mail. Reqraft n'existe pas encore à l'écran — juste un point dans la menu bar. <b class='text-zinc-400'>Rien n'a été ouvert.</b>");
+  },
+  analyse(){
+    reset(); show(el('capsule'), true);
+    el('cap-bar').style.visibility = 'visible';
+    el('cap-profile').innerHTML = '<span class="pulse">analyse locale…</span>';
+    el('cap-body').innerHTML = '<span class="text-zinc-600 text-[12px]">Lecture de la sélection…</span>';
+    setTimeout(() => {
+      el('cap-profile').innerHTML = '<span class="text-zinc-600">profil</span> <span class="text-rq-300">web-design</span> <span class="text-zinc-700">· détecté hors ligne</span>';
+    }, 700);
+    verdict('<span class="text-zinc-700">aucun appel réseau pour l\'instant</span>');
+    actions('<span><kbd>esc</kbd> annuler</span>');
+    note("La capsule s'ancre <b class='text-zinc-400'>sous la sélection</b>, pas au centre. <code class='mono text-rq-300'>detectProfile()</code> devine le profil <b class='text-zinc-400'>localement, avant tout appel réseau</b> — c'est gratuit et instantané, et aucun concurrent ne l'affiche.");
+  },
+  generation(){
+    reset(); show(el('capsule'), true);
+    el('cap-bar').style.visibility = 'visible';
+    el('cap-profile').innerHTML = '<span class="text-zinc-600">profil</span> <span class="text-rq-300">web-design</span>';
+    verdict('<span class="text-rq-300 pulse">réception…</span><span class="ml-auto mono text-[11px] text-zinc-700">gpt-4.1-mini · 0.8 s</span>');
+    actions('<span><kbd>⌘.</kbd> interrompre</span>');
+    type(RESULT);
+    note("Le texte arrive progressivement. La barre violette et le point de la menu bar pulsent : <b class='text-zinc-400'>on peut partir travailler ailleurs</b>, la capsule attend. <kbd>⌘.</kbd> interrompt sans rien perdre.");
+  },
+  pret(){
+    reset(); show(el('capsule'), true);
+    el('cap-bar').style.visibility = 'hidden';
+    el('cap-profile').innerHTML = '<span class="text-zinc-600">profil</span> <span class="text-rq-300">web-design</span>';
+    el('cap-body').textContent = RESULT;
+    verdict('<span class="text-emerald-300">✓ fidèle</span><span class="text-zinc-500">aucune fonctionnalité ajoutée</span><span class="ml-auto mono text-[11px] text-zinc-700">×1,4 · gpt-4.1-mini · 1.1 s</span>');
+    actions(ACT_READY);
+    note("<b class='text-zinc-400'>Le verdict de fidélité passe avant tout.</b> <code class='mono text-rq-300'>assessFidelity()</code> calcule déjà l'expansion — ici ×1,4, sous le seuil. C'est ça l'identité Reqraft : pas « voici du texte », mais <b class='text-zinc-400'>« voici ce qui a changé, et rien n'a été inventé »</b>.");
+  },
+  diff(){
+    SCENES.pret();
+    el('cap-body').classList.add('hidden'); el('cap-src').classList.add('hidden');
+    el('cap-diff').classList.remove('hidden');
+    note("<kbd>⌥</kbd> maintenu bascule en comparaison, <b class='text-zinc-400'>sans changer de fenêtre ni d'écran</b>. On relâche, on revient au résultat. La vérification coûte une touche, pas un aller-retour.");
+  },
+  accepte(){
+    reset();
+    const h = el('host-text');
+    h.textContent = RESULT; h.classList.remove('sel'); h.classList.add('swap');
+    show(el('toast'), true);
+    note("La capsule se dissout, <b class='text-zinc-400'>le texte est remplacé sur place</b> dans Mail. Le toast rappelle <kbd>⌘Z</kbd> : rien n'est irréversible. Durée totale du trajet : <b class='text-zinc-400'>zéro changement de fenêtre</b>.");
+  },
+  expansion(){
+    reset(); show(el('capsule'), true);
+    el('cap-bar').style.visibility = 'hidden';
+    el('cap-profile').innerHTML = '<span class="text-zinc-600">profil</span> <span class="text-rq-300">web-design</span> <span class="text-zinc-700">·</span> <span class="text-zinc-500">niveau complete</span>';
+    el('cap-body').textContent = EXPANDED;
+    verdict('<span class="text-amber-300">! expansion ×4,2</span><span class="text-zinc-500">fonctionnalités non demandées</span><span class="ml-auto mono text-[11px] text-zinc-700">niveau complete</span>');
+    actions('<span class="text-amber-200"><kbd>⇥</kbd> repasser en standard</span><span class="ml-auto"><kbd>⏎</kbd> remplacer quand même</span>');
+    note("Le modèle a inventé carrousel, filtres, back-office. <code class='mono text-amber-300'>disproportionate_expansion</code> se déclenche et <b class='text-zinc-400'>l'action proposée en premier n'est pas « accepter » mais « baisser le niveau »</b>. L'interface prend parti pour ton intention.");
+  },
+  erreur(){
+    reset(); show(el('capsule'), true);
+    el('cap-bar').style.visibility = 'hidden';
+    el('cap-profile').innerHTML = '<span class="text-rose-300">non configuré</span>';
+    el('cap-body').classList.add('hidden'); el('cap-src').classList.add('hidden');
+    el('cap-error').classList.remove('hidden');
+    verdict(''); actions('<span><kbd>esc</kbd> fermer</span>');
+    note("L'erreur reste <b class='text-zinc-400'>dans la capsule</b>, à l'endroit où on l'a déclenchée. Titre, cause, action suivante — et un bouton qui ouvre directement le bon onglet de la fenêtre. Pas de notification qui disparaît.");
+  },
+  popover(){
+    reset(); show(el('popover'), true);
+    note("<b class='text-zinc-400'>Niveau 2</b> : quand il n'y a pas de sélection. Écrire, coller, changer de profil, voir le dernier résultat. C'est la même capsule <b class='text-zinc-400'>ancrée à l'icône</b> plutôt qu'au texte — un seul composant, deux ancrages.");
+  },
+  reglages(){
+    reset(); show(el('settings'), true);
+    note("<b class='text-zinc-400'>Niveau 3</b>, ouvert peut-être une fois par mois. Onglets horizontaux, pas de sidebar : cinq écrans de configuration ne méritent pas une colonne permanente. Noter l'avertissement — désactiver la vérification a une conséquence, elle est écrite.");
+  },
+  fond(){
+    reset();
+    el('mb-dot').classList.add('pulse');
+    note("Reqraft travaille pendant que tu fais autre chose. <b class='text-zinc-400'>Le seul signal est le point de la menu bar</b> qui pulse. Aucune fenêtre, aucun vol de focus, aucune notification. Le résultat attend dans le popover.");
+  }
+};
+
+function reset(){
+  stopTyping();
+  ['capsule','popover','settings','toast'].forEach(id => show(el(id), false));
+  el('cap-body').classList.remove('hidden');
+  el('cap-src').classList.remove('hidden');
+  el('cap-diff').classList.add('hidden');
+  el('cap-error').classList.add('hidden');
+  el('mb-dot').classList.remove('pulse');
+  // Vider explicitement : un verdict périmé dans une capsule masquée
+  // réapparaîtrait au scénario suivant avant d'être réécrit.
+  el('cap-body').textContent = '';
+  verdict(''); actions('');
+  const h = el('host-text');
+  h.textContent = "fais moi un truc pour le site qui montre les avis clients et faut que ca soit responsive";
+  h.classList.add('sel'); h.classList.remove('swap');
+}
+
+function note(html){ el('note').innerHTML = html; }
+
+document.querySelectorAll('.sc').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.sc').forEach(x => x.classList.remove('ring-1','ring-rq-400/50'));
+    b.classList.add('ring-1','ring-rq-400/50');
+    SCENES[b.dataset.s]();
+  });
+});
+el('mb-icon').addEventListener('click', () => SCENES.popover());
+el('open-settings').addEventListener('click', () => SCENES.reglages());
+el('close-settings').addEventListener('click', () => SCENES.repos());
+
+SCENES.repos();
+</script>
+</body>
+</html>
