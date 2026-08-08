@@ -27,7 +27,7 @@ describe("resolveShortcut", () => {
     ["k", "open-commands"],
     ["l", "open-level"],
     ["p", "open-profile"],
-    ["r", "regenerate"],
+    ["r", "reset"],
     ["y", "copy"],
   ] as const)("maps Ctrl+%s to %s", (input, expected) => {
     expect(resolveShortcut(input, ctrl, idle)).toBe(expected);
@@ -105,9 +105,9 @@ describe("resolveShortcutIntent", () => {
       type: "generate",
       preserveInput: false,
     });
-    expect(resolveShortcutIntent("regenerate")).toEqual({
-      type: "generate",
-      preserveInput: true,
+    expect(resolveShortcutIntent("reset")).toEqual({
+      type: "reset",
+      preserveInput: false,
     });
     expect(resolveShortcutIntent("copy")).toEqual({
       type: "copy",
@@ -204,7 +204,7 @@ describe("control shortcuts never pollute the prompt", () => {
    * what it was before the keystroke. That makes `preserveInput` load-bearing
    * rather than cosmetic.
    */
-  const CTRL_BOUND_KEYS = ["d", "e", "k", "l", "o", "p", "r", "y"] as const;
+  const CTRL_BOUND_KEYS = ["d", "e", "k", "l", "o", "p", "y"] as const;
 
   it.each(CTRL_BOUND_KEYS)("restores the prompt after Ctrl+%s", (input) => {
     const action = resolveShortcut(
@@ -223,5 +223,16 @@ describe("control shortcuts never pollute the prompt", () => {
   it("leaves quitting and interrupting outside that rule, since Ctrl+C is filtered upstream", () => {
     expect(resolveShortcutIntent("exit")).not.toHaveProperty("preserveInput");
     expect(resolveShortcutIntent("cancel")).not.toHaveProperty("preserveInput");
+  });
+
+  it("lets Ctrl+R clear the prompt because reset is intentionally destructive", () => {
+    const action = resolveShortcut(
+      "r",
+      { ctrl: true, escape: false },
+      { hasModal: false, hasResult: true, inputLength: 12, isGenerating: false },
+    );
+
+    expect(action).toBe("reset");
+    expect(resolveShortcutIntent("reset")).toHaveProperty("preserveInput", false);
   });
 });

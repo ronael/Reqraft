@@ -7,6 +7,7 @@ import {
   createInitialAppState,
   openModal,
   pinInput,
+  resetSession,
   selectLevel,
   selectModel,
   selectProfile,
@@ -253,6 +254,32 @@ describe("app state transitions", () => {
       view: "diff",
     });
     expect(completeGeneration(state, result)).toMatchObject({ result, view: "result" });
+  });
+
+  it("resets transient session data without changing the selected context", () => {
+    const state = {
+      ...createInitialAppState(defaults),
+      input: "prompt courant",
+      result,
+      error: OLD_ERROR,
+      modal: "help" as const,
+      copied: true,
+      view: "explain" as const,
+      provider: "mistral",
+      model: "mistral-small-2603",
+      profile: "code",
+      level: "complete" as const,
+    };
+
+    expect(resetSession(state)).toEqual({
+      ...state,
+      input: "",
+      result: null,
+      error: null,
+      modal: null,
+      copied: false,
+      view: "result",
+    });
   });
 });
 

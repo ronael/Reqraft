@@ -16,7 +16,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 
 import { bootstrapConfiguration, getBootstrapError } from "../application/bootstrap.js";
 import { executeReprompt } from "../application/reprompt.js";
-import { writeClipboard } from "../clipboard/clipboard.js";
+import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "../config/loader.js";
 import type { Config } from "../config/schema.js";
 import type { RepromptLevel, RepromptResult } from "../core/types.js";
@@ -32,6 +32,7 @@ import {
   selectModel,
   selectProfile,
   selectProvider,
+  resetSession,
   showView,
   toggleDiffView,
   updatePromptInput,
@@ -57,23 +58,16 @@ import { resolveSubmit, describeInput } from "../ui/prompt-input.js";
 import { describeResultMeta } from "../ui/result-meta.js";
 import { formatResultView } from "../ui/result-view.js";
 import { createLayout, pickerOptionIndexAt, type Layout } from "./layout.js";
-import { ScrollView } from "./scroll-view.js";
-import { actionLines, shortModel, wrapText } from "./text.js";
-
-const COLOR = {
-  bg: "#09090b",
-  panel: "#111113",
-  panelSoft: "#17171a",
-  border: "#3f3f46",
-  borderSoft: "#27272a",
-  text: "#e4e4e7",
-  muted: "#71717a",
-  subtle: "#a1a1aa",
-  accent: "#a78bfa",
-  success: "#34d399",
-  warning: "#fbbf24",
-  error: "#fb7185",
-} as const;
+import {
+  isCtrlCKey,
+  isCtrlVKey,
+  normalizeTypedText,
+  resolveStreamedResultPreview,
+} from "./input.js";
+import { actionLines, shortModel } from "./text.js";
+import { createOpenTuiRendererOptions } from "./renderer-options.js";
+import { COLOR, toneColor } from "./theme.js";
+import { TextViewport } from "./text-viewport.js";
 
 const SHORTCUTS = [
   "^G Générer",
@@ -84,6 +78,7 @@ const SHORTCUTS = [
   "^D Diff",
   "^E Explication",
   "^Y Copier",
+  "^V Coller",
   "^R Reset",
   "Tab Focus",
 ] as const;
@@ -93,10 +88,7 @@ type FocusElement = "editor" | "result";
 type TuiStatus = "idle" | "loading" | "streaming" | "success" | "error";
 
 export async function runOpenTuiApp(): Promise<void> {
-  const renderer = await createCliRenderer({
-    exitOnCtrlC: false,
-    useMouse: true,
-  });
+  const renderer = await createCliRenderer(createOpenTuiRendererOptions());
   createRoot(renderer).render(<OpenTuiApp />);
 }
 
@@ -156,7 +148,12 @@ function OpenTuiApp(): React.ReactNode {
   }, []);
 
   const generate = useCallback(async (): Promise<void> => {
-    if (!canStartGeneration(state.input, generationInFlight.current)) return;
+    if (generationInFlight.current) {
+      setFocusedElement("result");
+      setStatus((current) => (current === "idle" ? "loading" : current));
+      return;
+    }
+    if (!canStartGeneration(state.input, false)) return;
     generationInFlight.current = true;
     const controller = new AbortController();
     abortController.current = controller;
@@ -195,7 +192,7 @@ function OpenTuiApp(): React.ReactNode {
     abortController.current?.abort();
     setPartialText("");
     setStatus("idle");
-    setState((prev) => ({ ...prev, result: null, error: null, view: "result" }));
+    setState(resetSession);
     setFocusedElement("editor");
   }, []);
 
@@ -212,6 +209,34 @@ function OpenTuiApp(): React.ReactNode {
       setStatus("error");
     }
   }, [state.provider, state.result]);
+
+  const pasteFromClipboard = useCallback(async (): Promise<void> => {
+    try {
+      const content = await readClipboard();
+      const pastedText = normalizeTypedText(content);
+      if (!pastedText) return;
+      setState((prev) => updatePromptInput(prev, `${prev.input}${pastedText}`));
+      setFocusedElement("editor");
+    } catch (error) {
+      setState((prev) => failGeneration(prev, describeUiError(error, prev.provider)));
+      setStatus("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    const onSigint = (): void => {
+      if (generationInFlight.current) {
+        abortController.current?.abort();
+        return;
+      }
+      renderer.stop();
+    };
+
+    process.on("SIGINT", onSigint);
+    return () => {
+      process.off("SIGINT", onSigint);
+    };
+  }, [renderer]);
 
   useEffect(() => {
     const onMouse = (event: MouseEvent): void => {
@@ -269,6 +294,7 @@ function OpenTuiApp(): React.ReactNode {
       hasResult: Boolean(state.result),
       input: state.input,
       openOverlay,
+      pasteFromClipboard,
       resetResult,
       setState,
     })) {
@@ -567,17 +593,31 @@ function ResultArea({
     );
   }
 
-  if (!result && status === "loading") {
+  if (!result && (status === "loading" || status === "streaming")) {
     return (
       <box style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}>
-        <text fg={COLOR.accent}>Préparation de la génération...</text>
-        <text attributes={TextAttributes.DIM}>Le premier delta arrive dans un instant.</text>
+        <text fg={COLOR.accent} attributes={TextAttributes.BOLD}>
+          Génération en cours...
+        </text>
+        <text attributes={TextAttributes.DIM}>
+          {status === "loading" ? "Préparation de la requête." : "Réception du résultat propre."}
+        </text>
       </box>
     );
   }
 
   return (
-    <box style={{ flexDirection: "column", rowGap: 1, marginTop: 1, flexGrow: 0 }}>
+    <box
+      style={{
+        flexDirection: "column",
+        rowGap: 1,
+        marginTop: 1,
+        flexGrow: 0,
+        backgroundColor: COLOR.panelSoft,
+        paddingLeft: 1,
+        paddingRight: 1,
+      }}
+    >
       {error && (
         <TextViewport
           text={`! ${error.title} : ${error.message}`}
@@ -615,53 +655,6 @@ function EditorViewport({
   return (
     <box style={{ marginTop: 1 }}>
       <TextViewport text={value} rows={rows} width={width} focused={focused} />
-    </box>
-  );
-}
-
-function TextViewport({
-  text,
-  rows,
-  width,
-  tone = "text",
-  scrollable = true,
-  focused = false,
-}: Readonly<{
-  text: string;
-  rows: number;
-  width: number;
-  tone?: "text" | "warning" | "error";
-  scrollable?: boolean;
-  focused?: boolean;
-}>): React.ReactNode {
-  const visibleRows = Math.max(1, rows);
-  const lineWidth = Math.max(1, width - (scrollable ? 1 : 0));
-  const viewportLines = wrapText(text, lineWidth);
-  const shouldShowScrollbar = scrollable && viewportLines.length > visibleRows;
-  const renderLines = [...viewportLines];
-  while (renderLines.length < visibleRows) renderLines.push("");
-
-  return (
-    <box
-      style={{
-        flexDirection: "column",
-        height: visibleRows,
-        flexGrow: 0,
-      }}
-    >
-      <ScrollView
-        height={visibleRows}
-        focused={focused && scrollable}
-        showScrollbar={shouldShowScrollbar}
-        scrollbarColor={COLOR.border}
-        thumbColor={tone === "error" ? COLOR.error : COLOR.accent}
-      >
-        {renderLines.map((line, index) => (
-          <text key={`${String(index)}-${line}`} fg={toneColorForText(tone)} style={{ width: lineWidth }}>
-            {line.slice(0, lineWidth).padEnd(lineWidth, " ") || " ".repeat(lineWidth)}
-          </text>
-        ))}
-      </ScrollView>
     </box>
   );
 }
@@ -804,7 +797,7 @@ function handleInterruptKey(
   controller: AbortController | null,
   stopRenderer: () => void,
 ): boolean {
-  if (!key.ctrl || key.name !== "c") return false;
+  if (!isCtrlCKey(key)) return false;
   if (isGenerating) {
     controller?.abort();
   } else {
@@ -844,6 +837,7 @@ interface CtrlShortcutHandlers {
   hasResult: boolean;
   input: string;
   openOverlay(overlay: Exclude<OverlayId, null>): void;
+  pasteFromClipboard(): Promise<void>;
   resetResult(): void;
   setState: React.Dispatch<React.SetStateAction<AppState>>;
 }
@@ -873,17 +867,16 @@ function handleCtrlShortcut(key: KeyEvent, handlers: CtrlShortcutHandlers): bool
       handlers.openOverlay("profile");
     },
     r: () => {
-      if (handlers.hasResult) {
-        void handlers.generate();
-      } else {
-        handlers.resetResult();
-      }
+      handlers.resetResult();
+    },
+    v: () => {
+      void handlers.pasteFromClipboard();
     },
     y: () => {
       void handlers.copyResult();
     },
   };
-  const action = actions[key.name];
+  const action = isCtrlVKey(key) ? actions.v : actions[key.name];
   action?.();
   return action !== undefined;
 }
@@ -1013,23 +1006,11 @@ function resolveVisibleResult({
   partialText: string;
   status: TuiStatus;
 }): string {
-  if ((status === "loading" || status === "streaming") && partialText) return partialText;
+  if ((status === "loading" || status === "streaming") && partialText) {
+    return resolveStreamedResultPreview(partialText);
+  }
   if (!state.result) return "";
   return formatResultView(state.result, state.view);
-}
-
-function toneColor(tone: "accent" | "neutral" | "success" | "warning" | "error"): string {
-  if (tone === "accent") return COLOR.accent;
-  if (tone === "success") return COLOR.success;
-  if (tone === "warning") return COLOR.warning;
-  if (tone === "error") return COLOR.error;
-  return COLOR.border;
-}
-
-function toneColorForText(tone: "text" | "warning" | "error"): string {
-  if (tone === "warning") return COLOR.warning;
-  if (tone === "error") return COLOR.error;
-  return COLOR.text;
 }
 
 function handleEditorKey(
@@ -1052,7 +1033,7 @@ function handleEditorKey(
     return;
   }
   if (key.ctrl || key.meta) return;
-  if (key.sequence.length !== 1) return;
-  if (key.sequence < " ") return;
-  setInput(`${currentInput}${key.sequence}`);
+  const text = normalizeTypedText(key.sequence);
+  if (!text) return;
+  setInput(`${currentInput}${text}`);
 }

@@ -84,6 +84,18 @@ export function clearCopyToast(state: AppState): AppState {
   return { ...state, copied: false };
 }
 
+export function resetSession(state: AppState): AppState {
+  return {
+    ...state,
+    input: "",
+    result: null,
+    error: null,
+    view: "result",
+    modal: null,
+    copied: false,
+  };
+}
+
 export function pinInput(state: AppState, input: string, patch: Partial<AppState>): AppState {
   return { ...state, input, ...patch };
 }

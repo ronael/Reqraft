@@ -1,4 +1,10 @@
 import { describe, expect, it } from "vitest";
+import {
+  isCtrlCKey,
+  normalizeTypedText,
+  resolveStreamedResultPreview,
+} from "../../src/opentui/input.js";
+import { createOpenTuiRendererOptions } from "../../src/opentui/renderer-options.js";
 import { resolveSubmit } from "../../src/ui/prompt-input.js";
 import { RESERVED_CTRL_KEYS, resolveShortcut } from "../../src/ui/shortcuts.js";
 
@@ -40,6 +46,27 @@ describe("interactive keyboard contract", () => {
     expect(resolveSubmit("fais une landing page")).toEqual({
       type: "generate",
       input: "fais une landing page",
+    });
+  });
+
+  it("recognizes Ctrl+C from terminal control sequences", () => {
+    expect(isCtrlCKey({ ctrl: true, name: "c", sequence: "c" })).toBe(true);
+    expect(isCtrlCKey({ ctrl: false, name: "", sequence: "\u0003" })).toBe(true);
+  });
+
+  it("keeps pasted multiline text while stripping terminal paste markers", () => {
+    expect(normalizeTypedText("\u001B[200~ligne 1\nligne 2\u001B[201~")).toBe("ligne 1\nligne 2");
+  });
+
+  it("does not display raw JSON envelopes while streaming", () => {
+    expect(resolveStreamedResultPreview('{"rewritten":"Crée une page')).toBe("Crée une page");
+    expect(resolveStreamedResultPreview('{"warnings":[')).toBe("");
+  });
+
+  it("keeps OpenTUI native Ctrl+C shutdown enabled", () => {
+    expect(createOpenTuiRendererOptions()).toMatchObject({
+      exitOnCtrlC: true,
+      useMouse: true,
     });
   });
 });

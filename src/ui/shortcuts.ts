@@ -11,7 +11,7 @@ export type ShortcutAction =
   | "exit"
   | "cancel"
   | "generate"
-  | "regenerate"
+  | "reset"
   | "copy"
   | "toggle-diff"
   | "show-explain"
@@ -59,7 +59,7 @@ const CTRL_SHORTCUTS: Record<string, ShortcutAction> = {
   // Ctrl+M would be Enter, so the model picker uses the "o" of "mOdèle".
   o: "open-model",
   p: "open-profile",
-  r: "regenerate",
+  r: "reset",
   y: "copy",
 };
 

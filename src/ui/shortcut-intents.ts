@@ -11,6 +11,7 @@ export type ShortcutIntent =
   | { type: "exit" }
   | { type: "cancel" }
   | { type: "generate"; preserveInput: boolean }
+  | { type: "reset"; preserveInput: boolean }
   | { type: "copy"; preserveInput: boolean; dismissModal: boolean }
   | { type: "toggle-diff"; preserveInput: boolean }
   | { type: "show-view"; view: ViewMode; preserveInput: boolean }
@@ -33,8 +34,8 @@ export function resolveShortcutIntent(action: ShortcutAction): ShortcutIntent {
       return { type: "cancel" };
     case "generate":
       return { type: "generate", preserveInput: USE_SUBMITTED_INPUT };
-    case "regenerate":
-      return { type: "generate", preserveInput: PRESERVE_CURRENT_INPUT };
+    case "reset":
+      return { type: "reset", preserveInput: USE_SUBMITTED_INPUT };
     case "copy":
       return { type: "copy", preserveInput: PRESERVE_CURRENT_INPUT, dismissModal: false };
     case "toggle-diff":
