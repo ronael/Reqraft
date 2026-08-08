@@ -106,7 +106,7 @@ describe("modal options", () => {
       "standard",
       "complete",
     ]);
-    expect(HELP_OPTIONS.map((option) => option.value)).toContain("regenerate");
+    expect(HELP_OPTIONS.map((option) => option.value)).toContain("reset");
   });
 
   it("builds profile and model choices from registries", () => {

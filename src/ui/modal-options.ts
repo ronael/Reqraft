@@ -1,6 +1,6 @@
 import type { RepromptLevel } from "../core/types.js";
 import { REPROMPT_LEVELS } from "../core/levels.js";
-import { getPresetModels } from "../models/presets.js";
+import { getPresetModels, getFallbackModelForProvider as getPresetFallbackModelForProvider } from "../models/presets.js";
 import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
 import { listProfiles } from "../profiles/registry.js";
 import { listProviderDefinitions } from "../providers/catalog.js";
@@ -21,9 +21,9 @@ export const HELP_OPTIONS: SelectOption<string>[] = [
   { label: "Entrée — générer", value: "generate" },
   { label: "Ctrl+P — profil", value: "profile" },
   { label: "Ctrl+L — niveau", value: "level" },
-  { label: "Ctrl+M — modèle", value: "model" },
+  { label: "Ctrl+O — modèle", value: "model" },
   { label: "Ctrl+D — diff", value: "diff" },
-  { label: "Ctrl+R — régénérer", value: "regenerate" },
+  { label: "Ctrl+R — reset", value: "reset" },
 ];
 
 export function getProfileOptions(): SelectOption<string>[] {
@@ -50,7 +50,7 @@ export function getModelOptions(provider: string): SelectOption<string>[] {
 }
 
 export function getFallbackModelForProvider(provider: string): string {
-  return getPresetModels().find((preset) => preset.provider === provider)?.id ?? "";
+  return getPresetFallbackModelForProvider(provider) ?? "";
 }
 
 export function getCommandOptions(hasResult: boolean): SelectOption<ModalCommandAction>[] {

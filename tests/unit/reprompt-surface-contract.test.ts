@@ -70,4 +70,46 @@ describe("reprompt surface contract", () => {
       maxOutputTokens: 300,
     });
   });
+
+  it("uses the provider fallback model like the TUI when the quick CLI changes provider", () => {
+    const config: Config = {
+      ...DEFAULT_CONFIG,
+      defaultProvider: "openai",
+      defaultModel: "gpt-4.1-mini",
+      defaultProfile: "auto",
+      defaultLevel: "standard",
+    };
+
+    expect(
+      createCliRepromptInput(
+        "corrige ce prompt",
+        config,
+        { provider: "anthropic" },
+        {},
+      ),
+    ).toMatchObject({
+      providerId: "anthropic",
+      requestedModel: "claude-haiku-4-5",
+      defaultModel: "gpt-4.1-mini",
+    });
+  });
+
+  it("keeps an explicit quick CLI model even when the provider is overridden", () => {
+    const config: Config = {
+      ...DEFAULT_CONFIG,
+      defaultProvider: "openai",
+      defaultModel: "gpt-4.1-mini",
+      defaultProfile: "auto",
+      defaultLevel: "standard",
+    };
+
+    expect(
+      createCliRepromptInput(
+        "corrige ce prompt",
+        config,
+        { provider: "anthropic", model: "claude-sonnet-5" },
+        {},
+      ).requestedModel,
+    ).toBe("claude-sonnet-5");
+  });
 });

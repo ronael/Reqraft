@@ -9,6 +9,7 @@ import { detectSecrets } from "../core/secret-detector.js";
 import { redactSecrets } from "../utils/redaction.js";
 import { executeReprompt, type ExecuteRepromptInput } from "../application/reprompt.js";
 import type { Config } from "../config/schema.js";
+import { getFallbackModelForProvider } from "../models/presets.js";
 import { formatCost, formatDuration, formatTokenValue, qualityLabel } from "../ui/formatters.js";
 
 export interface RepromptCliOptions {
@@ -117,7 +118,7 @@ export function createCliRepromptInput(
     profileId: options.profile ?? config.defaultProfile,
     level: parseLevel(options.level ?? config.defaultLevel),
     providerId: options.provider ?? config.defaultProvider,
-    requestedModel: options.model ?? config.defaultModel,
+    requestedModel: resolveRequestedModel(config, options),
     defaultModel: config.defaultModel,
     env,
     config,
@@ -130,6 +131,14 @@ export function createCliRepromptInput(
       config.maxOutputTokens,
     ),
   };
+}
+
+function resolveRequestedModel(config: Config, options: RepromptCliOptions): string {
+  if (options.model) return options.model;
+  if (options.provider && options.provider !== config.defaultProvider) {
+    return getFallbackModelForProvider(options.provider) ?? config.defaultModel;
+  }
+  return config.defaultModel;
 }
 
 function resolveTimeout(option: string | undefined, configured: number): number {
