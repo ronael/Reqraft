@@ -2,19 +2,10 @@
 
 ## Lot en cours
 
-Audit de reprise OpenTUI — stratégie retenue : refactorisation progressive avec
-remplacement du renderer principal, pas réécriture du projet. Le produit actif
-reste Ink ; `spikes/opentui` est un prototype Bun mocké, utile comme preuve de
-capacité mais non connecté au moteur réel.
-
-Document ajouté : `docs/tui-opentui-recovery-audit.md`.
-
-Tests manuels effectués hors sandbox : `pnpm dev "corrige cette phrase"
---provider mock --stats`, `pnpm dev doctor`, `pnpm dev profiles`,
-`pnpm dev models`, `pnpm dev providers`, `pnpm dev init`, `pnpm dev`.
-Constats clés : commandes non interactives OK ; init reste readline ; TUI active
-Ink ; picker profil OK ; l'éditeur multiline actuel reste fragile ; aucune
-intégration OpenTUI réelle dans le package principal.
+Nettoyage post-migration TUI — le POC OpenTUI/Termcn a servi à valider la
+direction visuelle et interactive, puis la migration produit a été réalisée dans
+le package principal. Les dossiers POC, scripts dédiés et audits de reprise
+obsolètes sont retirés du dépôt public pour garder une surface claire.
 
 Validation à lancer après ce lot : `pnpm exec tsc --noEmit`, `pnpm lint`,
 `pnpm test`, `pnpm build`.
@@ -372,20 +363,15 @@ règles actives, documenté dans `docs/code-quality.md`.
 
 ## Terminé
 
-### POC OpenTUI isolé
+### POC OpenTUI / Termcn isolé
 
-- ✅ Création d'un POC OpenTUI dans `poc/opentui`, séparé de la TUI Ink principale.
-- ✅ Commande dédiée ajoutée : `pnpm poc:opentui`.
-- ✅ Données mockées uniquement : aucun provider réel, aucune clé API, aucune migration produit.
-- ✅ Écran principal interactif : éditeur multiline, badges de contexte, pickers, scrollbox résultat, états vide/loading/streaming/succès/erreur/warning.
-- ✅ Raccourcis Ctrl traités hors textarea : génération, profils, niveaux, provider, modèle, erreur, reset, copie mock, aide et focus.
-- ✅ Typecheck dédié ajouté : `pnpm poc:opentui:typecheck`.
-- ✅ Capture texte documentée dans `poc/opentui/docs/capture.md`.
-- ✅ Viewports texte bornés et scrollables au clavier : prompt/résultat ne peuvent plus pousser le layout hors écran, et le footer reste réservé hors des panneaux.
-- ✅ Passe de durcissement OpenTUI : footer en lignes déterministes, viewports paddés pour nettoyer les anciens caractères, raccourci Ctrl+C global, état erreur lisible après un résultat long.
-- ✅ Registry Termcn configurée via shadcn (`components.json`) et POC aligné sur `opentui/scroll-view` : scrollbar proportionnelle dans les viewports au lieu d’un indicateur texte maison.
-- ✅ État erreur réversible : `Ctrl+E` affiche une erreur mock sans perdre le dernier résultat, puis revient au résultat.
-- ⏸️ Migration réelle non démarrée : attente de validation visuelle du POC.
+- ✅ Le POC a validé la direction visuelle avant migration : éditeur multiline,
+  badges de contexte, pickers, scroll résultat, états vide/loading/streaming/
+  succès/erreur/warning et raccourcis clavier.
+- ✅ La migration produit a ensuite remplacé l'ancien écran interactif par la
+  nouvelle interface connectée au moteur réel.
+- ✅ Les dossiers POC, scripts dédiés, registry Termcn locale et audits de
+  reprise devenus obsolètes sont retirés du dépôt public après validation.
 
 ### Optimisation OpenAI / init dev
 
