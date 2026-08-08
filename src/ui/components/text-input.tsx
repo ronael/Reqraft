@@ -87,11 +87,7 @@ export function TextInput({
     { isActive: focus },
   );
 
-  return (
-    <Text>
-      {renderContent({ value, placeholder, focus, cursorOffset })}
-    </Text>
-  );
+  return <Text>{renderContent({ value, placeholder, focus, cursorOffset })}</Text>;
 }
 
 function isReservedForApplication(input: string, key: InputKey): boolean {
@@ -141,7 +137,11 @@ function renderInactiveContent(value: string, placeholder: string): React.ReactN
 
 function renderFocusedEmptyContent(placeholder: string): React.ReactNode[] {
   if (placeholder.length === 0) {
-    return [<Text inverse key="cursor-empty"> </Text>];
+    return [
+      <Text inverse key="cursor-empty">
+        {" "}
+      </Text>,
+    ];
   }
   return [
     <React.Fragment key="placeholder">
@@ -169,7 +169,11 @@ function renderValueWithCursor(value: string, cursorOffset: number): React.React
   }
 
   if (cursorOffset >= chars.length) {
-    nodes.push(<Text inverse key="cursor-trail"> </Text>);
+    nodes.push(
+      <Text inverse key="cursor-trail">
+        {" "}
+      </Text>,
+    );
   }
 
   return nodes;

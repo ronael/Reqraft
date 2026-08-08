@@ -15,23 +15,31 @@ describe("interactive keyboard contract", () => {
 
   it("keeps Ctrl shortcuts out of the prompt input path", () => {
     expect(
-      resolveShortcut("p", { ctrl: true, escape: false }, {
-        hasModal: false,
-        hasResult: false,
-        inputLength: 4,
-        isGenerating: false,
-      }),
+      resolveShortcut(
+        "p",
+        { ctrl: true, escape: false },
+        {
+          hasModal: false,
+          hasResult: false,
+          inputLength: 4,
+          isGenerating: false,
+        },
+      ),
     ).toBe("open-profile");
   });
 
   it("captures keys while a modal is open", () => {
     expect(
-      resolveShortcut("p", { ctrl: true, escape: false }, {
-        hasModal: true,
-        hasResult: false,
-        inputLength: 4,
-        isGenerating: false,
-      }),
+      resolveShortcut(
+        "p",
+        { ctrl: true, escape: false },
+        {
+          hasModal: true,
+          hasResult: false,
+          inputLength: 4,
+          isGenerating: false,
+        },
+      ),
     ).toBeNull();
   });
 

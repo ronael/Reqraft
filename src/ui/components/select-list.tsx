@@ -35,36 +35,39 @@ export function SelectList<T extends string>({
   const safeHighlighted = Math.min(highlighted, Math.max(0, filtered.length - 1));
   const window = computeWindow(filtered, safeHighlighted, VISIBLE_ROWS);
 
-  useInput((input, key) => {
-    if (key.escape) {
-      onCancel();
-      return;
-    }
-    if (key.upArrow || key.downArrow) {
-      setHighlighted(moveIndex(safeHighlighted, key.upArrow ? -1 : 1, filtered.length));
-      return;
-    }
-    if (key.return) {
-      const chosen = filtered[safeHighlighted];
-      if (chosen) {
-        onSelect(chosen.value);
+  useInput(
+    (input, key) => {
+      if (key.escape) {
+        onCancel();
+        return;
       }
-      return;
-    }
-    if (!searchable) {
-      return;
-    }
-    if (key.backspace || key.delete) {
-      setQuery((value) => value.slice(0, -1));
-      setHighlighted(0);
-      return;
-    }
-    // Control combinations stay reserved for the application.
-    if (input && !key.ctrl && !key.meta) {
-      setQuery((value) => value + input);
-      setHighlighted(0);
-    }
-  }, { isActive });
+      if (key.upArrow || key.downArrow) {
+        setHighlighted(moveIndex(safeHighlighted, key.upArrow ? -1 : 1, filtered.length));
+        return;
+      }
+      if (key.return) {
+        const chosen = filtered[safeHighlighted];
+        if (chosen) {
+          onSelect(chosen.value);
+        }
+        return;
+      }
+      if (!searchable) {
+        return;
+      }
+      if (key.backspace || key.delete) {
+        setQuery((value) => value.slice(0, -1));
+        setHighlighted(0);
+        return;
+      }
+      // Control combinations stay reserved for the application.
+      if (input && !key.ctrl && !key.meta) {
+        setQuery((value) => value + input);
+        setHighlighted(0);
+      }
+    },
+    { isActive },
+  );
 
   return (
     <Box flexDirection="column">

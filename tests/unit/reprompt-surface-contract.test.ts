@@ -81,12 +81,7 @@ describe("reprompt surface contract", () => {
     };
 
     expect(
-      createCliRepromptInput(
-        "corrige ce prompt",
-        config,
-        { provider: "anthropic" },
-        {},
-      ),
+      createCliRepromptInput("corrige ce prompt", config, { provider: "anthropic" }, {}),
     ).toMatchObject({
       providerId: "anthropic",
       requestedModel: "claude-haiku-4-5",

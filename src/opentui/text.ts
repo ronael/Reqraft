@@ -7,7 +7,12 @@ export function wrapText(text: string, width: number): string[] {
   return text.split("\n").flatMap((line) => wrapLine(line, safeWidth));
 }
 
-export function actionLines(width: number, rows: number, status: string, shortcuts: readonly string[]): string[] {
+export function actionLines(
+  width: number,
+  rows: number,
+  status: string,
+  shortcuts: readonly string[],
+): string[] {
   const statusText = status === "streaming" ? "réception des tokens..." : "prêt";
   const items = [...shortcuts, statusText];
   const lines: string[] = [];

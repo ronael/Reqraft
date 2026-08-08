@@ -43,7 +43,12 @@ const LAYOUT = {
   },
 } as const;
 
-export function createLayout(width: number, height: number, provider: string, model: string): Layout {
+export function createLayout(
+  width: number,
+  height: number,
+  provider: string,
+  model: string,
+): Layout {
   const normalizedWidth = Math.max(LAYOUT.minWidth, Math.min(width || 100, LAYOUT.maxWidth));
   const normalizedHeight = Math.max(LAYOUT.minHeight, height || 30);
   const compact = normalizedWidth < LAYOUT.compactWidth || normalizedHeight < LAYOUT.compactHeight;
@@ -106,7 +111,11 @@ export function createLayout(width: number, height: number, provider: string, mo
   };
 }
 
-export function pickerOptionIndexAt(layout: Layout, row: number, optionCount: number): number | null {
+export function pickerOptionIndexAt(
+  layout: Layout,
+  row: number,
+  optionCount: number,
+): number | null {
   const firstOptionRow = layout.pickerTop + 4;
   const relative = row - firstOptionRow;
   if (relative < 0) return null;

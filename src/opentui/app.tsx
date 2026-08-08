@@ -1,16 +1,6 @@
 /* @jsxImportSource @opentui/react */
-import {
-  createCliRenderer,
-  TextAttributes,
-  type KeyEvent,
-  type MouseEvent,
-} from "@opentui/core";
-import {
-  createRoot,
-  useKeyboard,
-  useRenderer,
-  useTerminalDimensions,
-} from "@opentui/react";
+import { createCliRenderer, TextAttributes, type KeyEvent, type MouseEvent } from "@opentui/core";
+import { createRoot, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
 import process from "node:process";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -64,24 +54,11 @@ import {
   normalizeTypedText,
   resolveStreamedResultPreview,
 } from "./input.js";
+import { SHORTCUTS } from "./shortcuts-view.js";
 import { actionLines, shortModel } from "./text.js";
 import { createOpenTuiRendererOptions } from "./renderer-options.js";
 import { COLOR, toneColor } from "./theme.js";
 import { TextViewport } from "./text-viewport.js";
-
-const SHORTCUTS = [
-  "^G Générer",
-  "^P Profil",
-  "^L Niveau",
-  "^I Provider",
-  "^O Modèle",
-  "^D Diff",
-  "^E Explication",
-  "^Y Copier",
-  "^V Coller",
-  "^R Reset",
-  "Tab Focus",
-] as const;
 
 type OverlayId = Exclude<ModalType, "commands">;
 type FocusElement = "editor" | "result";
@@ -272,11 +249,25 @@ function OpenTuiApp(): React.ReactNode {
   }, [layout, openOverlay, renderer, state.modal, state.provider]);
 
   useKeyboard((key: KeyEvent) => {
-    if (handleInterruptKey(key, generationInFlight.current, abortController.current, () => { renderer.stop(); })) {
+    if (
+      handleInterruptKey(key, generationInFlight.current, abortController.current, () => {
+        renderer.stop();
+      })
+    ) {
       return;
     }
 
-    if (handleModalKey(key, state.modal, pickerIndex, setPickerIndex, state.provider, closeOverlay, setState)) {
+    if (
+      handleModalKey(
+        key,
+        state.modal,
+        pickerIndex,
+        setPickerIndex,
+        state.provider,
+        closeOverlay,
+        setState,
+      )
+    ) {
       return;
     }
 
@@ -288,16 +279,18 @@ function OpenTuiApp(): React.ReactNode {
       setFocusedElement((previous) => (previous === "editor" ? "result" : "editor"));
       return;
     }
-    if (handleCtrlShortcut(key, {
-      copyResult,
-      generate,
-      hasResult: Boolean(state.result),
-      input: state.input,
-      openOverlay,
-      pasteFromClipboard,
-      resetResult,
-      setState,
-    })) {
+    if (
+      handleCtrlShortcut(key, {
+        copyResult,
+        generate,
+        hasResult: Boolean(state.result),
+        input: state.input,
+        openOverlay,
+        pasteFromClipboard,
+        resetResult,
+        setState,
+      })
+    ) {
       return;
     }
     if (key.name === "?" && state.input.length === 0) {
@@ -305,9 +298,14 @@ function OpenTuiApp(): React.ReactNode {
       return;
     }
     if (focusedElement === "editor") {
-      handleEditorKey(key, state.input, (input) => {
-        setState((prev) => updatePromptInput(prev, input));
-      }, generate);
+      handleEditorKey(
+        key,
+        state.input,
+        (input) => {
+          setState((prev) => updatePromptInput(prev, input));
+        },
+        generate,
+      );
     }
   });
 
@@ -320,9 +318,19 @@ function OpenTuiApp(): React.ReactNode {
   if (!configReady) {
     return (
       <RootFrame layout={layout}>
-        <Header width={layout.width} provider="config" model="chargement" status="loading" compact={layout.compact} />
+        <Header
+          width={layout.width}
+          provider="config"
+          model="chargement"
+          status="loading"
+          compact={layout.compact}
+        />
         <Panel title="Configuration" meta="chargement" tone="accent" focused>
-          <TextViewport text="Chargement de la configuration Reqraft..." rows={4} width={layout.textWidth} />
+          <TextViewport
+            text="Chargement de la configuration Reqraft..."
+            rows={4}
+            width={layout.textWidth}
+          />
         </Panel>
       </RootFrame>
     );
@@ -433,10 +441,12 @@ function Header({
         <span fg={COLOR.accent} attributes={TextAttributes.BOLD}>
           reqraft
         </span>
-        {!compact && <span attributes={TextAttributes.DIM}>  atelier de formulation</span>}
+        {!compact && <span attributes={TextAttributes.DIM}> atelier de formulation</span>}
       </text>
       <text attributes={TextAttributes.DIM}>
-        {compact ? `${provider} / ${status}` : `${provider} / ${model} / ${status} / ${String(width)} cols`}
+        {compact
+          ? `${provider} / ${status}`
+          : `${provider} / ${model} / ${status} / ${String(width)} cols`}
       </text>
     </box>
   );
@@ -586,7 +596,9 @@ function ResultArea({
 
   if (!result && status === "idle") {
     return (
-      <box style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}>
+      <box
+        style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}
+      >
         <text attributes={TextAttributes.DIM}>Aucun résultat pour le moment.</text>
         <text attributes={TextAttributes.DIM}>Appuie sur Ctrl+G pour générer.</text>
       </box>
@@ -595,7 +607,9 @@ function ResultArea({
 
   if (!result && (status === "loading" || status === "streaming")) {
     return (
-      <box style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}>
+      <box
+        style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}
+      >
         <text fg={COLOR.accent} attributes={TextAttributes.BOLD}>
           Génération en cours...
         </text>
@@ -933,12 +947,17 @@ function selectOverlayValue({
   if (overlay === "profile") setState((prev) => selectProfile(prev, option.value));
   if (overlay === "level") setState((prev) => selectLevel(prev, parseLevel(option.value)));
   if (overlay === "provider") {
-    setState((prev) => selectProvider(prev, option.value, getFallbackModelForProvider(option.value)));
+    setState((prev) =>
+      selectProvider(prev, option.value, getFallbackModelForProvider(option.value)),
+    );
   }
   if (overlay === "model") setState((prev) => selectModel(prev, option.value));
 }
 
-function optionsForOverlay(overlay: Exclude<OverlayId, null>, provider: string): { label: string; value: string }[] {
+function optionsForOverlay(
+  overlay: Exclude<OverlayId, null>,
+  provider: string,
+): { label: string; value: string }[] {
   if (overlay === "profile") return getProfileOptions();
   if (overlay === "level") return LEVEL_OPTIONS;
   if (overlay === "provider") return getProviderOptions();
@@ -991,7 +1010,8 @@ function resultTone(status: TuiStatus): "neutral" | "accent" | "success" | "erro
 
 function resultMeta(result: RepromptResult | null, status: TuiStatus, startedAt: number): string {
   if (status === "loading" || status === "streaming") {
-    const elapsed = startedAt > 0 ? `${((Date.now() - startedAt) / 1000).toFixed(1)} s` : "en cours";
+    const elapsed =
+      startedAt > 0 ? `${((Date.now() - startedAt) / 1000).toFixed(1)} s` : "en cours";
     return `${elapsed} · réception`;
   }
   return describeResultMeta(result, false);

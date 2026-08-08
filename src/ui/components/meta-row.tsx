@@ -11,7 +11,7 @@ export function MetaRow({ result }: Readonly<{ result: RepromptResult }>): React
   ].filter((value): value is string => Boolean(value));
 
   return (
-    <Box marginTop={1} overflowY={'visible'} height={2}>
+    <Box marginTop={1} overflowY={"visible"} height={2}>
       <Text dimColor>{values.join("  ·  ")}</Text>
     </Box>
   );

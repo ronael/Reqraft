@@ -1,6 +1,9 @@
 import type { RepromptLevel } from "../core/types.js";
 import { REPROMPT_LEVELS } from "../core/levels.js";
-import { getPresetModels, getFallbackModelForProvider as getPresetFallbackModelForProvider } from "../models/presets.js";
+import {
+  getPresetModels,
+  getFallbackModelForProvider as getPresetFallbackModelForProvider,
+} from "../models/presets.js";
 import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
 import { listProfiles } from "../profiles/registry.js";
 import { listProviderDefinitions } from "../providers/catalog.js";

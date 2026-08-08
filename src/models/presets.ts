@@ -95,10 +95,7 @@ export function getPresetModels(): ModelPreset[] {
 
 export function getFallbackModelForProvider(providerId: string): string | undefined {
   const providerPresets = MODEL_PRESETS.filter((preset) => preset.provider === providerId);
-  return (
-    providerPresets.find((preset) => preset.recommended)?.id ??
-    providerPresets[0]?.id
-  );
+  return providerPresets.find((preset) => preset.recommended)?.id ?? providerPresets[0]?.id;
 }
 
 export function findPreset(providerId: string, modelId: string): ModelPreset | undefined {

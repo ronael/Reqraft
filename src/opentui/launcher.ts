@@ -11,7 +11,7 @@ export function runOpenTuiAppLauncher(): number {
   const bun = resolveBunBinary();
   if (!bun) {
     throw new Error(
-      "Le mode interactif OpenTUI requiert Bun. Installe Bun ou utilise `rp \"ton prompt\"` en mode commande.",
+      'Le mode interactif OpenTUI requiert Bun. Installe Bun ou utilise `rp "ton prompt"` en mode commande.',
     );
   }
 
@@ -38,11 +38,6 @@ function resolveStandaloneEntry(): string | null {
 }
 
 function resolveBunBinary(): string | null {
-  const candidates = [
-    "/opt/homebrew/bin/bun",
-    "/usr/local/bin/bun",
-    "/usr/bin/bun",
-    "/bin/bun",
-  ];
+  const candidates = ["/opt/homebrew/bin/bun", "/usr/local/bin/bun", "/usr/bin/bun", "/bin/bun"];
   return candidates.find((candidate) => existsSync(candidate)) ?? null;
 }

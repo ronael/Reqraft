@@ -41,7 +41,11 @@ export function TextViewport({
         thumbColor={tone === "error" ? COLOR.error : COLOR.accent}
       >
         {renderLines.map((line, index) => (
-          <text key={`${String(index)}-${line}`} fg={toneColorForText(tone)} style={{ width: lineWidth }}>
+          <text
+            key={`${String(index)}-${line}`}
+            fg={toneColorForText(tone)}
+            style={{ width: lineWidth }}
+          >
             {line.slice(0, lineWidth).padEnd(lineWidth, " ") || " ".repeat(lineWidth)}
           </text>
         ))}
