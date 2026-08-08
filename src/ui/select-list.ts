@@ -40,7 +40,7 @@ export function moveIndex(index: number, delta: number, length: number): number 
 /**
  * The slice to render, scrolled so the highlighted entry stays visible.
  *
- * the TUI implementation brief sections 9 forbids assuming every model fits on one screen.
+ * Never assume every model fits on one screen.
  */
 export function computeWindow<T>(
   items: SelectItem<T>[],

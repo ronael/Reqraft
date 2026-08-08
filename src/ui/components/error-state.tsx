@@ -6,8 +6,7 @@ import type { UiError } from "../errors.js";
 /**
  * A failure the user can act on.
  *
- * Structure required by the TUI implementation brief sections 13: title, message, cause when known,
- * and the next action. Stack traces, payloads, headers and keys never appear
+ * Structure: title, message, cause when known, and the next action. Stack traces, payloads, headers and keys never appear
  * here — `--verbose` puts technical detail on stderr instead.
  */
 export function ErrorState({ error }: Readonly<{ error: UiError }>): React.JSX.Element {

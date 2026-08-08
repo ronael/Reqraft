@@ -8,7 +8,7 @@ const VISIBLE_ROWS = 8;
 const SEARCH_FROM = 8;
 
 /**
- * The one selection surface, shared by every picker (the TUI implementation brief sections 9).
+ * The one selection surface, shared by every picker.
  *
  * Arrows navigate, Enter validates, Escape cancels. Long lists gain a local
  * search and scroll, and the entry currently in use is marked so the user can

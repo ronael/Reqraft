@@ -11,3 +11,4 @@ coverage/
 .pnpm-store/
 benchmark-results/
 .scannerwork/*
+docs/internal/DA.md

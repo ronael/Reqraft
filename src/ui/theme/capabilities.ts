@@ -31,7 +31,7 @@ export function detectUnicode(env: NodeJS.ProcessEnv, platform: string): boolean
  * Whether colour should be emitted.
  *
  * Honours the NO_COLOR convention and refuses to colour a non-TTY, so pipes
- * and captured output stay clean (the TUI implementation brief sections 2).
+ * and captured output stay clean.
  */
 /**
  * `isTty` defaults to false because Node leaves `process.stdout.isTTY`

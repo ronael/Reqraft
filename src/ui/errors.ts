@@ -4,8 +4,9 @@ import { theme } from "./theme/tokens.js";
 /**
  * A failure presented to the user.
  *
- * Shape required by the TUI implementation brief sections 13. Never carries a stack trace, a payload,
- * a header or a key: `--verbose` puts technical detail on stderr instead.
+ * Always carries a title, a message, and the next action when one exists.
+ * Never carries a stack trace, a payload, a header or a key: `--verbose` puts
+ * technical detail on stderr instead.
  */
 export interface UiError {
   title: string;
