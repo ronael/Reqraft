@@ -6,7 +6,7 @@ import { theme } from "../theme/tokens.js";
  * One keyboard shortcut: the key, then what it does.
  *
  * A disabled hint stays visible but dimmed, so the shortcut set does not
- * reflow as the state changes (DA.md section 6).
+ * reflow as the state changes (the TUI implementation brief sections 6).
  */
 export function KeyHint({
   keyLabel,

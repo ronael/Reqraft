@@ -11,9 +11,6 @@ importers:
       '@opentui/core':
         specifier: 0.4.5
         version: 0.4.5(typescript@5.9.3)(web-tree-sitter@0.25.10)
-      '@opentui/core-darwin-arm64':
-        specifier: 0.4.5
-        version: 0.4.5
       '@opentui/react':
         specifier: 0.4.5
         version: 0.4.5(react-devtools-core@7.0.1)(react@19.2.0)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)

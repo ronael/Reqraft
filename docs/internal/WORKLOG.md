@@ -19,7 +19,7 @@ intégration OpenTUI réelle dans le package principal.
 Validation à lancer après ce lot : `pnpm exec tsc --noEmit`, `pnpm lint`,
 `pnpm test`, `pnpm build`.
 
-Refonte TUI (DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
+Refonte TUI (docs/internal/DA.md) — **Lots A, B, C, D et G terminés**, lots E et F à venir.
 
 ### Correction des raccourcis clavier
 
@@ -27,7 +27,7 @@ Ctrl+M ne produisait qu'un Entrée. Cause : `Ctrl+lettre` vaut le code de la
 lettre moins 64, et M donne 13, soit CR. Ink résout `\r` avant même
 d'envisager une combinaison ctrl, donc `key.ctrl` reste faux et la touche est
 indistinguable d'Entrée. Quatre touches sont dans ce cas : H (Backspace),
-I (Tab), J (LF) et M (CR). DA.md §7 listait pourtant `Ctrl+M` pour le modèle.
+I (Tab), J (LF) et M (CR). docs/internal/DA.md §7 listait pourtant `Ctrl+M` pour le modèle.
 
 Le sélecteur de modèle passe sur **Ctrl+O**. `RESERVED_CTRL_KEYS` recense les
 quatre touches inutilisables et un test vérifie qu'aucun binding ni aucun
@@ -240,7 +240,7 @@ panneaux au format maquette, `Ctrl+C` interrupteur.
 ### Lot A — Audit et fondations
 
 Audit complet dans `docs/tui-implementation.md`. Constat principal : seuls les
-écrans 1 à 11 de `reqraft-cli-ui.html` sont en Ink ; les écrans 12 à 31 (`init`,
+écrans 1 à 11 de `docs/design/reqraft-cli-ui.html` sont en Ink ; les écrans 12 à 31 (`init`,
 `doctor`, `config`, listes, confirmations) sont du `console.log` et du
 `readline`. Les lots E et F sont donc un portage, pas un restylage — reportés
 après validation du design system.

@@ -7,7 +7,7 @@ export interface ClippedText {
 /**
  * Fits text into the rows a panel can afford.
  *
- * DA.md section 18 forbids truncating a result silently, so the caller is told
+ * the TUI implementation brief sections 18 forbids truncating a result silently, so the caller is told
  * how many lines were left out and can say so. Nothing is ever dropped from the
  * underlying value — copying still yields the whole prompt.
  */
@@ -22,7 +22,7 @@ export function clipLines(text: string, maxLines: number): ClippedText {
 /**
  * Rows the result panel may use.
  *
- * Priority order from DA.md section 17: the input keeps its room, the result
+ * Priority order from the TUI implementation brief sections 17: the input keeps its room, the result
  * gets what is left, and decoration yields first.
  */
 export function resultRowBudget(rows: number): number {

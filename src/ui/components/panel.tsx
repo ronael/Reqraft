@@ -12,7 +12,7 @@ import type { PanelTone } from "../theme/types.js";
  *
  * Tone conveys state through the border and title colour only. The reference
  * mockup tints panel backgrounds, which a terminal cannot do without assuming
- * its background colour (DA.md section 21).
+ * its background colour (the TUI implementation brief sections 21).
  */
 export interface PanelProps {
   title: string;
@@ -24,7 +24,7 @@ export interface PanelProps {
    * Rows the body keeps even when it has less to show.
    *
    * Prevents the panel from jumping between an empty state and a long result
-   * (DA.md section 15).
+   * (the TUI implementation brief sections 15).
    */
   minBodyHeight?: number;
   tone?: PanelTone;

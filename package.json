@@ -58,7 +58,6 @@
   },
   "dependencies": {
     "@opentui/core": "0.4.5",
-    "@opentui/core-darwin-arm64": "0.4.5",
     "@opentui/react": "0.4.5",
     "clipboardy": "^4.0.0",
     "commander": "^12.1.0",

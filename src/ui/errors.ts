@@ -4,7 +4,7 @@ import { theme } from "./theme/tokens.js";
 /**
  * A failure presented to the user.
  *
- * Shape required by DA.md section 13. Never carries a stack trace, a payload,
+ * Shape required by the TUI implementation brief sections 13. Never carries a stack trace, a payload,
  * a header or a key: `--verbose` puts technical detail on stderr instead.
  */
 export interface UiError {

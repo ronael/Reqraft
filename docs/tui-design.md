@@ -7,7 +7,7 @@ of the structure.
 
 ## Visual roles
 
-The palette comes from `reqraft-cli-ui.html`.
+The palette comes from `docs/design/reqraft-cli-ui.html`.
 
 - Violet (`#a78bfa`, strong `#8b5cf6`) marks the product, focused panels, active
   shortcuts and selection. It is the identity colour.

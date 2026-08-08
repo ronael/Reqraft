@@ -4,7 +4,7 @@ Brief d'exécution pour une IA. Objectif : construire l'application de bureau en
 une passe, sans rouvrir les décisions déjà tranchées et sans retomber dans les
 pièges déjà identifiés.
 
-Référence visuelle : `reqraft-native-ui.html` à la racine.
+Référence visuelle : `docs/design/reqraft-native-ui.html` à la racine.
 Référence de qualité de code : `docs/code-quality.md`.
 
 ---
@@ -26,7 +26,7 @@ sélection → raccourci → capsule → vérification → remplacer
 
 ## Ce qui n'est pas demandé
 
-- Aucun historique de prompts. `PLAN.md` pose « sans stockage des prompts par
+- Aucun historique de prompts. `docs/internal/PLAN.md` pose « sans stockage des prompts par
   défaut ». Ne pas l'ajouter, même « discrètement ».
 - Aucune télémétrie, aucun crash reporter, aucun appel réseau autre que le
   provider choisi.
@@ -273,7 +273,7 @@ presse-papiers intact après coup, comportement correct sans permission.
 - Raccourcis : `⏎` remplacer, `⌥` comparer, `⌘C` copier, `⌘R` relancer,
   `⇥` niveau, `esc` fermer, `⌘.` interrompre.
 
-**Sortie :** le trajet complet de `reqraft-native-ui.html`, scénarios 1 à 8.
+**Sortie :** le trajet complet de `docs/design/reqraft-native-ui.html`, scénarios 1 à 8.
 
 ## Lot 4 — Menu bar et popover
 
@@ -350,7 +350,7 @@ Ne pas livrer un lot si l'une échoue. Interdits pour faire passer une
 validation : `any` injustifié, `@ts-ignore`, `eslint-disable` sans justification
 inscrite dans `docs/code-quality.md`, test supprimé ou neutralisé, `catch` vide.
 
-Tenir `WORKLOG.md` à jour après chaque lot : ce qui a été fait, les décisions,
+Tenir `docs/internal/WORKLOG.md` à jour après chaque lot : ce qui a été fait, les décisions,
 les écarts assumés, les mesures, la prochaine action.
 
 ---

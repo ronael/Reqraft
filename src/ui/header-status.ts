@@ -31,7 +31,7 @@ export interface HeaderLayout {
  * header needs closer to 96 with a long model identifier, and Ink clips the
  * product name rather than the decoration when it overflows. Metadata is
  * therefore dropped by measuring, baseline first, then the model — the
- * priority order of DA.md section 16.
+ * priority order of the TUI implementation brief sections 16.
  */
 export function getHeaderLayout(
   width: number,

@@ -7,5 +7,7 @@ coverage/
 .DS_Store
 *.tgz
 .rp-temp/
+.npm-cache/
+.pnpm-store/
 benchmark-results/
 .scannerwork/*

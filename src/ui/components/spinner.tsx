@@ -9,7 +9,7 @@ const FRAMES = getSpinnerFrames(detectUnicode(process.env, process.platform));
 
 /**
  * Owns its ticking state, so a turning spinner never re-renders the screen
- * around it (DA.md section 22).
+ * around it (the TUI implementation brief sections 22).
  */
 export function Spinner({ label }: Readonly<{ label?: string }>): React.JSX.Element {
   const [frame, setFrame] = React.useState(0);

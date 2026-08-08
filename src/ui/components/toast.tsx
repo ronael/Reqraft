@@ -7,7 +7,7 @@ import type { StatusTone } from "../theme/types.js";
  * Transient confirmation of a short action.
  *
  * The row is always mounted, even with nothing to say, so appearing and
- * disappearing never shifts the layout (DA.md section 15). Important failures
+ * disappearing never shifts the layout (the TUI implementation brief sections 15). Important failures
  * belong in the result panel, not here — a toast is not allowed to be the only
  * place an error is shown.
  */

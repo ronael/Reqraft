@@ -1,7 +1,7 @@
 /**
  * A colour Ink can render: a name, a hex value, or `undefined` to inherit the
  * terminal foreground. Inheriting matters — forcing a foreground would break
- * readability on light terminal themes (DA.md section 21).
+ * readability on light terminal themes (the TUI implementation brief sections 21).
  */
 export type ThemeColor = string | undefined;
 
@@ -39,8 +39,8 @@ export interface ThemeSpacing {
 
 /**
  * Glyphs that carry meaning. Every status has one so colour is never the only
- * signal (DA.md section 5), and every glyph has an ASCII fallback for terminals
- * with unreliable Unicode (DA.md section 19).
+ * signal (the TUI implementation brief sections 5), and every glyph has an ASCII fallback for terminals
+ * with unreliable Unicode (the TUI implementation brief sections 19).
  */
 export interface ThemeSymbols {
   success: string;

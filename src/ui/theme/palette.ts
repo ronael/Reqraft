@@ -1,7 +1,7 @@
 import type { ThemeColors } from "./types.js";
 
 /**
- * Reqraft palette, taken from `reqraft-cli-ui.html`.
+ * Reqraft palette, taken from `docs/design/reqraft-cli-ui.html`.
  *
  * Violet carries identity, focus and actions. Status colours are reserved for
  * success, warning and failure. Everything else stays neutral so the interface

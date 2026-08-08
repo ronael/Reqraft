@@ -9,7 +9,7 @@ const TICK_MS = 200;
  * Elapsed time while the provider is answering.
  *
  * Owns its own interval so the ticking clock re-renders this node alone rather
- * than the whole screen (DA.md section 22). Before this the panel only said
+ * than the whole screen (the TUI implementation brief sections 22). Before this the panel only said
  * "en cours…", which told the user nothing during a sixteen-second wait.
  */
 export function GenerationMeta({

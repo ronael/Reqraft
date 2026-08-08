@@ -6,7 +6,7 @@
 Le fichier HTML de référence est déjà présent dans le projet :
 
 ```text
-reqraft-cli-ui.html
+docs/design/reqraft-cli-ui.html
 ````
 
 Utilise-le comme **source visuelle principale** pour refaire proprement l’interface terminal de Reqraft.
@@ -34,7 +34,7 @@ Ne modifie pas la logique métier de reprompting, les providers, les profils, le
 Avant toute modification, analyse :
 
 ```text
-reqraft-cli-ui.html
+docs/design/reqraft-cli-ui.html
 src/app.tsx
 src/ui/
 src/commands/
@@ -1192,7 +1192,7 @@ Dans la TUI, tester :
 Maintiens à la racine :
 
 ```text
-WORKLOG.md
+docs/internal/WORKLOG.md
 ```
 
 Après chaque étape importante, indique :
@@ -1273,7 +1273,7 @@ Le chantier est terminé lorsque :
 13. Le spinner et le streaming restent fluides.
 14. Aucun comportement métier n’est dupliqué dans l’UI.
 15. Toutes les validations réussissent.
-16. `WORKLOG.md` est à jour.
+16. `docs/internal/WORKLOG.md` est à jour.
 17. Les commits sont séparés par lot.
 
 ---

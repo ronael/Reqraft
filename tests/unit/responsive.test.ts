@@ -8,7 +8,7 @@ import {
 } from "../../src/ui/layout/responsive.js";
 
 describe("layout mode", () => {
-  // The widths DA.md section 16 requires to be exercised.
+  // The widths the TUI implementation brief sections 16 requires to be exercised.
   it.each([
     [40, "narrow"],
     [60, "compact"],

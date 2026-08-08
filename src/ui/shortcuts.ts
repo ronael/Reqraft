@@ -77,7 +77,7 @@ export function resolveShortcut(
   context: ShortcutContext,
 ): ShortcutAction | null {
   // Ctrl+C is the escape hatch and must work from any state, modal included:
-  // it interrupts a running generation, and quits otherwise (DA.md section 7).
+  // it interrupts a running generation, and quits otherwise (the TUI implementation brief sections 7).
   if (key.ctrl && input === "c") {
     return context.isGenerating ? "cancel" : "exit";
   }

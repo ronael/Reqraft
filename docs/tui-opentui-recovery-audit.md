@@ -66,7 +66,7 @@ Ses limites pour l’objectif OpenTUI :
 
 ## Référence HTML
 
-`reqraft-cli-ui.html` contient les intentions suivantes :
+`docs/design/reqraft-cli-ui.html` contient les intentions suivantes :
 
 - écran principal vide, rempli, loading, résultat ;
 - vues diff et explication ;
@@ -83,20 +83,20 @@ doivent être adaptées au terminal.
 
 ## Matrice de reprise
 
-| Élément | État actuel | Décision | Priorité |
-| --- | --- | --- | --- |
-| Moteur `application/reprompt.ts` | Connecté au réel | Conserver | Haute |
-| Providers + streaming SSE | Réels et testés | Conserver | Haute |
-| Modules purs `src/ui/*.ts` | Réutilisables | Refactoriser vers contrôleur partagé | Haute |
-| `src/app.tsx` Ink | Fonctionnel mais trop couplé au renderer | Refactoriser puis remplacer | Haute |
-| Composants Ink | Utiles comme référence | Remplacer progressivement | Moyenne |
-| `PromptField` / `TextInput` | Rustine multiline | Remplacer par textarea OpenTUI | Haute |
-| `SelectList` | Logique pure utile | Conserver la logique, remplacer le rendu | Moyenne |
-| `spikes/opentui/src/main.tsx` | Prototype visuel | Conserver temporairement comme référence | Basse |
-| `spikes/opentui/src/controller.ts` | Mocké et dupliqué | Supprimer ou réécrire | Haute |
-| `reqraft-cli-ui.html` | Référence | Conserver comme brief visuel | Basse |
-| `init` readline | Fonctionnel, hors TUI | Ne pas migrer avant écran principal | Basse |
-| Commandes non interactives | Contrat sain | Intangible | Haute |
+| Élément                            | État actuel                              | Décision                                 | Priorité |
+| ---------------------------------- | ---------------------------------------- | ---------------------------------------- | -------- |
+| Moteur `application/reprompt.ts`   | Connecté au réel                         | Conserver                                | Haute    |
+| Providers + streaming SSE          | Réels et testés                          | Conserver                                | Haute    |
+| Modules purs `src/ui/*.ts`         | Réutilisables                            | Refactoriser vers contrôleur partagé     | Haute    |
+| `src/app.tsx` Ink                  | Fonctionnel mais trop couplé au renderer | Refactoriser puis remplacer              | Haute    |
+| Composants Ink                     | Utiles comme référence                   | Remplacer progressivement                | Moyenne  |
+| `PromptField` / `TextInput`        | Rustine multiline                        | Remplacer par textarea OpenTUI           | Haute    |
+| `SelectList`                       | Logique pure utile                       | Conserver la logique, remplacer le rendu | Moyenne  |
+| `spikes/opentui/src/main.tsx`      | Prototype visuel                         | Conserver temporairement comme référence | Basse    |
+| `spikes/opentui/src/controller.ts` | Mocké et dupliqué                        | Supprimer ou réécrire                    | Haute    |
+| `docs/design/reqraft-cli-ui.html`  | Référence                                | Conserver comme brief visuel             | Basse    |
+| `init` readline                    | Fonctionnel, hors TUI                    | Ne pas migrer avant écran principal      | Basse    |
+| Commandes non interactives         | Contrat sain                             | Intangible                               | Haute    |
 
 ## Tests réels effectués
 
