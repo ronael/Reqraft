@@ -17,7 +17,7 @@ npm install -g @reqraft/cli
 ```
 
 ```bash
-rp
+rp init
 ```
 
 ```bash
@@ -38,8 +38,11 @@ Reqraft is a local-first, open-source CLI that sits **just before** you send a p
 ```bash
 npm install -g @reqraft/cli
 # or
+pnpm setup  # once, if pnpm has not configured its global bin directory yet
 pnpm add -g @reqraft/cli
 ```
+
+After `pnpm setup`, restart the terminal before running the global installation.
 
 Two commands are provided and point to the same program:
 
@@ -48,12 +51,20 @@ rp "your request"
 reprompt "your request"
 ```
 
-Run the first-time setup wizard:
+Then run the guided setup and verify the resulting configuration:
 
 ```bash
 rp init
-rp init --reset
+rp auth login openai  # only when the selected provider key is not already in the environment
+rp doctor
+rp
 ```
+
+`rp init` chooses the provider, model, profile, level and local preferences.
+Replace `openai` in the authentication command with the provider selected during
+setup. The final `rp` command opens the interactive interface.
+
+To start the wizard again from its defaults, use `rp init --reset`.
 
 ## Quick usage
 
@@ -79,6 +90,12 @@ rp --file request.md
 
 ```bash
 rp "your request" --copy
+```
+
+### Read from clipboard
+
+```bash
+rp --clipboard
 ```
 
 ### Structured JSON output
@@ -149,7 +166,17 @@ Reqraft supports multiple providers using native `fetch`:
 - Mistral
 - OpenAI Compatible (Ollama, LM Studio, gateways, etc.)
 
-Set your API key in the environment:
+On macOS and Linux, the recommended option is the system credential manager:
+
+```bash
+rp auth login openai
+rp auth status
+rp auth logout openai
+```
+
+macOS uses Keychain and Linux uses Secret Service. Windows currently uses environment variables.
+
+Environment variables remain available for CI, containers and unsupported credential stores:
 
 ```bash
 export ANTHROPIC_API_KEY=...
@@ -158,27 +185,20 @@ export DEEPSEEK_API_KEY=...
 export MISTRAL_API_KEY=...
 ```
 
-Or store it in the system credential manager:
-
-```bash
-rp auth login openai
-rp auth status
-rp auth logout openai
-```
-
-Environment variables take precedence over stored credentials. macOS uses Keychain and Linux uses Secret Service; Windows currently uses environment variables.
+Environment variables take precedence over stored credentials.
 
 ## Configuration
 
 ```bash
-rp init                    # first-run wizard
-rp init --reset            # restart from defaults, with confirmation
+rp init                      # recommended first-run wizard
+rp init --reset              # restart from defaults, with confirmation
 rp config                    # show config
 rp config get defaultProvider
 rp config set defaultProvider openai
 rp config path
-rp config setup              # same as rp init
-rp config setup --reset      # same as rp init --reset
+rp config setup              # compatibility alias for rp init
+rp config setup --reset      # compatibility alias for rp init --reset
+rp doctor                    # verify config, keys and provider readiness
 ```
 
 `rp init` never stores API keys in `config.json`. When a key is missing, it recommends
