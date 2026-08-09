@@ -1,6 +1,16 @@
-# Reqraft
+<p align="center">
+  <img src="https://raw.githubusercontent.com/ronael/Reqraft/main/docs/assets/reqraft-readme.svg" alt="Reqraft — Shape the request. Keep the intent." width="100%" />
+</p>
 
-Transform a raw request into a clear, faithful, and directly usable prompt for any AI agent.
+<p align="center">
+  Transform a raw request into a clear, faithful, and directly usable prompt for any AI agent.
+</p>
+
+<p align="center">
+  <a href="https://github.com/ronael/Reqraft">GitHub</a> ·
+  <a href="https://www.npmjs.com/package/@reqraft/cli">npm</a> ·
+  <a href="https://ronael.github.io/Reqraft/">Website</a>
+</p>
 
 ```bash
 npm install -g @reqraft/cli

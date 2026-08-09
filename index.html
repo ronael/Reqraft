@@ -1,0 +1,542 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Reqraft turns rough requests into precise, faithful prompts before you send them to an AI agent. Install the open-source CLI today."
+    />
+    <meta name="theme-color" content="#08090c" />
+    <link rel="canonical" href="https://ronael.github.io/Reqraft/" />
+    <link rel="icon" href="docs/assets/reqraft-mark.svg" type="image/svg+xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://ronael.github.io/Reqraft/" />
+    <meta property="og:title" content="Reqraft — Keep the intent. Improve the request." />
+    <meta
+      property="og:description"
+      content="A local-first prompt workshop that sits between what you write and the AI agent that receives it."
+    />
+    <meta
+      property="og:image"
+      content="https://ronael.github.io/Reqraft/docs/assets/reqraft-social.png"
+    />
+    <meta name="twitter:card" content="summary_large_image" />
+    <title>Reqraft — Precise prompts without changing your intent</title>
+    <link rel="stylesheet" href="site.css" />
+    <script src="site.js" defer></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="masthead" data-header>
+      <a class="wordmark" href="#top" aria-label="Reqraft home">
+        <img class="wordmark-mark" src="docs/assets/reqraft-mark.svg" alt="" />
+        <span>reqraft</span>
+      </a>
+      <nav class="masthead-nav" aria-label="Main navigation">
+        <a href="#fidelity">Fidelity</a>
+        <a href="#cli">CLI</a>
+        <a href="#native">Native UI</a>
+      </nav>
+      <a class="github-link" href="https://github.com/ronael/Reqraft"
+        >GitHub <span aria-hidden="true">↗</span></a
+      >
+    </header>
+
+    <main id="main">
+      <section class="hero" id="top" aria-labelledby="hero-title">
+        <div class="hero-heading">
+          <p class="availability">
+            <span aria-hidden="true">&#8203;</span>Open-source CLI · available now
+          </p>
+          <h1 id="hero-title">Reqraft</h1>
+          <p class="hero-promise">Rough requests in.<br />Precise instructions out.</p>
+        </div>
+
+        <div class="hero-intro">
+          <p>
+            Reqraft sits between what you type and the AI agent that receives it. It fixes the
+            wording, exposes the constraints, and keeps your intent intact.
+          </p>
+          <div class="hero-actions">
+            <div class="copy-command" role="group" aria-label="Install Reqraft">
+              <span aria-hidden="true">$</span>
+              <code>npm install -g @reqraft/cli</code>
+              <button type="button" data-copy="npm install -g @reqraft/cli">
+                <span class="copy-label">Copy</span>
+                <span class="copied-label" aria-live="polite">Copied</span>
+              </button>
+            </div>
+            <a class="plain-link" href="https://github.com/ronael/Reqraft">Inspect the source</a>
+          </div>
+        </div>
+
+        <div class="intent-chain" aria-label="How Reqraft transforms a request">
+          <div class="chain-input">
+            <span class="chain-label">01 · you</span>
+            <p>fix the form on mobile<br /><mark>don't change anything else</mark></p>
+            <small>rough request</small>
+          </div>
+
+          <div class="chain-gate" aria-hidden="true">
+            <span class="rail rail-before">&#8203;</span>
+            <span class="gate-mark">rq</span>
+            <span class="gate-signal">intent locked</span>
+            <span class="rail rail-after">&#8203;</span>
+          </div>
+
+          <div class="chain-output">
+            <span class="chain-label">02 · reqraft</span>
+            <p>
+              Fix the form on mobile while preserving the current desktop behavior and leaving all
+              unrelated code unchanged.
+            </p>
+            <div class="constraint-proof">
+              <span><i aria-hidden="true">&#8203;</i>mobile fix</span>
+              <span><i aria-hidden="true">&#8203;</i>desktop preserved</span>
+              <span><i aria-hidden="true">&#8203;</i>no scope added</span>
+            </div>
+          </div>
+
+          <div class="agent-destinations" aria-label="Possible AI agent destinations">
+            <span class="chain-label">03 · your agent</span>
+            <p>Claude Code <i>/</i> Codex <i>/</i> OpenCode <i>/</i> ChatGPT <i>/</i> …</p>
+          </div>
+        </div>
+
+        <a class="next-chapter" href="#fidelity"
+          ><span>Next</span> Why fidelity matters <b aria-hidden="true">↓</b></a
+        >
+      </section>
+
+      <section class="fidelity-section" id="fidelity" aria-labelledby="fidelity-title">
+        <div class="fidelity-heading">
+          <p class="chapter-label">01 · Fidelity, not flattery</p>
+          <h2 id="fidelity-title">A rewrite<br />you can audit.</h2>
+          <p>
+            Better wording is easy. Better wording without quietly changing the assignment is the
+            product.
+          </p>
+        </div>
+
+        <div class="fidelity-lab" data-fidelity-lab>
+          <div class="lab-controls" role="group" aria-label="Fidelity examples">
+            <button type="button" class="is-active" data-fidelity="faithful" aria-pressed="true">
+              <span class="signal signal-good" aria-hidden="true">&#8203;</span>Faithful
+            </button>
+            <button type="button" data-fidelity="review" aria-pressed="false">
+              <span class="signal signal-warn" aria-hidden="true">&#8203;</span>Needs review
+            </button>
+          </div>
+
+          <div class="lab-sheet" data-fidelity-panel="faithful">
+            <div class="lab-original">
+              <span>Original</span>
+              <p>ajoute un bouton rouge dans le header sans toucher au menu</p>
+            </div>
+            <div class="rewrite-arrow" aria-hidden="true"><span>rq</span></div>
+            <div class="lab-rewrite">
+              <span>Reqraft</span>
+              <p>
+                Ajoute un <mark class="clarified">bouton rouge</mark> dans le header, en respectant
+                les composants et les styles existants,
+                <mark class="preserved">sans modifier le menu</mark>.
+              </p>
+            </div>
+            <div class="lab-verdict verdict-good">
+              <strong><span aria-hidden="true">✓</span> faithful</strong>
+              <p>No unsupported additions</p>
+              <div class="verdict-metrics">
+                <div>
+                  <span class="metric-name">Intent</span>
+                  <span class="metric-value">preserved</span>
+                </div>
+                <div>
+                  <span class="metric-name">Scope</span>
+                  <span class="metric-value">unchanged</span>
+                </div>
+                <div>
+                  <span class="metric-name">Expansion</span>
+                  <span class="metric-value">proportionate</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="lab-sheet" data-fidelity-panel="review" hidden>
+            <div class="lab-original">
+              <span>Original</span>
+              <p>ajoute une page pour afficher les avis clients</p>
+            </div>
+            <div class="rewrite-arrow" aria-hidden="true"><span>rq</span></div>
+            <div class="lab-rewrite">
+              <span>Model output</span>
+              <p>
+                Create a customer reviews page with
+                <mark class="unsupported"
+                  >filters, ratings, a carousel, moderation tools, and an admin dashboard</mark
+                >.
+              </p>
+            </div>
+            <div class="lab-verdict verdict-warn">
+              <strong><span aria-hidden="true">!</span> review</strong>
+              <p>Disproportionate expansion detected</p>
+              <div class="verdict-metrics">
+                <div>
+                  <span class="metric-name">Intent</span>
+                  <span class="metric-value">partly preserved</span>
+                </div>
+                <div>
+                  <span class="metric-name">Scope</span>
+                  <span class="metric-value">unsupported additions</span>
+                </div>
+                <div>
+                  <span class="metric-name">Action</span>
+                  <span class="metric-value">output remains visible</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <p class="fidelity-footnote">
+          Reqraft checks the reformulation after generation. Warnings stay visible; the generated
+          text does too.
+        </p>
+      </section>
+
+      <section class="levels-section" id="levels" aria-labelledby="levels-title">
+        <div class="levels-heading">
+          <p class="chapter-label dark-label">02 · One request, three depths</p>
+          <h2 id="levels-title">Use only as much structure as the task needs.</h2>
+        </div>
+
+        <div class="level-workbench" data-level-workbench>
+          <div class="level-source">
+            <span>Same input every time</span>
+            <p>fix login page on mobile keep current auth</p>
+          </div>
+
+          <div class="level-selector" role="tablist" aria-label="Reqraft level">
+            <button
+              id="level-minimal"
+              type="button"
+              role="tab"
+              data-level="minimal"
+              aria-controls="level-output"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              <span>minimal</span><small>correct</small>
+            </button>
+            <button
+              type="button"
+              role="tab"
+              id="level-standard"
+              data-level="standard"
+              aria-controls="level-output"
+              aria-selected="true"
+              class="is-active"
+            >
+              <span>standard</span><small>clarify</small>
+            </button>
+            <button
+              id="level-complete"
+              type="button"
+              role="tab"
+              data-level="complete"
+              aria-controls="level-output"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              <span>complete</span><small>structure</small>
+            </button>
+          </div>
+
+          <div
+            id="level-output"
+            class="level-output"
+            role="tabpanel"
+            aria-labelledby="level-standard"
+            tabindex="0"
+          >
+            <div class="output-meta">
+              <span>profile <b data-profile-label>frontend</b></span>
+              <span>level <b data-level-label>standard</b></span>
+              <span class="local-detection">detected locally</span>
+            </div>
+            <p data-level-output>
+              Fix the login page on mobile while preserving the current authentication flow and
+              existing desktop behavior. Reuse the project’s current components and styles, and do
+              not change unrelated functionality.
+            </p>
+            <div class="output-measure" aria-hidden="true">
+              <span data-level-measure>&#8203;</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="profile-line" aria-label="Available Reqraft profiles">
+          <span>Context changes the rewrite, not the rules.</span>
+          <div>
+            <b>auto</b><i>clean</i><i>code</i><i>frontend</i><i>web-design</i><i>debug</i
+            ><i>review</i><i>writing</i>
+          </div>
+          <small><b>auto</b> detects the context locally before any provider call.</small>
+        </div>
+      </section>
+
+      <section class="cli-section" id="cli" aria-labelledby="cli-title">
+        <div class="cli-heading">
+          <p class="chapter-label">03 · The product you can use today</p>
+          <h2 id="cli-title">A real CLI.<br />Not a demo prompt.</h2>
+          <p>Open the workshop with <code>rp</code>, or keep moving from a single command.</p>
+        </div>
+
+        <div class="cli-console" data-cli-console>
+          <div class="console-commands" role="tablist" aria-label="CLI examples">
+            <button
+              type="button"
+              role="tab"
+              id="command-direct"
+              data-command="direct"
+              aria-controls="command-output"
+              aria-selected="true"
+              class="is-active"
+            >
+              <span>01</span><code>rp "your request"</code><small>direct</small>
+            </button>
+            <button
+              id="command-file"
+              type="button"
+              role="tab"
+              data-command="file"
+              aria-controls="command-output"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              <span>02</span><code>rp --file request.md</code><small>file</small>
+            </button>
+            <button
+              id="command-diff"
+              type="button"
+              role="tab"
+              data-command="diff"
+              aria-controls="command-output"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              <span>03</span><code>rp "..." --diff</code><small>inspect</small>
+            </button>
+            <button
+              id="command-stats"
+              type="button"
+              role="tab"
+              data-command="stats"
+              aria-controls="command-output"
+              aria-selected="false"
+              tabindex="-1"
+            >
+              <span>04</span><code>rp "..." --stats</code><small>measure</small>
+            </button>
+          </div>
+
+          <div
+            id="command-output"
+            class="console-output"
+            role="tabpanel"
+            aria-labelledby="command-direct"
+            tabindex="0"
+          >
+            <div class="console-bar">
+              <span><b>reqraft</b> / command</span>
+              <span data-console-status>ready</span>
+            </div>
+            <div class="console-body">
+              <p class="console-prompt">
+                <span>$</span> <code data-console-command>rp "fix form mobile"</code>
+              </p>
+              <div class="console-result" data-console-result>
+                Fix the form on mobile while preserving the existing desktop behavior and leaving
+                unrelated functionality unchanged.
+              </div>
+              <div class="console-meta" data-console-meta>
+                <span>frontend</span><span>standard</span><span class="meta-success">faithful</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="provider-line">
+          <p>Model-agnostic by design.</p>
+          <div aria-label="Supported providers">
+            <span>Anthropic</span><span>OpenAI</span><span>DeepSeek</span><span>Mistral</span
+            ><span>OpenAI-compatible</span>
+          </div>
+          <small>Your model choice remains yours.</small>
+        </div>
+      </section>
+
+      <section class="privacy-section" id="privacy" aria-labelledby="privacy-title">
+        <div class="privacy-heading">
+          <p class="chapter-label dark-label">04 · Local-first by construction</p>
+          <h2 id="privacy-title">Your prompt doesn’t become our dataset.</h2>
+        </div>
+        <div class="privacy-route" aria-label="How a Reqraft request travels">
+          <article class="route-node route-local">
+            <div class="route-node-heading">
+              <span>01 · Local</span>
+              <strong>Your machine</strong>
+            </div>
+            <p>Your request is checked for potential secrets before it can leave the CLI.</p>
+            <div class="route-code"><span>$</span> rp "your request"</div>
+          </article>
+
+          <div class="route-transfer" aria-label="Direct encrypted request">
+            <span>Direct HTTPS request</span>
+            <i aria-hidden="true">&#8203;</i>
+            <strong>No Reqraft server</strong>
+          </div>
+
+          <article class="route-node route-provider">
+            <div class="route-node-heading">
+              <span>02 · External</span>
+              <strong>Your provider</strong>
+            </div>
+            <p>The request goes straight to the AI provider and model you configured.</p>
+            <div class="route-provider-list">
+              <span>OpenAI</span><span>Anthropic</span><span>+</span>
+            </div>
+          </article>
+        </div>
+        <div class="privacy-proof" aria-label="Reqraft privacy defaults">
+          <p><span>Prompt history stored</span><strong>0</strong></p>
+          <p><span>Telemetry by default</span><strong>Off</strong></p>
+          <p><span>Credential ownership</span><strong>Your key</strong></p>
+        </div>
+      </section>
+
+      <section class="native-section" id="native" aria-labelledby="native-title">
+        <div class="native-reveal">
+          <p class="chapter-label">05 · Coming next · Native apps in development</p>
+          <h2 id="native-title">The CLI is just<br />the beginning.</h2>
+          <p>
+            Reqraft is evolving into a native writing layer, starting on macOS. Improve selected
+            text in place, then keep moving without breaking your flow.
+          </p>
+        </div>
+
+        <div class="native-stage" data-native-stage data-stage="idle">
+          <div class="native-menubar">
+            <span class="app-name">Mail</span>
+            <span class="menu-copy">File&nbsp;&nbsp; Edit&nbsp;&nbsp; Format</span>
+            <span class="rq-menubar"><i aria-hidden="true">&#8203;</i> rq</span>
+            <span>13:25</span>
+          </div>
+
+          <div class="mail-canvas">
+            <div class="mail-sheet">
+              <div class="mail-toolbar">
+                <span class="traffic" aria-hidden="true"
+                  ><i>&#8203;</i><i>&#8203;</i><i>&#8203;</i></span
+                >
+                <span>New message</span>
+                <small>Draft</small>
+              </div>
+              <div class="mail-meta"><span>To</span><b>team@studio.dev</b></div>
+              <div class="mail-meta"><span>Subject</span><b>Website update</b></div>
+              <div class="mail-body">
+                <p>Hi,</p>
+                <p>Could you handle this:</p>
+                <p class="selected-request" data-selected-text>
+                  fix the form on mobile don't change anything else
+                </p>
+                <p>Thanks.</p>
+              </div>
+            </div>
+
+            <div class="native-capsule" aria-live="polite">
+              <div class="capsule-head">
+                <span><b>rq</b> <i data-capsule-state>waiting</i></span>
+                <small>⌥ Space</small>
+              </div>
+              <div class="capsule-profile">
+                <span>profile</span> frontend <small>· detected locally</small>
+              </div>
+              <div class="capsule-result" data-capsule-result>
+                Fix the form on mobile while preserving the current desktop behavior and leaving
+                unrelated functionality unchanged.
+              </div>
+              <div class="capsule-verdict">
+                <span>✓ faithful</span><small>No unsupported additions</small>
+              </div>
+              <div class="capsule-actions">
+                <span><kbd>↵</kbd> replace</span><span><kbd>⌥</kbd> compare</span
+                ><span><kbd>esc</kbd> close</span>
+              </div>
+            </div>
+
+            <div class="replace-toast"><span>Replaced in Mail</span><small>⌘Z to undo</small></div>
+          </div>
+
+          <div class="native-timeline">
+            <ol aria-label="Native UI demonstration steps">
+              <li data-native-step="idle" class="is-active"><span>01</span>select</li>
+              <li data-native-step="invoke"><span>02</span>shortcut</li>
+              <li data-native-step="analyze"><span>03</span>analyze</li>
+              <li data-native-step="verify"><span>04</span>verify</li>
+              <li data-native-step="replace"><span>05</span>replace</li>
+            </ol>
+            <button type="button" data-native-replay>Replay sequence</button>
+          </div>
+        </div>
+
+        <div class="native-afterword">
+          <p>
+            select text <span>→</span> global shortcut <span>→</span> verify <span>→</span> replace
+          </p>
+          <p>
+            A light menu bar presence and a quick popover handle the rest. The full window is only
+            for configuration.
+          </p>
+        </div>
+      </section>
+
+      <section class="closing-section" aria-labelledby="closing-title">
+        <div>
+          <p class="chapter-label dark-label">Open source · MIT</p>
+          <h2 id="closing-title">Write it rough.<br />Send it clear.</h2>
+        </div>
+        <div class="closing-action">
+          <div class="copy-command closing-command" role="group" aria-label="Install Reqraft">
+            <span aria-hidden="true">$</span>
+            <code>npm install -g @reqraft/cli</code>
+            <button type="button" data-copy="npm install -g @reqraft/cli">
+              <span class="copy-label">Copy</span>
+              <span class="copied-label" aria-live="polite">Copied</span>
+            </button>
+          </div>
+          <p>Then run <code>rp init</code>. The guided setup handles the rest.</p>
+          <a class="plain-link dark-link" href="https://github.com/ronael/Reqraft"
+            >Read the code, open an issue, or contribute.</a
+          >
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <a class="wordmark" href="#top"
+        ><img class="wordmark-mark" src="docs/assets/reqraft-mark.svg" alt="" /><span
+          >reqraft</span
+        ></a
+      >
+      <p>Shape the request. Keep the intent.</p>
+      <nav aria-label="Footer navigation">
+        <a href="https://github.com/ronael/Reqraft">GitHub</a>
+        <a href="https://www.npmjs.com/package/@reqraft/cli">npm</a>
+        <a href="https://github.com/ronael/Reqraft/blob/main/SECURITY.md">Security</a>
+      </nav>
+    </footer>
+  </body>
+</html>

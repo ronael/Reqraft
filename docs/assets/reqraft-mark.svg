@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-labelledby="title">
+  <title id="title">Reqraft</title>
+  <rect width="64" height="64" rx="13" fill="#17131f"/>
+  <rect x="1" y="1" width="62" height="62" rx="12" fill="none" stroke="#725da8" stroke-width="2"/>
+  <text x="32" y="39" fill="#a78bfa" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="22" font-weight="700" text-anchor="middle">rq</text>
+</svg>

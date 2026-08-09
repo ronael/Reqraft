@@ -52,7 +52,7 @@
   "bugs": {
     "url": "https://github.com/ronael/Reqraft/issues"
   },
-  "homepage": "https://github.com/ronael/Reqraft#readme",
+  "homepage": "https://ronael.github.io/Reqraft/",
   "publishConfig": {
     "access": "public",
     "provenance": true
