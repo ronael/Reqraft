@@ -21,35 +21,6 @@ Profiles adapt the system prompt to the type of request. They are independent, t
 
 ## Custom profiles
 
-Custom profiles can be stored in:
-
-```text
-~/.config/rp/profiles/
-```
-
-Supported formats:
-
-```md
----
-id: kubora
-name: Kubora
-extends: frontend
-defaultLevel: standard
----
-
-Conserve les composants existants et respecte le design system Kubora.
-```
-
-Or JSON:
-
-```json
-{
-  "id": "kubora",
-  "name": "Kubora",
-  "extends": "frontend",
-  "defaultLevel": "standard",
-  "instructions": "Conserve les composants existants..."
-}
-```
-
-Load a custom profile with `--profile <id>`.
+Custom profile parsing exists internally, but loading user-defined profile files
+is not exposed by the CLI yet. For now, adding a profile means adding it to the
+source registry as described in [development.md](development.md).

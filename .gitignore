@@ -11,4 +11,8 @@ coverage/
 .pnpm-store/
 benchmark-results/
 .scannerwork/*
-docs/internal/DA.md
+docs/design/
+docs/internal/
+docs/reprompt-audit.md
+docs/tui-implementation.md
+docs/tui-input-audit.md

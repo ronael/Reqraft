@@ -1,103 +1,89 @@
-# Reqraft terminal design
+# Reqraft Terminal Design
 
 Reqraft uses a terminal-first visual language built around precision, calm and
-fast keyboard use. The interface deliberately avoids dashboard-like decoration:
-color communicates hierarchy or status, while spacing and typography carry most
-of the structure.
+fast keyboard use. The interactive interface is rendered with OpenTUI in
+`src/opentui/`, while product state and formatting rules remain in shared
+modules under `src/ui/`.
 
-## Visual roles
+## Visual Roles
 
-The palette comes from `docs/design/reqraft-cli-ui.html`.
-
-- Violet (`#a78bfa`, strong `#8b5cf6`) marks the product, focused panels, active
-  shortcuts and selection. It is the identity colour.
-- Contextual values — provider, model, profile, level — stay neutral. Colour is
-  spent on focus and status, not on data.
+- Violet marks the product, focused panels, active shortcuts and selection.
+- Contextual values such as provider, model, profile and level stay neutral.
 - Gray is reserved for borders, secondary copy and unavailable actions.
 - Emerald, amber and rose communicate success, warning and failure, always with
-  a symbol so meaning never depends on colour alone.
-- Primary panels use rounded borders. Secondary panels use simple borders.
-  Context rows and shortcuts remain unframed.
-
-Body text sets no colour at all: the terminal foreground is inherited so the
-interface stays readable on light and dark themes alike. Backgrounds are never
-painted.
+  text or a symbol so meaning never depends on color alone.
+- Body text inherits the terminal foreground. Backgrounds are not painted.
 
 ## Degradation
 
-`src/ui/theme/capabilities.ts` resolves what the terminal can do, once per run.
+`src/ui/theme/capabilities.ts` resolves terminal capabilities once per run.
+Color is dropped when `NO_COLOR` is set, when `TERM=dumb`, or when stdout is not
+a TTY. Unicode symbols fall back to ASCII when the terminal is unlikely to
+render them reliably.
 
-Colour is dropped entirely when `NO_COLOR` is set, when `TERM=dumb`, or when
-stdout is not a TTY. Every role then collapses to the terminal default, and the
-status symbols carry the meaning on their own:
-
-```text
-✓ success   ! warning   × error   ● active   ○ inactive
-```
-
-Unicode is assumed only under a UTF-8 locale, and on Windows only under Windows
-Terminal or a known host. Otherwise the ASCII set replaces the glyphs
-(`+ ! x * o`) and borders fall back to the `classic` style (`+---+`).
-
-The palette, symbols and capability detection live in `src/ui/theme/`. Shared
-components live in `src/ui/components/`; no component should hardcode a
-semantic colour, a symbol or a border style.
+No component should hardcode a semantic color, symbol or border style when a
+shared helper exists.
 
 ## Components
 
 ```text
 src/ui/
-├── app-actions.ts
-├── app-state.ts
-├── components/
-│   ├── app-modal.tsx
-│   ├── app-frame.tsx
-│   ├── empty-state.tsx
-│   ├── header-bar.tsx
-│   ├── meta-row.tsx
-│   ├── notice.tsx
-│   ├── result-panel-body.tsx
-│   ├── section-card.tsx
-│   ├── select-modal.tsx
-│   ├── shortcut-bar.tsx
-│   ├── spinner.tsx
-│   └── status-badge.tsx
-├── modal-options.ts
-├── result-view.ts
-├── layout/responsive.ts
-├── theme/palette.ts
-├── theme/tokens.ts
-├── theme/types.ts
-└── view-labels.ts
+  app-actions.ts
+  app-state.ts
+  errors.ts
+  generation-state.ts
+  modal-options.ts
+  prompt-input.ts
+  result-meta.ts
+  result-view.ts
+  shortcut-hints.ts
+  shortcut-intents.ts
+  shortcuts.ts
+  theme/
+  view-labels.ts
+
+src/opentui/
+  app.tsx
+  input.ts
+  layout.ts
+  launcher.ts
+  scroll-view.tsx
+  text-viewport.tsx
+  theme.ts
 ```
 
-`src/app.tsx` should stay a composition shell: it wires Ink, application use
-cases and state setters. Pure UI decisions belong in `app-state`,
-`app-actions`, `modal-options`, `result-view` or focused components so they can
-be unit-tested without rendering the full terminal app.
+The OpenTUI renderer wires terminal events to application use cases. Pure UI
+decisions belong in `src/ui/` so they can be unit-tested without rendering the
+terminal app.
 
-## Responsive behavior
+## Responsive Behavior
 
-- `wide`, from 76 columns: complete identity, context and shortcut set.
-- `compact`, from 52 to 75 columns: shorter header and essential shortcuts.
-- `narrow`, below 52 columns: no horizontal padding and only essential context.
-- The content frame is capped at 112 columns so large terminals remain readable.
+- The frame is capped at 118 columns so wide terminals stay readable.
+- Compact mode is selected for narrow or short terminals.
+- Editor and result panels receive fixed viewport heights from
+  `src/opentui/layout.ts`.
+- Long prompt and result content scrolls inside dedicated OpenTUI scrollboxes.
+- The footer is always reserved outside scrollable content.
 
-Long content wraps inside panels. Provider and model metadata are reduced before
-the input or result loses space.
+## Interaction Contract
 
-## Interaction contract
+- `Enter`: generate.
+- `Ctrl+C`: cancel a running generation, quit when idle.
+- `Ctrl+K`: actions.
+- `Ctrl+P`: profile.
+- `Ctrl+L`: level.
+- `Ctrl+I`: provider.
+- `Ctrl+O`: model.
+- `Ctrl+D`: diff.
+- `Ctrl+Y`: copy.
+- `?`: help.
+- `Esc`: close overlay or quit.
 
-`Enter` generates, `Ctrl+K` opens the action palette, `Ctrl+P`, `Ctrl+L` and
-`Ctrl+O` change context, `Ctrl+D` opens the diff, `Ctrl+Y` copies, `?` opens
-help, and `Esc` returns or exits. Every modal repeats its navigation footer.
+Control shortcuts must never insert their letter into the editor. Provider
+errors are converted to short actionable messages and never expose credentials.
 
-Loading, empty, success and error states keep the same footprint. Provider
-errors are converted to short actionable messages and never expose raw response
-bodies or credentials.
-
-## Non-interactive output
+## Non-Interactive Output
 
 Commands such as `rp doctor`, `rp profiles`, `rp providers` and `rp models`
-share the same headings. ANSI color is only emitted to a TTY and is disabled by
-`NO_COLOR`, preserving clean pipes and logs.
+stay console-oriented. Rewritten prompts go to stdout; diagnostics, stats and
+quality notices go to stderr so pipes remain clean.

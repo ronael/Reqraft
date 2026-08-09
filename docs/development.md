@@ -24,7 +24,7 @@ pnpm benchmark        # run benchmark
 ```text
 src/
   cli.tsx             # entry point and command definitions
-  app.tsx             # thin interactive TUI composition
+  opentui/            # interactive OpenTUI renderer
   application/        # use cases shared by CLI and TUI
   commands/           # command implementations
   core/               # engine, types, parser, prompt builder and policies
@@ -34,7 +34,7 @@ src/
   config/             # config schema, loader, paths
   aliases/            # shell alias management
   clipboard/          # clipboard utilities
-  ui/                 # TUI state, actions, rendering helpers, components and hooks
+  ui/                 # renderer-agnostic state, actions, formatting and shortcuts
   utils/              # exit codes, input, redaction
 ```
 
@@ -42,6 +42,9 @@ The quick CLI path and the TUI must call the same application use case
 (`executeReprompt`). UI-specific modules may prepare view state or component
 props, but they must not duplicate provider selection, model capability rules or
 reprompt policy.
+
+`src/app.tsx` is a legacy renderer kept for now as historical fallback code.
+The default interactive entry path launches `src/opentui/`.
 
 ## Adding a profile
 

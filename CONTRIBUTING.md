@@ -21,8 +21,8 @@ Thank you for your interest in contributing!
 
 Add tests for new features and bug fixes. E2E tests should not require real API keys; use the `mock` provider.
 
-Coverage is generated with `pnpm test:coverage`. SonarQube setup is documented
-in [docs/code-quality.md](docs/code-quality.md).
+Coverage is generated with `pnpm test:coverage`. Local static-analysis rules
+and documented exceptions are described in [docs/code-quality.md](docs/code-quality.md).
 
 ## Reporting issues
 
