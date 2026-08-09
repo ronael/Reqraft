@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  Transform a raw request into a clear, faithful, and directly usable prompt for any AI agent.
+  Transform a rough request into a clearer prompt, with local checks for possible scope drift.
 </p>
 
 <p align="center">
@@ -31,7 +31,7 @@ Reqraft is a local-first, open-source CLI that sits **just before** you send a p
 - correct spelling and grammar,
 - a clear structure,
 - preserved technical terms, paths, and commands,
-- no invented features or scope creep.
+- local quality signals for known scope additions and disproportionate expansion.
 
 ## Installation
 
@@ -101,9 +101,10 @@ rp "your request" --explain
 
 ### Quality diagnostics
 
-Reqraft always returns usable provider text, even when fidelity checks identify
-an expansion or an unsupported addition. Diagnostics are written to stderr and
-are available as structured data with `--json`.
+When a provider returns usable text, Reqraft keeps it available even if its
+best-effort fidelity checks identify an expansion or a known scope addition.
+Diagnostics are written to stderr and are available as structured data with
+`--json`.
 
 ```bash
 rp "create a detailed architecture plan" --stats

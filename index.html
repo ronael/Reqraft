@@ -1,542 +1,982 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta
-      name="description"
-      content="Reqraft turns rough requests into precise, faithful prompts before you send them to an AI agent. Install the open-source CLI today."
-    />
-    <meta name="theme-color" content="#08090c" />
-    <link rel="canonical" href="https://ronael.github.io/Reqraft/" />
-    <link rel="icon" href="docs/assets/reqraft-mark.svg" type="image/svg+xml" />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://ronael.github.io/Reqraft/" />
-    <meta property="og:title" content="Reqraft — Keep the intent. Improve the request." />
-    <meta
-      property="og:description"
-      content="A local-first prompt workshop that sits between what you write and the AI agent that receives it."
-    />
-    <meta
-      property="og:image"
-      content="https://ronael.github.io/Reqraft/docs/assets/reqraft-social.png"
-    />
-    <meta name="twitter:card" content="summary_large_image" />
-    <title>Reqraft — Precise prompts without changing your intent</title>
-    <link rel="stylesheet" href="site.css" />
-    <script src="site.js" defer></script>
-  </head>
-  <body>
-    <a class="skip-link" href="#main">Skip to content</a>
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Reqraft — Shape the request. Keep the intent.</title>
+<meta name="description" content="Reqraft turns a rough request into a clearer prompt and runs local fidelity checks for scope drift. Open-source CLI, native UI in development." />
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500&amp;display=swap" rel="stylesheet">
+<style>
+:root{
+  color-scheme:dark;
+  --bg:#07070a; --bg2:#0b0b10; --bg3:#101017; --bg4:#14141d;
+  --line:rgba(255,255,255,.065); --line2:rgba(255,255,255,.12);
+  --tx:#e7e7ea; --tx2:#a1a1aa; --tx3:#5b5b66; --tx4:#3a3a44;
+  --rq:#a78bfa; --rq2:#8b5cf6; --rq3:#c4b5fd;
+  --rq-line:rgba(167,139,250,.28); --rq-dim:rgba(139,92,246,.12);
+  --ok:#34d399; --warn:#fbbf24; --err:#fb7185;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"SF Pro Text",system-ui,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--tx);font-family:var(--sans);font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+::selection{background:rgba(139,92,246,.35);color:#fff}
+.mono{font-family:var(--mono)}
+a{color:inherit;text-decoration:none}
+.wrap{max-width:1160px;margin:0 auto;padding:0 32px}
 
-    <header class="masthead" data-header>
-      <a class="wordmark" href="#top" aria-label="Reqraft home">
-        <img class="wordmark-mark" src="docs/assets/reqraft-mark.svg" alt="" />
-        <span>reqraft</span>
-      </a>
-      <nav class="masthead-nav" aria-label="Main navigation">
-        <a href="#fidelity">Fidelity</a>
-        <a href="#cli">CLI</a>
-        <a href="#native">Native UI</a>
-      </nav>
-      <a class="github-link" href="https://github.com/ronael/Reqraft"
-        >GitHub <span aria-hidden="true">↗</span></a
-      >
-    </header>
+/* ── reveal ── */
+.rv{opacity:0;transform:translateY(16px);transition:opacity .8s cubic-bezier(.2,.7,.3,1),transform .8s cubic-bezier(.2,.7,.3,1)}
+.rv.on{opacity:1;transform:none}
 
-    <main id="main">
-      <section class="hero" id="top" aria-labelledby="hero-title">
-        <div class="hero-heading">
-          <p class="availability">
-            <span aria-hidden="true">&#8203;</span>Open-source CLI · available now
-          </p>
-          <h1 id="hero-title">Reqraft</h1>
-          <p class="hero-promise">Rough requests in.<br />Precise instructions out.</p>
+/* ── top bar ── */
+.top{position:fixed;inset:0 0 auto 0;z-index:100;border-bottom:1px solid transparent;transition:background .3s,border-color .3s}
+.top.scrolled{background:rgba(7,7,10,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:var(--line)}
+.top-in{display:flex;align-items:center;justify-content:space-between;height:56px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px;letter-spacing:.01em}
+.logo .mark{font-family:var(--mono);font-weight:500;color:var(--rq);font-size:13px;border:1px solid var(--rq-line);border-radius:6px;padding:1px 6px;background:var(--rq-dim)}
+.top nav{display:flex;gap:26px;font-size:12.5px;color:var(--tx2)}
+.top nav a{transition:color .2s}
+.top nav a:hover{color:#fff}
+.top nav a.gh{color:var(--tx3)}
+@media(max-width:720px){.top nav a:not(.gh){display:none}}
+
+/* ── shared bits ── */
+.sec{padding:128px 0;position:relative}
+.kick{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--tx4);display:flex;align-items:center;gap:14px;margin-bottom:34px}
+.kick::after{content:"";height:1px;flex:0 0 64px;background:var(--line2)}
+.kick b{color:var(--rq);font-weight:500}
+h2{font-size:clamp(30px,4.2vw,46px);line-height:1.08;font-weight:600;letter-spacing:-.025em;color:#fff}
+h2 em{font-family:var(--mono);font-style:normal;font-weight:500;font-size:.88em;letter-spacing:-.03em;color:var(--rq3)}
+.lede{color:var(--tx2);font-size:16px;max-width:560px;margin-top:20px}
+.lede strong{color:var(--tx);font-weight:500}
+.dim{color:var(--tx3)}
+.caret{display:inline-block;width:8px;height:1.05em;background:var(--rq);vertical-align:-.15em;margin-left:1px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.11);color:#d4d4d8;white-space:nowrap}
+.verdict-ok{color:var(--ok)}
+.verdict-warn{color:var(--warn)}
+
+/* ── hero ── */
+.hero{min-height:100svh;display:flex;flex-direction:column;justify-content:center;padding:130px 0 60px;position:relative}
+.hero-fade{position:absolute;inset:0;pointer-events:none;background:
+  radial-gradient(900px 420px at 78% 8%,rgba(124,58,237,.09),transparent 62%),
+  radial-gradient(700px 500px at 8% 96%,rgba(124,58,237,.05),transparent 60%)}
+.hero-grid{display:grid;grid-template-columns:minmax(0,1fr);gap:56px;position:relative}
+.hero-grid>*{min-width:0}
+@media(min-width:1020px){.hero-grid{grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:40px;align-items:center}}
+.hero h1{font-size:clamp(42px,6.6vw,84px);line-height:1.02;font-weight:600;letter-spacing:-.035em;color:#fff}
+.hero h1 em{font-family:var(--mono);font-style:normal;font-weight:500;font-size:.86em;letter-spacing:-.03em;color:var(--rq3)}
+.hero h1 em::after{content:"▌";margin-left:.08em;color:var(--rq2);animation:blink 1.1s steps(2) infinite}
+.hero-sub{margin-top:26px;color:var(--tx2);font-size:16.5px;max-width:470px}
+.hero-sub strong{color:var(--tx);font-weight:500}
+.hero-cta{margin-top:36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
+.install{display:inline-flex;align-items:center;gap:12px;font-family:var(--mono);font-size:13px;color:#e9e4ff;background:linear-gradient(180deg,rgba(139,92,246,.16),rgba(139,92,246,.08));border:1px solid rgba(167,139,250,.35);border-radius:9px;padding:11px 14px;transition:border-color .2s,background .2s;cursor:pointer}
+.install:hover{border-color:rgba(167,139,250,.6)}
+.install .dollar{color:var(--rq)}
+.install .cp{color:var(--tx3);font-size:11px;border-left:1px solid var(--rq-line);padding-left:12px;letter-spacing:.06em}
+.gh-link{font-size:13.5px;color:var(--tx2);display:inline-flex;gap:7px;align-items:center;border-bottom:1px solid var(--line2);padding-bottom:2px;transition:color .2s,border-color .2s}
+.gh-link:hover{color:#fff;border-color:var(--tx3)}
+
+/* hero transformation — the product as part of the composition */
+.hd{position:relative;font-family:var(--mono)}
+.hd::before{content:"";position:absolute;left:-28px;top:6px;bottom:6px;width:1px;background:linear-gradient(var(--rq2),transparent 85%);opacity:.55}
+@media(max-width:1019px){.hd::before{left:-16px}}
+.hd-stage{border:1px solid var(--line);border-radius:14px;background:linear-gradient(180deg,rgba(255,255,255,.022),rgba(255,255,255,.008));padding:26px 26px 22px;position:relative;overflow:hidden}
+.hd-tag{font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:var(--tx4);display:flex;justify-content:space-between;align-items:center}
+.hd-tag .rqdot{display:inline-flex;align-items:center;gap:7px;color:var(--tx3)}
+.hd-tag .rqdot i{width:6px;height:6px;border-radius:50%;background:var(--rq);display:inline-block}
+.hd-rough{margin-top:18px;font-size:14.5px;line-height:1.7;color:var(--tx2);min-height:25px;position:relative;word-break:break-word}
+.hd-rough.done{color:var(--tx3)}
+.hd-rough.done .inner{text-decoration:line-through;text-decoration-color:rgba(251,113,133,.5);text-decoration-thickness:1px}
+.hd-scan{position:absolute;top:2px;bottom:2px;width:2px;background:linear-gradient(180deg,transparent,var(--rq),transparent);box-shadow:0 0 18px 2px rgba(139,92,246,.5);left:0;opacity:0;pointer-events:none}
+.hd-mid{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--tx4);font-size:11px;letter-spacing:.08em;opacity:0;transition:opacity .4s}
+.hd-mid.on{opacity:1}
+.hd-mid .ln{height:1px;width:34px;background:var(--rq-line)}
+.hd-mid .who{color:var(--rq)}
+.hd-result{font-size:14.5px;line-height:1.75;color:#f0eefc;min-height:76px;word-break:break-word}
+.hd-verdict{margin-top:16px;padding-top:14px;border-top:1px solid var(--line);font-size:11.5px;display:flex;align-items:center;gap:9px;color:var(--tx3);opacity:0;transform:translateY(4px);transition:opacity .5s,transform .5s}
+.hd-verdict.on{opacity:1;transform:none}
+.hd-verdict .v{color:var(--ok)}
+.hd-verdict .x{margin-left:auto;font-size:10px;color:var(--tx4)}
+
+/* ── flow strip ── */
+.flow{border-top:1px solid var(--line);border-bottom:1px solid var(--line);padding:34px 0;overflow:hidden}
+.flow-in{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;font-family:var(--mono);font-size:12.5px;color:var(--tx3);row-gap:10px}
+.flow-in .node{padding:0 16px;white-space:nowrap}
+.flow-in .node.you{color:var(--tx2)}
+.flow-in .node.rq{color:var(--rq);border:1px solid var(--rq-line);border-radius:7px;padding:4px 13px;margin:0 4px;background:var(--rq-dim)}
+.flow-in .node.out{color:var(--tx)}
+.flow-in .arr{color:var(--tx4);font-size:11px}
+.flow-in .tail{color:var(--tx4);font-size:11.5px}
+@media(max-width:860px){.flow-in{justify-content:flex-start}.flow-in .tail{flex-basis:100%;padding-left:16px;white-space:normal;line-height:1.7}}
+
+/* ── section 02 · transformation ── */
+.split{display:grid;gap:64px}
+@media(min-width:1020px){.split{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:80px;align-items:start}}
+.frag{border-bottom:1px solid var(--rq-line);cursor:default;position:relative;transition:background .25s,border-color .25s;border-radius:2px}
+.frag:hover,.frag.hot{background:rgba(139,92,246,.13);border-color:var(--rq)}
+.frag.mk-ok{border-color:rgba(52,211,153,.4)}
+.frag.mk-ok:hover,.frag.mk-ok.hot{background:rgba(52,211,153,.1);border-color:var(--ok)}
+.tf-demo{position:relative}
+.tf-toggle{display:inline-flex;gap:2px;border:1px solid var(--line2);border-radius:8px;padding:2px;margin-bottom:26px}
+.tf-toggle button{font-family:var(--mono);font-size:11px;color:var(--tx3);background:none;border:0;padding:6px 14px;border-radius:6px;cursor:pointer;transition:color .2s,background .2s}
+.tf-toggle button.on{background:rgba(139,92,246,.16);color:var(--rq3)}
+.tf-stage{min-height:190px;position:relative}
+.tf-pane{position:absolute;inset:0;opacity:0;transform:translateY(6px);transition:opacity .45s,transform .45s;pointer-events:none}
+.tf-pane.on{opacity:1;transform:none;pointer-events:auto}
+.tf-rough{font-family:var(--mono);font-size:15px;line-height:1.9;color:var(--tx3)}
+.tf-out{font-size:clamp(20px,2.6vw,28px);line-height:1.55;font-weight:500;letter-spacing:-.01em;color:#fff;max-width:560px}
+.tf-out .tail-note{display:block;margin-top:22px;font-family:var(--mono);font-size:11px;color:var(--tx4);font-weight:400;letter-spacing:.04em}
+.tf-out .tail-note .dash{color:var(--rq)}
+.tf-diff{font-family:var(--mono);font-size:13.5px;line-height:1.8}
+.tf-diff .minus{display:block;background:rgba(251,113,133,.07);color:#fca5b0;border-radius:7px;padding:8px 14px;margin-bottom:6px}
+.tf-diff .plus{display:block;background:rgba(52,211,153,.07);color:#a7e9cd;border-radius:7px;padding:8px 14px}
+.tf-notes{margin-top:30px;border-top:1px solid var(--line);padding-top:16px;display:grid;gap:10px;font-size:13px;color:var(--tx3)}
+.tf-notes .n{display:flex;gap:12px;align-items:baseline}
+.tf-notes .sw{width:22px;height:1px;background:var(--rq);flex:0 0 auto;position:relative;top:-3px}
+.tf-notes .sw.g{background:var(--ok)}
+.tf-notes .sw.d{background:var(--tx4)}
+.tf-notes b{color:var(--tx2);font-weight:500;font-family:var(--mono);font-size:11.5px;letter-spacing:.06em}
+
+/* ── section 03 · fidelity ── */
+.fid-grid{display:grid;gap:56px}
+@media(min-width:1020px){.fid-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:80px;align-items:start}}
+.fid-in{font-family:var(--mono);font-size:13px;color:var(--tx2);border-left:1px solid var(--line2);padding:2px 0 2px 16px;margin-bottom:34px}
+.fid-in .p{color:var(--tx4)}
+.fid-case{border-top:1px solid var(--line);padding:22px 0}
+.fid-case:last-of-type{border-bottom:1px solid var(--line)}
+.fid-case-h{display:flex;align-items:baseline;justify-content:space-between;gap:14px;margin-bottom:14px}
+.fid-case-h .who{font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--tx4)}
+.fid-case-h .vchip{font-family:var(--mono);font-size:11px}
+.fid-text{font-family:var(--mono);font-size:13.5px;line-height:1.75;color:var(--tx2)}
+.fid-text.bad{color:var(--tx3)}
+.fid-text.bad .inv{color:#f3b6c2;text-decoration:line-through;text-decoration-color:rgba(251,113,133,.55)}
+.fid-text.good{color:#e8f5ee}
+.flag{font-family:var(--mono);font-size:10px;color:var(--warn);border:1px solid rgba(251,191,36,.25);background:rgba(251,191,36,.06);border-radius:5px;padding:1px 6px;margin-left:8px;white-space:nowrap}
+.gauge-wrap{margin-top:18px}
+.gauge-meta{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;color:var(--tx4);margin-bottom:7px}
+.gauge{height:3px;background:rgba(255,255,255,.07);border-radius:2px;position:relative}
+.gauge .fill{position:absolute;top:0;bottom:0;left:0;width:0;border-radius:2px;transition:width 1.4s cubic-bezier(.2,.7,.3,1)}
+.gauge .fill.warn{background:linear-gradient(90deg,var(--warn),#f59e0b)}
+.gauge .fill.ok{background:linear-gradient(90deg,var(--ok),#10b981)}
+.gauge .th{position:absolute;top:-4px;bottom:-4px;width:1px;background:rgba(255,255,255,.22)}
+.gauge .th::after{content:"threshold";position:absolute;top:-15px;left:50%;transform:translateX(-50%);font-family:var(--mono);font-size:8.5px;letter-spacing:.1em;color:var(--tx4)}
+.gauge .dot{position:absolute;top:50%;width:7px;height:7px;border-radius:50%;transform:translate(-50%,-50%);transition:left 1.4s cubic-bezier(.2,.7,.3,1)}
+.gauge .dot.warn{background:var(--warn);box-shadow:0 0 10px rgba(251,191,36,.6)}
+.gauge .dot.ok{background:var(--ok);box-shadow:0 0 10px rgba(52,211,153,.6)}
+
+/* ── section 04 · CLI ── */
+.cli{background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.cli-grid{display:grid;gap:56px}
+@media(min-width:1020px){.cli-grid{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:72px;align-items:start}}
+.term{border:1px solid var(--line2);border-radius:12px;background:#0a0a10;overflow:hidden;box-shadow:0 30px 70px rgba(0,0,0,.45)}
+.term-bar{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--line);background:rgba(255,255,255,.02)}
+.term-bar i{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.12);display:inline-block}
+.term-bar span{font-family:var(--mono);font-size:10.5px;color:var(--tx4);margin-left:6px}
+.term-body{padding:20px 20px 24px;font-family:var(--mono);font-size:12.8px;line-height:1.85;min-height:340px}
+.term-body .c-line{color:var(--tx)}
+.term-body .c-line .dollar{color:var(--rq);margin-right:8px}
+.term-body .o-line{color:var(--tx2);padding-left:20px}
+.term-body .o-ok{color:var(--ok);padding-left:20px}
+.term-body .o-dim{color:var(--tx4);padding-left:20px}
+.term-body .o-minus{color:#fca5b0;padding-left:20px}
+.term-body .o-plus{color:#a7e9cd;padding-left:20px}
+.cap-list{margin-top:44px;border-top:1px solid var(--line)}
+.cap-row{display:grid;grid-template-columns:130px 1fr;gap:18px;padding:13px 0;border-bottom:1px solid var(--line);font-size:13.5px;align-items:baseline}
+.cap-row .flag-n{font-family:var(--mono);font-size:12px;color:var(--rq)}
+.cap-row .flag-d{color:var(--tx3)}
+.cli-install{margin-top:30px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+
+/* ── section 05 · levels ── */
+.lvl-head{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:28px;margin-bottom:44px}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;padding:3px;gap:2px}
+.seg button{font-family:var(--mono);font-size:12px;background:none;border:0;color:var(--tx3);padding:8px 20px;border-radius:8px;cursor:pointer;transition:color .2s,background .2s}
+.seg button.on{background:rgba(139,92,246,.16);color:var(--rq3)}
+.lvl-demo{display:grid;gap:40px}
+@media(min-width:1020px){.lvl-demo{grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:72px}}
+.lvl-req{font-family:var(--mono);font-size:12px;color:var(--tx4);margin-bottom:20px}
+.lvl-req .q{color:var(--tx2)}
+.lvl-out{font-family:var(--mono);font-size:14px;line-height:1.85;color:#eceaf6;white-space:pre-wrap;min-height:230px;transition:opacity .35s}
+.lvl-out.fading{opacity:0}
+.lvl-out .h{color:var(--rq3);font-size:11px;letter-spacing:.14em;text-transform:uppercase}
+.lvl-out .miss{color:var(--warn)}
+.lvl-side{border-left:1px solid var(--line2);padding-left:28px;align-self:start}
+@media(max-width:1019px){.lvl-side{border-left:0;padding-left:0;border-top:1px solid var(--line);padding-top:24px}}
+.lvl-side .what{font-size:13.5px;color:var(--tx2);min-height:66px;transition:opacity .35s}
+.lvl-side .what.fading{opacity:0}
+.lvl-side ul{list-style:none;margin-top:20px;display:grid;gap:9px}
+.lvl-side li{font-size:13px;color:var(--tx3);display:flex;gap:11px;align-items:baseline}
+.lvl-side li::before{content:"—";color:var(--tx4)}
+.lvl-side li b{color:var(--tx2);font-weight:500}
+
+/* ── section 06 · profiles ── */
+.prof-lines{margin-top:56px;border-top:1px solid var(--line)}
+.prof-row{display:grid;grid-template-columns:1fr auto;gap:20px;align-items:baseline;padding:20px 0;border-bottom:1px solid var(--line);font-family:var(--mono)}
+.prof-row .cmd{font-size:13.5px;color:var(--tx2)}
+.prof-row .cmd .dollar{color:var(--rq);margin-right:9px}
+.prof-row .det{font-size:12px;color:var(--tx4);display:flex;gap:10px;align-items:baseline;min-width:170px;justify-content:flex-end}
+.prof-row .det .arrow{color:var(--tx4)}
+.prof-row .det .to{color:var(--rq);opacity:0;transform:translateX(6px);transition:opacity .5s,transform .5s}
+.prof-row.seen .det .to{opacity:1;transform:none}
+.prof-row .det .loc{font-size:9.5px;letter-spacing:.1em;color:var(--tx4);opacity:0;transition:opacity .6s .25s}
+.prof-row.seen .det .loc{opacity:1}
+.prof-all{margin-top:34px;font-family:var(--mono);font-size:12px;color:var(--tx4);letter-spacing:.02em;display:flex;flex-wrap:wrap;gap:6px 22px}
+.prof-all .a{color:var(--rq)}
+@media(max-width:640px){.prof-row{grid-template-columns:1fr}.prof-row .det{justify-content:flex-start}}
+
+/* ── section 07 · native UI ── */
+.native{padding:150px 0 130px;position:relative;overflow:hidden;background:
+  radial-gradient(1000px 520px at 50% -8%,rgba(124,58,237,.10),transparent 64%)}
+.native .kicker-next{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rq3);border:1px solid var(--rq-line);border-radius:100px;padding:6px 14px;background:var(--rq-dim);margin-bottom:30px}
+.native .kicker-next i{width:6px;height:6px;border-radius:50%;background:var(--rq);animation:pulse 1.6s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
+.native h2{font-size:clamp(34px,5vw,60px)}
+.stage-wrap{margin-top:80px;position:relative}
+.stage{position:relative;margin:0 auto}
+.stage-caption{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:14px}
+.menubar{height:30px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:0 14px;font-size:11px;color:var(--tx3)}
+.menubar .l{display:flex;gap:16px;align-items:center}
+.menubar .r{display:flex;gap:14px;align-items:center}
+.menubar .rqb{display:flex;gap:6px;align-items:center;font-family:var(--mono);color:var(--tx2)}
+.menubar .rqb i{width:6px;height:6px;border-radius:50%;background:var(--rq);display:inline-block}
+.menubar .rqb i.working{animation:pulse 1.2s ease-in-out infinite}
+.editor{border:1px solid var(--line);border-radius:0 0 12px 12px;background:#0a0c12;padding:0;overflow:hidden}
+.editor-head{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.editor-head i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.editor-head .r1{background:#ff5f57}.editor-head .r2{background:#febc2e}.editor-head .r3{background:#28c840}
+.editor-head span{font-family:var(--mono);font-size:10.5px;color:var(--tx4);margin-left:8px}
+.editor-body{display:grid;grid-template-columns:40px 1fr;padding:22px 0 26px;font-family:var(--mono);font-size:13px;line-height:2}
+.editor-body .ln{color:var(--tx4);text-align:right;padding-right:16px;user-select:none;font-size:11px;line-height:2.36}
+.editor-body pre{white-space:pre-wrap;color:#8f96a8}
+.editor-body .kw{color:#c4b5fd}
+.editor-body .str{color:#7dd3a8}
+.sel-text{background:rgba(139,92,246,.28);box-shadow:0 0 0 1px rgba(167,139,250,.4);border-radius:3px;color:#ddd6fe;transition:background .3s}
+.sel-text.replaced{background:rgba(52,211,153,.22);box-shadow:0 0 0 1px rgba(52,211,153,.35);color:#d3f5e5;transition:background .1s}
+.sel-text.plain{background:transparent;box-shadow:none;color:#8f96a8;transition:background 1.2s,box-shadow 1.2s}
+/* capsule */
+.capsule{position:absolute;z-index:30;width:min(480px,calc(100% - 32px));left:50%;top:58%;transform:translate(-50%,8px) scale(.97);opacity:0;pointer-events:none;transition:opacity .28s cubic-bezier(.2,.7,.3,1),transform .28s cubic-bezier(.2,.7,.3,1);border-radius:13px;background:rgba(16,16,23,.96);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 26px 80px rgba(0,0,0,.6),0 0 0 1px rgba(167,139,250,.22),0 0 70px rgba(139,92,246,.10);overflow:hidden}
+.capsule.on{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+.cap-head{display:flex;align-items:center;gap:9px;padding:9px 13px;border-bottom:1px solid var(--line);font-size:10.5px;color:var(--tx3)}
+.cap-head .rqn{font-family:var(--mono);font-weight:500;color:var(--rq3);font-size:11px}
+.cap-head .ctx{margin-left:auto;display:flex;gap:8px;align-items:center;font-family:var(--mono);font-size:10px;color:var(--tx4)}
+.cap-head .ctx .pf{color:var(--rq3)}
+.cap-act{height:2px;background:linear-gradient(90deg,transparent,var(--rq2),var(--rq3),var(--rq2),transparent);background-size:220% 100%;animation:slidebar 1s linear infinite;opacity:0;transition:opacity .3s}
+.cap-act.on{opacity:1}
+@keyframes slidebar{to{background-position:-220% 0}}
+.cap-body{padding:13px 14px;font-family:var(--mono);font-size:12.5px;line-height:1.8;color:#f0eefc;min-height:64px}
+.cap-verdict{display:flex;align-items:center;gap:9px;padding:9px 14px;border-top:1px solid var(--line);font-family:var(--mono);font-size:11px;color:var(--tx3);background:rgba(0,0,0,.25);min-height:37px}
+.cap-actions{display:flex;align-items:center;gap:16px;padding:8px 14px;border-top:1px solid var(--line);font-size:10.5px;color:var(--tx3);background:rgba(0,0,0,.25)}
+.cap-actions .ml{margin-left:auto}
+.toast{position:absolute;left:50%;bottom:22px;transform:translate(-50%,8px);opacity:0;z-index:40;font-family:var(--mono);font-size:11px;color:#a7e9cd;background:rgba(0,0,0,.7);border:1px solid rgba(52,211,153,.25);border-radius:100px;padding:7px 16px;backdrop-filter:blur(10px);transition:opacity .35s,transform .35s;pointer-events:none}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.surfaces{margin:72px auto 0;max-width:860px;display:grid;gap:0;border-top:1px solid var(--line)}
+.surf-row{display:grid;grid-template-columns:60px 200px 1fr;gap:20px;align-items:baseline;padding:18px 0;border-bottom:1px solid var(--line);font-size:13.5px}
+.surf-row .num{font-family:var(--mono);font-size:11px;color:var(--tx4)}
+.surf-row .nm{color:var(--tx);font-weight:500;display:flex;gap:10px;align-items:center}
+.surf-row .nm .rqdot{width:6px;height:6px;border-radius:50%;background:var(--rq);display:inline-block}
+.surf-row .ds{color:var(--tx3)}
+@media(max-width:720px){.surf-row{grid-template-columns:1fr;gap:4px}}
+
+/* ── section 08 · quiet ── */
+.quiet-grid{display:grid;gap:56px}
+@media(min-width:1020px){.quiet-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:80px}}
+.quiet-block h3{font-size:19px;font-weight:600;color:#fff;letter-spacing:-.01em;margin-bottom:8px}
+.quiet-block .sub{font-size:13.5px;color:var(--tx3);margin-bottom:26px}
+.providers{font-family:var(--mono);font-size:13px;color:var(--tx2);display:flex;flex-wrap:wrap;gap:10px 0}
+.providers span{padding-right:18px;position:relative}
+.providers span:not(:last-child)::after{content:"·";position:absolute;right:7px;color:var(--tx4)}
+.quiet-list{list-style:none;border-top:1px solid var(--line)}
+.quiet-list li{display:flex;gap:14px;align-items:baseline;padding:12.5px 0;border-bottom:1px solid var(--line);font-size:13.5px;color:var(--tx2)}
+.quiet-list li .tic{font-family:var(--mono);font-size:11px;color:var(--ok);flex:0 0 14px}
+.secret-demo{margin-top:30px;border:1px solid var(--line2);border-radius:11px;background:#0a0a10;padding:16px 18px;font-family:var(--mono);font-size:12.5px;line-height:2}
+.secret-demo .lbl{font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--tx4);display:block;margin-bottom:8px}
+.secret-demo .tok{background:rgba(251,113,133,.12);box-shadow:0 0 0 1px rgba(251,113,133,.4);border-radius:4px;color:#fecdd3;padding:1px 4px}
+.secret-demo .warn-line{display:flex;gap:10px;align-items:baseline;margin-top:10px;color:var(--warn);font-size:11.5px}
+.secret-demo .warn-line .fix{color:var(--tx3)}
+
+/* ── final / oss ── */
+.final{padding:150px 0 120px;text-align:left;border-top:1px solid var(--line)}
+.final h2{font-size:clamp(38px,6vw,72px)}
+.final .row{margin-top:44px;display:flex;gap:18px;align-items:center;flex-wrap:wrap}
+.oss{margin-top:80px;border-top:1px solid var(--line);padding-top:26px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;font-size:13px;color:var(--tx3)}
+.oss .mono{font-size:12px}
+.oss a{border-bottom:1px solid var(--line2);transition:color .2s,border-color .2s}
+.oss a:hover{color:#fff;border-color:var(--tx3)}
+
+/* ── footer ── */
+footer{border-top:1px solid var(--line);padding:34px 0 44px}
+.foot{display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap;align-items:center;font-size:12.5px;color:var(--tx3)}
+.foot .fl{display:flex;gap:22px;flex-wrap:wrap}
+.foot a{transition:color .2s}
+.foot a:hover{color:#fff}
+.foot .l{display:flex;gap:10px;align-items:center;font-family:var(--mono);font-size:12px}
+.foot .l .mark{color:var(--rq)}
+
+/* ── mobile tuning ── */
+@media(max-width:720px){
+  .sec{padding:88px 0}
+  .wrap{padding:0 22px}
+  .hero{padding-top:110px}
+  .hero-cta{align-items:flex-start;flex-direction:column}
+  .install{max-width:100%;gap:8px;padding:10px 11px;font-size:11.5px;white-space:nowrap}
+  .install .cp{padding-left:8px;font-size:10px}
+  .hero-sub,.lede{overflow-wrap:anywhere}
+  .hd{min-width:0}
+  .hd-stage{padding:20px 18px 18px}
+  .term-body{min-height:300px;font-size:11.5px;padding:16px 14px 20px}
+  .capsule{top:auto;bottom:12px}
+  .editor-body{font-size:11px}
+  .native{padding:100px 0}
+}
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
+  html{scroll-behavior:auto}
+}
+</style>
+</head>
+<body>
+
+<header class="top" id="topbar">
+  <div class="wrap top-in">
+    <a class="logo" href="#"><span class="mark">rq</span>Reqraft</a>
+    <nav>
+      <a href="#transform">Rewrite</a>
+      <a href="#fidelity">Fidelity</a>
+      <a href="#cli">CLI</a>
+      <a href="#levels">Levels</a>
+      <a href="#profiles">Profiles</a>
+      <a href="#native">Native&nbsp;UI</a>
+      <a class="gh" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">GitHub&nbsp;↗</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ══════════ HERO ══════════ -->
+<section class="hero">
+  <div class="hero-fade"></div>
+  <div class="wrap hero-grid">
+    <div>
+      <h1>Shape the request.<br><em>Keep the intent.</em></h1>
+      <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>then checks for known scope additions and disproportionate expansion.</strong></p>
+      <div class="hero-cta">
+        <button class="install" id="installHero" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpHero">copy</span></button>
+        <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">View on GitHub <span>→</span></a>
+      </div>
+    </div>
+
+    <div class="hd">
+      <div class="hd-stage" aria-label="Live example of a Reqraft rewrite">
+        <div class="hd-tag"><span>before / after</span><span class="rqdot"><i aria-hidden="true">&#8203;</i>reqraft</span></div>
+        <div class="hd-rough" id="hdRough"><span class="inner" id="hdRoughText"></span><span class="caret" id="hdCaret" aria-hidden="true">&#8203;</span><span class="hd-scan" id="hdScan" aria-hidden="true">&#8203;</span></div>
+        <div class="hd-mid" id="hdMid"><span class="ln" aria-hidden="true">&#8203;</span><span class="who">reqraft</span><span>· standard · auto → code</span></div>
+        <div class="hd-result" id="hdResult"></div>
+        <div class="hd-verdict" id="hdVerdict"><span class="v">✓ quality: good</span><span>no scope warning detected</span><span class="x">local checks</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FLOW STRIP ══════════ -->
+<div class="flow rv">
+  <div class="wrap flow-in">
+    <span class="node you">you</span><span class="arr">→</span>
+    <span class="node">rough request</span><span class="arr">→</span>
+    <span class="node rq">reqraft</span><span class="arr">→</span>
+    <span class="node out">clear prompt + fidelity signals</span><span class="arr">→</span>
+    <span class="node tail">claude code · codex · opencode · chatgpt · your agent</span>
+  </div>
+</div>
+
+<!-- ══════════ 02 · TRANSFORMATION ══════════ -->
+<section class="sec" id="transform">
+  <div class="wrap split">
+    <div class="rv">
+      <div class="kick"><b>01</b> The rewrite</div>
+      <h2>Better instructions.<br><em>Same intent.</em></h2>
+      <p class="lede">Reqraft sits <strong>just before the AI</strong> — an extremely light layer between your thought and the model. Not a chatbot, not an agent, not another IDE. It improves the request while preserving explicit constraints and surfacing possible drift.</p>
+      <div class="tf-notes">
+        <div class="n"><span class="sw" aria-hidden="true">&#8203;</span><span><b>clarified</b> — grammar, target and constraints made explicit</span></div>
+        <div class="n"><span class="sw g" aria-hidden="true">&#8203;</span><span><b>preserved</b> — “don’t touch the menu” survives the rewrite</span></div>
+        <div class="n"><span class="sw d" aria-hidden="true">&#8203;</span><span><b>checked</b> — known scope additions are reported when detected</span></div>
+      </div>
+    </div>
+
+    <div class="tf-demo rv">
+      <div class="tf-toggle" role="tablist">
+        <button class="on" data-pane="out" type="button">rewritten</button>
+        <button data-pane="rough" type="button">original</button>
+        <button data-pane="diff" type="button">diff</button>
+      </div>
+      <div class="tf-stage">
+        <div class="tf-pane on" data-pane="out">
+          <p class="tf-out">Add a <span class="frag" title="clarified">red button to the header</span>, reusing existing components and styles, <span class="frag mk-ok" title="preserved">without modifying the menu</span>.<span class="tail-note"><span class="dash">└</span> the explicit menu constraint survives the rewrite and no known scope warning is detected.</span></p>
         </div>
-
-        <div class="hero-intro">
-          <p>
-            Reqraft sits between what you type and the AI agent that receives it. It fixes the
-            wording, exposes the constraints, and keeps your intent intact.
-          </p>
-          <div class="hero-actions">
-            <div class="copy-command" role="group" aria-label="Install Reqraft">
-              <span aria-hidden="true">$</span>
-              <code>npm install -g @reqraft/cli</code>
-              <button type="button" data-copy="npm install -g @reqraft/cli">
-                <span class="copy-label">Copy</span>
-                <span class="copied-label" aria-live="polite">Copied</span>
-              </button>
-            </div>
-            <a class="plain-link" href="https://github.com/ronael/Reqraft">Inspect the source</a>
-          </div>
+        <div class="tf-pane" data-pane="rough">
+          <p class="tf-rough">add a red button to the header dont touch the menu</p>
         </div>
-
-        <div class="intent-chain" aria-label="How Reqraft transforms a request">
-          <div class="chain-input">
-            <span class="chain-label">01 · you</span>
-            <p>fix the form on mobile<br /><mark>don't change anything else</mark></p>
-            <small>rough request</small>
-          </div>
-
-          <div class="chain-gate" aria-hidden="true">
-            <span class="rail rail-before">&#8203;</span>
-            <span class="gate-mark">rq</span>
-            <span class="gate-signal">intent locked</span>
-            <span class="rail rail-after">&#8203;</span>
-          </div>
-
-          <div class="chain-output">
-            <span class="chain-label">02 · reqraft</span>
-            <p>
-              Fix the form on mobile while preserving the current desktop behavior and leaving all
-              unrelated code unchanged.
-            </p>
-            <div class="constraint-proof">
-              <span><i aria-hidden="true">&#8203;</i>mobile fix</span>
-              <span><i aria-hidden="true">&#8203;</i>desktop preserved</span>
-              <span><i aria-hidden="true">&#8203;</i>no scope added</span>
-            </div>
-          </div>
-
-          <div class="agent-destinations" aria-label="Possible AI agent destinations">
-            <span class="chain-label">03 · your agent</span>
-            <p>Claude Code <i>/</i> Codex <i>/</i> OpenCode <i>/</i> ChatGPT <i>/</i> …</p>
-          </div>
-        </div>
-
-        <a class="next-chapter" href="#fidelity"
-          ><span>Next</span> Why fidelity matters <b aria-hidden="true">↓</b></a
-        >
-      </section>
-
-      <section class="fidelity-section" id="fidelity" aria-labelledby="fidelity-title">
-        <div class="fidelity-heading">
-          <p class="chapter-label">01 · Fidelity, not flattery</p>
-          <h2 id="fidelity-title">A rewrite<br />you can audit.</h2>
-          <p>
-            Better wording is easy. Better wording without quietly changing the assignment is the
-            product.
-          </p>
-        </div>
-
-        <div class="fidelity-lab" data-fidelity-lab>
-          <div class="lab-controls" role="group" aria-label="Fidelity examples">
-            <button type="button" class="is-active" data-fidelity="faithful" aria-pressed="true">
-              <span class="signal signal-good" aria-hidden="true">&#8203;</span>Faithful
-            </button>
-            <button type="button" data-fidelity="review" aria-pressed="false">
-              <span class="signal signal-warn" aria-hidden="true">&#8203;</span>Needs review
-            </button>
-          </div>
-
-          <div class="lab-sheet" data-fidelity-panel="faithful">
-            <div class="lab-original">
-              <span>Original</span>
-              <p>ajoute un bouton rouge dans le header sans toucher au menu</p>
-            </div>
-            <div class="rewrite-arrow" aria-hidden="true"><span>rq</span></div>
-            <div class="lab-rewrite">
-              <span>Reqraft</span>
-              <p>
-                Ajoute un <mark class="clarified">bouton rouge</mark> dans le header, en respectant
-                les composants et les styles existants,
-                <mark class="preserved">sans modifier le menu</mark>.
-              </p>
-            </div>
-            <div class="lab-verdict verdict-good">
-              <strong><span aria-hidden="true">✓</span> faithful</strong>
-              <p>No unsupported additions</p>
-              <div class="verdict-metrics">
-                <div>
-                  <span class="metric-name">Intent</span>
-                  <span class="metric-value">preserved</span>
-                </div>
-                <div>
-                  <span class="metric-name">Scope</span>
-                  <span class="metric-value">unchanged</span>
-                </div>
-                <div>
-                  <span class="metric-name">Expansion</span>
-                  <span class="metric-value">proportionate</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="lab-sheet" data-fidelity-panel="review" hidden>
-            <div class="lab-original">
-              <span>Original</span>
-              <p>ajoute une page pour afficher les avis clients</p>
-            </div>
-            <div class="rewrite-arrow" aria-hidden="true"><span>rq</span></div>
-            <div class="lab-rewrite">
-              <span>Model output</span>
-              <p>
-                Create a customer reviews page with
-                <mark class="unsupported"
-                  >filters, ratings, a carousel, moderation tools, and an admin dashboard</mark
-                >.
-              </p>
-            </div>
-            <div class="lab-verdict verdict-warn">
-              <strong><span aria-hidden="true">!</span> review</strong>
-              <p>Disproportionate expansion detected</p>
-              <div class="verdict-metrics">
-                <div>
-                  <span class="metric-name">Intent</span>
-                  <span class="metric-value">partly preserved</span>
-                </div>
-                <div>
-                  <span class="metric-name">Scope</span>
-                  <span class="metric-value">unsupported additions</span>
-                </div>
-                <div>
-                  <span class="metric-name">Action</span>
-                  <span class="metric-value">output remains visible</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <p class="fidelity-footnote">
-          Reqraft checks the reformulation after generation. Warnings stay visible; the generated
-          text does too.
-        </p>
-      </section>
-
-      <section class="levels-section" id="levels" aria-labelledby="levels-title">
-        <div class="levels-heading">
-          <p class="chapter-label dark-label">02 · One request, three depths</p>
-          <h2 id="levels-title">Use only as much structure as the task needs.</h2>
-        </div>
-
-        <div class="level-workbench" data-level-workbench>
-          <div class="level-source">
-            <span>Same input every time</span>
-            <p>fix login page on mobile keep current auth</p>
-          </div>
-
-          <div class="level-selector" role="tablist" aria-label="Reqraft level">
-            <button
-              id="level-minimal"
-              type="button"
-              role="tab"
-              data-level="minimal"
-              aria-controls="level-output"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              <span>minimal</span><small>correct</small>
-            </button>
-            <button
-              type="button"
-              role="tab"
-              id="level-standard"
-              data-level="standard"
-              aria-controls="level-output"
-              aria-selected="true"
-              class="is-active"
-            >
-              <span>standard</span><small>clarify</small>
-            </button>
-            <button
-              id="level-complete"
-              type="button"
-              role="tab"
-              data-level="complete"
-              aria-controls="level-output"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              <span>complete</span><small>structure</small>
-            </button>
-          </div>
-
-          <div
-            id="level-output"
-            class="level-output"
-            role="tabpanel"
-            aria-labelledby="level-standard"
-            tabindex="0"
-          >
-            <div class="output-meta">
-              <span>profile <b data-profile-label>frontend</b></span>
-              <span>level <b data-level-label>standard</b></span>
-              <span class="local-detection">detected locally</span>
-            </div>
-            <p data-level-output>
-              Fix the login page on mobile while preserving the current authentication flow and
-              existing desktop behavior. Reuse the project’s current components and styles, and do
-              not change unrelated functionality.
-            </p>
-            <div class="output-measure" aria-hidden="true">
-              <span data-level-measure>&#8203;</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="profile-line" aria-label="Available Reqraft profiles">
-          <span>Context changes the rewrite, not the rules.</span>
-          <div>
-            <b>auto</b><i>clean</i><i>code</i><i>frontend</i><i>web-design</i><i>debug</i
-            ><i>review</i><i>writing</i>
-          </div>
-          <small><b>auto</b> detects the context locally before any provider call.</small>
-        </div>
-      </section>
-
-      <section class="cli-section" id="cli" aria-labelledby="cli-title">
-        <div class="cli-heading">
-          <p class="chapter-label">03 · The product you can use today</p>
-          <h2 id="cli-title">A real CLI.<br />Not a demo prompt.</h2>
-          <p>Open the workshop with <code>rp</code>, or keep moving from a single command.</p>
-        </div>
-
-        <div class="cli-console" data-cli-console>
-          <div class="console-commands" role="tablist" aria-label="CLI examples">
-            <button
-              type="button"
-              role="tab"
-              id="command-direct"
-              data-command="direct"
-              aria-controls="command-output"
-              aria-selected="true"
-              class="is-active"
-            >
-              <span>01</span><code>rp "your request"</code><small>direct</small>
-            </button>
-            <button
-              id="command-file"
-              type="button"
-              role="tab"
-              data-command="file"
-              aria-controls="command-output"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              <span>02</span><code>rp --file request.md</code><small>file</small>
-            </button>
-            <button
-              id="command-diff"
-              type="button"
-              role="tab"
-              data-command="diff"
-              aria-controls="command-output"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              <span>03</span><code>rp "..." --diff</code><small>inspect</small>
-            </button>
-            <button
-              id="command-stats"
-              type="button"
-              role="tab"
-              data-command="stats"
-              aria-controls="command-output"
-              aria-selected="false"
-              tabindex="-1"
-            >
-              <span>04</span><code>rp "..." --stats</code><small>measure</small>
-            </button>
-          </div>
-
-          <div
-            id="command-output"
-            class="console-output"
-            role="tabpanel"
-            aria-labelledby="command-direct"
-            tabindex="0"
-          >
-            <div class="console-bar">
-              <span><b>reqraft</b> / command</span>
-              <span data-console-status>ready</span>
-            </div>
-            <div class="console-body">
-              <p class="console-prompt">
-                <span>$</span> <code data-console-command>rp "fix form mobile"</code>
-              </p>
-              <div class="console-result" data-console-result>
-                Fix the form on mobile while preserving the existing desktop behavior and leaving
-                unrelated functionality unchanged.
-              </div>
-              <div class="console-meta" data-console-meta>
-                <span>frontend</span><span>standard</span><span class="meta-success">faithful</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div class="provider-line">
-          <p>Model-agnostic by design.</p>
-          <div aria-label="Supported providers">
-            <span>Anthropic</span><span>OpenAI</span><span>DeepSeek</span><span>Mistral</span
-            ><span>OpenAI-compatible</span>
-          </div>
-          <small>Your model choice remains yours.</small>
-        </div>
-      </section>
-
-      <section class="privacy-section" id="privacy" aria-labelledby="privacy-title">
-        <div class="privacy-heading">
-          <p class="chapter-label dark-label">04 · Local-first by construction</p>
-          <h2 id="privacy-title">Your prompt doesn’t become our dataset.</h2>
-        </div>
-        <div class="privacy-route" aria-label="How a Reqraft request travels">
-          <article class="route-node route-local">
-            <div class="route-node-heading">
-              <span>01 · Local</span>
-              <strong>Your machine</strong>
-            </div>
-            <p>Your request is checked for potential secrets before it can leave the CLI.</p>
-            <div class="route-code"><span>$</span> rp "your request"</div>
-          </article>
-
-          <div class="route-transfer" aria-label="Direct encrypted request">
-            <span>Direct HTTPS request</span>
-            <i aria-hidden="true">&#8203;</i>
-            <strong>No Reqraft server</strong>
-          </div>
-
-          <article class="route-node route-provider">
-            <div class="route-node-heading">
-              <span>02 · External</span>
-              <strong>Your provider</strong>
-            </div>
-            <p>The request goes straight to the AI provider and model you configured.</p>
-            <div class="route-provider-list">
-              <span>OpenAI</span><span>Anthropic</span><span>+</span>
-            </div>
-          </article>
-        </div>
-        <div class="privacy-proof" aria-label="Reqraft privacy defaults">
-          <p><span>Prompt history stored</span><strong>0</strong></p>
-          <p><span>Telemetry by default</span><strong>Off</strong></p>
-          <p><span>Credential ownership</span><strong>Your key</strong></p>
-        </div>
-      </section>
-
-      <section class="native-section" id="native" aria-labelledby="native-title">
-        <div class="native-reveal">
-          <p class="chapter-label">05 · Coming next · Native apps in development</p>
-          <h2 id="native-title">The CLI is just<br />the beginning.</h2>
-          <p>
-            Reqraft is evolving into a native writing layer, starting on macOS. Improve selected
-            text in place, then keep moving without breaking your flow.
-          </p>
-        </div>
-
-        <div class="native-stage" data-native-stage data-stage="idle">
-          <div class="native-menubar">
-            <span class="app-name">Mail</span>
-            <span class="menu-copy">File&nbsp;&nbsp; Edit&nbsp;&nbsp; Format</span>
-            <span class="rq-menubar"><i aria-hidden="true">&#8203;</i> rq</span>
-            <span>13:25</span>
-          </div>
-
-          <div class="mail-canvas">
-            <div class="mail-sheet">
-              <div class="mail-toolbar">
-                <span class="traffic" aria-hidden="true"
-                  ><i>&#8203;</i><i>&#8203;</i><i>&#8203;</i></span
-                >
-                <span>New message</span>
-                <small>Draft</small>
-              </div>
-              <div class="mail-meta"><span>To</span><b>team@studio.dev</b></div>
-              <div class="mail-meta"><span>Subject</span><b>Website update</b></div>
-              <div class="mail-body">
-                <p>Hi,</p>
-                <p>Could you handle this:</p>
-                <p class="selected-request" data-selected-text>
-                  fix the form on mobile don't change anything else
-                </p>
-                <p>Thanks.</p>
-              </div>
-            </div>
-
-            <div class="native-capsule" aria-live="polite">
-              <div class="capsule-head">
-                <span><b>rq</b> <i data-capsule-state>waiting</i></span>
-                <small>⌥ Space</small>
-              </div>
-              <div class="capsule-profile">
-                <span>profile</span> frontend <small>· detected locally</small>
-              </div>
-              <div class="capsule-result" data-capsule-result>
-                Fix the form on mobile while preserving the current desktop behavior and leaving
-                unrelated functionality unchanged.
-              </div>
-              <div class="capsule-verdict">
-                <span>✓ faithful</span><small>No unsupported additions</small>
-              </div>
-              <div class="capsule-actions">
-                <span><kbd>↵</kbd> replace</span><span><kbd>⌥</kbd> compare</span
-                ><span><kbd>esc</kbd> close</span>
-              </div>
-            </div>
-
-            <div class="replace-toast"><span>Replaced in Mail</span><small>⌘Z to undo</small></div>
-          </div>
-
-          <div class="native-timeline">
-            <ol aria-label="Native UI demonstration steps">
-              <li data-native-step="idle" class="is-active"><span>01</span>select</li>
-              <li data-native-step="invoke"><span>02</span>shortcut</li>
-              <li data-native-step="analyze"><span>03</span>analyze</li>
-              <li data-native-step="verify"><span>04</span>verify</li>
-              <li data-native-step="replace"><span>05</span>replace</li>
-            </ol>
-            <button type="button" data-native-replay>Replay sequence</button>
+        <div class="tf-pane" data-pane="diff">
+          <div class="tf-diff">
+            <span class="minus">− add a red button to the header dont touch the menu</span>
+            <span class="plus">+ Add a red button to the header, reusing existing components and styles, without modifying the menu.</span>
           </div>
         </div>
+      </div>
+    </div>
+  </div>
+</section>
 
-        <div class="native-afterword">
-          <p>
-            select text <span>→</span> global shortcut <span>→</span> verify <span>→</span> replace
-          </p>
-          <p>
-            A light menu bar presence and a quick popover handle the rest. The full window is only
-            for configuration.
-          </p>
-        </div>
-      </section>
+<!-- ══════════ 03 · FIDELITY ══════════ -->
+<section class="sec" id="fidelity" style="padding-top:40px">
+  <div class="wrap fid-grid">
+    <div class="rv">
+      <div class="kick"><b>02</b> Fidelity control</div>
+      <h2>Rewrite, <em>then verify.</em></h2>
+      <p class="lede">A model can expand a small request into unasked-for scope. Reqraft runs local checks for known additions and disproportionate expansion — and <strong>shows a warning when those checks detect drift</strong>.</p>
+      <p class="lede" style="margin-top:14px">Not <span class="dim">“AI that rewrites your prompt.”</span> A tool that improves your request <strong>and keeps its quality signals visible.</strong></p>
+    </div>
 
-      <section class="closing-section" aria-labelledby="closing-title">
-        <div>
-          <p class="chapter-label dark-label">Open source · MIT</p>
-          <h2 id="closing-title">Write it rough.<br />Send it clear.</h2>
+    <div class="rv">
+      <div class="fid-in"><span class="p">$</span> input — “make a testimonials section”</div>
+
+      <div class="fid-case">
+        <div class="fid-case-h"><span class="who">a model alone might answer</span><span class="vchip verdict-warn">! review</span></div>
+        <p class="fid-text bad">Create a testimonials <span class="inv">carousel</span><span class="flag">unsupported_additions</span> with star ratings, filters, <span class="inv">animations</span>, pagination and a moderation dashboard. Make it <span class="inv">responsive</span>, add a <span class="inv">CTA</span> for story submissions, an <span class="inv">FAQ</span>, pricing comparison, SEO metadata, database persistence, moderator authentication, performance tracking and a matching footer. Introduce a new palette and loading transitions for every testimonial state.<span class="flag">disproportionate_expansion</span></p>
+        <div class="gauge-wrap">
+          <div class="gauge-meta"><span>expansion policy</span><span class="verdict-warn">over threshold</span></div>
+          <div class="gauge"><div class="fill warn" data-w="80%"></div><div class="th" style="left:37.5%"></div><div class="dot warn" data-l="80%"></div></div>
         </div>
-        <div class="closing-action">
-          <div class="copy-command closing-command" role="group" aria-label="Install Reqraft">
-            <span aria-hidden="true">$</span>
-            <code>npm install -g @reqraft/cli</code>
-            <button type="button" data-copy="npm install -g @reqraft/cli">
-              <span class="copy-label">Copy</span>
-              <span class="copied-label" aria-live="polite">Copied</span>
-            </button>
+      </div>
+
+      <div class="fid-case">
+        <div class="fid-case-h"><span class="who">reqraft, same input</span><span class="vchip verdict-ok">✓ no warning detected</span></div>
+        <p class="fid-text good">Create a testimonials section consistent with the existing layout, components and styles.</p>
+        <div class="gauge-wrap">
+          <div class="gauge-meta"><span>expansion policy</span><span class="verdict-ok">within threshold</span></div>
+          <div class="gauge"><div class="fill ok" data-w="10%"></div><div class="th" style="left:37.5%"></div><div class="dot ok" data-l="10%"></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 04 · CLI ══════════ -->
+<section class="sec cli" id="cli">
+  <div class="wrap cli-grid">
+    <div class="rv">
+      <div class="kick"><b>03</b> Available today</div>
+      <h2>It lives in<br><em>your terminal.</em></h2>
+      <p class="lede">The CLI is the real product — install it now, use it in one word: <strong class="mono" style="font-size:14px">rp</strong>.</p>
+
+      <div class="cap-list">
+        <div class="cap-row"><span class="flag-n">rp "…"</span><span class="flag-d">rewrite a request inline</span></div>
+        <div class="cap-row"><span class="flag-n">--file</span><span class="flag-d">rewrite from a file — rp --file request.md</span></div>
+        <div class="cap-row"><span class="flag-n">--copy</span><span class="flag-d">straight to the clipboard</span></div>
+        <div class="cap-row"><span class="flag-n">--diff</span><span class="flag-d">see exactly what changed</span></div>
+        <div class="cap-row"><span class="flag-n">--explain</span><span class="flag-d">why it changed</span></div>
+        <div class="cap-row"><span class="flag-n">--stats</span><span class="flag-d">latency, tokens, provider, model and quality status</span></div>
+      </div>
+
+      <div class="cli-install">
+        <button class="install" id="installCli" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpCli">copy</span></button>
+      </div>
+    </div>
+
+    <div class="rv">
+      <div class="term">
+        <div class="term-bar"><i aria-hidden="true">&#8203;</i><i aria-hidden="true">&#8203;</i><i aria-hidden="true">&#8203;</i><span>zsh — reqraft</span></div>
+        <div class="term-body" id="termBody"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 05 · LEVELS ══════════ -->
+<section class="sec" id="levels">
+  <div class="wrap">
+    <div class="lvl-head rv">
+      <div>
+        <div class="kick"><b>04</b> Rewrite depth</div>
+        <h2>Three depths.<br><em>One request.</em></h2>
+      </div>
+      <div class="seg" id="lvlSeg">
+        <button data-lvl="minimal" type="button">minimal</button>
+        <button class="on" data-lvl="standard" type="button">standard</button>
+        <button data-lvl="complete" type="button">complete</button>
+      </div>
+    </div>
+
+    <div class="lvl-demo rv">
+      <div>
+        <div class="lvl-req">same request — <span class="q">“add dark mode to the settings page”</span></div>
+        <div class="lvl-out" id="lvlOut"></div>
+      </div>
+      <div class="lvl-side">
+        <div class="what" id="lvlWhat"></div>
+        <ul id="lvlList"></ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 06 · PROFILES ══════════ -->
+<section class="sec" id="profiles" style="padding-top:40px">
+  <div class="wrap">
+    <div class="rv" style="max-width:640px">
+      <div class="kick"><b>05</b> Profiles</div>
+      <h2>It reads the room. <em>Locally.</em></h2>
+      <p class="lede">Leave it on <strong class="mono" style="font-size:13.5px">auto</strong> and Reqraft infers the right profile on your machine, before any network call. Or pin one yourself.</p>
+    </div>
+
+    <div class="prof-lines rv">
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "fix the form on mobile"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">frontend</span><span class="loc">LOCAL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "rewrite this landing headline"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">web-design</span><span class="loc">LOCAL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "why does this test only fail in CI"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">code</span><span class="loc">LOCAL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "make this section feel calmer"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">web-design</span><span class="loc">LOCAL</span></span></div>
+    </div>
+
+    <div class="prof-all rv">
+      <span class="a">auto</span><span>clean</span><span>code</span><span>frontend</span><span>web-design</span><span>debug</span><span>review</span><span>writing</span>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 07 · NATIVE UI ══════════ -->
+<section class="native" id="native">
+  <div class="wrap">
+    <div class="rv" style="max-width:720px">
+      <div class="kicker-next"><i aria-hidden="true">&#8203;</i>Coming next — Native UI, in development</div>
+      <h2>Today it lives in your terminal.<br><em>Next, it barely needs an interface.</em></h2>
+      <p class="lede">The planned macOS experience starts with selected text in apps such as VS Code, Mail, Slack or a browser. Invoke Reqraft, review the rewrite and its fidelity signals, then choose whether to replace the selection.</p>
+    </div>
+
+    <div class="stage-wrap rv">
+      <div class="stage">
+        <div class="stage-caption"><span>macOS concept preview</span><span>planned shortcut · ⌥ space</span></div>
+        <div class="menubar">
+          <div class="l"><span>●</span><span style="font-weight:600;color:var(--tx2)">Code</span><span>File</span><span>Edit</span><span>View</span></div>
+          <div class="r"><span class="rqb"><i id="mbDot"></i>rq</span><span>13:25</span></div>
+        </div>
+        <div class="editor">
+          <div class="editor-head"><i class="r1" aria-hidden="true">&#8203;</i><i class="r2" aria-hidden="true">&#8203;</i><i class="r3" aria-hidden="true">&#8203;</i><span>Header.tsx</span></div>
+          <div class="editor-body">
+            <div class="ln">12<br>13<br>14<br>15<br>16<br>17<br>18</div>
+            <pre><span class="kw">export function</span> Header() {
+  <span class="kw">return</span> (
+    &lt;header className=<span class="str">"flex items-center"</span>&gt;
+      <span id="selText" class="sel-text">{/* fix the form on mobile dont touch auth */}</span>
+      &lt;Navigation /&gt;
+    &lt;/header&gt;
+  )
+}</pre>
           </div>
-          <p>Then run <code>rp init</code>. The guided setup handles the rest.</p>
-          <a class="plain-link dark-link" href="https://github.com/ronael/Reqraft"
-            >Read the code, open an issue, or contribute.</a
-          >
         </div>
-      </section>
-    </main>
 
-    <footer class="site-footer">
-      <a class="wordmark" href="#top"
-        ><img class="wordmark-mark" src="docs/assets/reqraft-mark.svg" alt="" /><span
-          >reqraft</span
-        ></a
-      >
-      <p>Shape the request. Keep the intent.</p>
-      <nav aria-label="Footer navigation">
-        <a href="https://github.com/ronael/Reqraft">GitHub</a>
-        <a href="https://www.npmjs.com/package/@reqraft/cli">npm</a>
-        <a href="https://github.com/ronael/Reqraft/blob/main/SECURITY.md">Security</a>
-      </nav>
-    </footer>
-  </body>
+        <div class="capsule" id="capsule">
+          <div class="cap-head">
+            <span class="rqn">rq</span><span>selection · Code</span>
+            <span class="ctx" id="capCtx"><span id="capCtxTxt">local analysis…</span></span>
+          </div>
+          <div class="cap-act" id="capAct"></div>
+          <div class="cap-body"><span id="capStream"></span><span class="caret" id="capCaret" style="display:none"></span></div>
+          <div class="cap-verdict" id="capVerdict"></div>
+          <div class="cap-actions" id="capActions"></div>
+        </div>
+
+        <div class="toast" id="toast">✓ replaced <span style="color:var(--tx4)">· ⌘Z to undo</span></div>
+      </div>
+    </div>
+
+    <div class="surfaces rv">
+      <div class="surf-row"><span class="num">01</span><span class="nm">The capsule</span><span class="ds">Planned contextual interaction, keyboard-driven and anchored to the selected text.</span></div>
+      <div class="surf-row"><span class="num">02</span><span class="nm"><span class="rqdot" aria-hidden="true">&#8203;</span>Menu bar</span><span class="ds">Planned access to quick input, the last result and profile selection.</span></div>
+      <div class="surf-row"><span class="num">03</span><span class="nm">Settings</span><span class="ds">Planned configuration for shortcuts, providers, models and diagnostics.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ 08 · QUIET ══════════ -->
+<section class="sec" id="quiet">
+  <div class="wrap">
+    <div class="rv" style="max-width:640px;margin-bottom:70px">
+      <div class="kick"><b>06</b> Quiet by design</div>
+      <h2>Your words don’t<br><em>become our data.</em></h2>
+    </div>
+
+    <div class="quiet-grid">
+      <div class="quiet-block rv">
+        <h3>Model-agnostic</h3>
+        <p class="sub">Reqraft uses the keys, provider and model you configure.</p>
+        <div class="providers"><span>Anthropic</span><span>OpenAI</span><span>DeepSeek</span><span>Mistral</span><span>OpenAI-compatible</span></div>
+        <p class="sub" style="margin-top:22px;margin-bottom:0">OpenAI-compatible endpoints can be configured, including compatible local servers.</p>
+      </div>
+
+      <div class="quiet-block rv">
+        <h3>Local-first</h3>
+        <p class="sub">A developer tool, not a pipeline into someone’s database.</p>
+        <ul class="quiet-list">
+          <li><span class="tic">✓</span>No telemetry by default</li>
+          <li><span class="tic">✓</span>No centralized prompt history</li>
+          <li><span class="tic">✓</span>No Reqraft database absorbing your requests</li>
+          <li><span class="tic">✓</span>Credentials use environment variables or supported system storage</li>
+          <li><span class="tic">✓</span>Only your chosen provider ever receives the request</li>
+        </ul>
+        <div class="secret-demo">
+          <span class="lbl">before anything is sent — local secret detection</span>
+          deploy with token <span class="tok">ghp_9f3Kx2…</span> and rotate it after
+          <div class="warn-line"><span>! github token detected</span><span class="fix">— blocked locally by default; <span class="mono">--force</span> remains explicit</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ FINAL ══════════ -->
+<section class="final">
+  <div class="wrap">
+    <div class="rv">
+      <h2>Write it rough.<br><em>Send it right.</em></h2>
+      <div class="row">
+        <button class="install" id="installFinal" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpFinal">copy</span></button>
+        <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">github.com/ronael/Reqraft <span>→</span></a>
+      </div>
+      <div class="oss">
+        <span>Open source, MIT licensed. Read every line before you trust it — that’s the point.</span>
+        <span class="mono">npm · github · docs</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div class="l"><span class="mark">rq</span><span>Reqraft — shape the request, keep the intent.</span></div>
+    <div class="fl">
+      <a href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://www.npmjs.com/package/@reqraft/cli" target="_blank" rel="noopener">npm</a>
+      <a href="https://github.com/ronael/Reqraft#readme" target="_blank" rel="noopener">Documentation</a>
+      <a href="https://github.com/ronael/Reqraft/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a>
+    </div>
+  </div>
+</footer>
+
+<script>
+(() => {
+"use strict";
+const RM = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const $ = id => document.getElementById(id);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;");
+
+/* ── topbar ── */
+addEventListener("scroll", () => $("topbar").classList.toggle("scrolled", scrollY > 24), {passive:true});
+
+/* ── reveal ── */
+const io = new IntersectionObserver(es => es.forEach(e => {
+  if (e.isIntersecting){ e.target.classList.add("on"); io.unobserve(e.target); }
+}), {threshold:.12});
+document.querySelectorAll(".rv").forEach(n => io.observe(n));
+
+/* ── typing helper ── */
+async function typeInto(node, text, cps, chunk=1){
+  node.textContent = "";
+  for (let i = 0; i < text.length; i += chunk){
+    node.textContent = text.slice(0, i + chunk);
+    await sleep(cps);
+  }
+  node.textContent = text;
+}
+async function streamInto(node, text, caret){
+  node.textContent = "";
+  if (caret) caret.style.display = "inline-block";
+  for (let i = 0; i < text.length; i += 2){
+    node.textContent = text.slice(0, i + 2);
+    if (caret) node.after(caret);
+    await sleep(16);
+  }
+  node.textContent = text;
+  if (caret){ node.after(caret); caret.style.display = "none"; }
+}
+
+/* ══════════ HERO ══════════ */
+const ROUGH = "fix the form on mobile dont touch auth pls";
+const RESULT = "Fix the form on mobile while preserving the existing authentication behavior and without modifying unrelated functionality.";
+
+async function heroLoop(){
+  const rough = $("hdRough"), roughText = $("hdRoughText"), caret = $("hdCaret"),
+        scan = $("hdScan"), mid = $("hdMid"), result = $("hdResult"), verdict = $("hdVerdict");
+  for (;;){
+    // reset
+    rough.classList.remove("done"); mid.classList.remove("on");
+    verdict.classList.remove("on"); result.textContent = "";
+    scan.style.transition = "none"; scan.style.left = "0"; scan.style.opacity = "0";
+    caret.style.display = "inline-block";
+    await sleep(700);
+    await typeInto(roughText, ROUGH, 55);
+    caret.style.display = "none";
+    await sleep(650);
+    // scan sweep
+    scan.style.transition = "left .65s cubic-bezier(.2,.7,.3,1), opacity .3s";
+    scan.style.opacity = "1";
+    requestAnimationFrame(() => { scan.style.left = "calc(100% - 2px)"; });
+    await sleep(420);
+    rough.classList.add("done"); mid.classList.add("on");
+    await sleep(350);
+    scan.style.opacity = "0";
+    await streamInto(result, RESULT, null);
+    verdict.classList.add("on");
+    await sleep(4600);
+    result.style.transition = "opacity .5s"; verdict.style.transition = "opacity .4s";
+    result.style.opacity = "0"; verdict.style.opacity = "0";
+    rough.style.transition = "opacity .4s"; rough.style.opacity = "0"; mid.style.opacity = "0";
+    await sleep(600);
+    result.style.opacity = ""; verdict.style.opacity = ""; rough.style.opacity = ""; mid.style.opacity = "";
+    rough.style.transition = ""; result.style.transition = ""; verdict.style.transition = "";
+  }
+}
+if (RM){
+  $("hdRoughText").textContent = ROUGH;
+  $("hdCaret").style.display = "none";
+  $("hdRough").classList.add("done");
+  $("hdMid").classList.add("on");
+  $("hdResult").textContent = RESULT;
+  $("hdVerdict").classList.add("on");
+} else heroLoop();
+
+/* ══════════ transformation toggle ══════════ */
+document.querySelectorAll(".tf-toggle button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tf-toggle button").forEach(b => b.classList.toggle("on", b === btn));
+    document.querySelectorAll(".tf-pane").forEach(p => p.classList.toggle("on", p.dataset.pane === btn.dataset.pane));
+  });
+});
+document.querySelectorAll(".frag").forEach(f => {
+  f.addEventListener("mouseenter", () => f.classList.add("hot"));
+  f.addEventListener("mouseleave", () => f.classList.remove("hot"));
+});
+
+/* ══════════ fidelity gauges ══════════ */
+const gio = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  e.target.querySelectorAll(".fill").forEach(f => f.style.width = f.dataset.w);
+  e.target.querySelectorAll(".dot").forEach(d => d.style.left = d.dataset.l);
+  gio.unobserve(e.target);
+}), {threshold:.35});
+gio.observe($("fidelity"));
+
+/* ══════════ CLI terminal ══════════ */
+const TERM_SCRIPT = [
+  {cmd:'rp "fix the form on mobile"'},
+  {out:'→ Fix the form on mobile while preserving the existing desktop behavior and without modifying unrelated functionality.', cls:'o-line', d:500},
+  {pause:1900},
+  {cmd:'rp "make a testimonials section" --diff'},
+  {out:'− make a testimonials section', cls:'o-minus', d:420},
+  {out:'+ Create a testimonials section consistent with the existing layout, components and styles.', cls:'o-plus', d:260},
+  {pause:1900},
+  {cmd:'rp "ajoute un bouton rouge au header" --explain'},
+  {out:'Changes', cls:'o-dim', d:420},
+  {out:'• corrected grammar and spelling', cls:'o-line', d:160},
+  {out:'• clarified the target location', cls:'o-line', d:160},
+  {out:'• kept the scope limited to the requested button', cls:'o-line', d:160},
+  {out:'✓ no warnings reported', cls:'o-ok', d:220},
+  {pause:2800}
+];
+function termLine(html, cls){
+  const d = document.createElement("div");
+  d.className = cls; d.innerHTML = html;
+  d.style.opacity = "0"; d.style.transform = "translateY(3px)";
+  d.style.transition = "opacity .35s, transform .35s";
+  return d;
+}
+async function termLoop(){
+  const body = $("termBody");
+  for (;;){
+    body.innerHTML = "";
+    for (const step of TERM_SCRIPT){
+      if (step.pause){ await sleep(step.pause); continue; }
+      if (step.cmd){
+        const line = termLine('<span class="dollar">$</span><span class="typed"></span><span class="caret"></span>', "c-line");
+        body.appendChild(line);
+        requestAnimationFrame(() => { line.style.opacity = "1"; line.style.transform = "none"; });
+        const typed = line.querySelector(".typed");
+        await typeInto(typed, step.cmd, 42);
+        line.querySelector(".caret").remove();
+        await sleep(320);
+      } else {
+        await sleep(step.d);
+        const line = termLine(esc(step.out), step.cls);
+        body.appendChild(line);
+        requestAnimationFrame(() => { line.style.opacity = "1"; line.style.transform = "none"; });
+        body.scrollTop = body.scrollHeight;
+      }
+    }
+    // fade & restart
+    body.style.transition = "opacity .5s"; body.style.opacity = "0";
+    await sleep(650);
+    body.style.opacity = "1";
+    await sleep(300);
+  }
+}
+if (RM){
+  const body = $("termBody");
+  body.innerHTML = "";
+  for (const step of TERM_SCRIPT){
+    if (step.cmd) body.appendChild(Object.assign(termLine('<span class="dollar">$</span>' + esc(step.cmd), "c-line"), {style: {}}));
+    else if (step.out){ const l = termLine(esc(step.out), step.cls); body.appendChild(l); }
+  }
+  body.querySelectorAll("div").forEach(d => { d.style.opacity = "1"; d.style.transform = "none"; d.style.transition = "none"; });
+} else {
+  const tio = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting){ tio.disconnect(); termLoop(); }
+  }), {threshold:.25});
+  tio.observe($("termBody"));
+}
+
+/* ══════════ levels ══════════ */
+const LEVELS = {
+  minimal: {
+    out: 'Add dark mode to the settings page.',
+    what: 'A light touch. Fixes the language, keeps your structure — almost nothing added.',
+    list: ['spelling &amp; grammar', 'syntax', '<b>structure kept</b>', 'no additions']
+  },
+  standard: {
+    out: 'Add a dark mode option to the settings page, following the existing theme system and without changing unrelated settings.',
+    what: 'The default. Your request, clarified and directly usable by an agent.',
+    list: ['clarification', '<b>ready to use as-is</b>', 'constraints made visible', 'structure added when it helps', 'no business decisions invented']
+  },
+  complete: {
+    out: 'Add a dark mode option to the settings page.\n\n<span class="h">Requirements</span>\n• Follow the existing theme system\n• Limit changes to the settings page\n• Do not change unrelated settings\n\n<span class="h">Missing — flagged, not invented</span>\n<span class="miss">? default theme on first launch</span>\n<span class="miss">? sync with system preference</span>\n<span class="miss">? persist the selected theme</span>',
+    what: 'For complex asks. A stricter brief — and the gaps get flagged instead of silently filled.',
+    list: ['<b>rigorous brief</b>', 'information organized', 'missing elements signaled', 'nothing invented arbitrarily']
+  }
+};
+function setLevel(key, instant){
+  const out = $("lvlOut"), what = $("lvlWhat"), list = $("lvlList");
+  const L = LEVELS[key];
+  const apply = () => {
+    out.innerHTML = L.out;
+    what.innerHTML = L.what;
+    list.innerHTML = L.list.map(i => `<li>${i}</li>`).join("");
+    out.classList.remove("fading"); what.classList.remove("fading");
+  };
+  if (instant || RM){ apply(); return; }
+  out.classList.add("fading"); what.classList.add("fading");
+  setTimeout(apply, 300);
+}
+document.querySelectorAll("#lvlSeg button").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll("#lvlSeg button").forEach(b => b.classList.toggle("on", b === btn));
+    setLevel(btn.dataset.lvl);
+  });
+});
+setLevel("standard", true);
+
+/* ══════════ profiles ══════════ */
+const pio = new IntersectionObserver(es => es.forEach(e => {
+  if (!e.isIntersecting) return;
+  const rows = [...document.querySelectorAll(".prof-row")];
+  rows.forEach((r, i) => setTimeout(() => r.classList.add("seen"), RM ? 0 : 350 + i * 380));
+  pio.disconnect();
+}), {threshold:.3});
+pio.observe(document.querySelector(".prof-lines"));
+
+/* ══════════ native UI scene ══════════ */
+const CAP_RESULT = "Fix the form on mobile while preserving the existing authentication behavior and without touching unrelated code.";
+const CAP_SRC = "{/* fix the form on mobile dont touch auth */}";
+const CAP_NEW = "{/* " + "Fix the form on mobile while preserving the existing authentication behavior." + " */}";
+
+async function nativeLoop(){
+  const cap = $("capsule"), ctx = $("capCtxTxt"), act = $("capAct"),
+        stream = $("capStream"), caret = $("capCaret"),
+        verdict = $("capVerdict"), actions = $("capActions"),
+        sel = $("selText"), toast = $("toast"), dot = $("mbDot");
+  const V_READY = '<span style="color:var(--ok)">✓ quality: good</span><span>no scope warning detected</span>';
+  const A_READY = '<span style="color:var(--tx2)"><kbd>⏎</kbd> replace</span><span><kbd>⌥</kbd> compare</span><span class="ml"><kbd>⌘C</kbd> copy</span>';
+  for (;;){
+    // idle: text selected, reqraft invisible
+    sel.textContent = CAP_SRC;
+    sel.className = "sel-text";
+    cap.classList.remove("on"); toast.classList.remove("on");
+    verdict.innerHTML = ""; actions.innerHTML = ""; stream.textContent = "";
+    act.classList.remove("on"); dot.classList.remove("working");
+    ctx.textContent = "local analysis…"; ctx.className = "";
+    await sleep(1600);
+
+    // capsule appears, local analysis
+    cap.classList.add("on"); act.classList.add("on");
+    await sleep(1100);
+    ctx.innerHTML = '<span class="pf">frontend</span>&nbsp;· detected locally';
+    await sleep(800);
+
+    // generation streams
+    dot.classList.add("working");
+    await streamInto(stream, CAP_RESULT, caret);
+    act.classList.remove("on"); dot.classList.remove("working");
+    verdict.innerHTML = V_READY;
+    actions.innerHTML = A_READY;
+    await sleep(2300);
+
+    // accept: replace in place, disappear
+    cap.classList.remove("on");
+    sel.textContent = CAP_NEW;
+    sel.className = "sel-text replaced";
+    toast.classList.add("on");
+    await sleep(1100);
+    sel.className = "sel-text plain";
+    await sleep(2000);
+    toast.classList.remove("on");
+    await sleep(700);
+  }
+}
+if (RM){
+  const cap = $("capsule");
+  cap.classList.add("on");
+  $("capCtxTxt").innerHTML = '<span class="pf">frontend</span>&nbsp;· detected locally';
+  $("capStream").textContent = CAP_RESULT;
+  $("capVerdict").innerHTML = '<span style="color:var(--ok)">✓ quality: good</span><span>no scope warning detected</span>';
+  $("capActions").innerHTML = '<span style="color:var(--tx2)"><kbd>⏎</kbd> replace</span><span><kbd>⌥</kbd> compare</span><span class="ml"><kbd>⌘C</kbd> copy</span>';
+} else {
+  const nio = new IntersectionObserver(es => es.forEach(e => {
+    if (e.isIntersecting){ nio.disconnect(); nativeLoop(); }
+  }), {threshold:.2});
+  nio.observe($("capsule"));
+}
+
+/* ══════════ copy install ══════════ */
+async function copyInstallCommand(){
+  const command = "npm install -g @reqraft/cli";
+  try {
+    await navigator.clipboard.writeText(command);
+    return true;
+  } catch (_error) {
+    const field = document.createElement("textarea");
+    field.value = command;
+    field.setAttribute("readonly", "");
+    field.style.position = "fixed";
+    field.style.opacity = "0";
+    document.body.appendChild(field);
+    field.select();
+    const copied = document.execCommand("copy");
+    field.remove();
+    return copied;
+  }
+}
+[["installHero","cpHero"],["installCli","cpCli"],["installFinal","cpFinal"]].forEach(([b, c]) => {
+  $(b).addEventListener("click", async () => {
+    const copied = await copyInstallCommand();
+    const n = $(c), old = n.textContent;
+    n.textContent = copied ? "copied ✓" : "copy failed";
+    setTimeout(() => n.textContent = old, 1400);
+  });
+});
+})();
+</script>
+</body>
 </html>
