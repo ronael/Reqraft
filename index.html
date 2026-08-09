@@ -248,11 +248,15 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 /* ── section 07 · native UI ── */
 .native{padding:150px 0 130px;position:relative;overflow:hidden;background:
   radial-gradient(1000px 520px at 50% -8%,rgba(124,58,237,.10),transparent 64%)}
-.native .kicker-next{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rq3);border:1px solid var(--rq-line);border-radius:100px;padding:6px 14px;background:var(--rq-dim);margin-bottom:30px}
+.native .kicker-next{display:inline-flex;align-items:center;gap:10px;font-family:var(--mono);font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--rq3);border:1px solid var(--rq-line);border-radius:10px;padding:6px 14px;background:var(--rq-dim);margin-bottom:30px}
 .native .kicker-next i{width:6px;height:6px;border-radius:50%;background:var(--rq);animation:pulse 1.6s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:.4}50%{opacity:1}}
 .native h2{font-size:clamp(34px,5vw,60px)}
-.stage-wrap{margin-top:80px;position:relative}
+.scenario-switcher{margin-top:58px;max-width:100%;overflow-x:auto;scrollbar-width:none}
+.scenario-switcher::-webkit-scrollbar{display:none}
+.scenario-switcher button{white-space:nowrap}
+.scenario-switcher button:focus-visible{outline:1px solid var(--rq);outline-offset:-2px}
+.stage-wrap{margin-top:18px;position:relative}
 .stage{position:relative;margin:0 auto}
 .stage-caption{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--tx4);margin-bottom:14px}
 .menubar{height:30px;display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);border-bottom:0;border-radius:12px 12px 0 0;background:rgba(255,255,255,.02);padding:0 14px;font-size:11px;color:var(--tx3)}
@@ -266,11 +270,49 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .editor-head i{width:9px;height:9px;border-radius:50%;display:inline-block}
 .editor-head .r1{background:#ff5f57}.editor-head .r2{background:#febc2e}.editor-head .r3{background:#28c840}
 .editor-head span{font-family:var(--mono);font-size:10.5px;color:var(--tx4);margin-left:8px}
-.editor-body{display:grid;grid-template-columns:40px 1fr;padding:22px 0 26px;font-family:var(--mono);font-size:13px;line-height:2}
-.editor-body .ln{color:var(--tx4);text-align:right;padding-right:16px;user-select:none;font-size:11px;line-height:2.36}
-.editor-body pre{white-space:pre-wrap;color:#8f96a8}
+.editor-body{min-height:280px;position:relative;overflow:hidden;font-size:13px}
+.app-code .editor-body{display:grid;grid-template-columns:52px minmax(0,1fr);padding:22px 18px 26px 0;background:#0a0c12;font-family:var(--mono);line-height:2}
+.code-gutter{color:var(--tx4);text-align:right;padding-right:16px;user-select:none;font-size:11px;line-height:2.36}
+.code-document{min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;color:#8f96a8}
 .editor-body .kw{color:#c4b5fd}
 .editor-body .str{color:#7dd3a8}
+.editor-body .doc-label{color:var(--tx4);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase}
+.app-mail .editor-body{display:grid;grid-template-columns:180px minmax(0,1fr);padding:0;background:#0b0e14;font-family:var(--sans);line-height:1.5}
+.mail-sidebar{padding:18px 14px;border-right:1px solid var(--line);background:#090b10;color:var(--tx3);font-size:11px}
+.mail-compose-btn{margin-bottom:22px;padding:8px 10px;border:1px solid var(--rq-line);border-radius:7px;color:var(--rq3);font-family:var(--mono)}
+.mail-folder{display:flex;justify-content:space-between;padding:6px 4px}.mail-folder.on{color:var(--tx);font-weight:500}
+.mail-compose{padding:18px 22px;color:var(--tx2)}
+.mail-field{display:grid;grid-template-columns:58px 1fr;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.mail-field b{color:var(--tx4);font-weight:500}
+.mail-copy{padding-top:22px;font-size:13px;line-height:1.8}
+.app-chat .editor-body{display:grid;grid-template-columns:166px minmax(0,1fr);padding:0;background:#101010;font-family:var(--sans);line-height:1.5}
+.chat-sidebar{padding:14px 10px;border-right:1px solid #252525;background:#171717;color:#8e8e8e;font-size:11px}
+.chat-brand{display:flex;align-items:center;gap:8px;margin-bottom:18px;padding:4px 6px;color:#ececec;font-weight:600}
+.chat-mark{width:20px;height:20px;display:grid;place-items:center;border:1px solid #414141;border-radius:6px;font-size:9px}
+.chat-new,.chat-history{padding:7px 8px;border-radius:6px}.chat-new{margin-bottom:18px;border:1px solid #303030;color:#d3d3d3}.chat-history.on{background:#242424;color:#d7d7d7}
+.chat-main{min-width:0;display:flex;flex-direction:column;padding:14px 24px 18px}
+.chat-top{font-size:11px;font-weight:600;color:#b4b4b4}
+.chat-center{flex:1;display:grid;place-items:center;padding:28px 10px 20px}
+.chat-question{font-size:19px;font-weight:600;color:#ececec;letter-spacing:0}
+.chat-composer{margin:0 auto;width:min(560px,100%);padding:13px 14px 10px;border:1px solid #353535;border-radius:18px;background:#212121;color:#e8e8e8;box-shadow:0 8px 24px rgba(0,0,0,.24)}
+.chat-composer-text{min-height:38px;font-size:12.5px;line-height:1.6}
+.chat-tools{display:flex;align-items:center;justify-content:space-between;margin-top:8px;color:#8d8d8d;font-size:10px}.chat-send{width:22px;height:22px;display:grid;place-items:center;border-radius:50%;background:#f4f4f4;color:#111}
+.app-message .editor-body{display:grid;grid-template-columns:196px minmax(0,1fr);padding:0;background:#171719;font-family:var(--sans);line-height:1.5}
+.messages-sidebar{padding:12px 9px;background:#1e1e20;border-right:1px solid #343438;color:#aaaab0;font-size:11px}
+.messages-search{margin:0 3px 10px;padding:6px 9px;border-radius:7px;background:#2b2b2e;color:#7f7f85}
+.messages-contact{display:grid;grid-template-columns:30px minmax(0,1fr);gap:8px;align-items:center;padding:7px;border-radius:7px}
+.messages-contact.on{background:#5b37b8;color:#fff}
+.messages-avatar{width:30px;height:30px;display:grid;place-items:center;border-radius:50%;background:linear-gradient(145deg,#a78bfa,#6d4bd3);color:#fff;font-size:9px;font-weight:700}
+.messages-contact b{display:block;font-size:10.5px;font-weight:600;color:inherit}.messages-contact small{display:block;overflow:hidden;color:inherit;opacity:.68;text-overflow:ellipsis;white-space:nowrap}
+.messages-main{min-width:0;display:flex;flex-direction:column;background:#151517}
+.messages-head{padding:8px 16px 9px;border-bottom:1px solid #303034;text-align:center;color:#f3f3f4;font-size:11px;font-weight:600}
+.messages-head small{display:block;margin-top:1px;color:#737379;font-size:8.5px;font-weight:400}
+.messages-feed{flex:1;padding:16px 18px 8px;display:flex;flex-direction:column;justify-content:flex-end;gap:8px;font-size:11px}
+.message-bubble{max-width:76%;padding:7px 10px;border-radius:13px;color:#f5f5f5;line-height:1.45}
+.message-bubble.them{align-self:flex-start;background:#343438;border-bottom-left-radius:4px}
+.message-bubble.me{align-self:flex-end;background:#6e44d8;border-bottom-right-radius:4px}
+.messages-compose{display:flex;align-items:center;gap:8px;margin:0 14px 13px;color:#717177;font-size:10px}
+.messages-input{min-width:0;flex:1;padding:7px 11px;border:1px solid #3d3d42;border-radius:14px;background:#202023;color:#e8e8ea;font-size:11px;line-height:1.45}
 .sel-text{background:rgba(139,92,246,.28);box-shadow:0 0 0 1px rgba(167,139,250,.4);border-radius:3px;color:#ddd6fe;transition:background .3s}
 .sel-text.replaced{background:rgba(52,211,153,.22);box-shadow:0 0 0 1px rgba(52,211,153,.35);color:#d3f5e5;transition:background .1s}
 .sel-text.plain{background:transparent;box-shadow:none;color:#8f96a8;transition:background 1.2s,box-shadow 1.2s}
@@ -297,6 +339,16 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .surf-row .nm .rqdot{width:6px;height:6px;border-radius:50%;background:var(--rq);display:inline-block}
 .surf-row .ds{color:var(--tx3)}
 @media(max-width:720px){.surf-row{grid-template-columns:1fr;gap:4px}}
+@media(max-width:720px){
+  .scenario-switcher{margin-top:42px}
+  .scenario-switcher button{padding-right:12px;padding-left:12px}
+  .mail-sidebar,.chat-sidebar,.messages-sidebar{display:none}
+  .app-mail .editor-body,.app-chat .editor-body,.app-message .editor-body{grid-template-columns:minmax(0,1fr)}
+  .mail-compose{padding:16px}
+  .chat-main{padding:12px 14px 16px}
+  .chat-center{padding:20px 8px 16px}
+  .messages-feed{padding:14px}
+}
 
 /* ── section 08 · quiet ── */
 .quiet-grid{display:grid;gap:56px}
@@ -569,22 +621,29 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   <div class="wrap">
     <div class="rv" style="max-width:720px">
       <div class="kicker-next"><i aria-hidden="true">&#8203;</i>Coming next — Native UI, in development</div>
-      <h2>Today it lives in your terminal.<br><em>Next, it barely needs an interface.</em></h2>
-      <p class="lede">The planned macOS experience starts with selected text in apps such as VS Code, Mail, Slack or a browser. Invoke Reqraft, review the rewrite and its fidelity signals, then choose whether to replace the selection.</p>
+      <h2>Today it lives in your terminal.<br><em>Next, it meets you where you write.</em></h2>
+      <p class="lede">The planned macOS experience adapts to the text in front of you. Select rough code instructions, an e-mail, a ChatGPT request or a team message; Reqraft applies the relevant profile before you choose whether to replace it.</p>
+    </div>
+
+    <div class="seg scenario-switcher rv" role="tablist" aria-label="Planned native workflows">
+      <button class="on" type="button" role="tab" aria-controls="nativeStage" aria-selected="true" tabindex="0" data-native-scene="code">Code</button>
+      <button type="button" role="tab" aria-controls="nativeStage" aria-selected="false" tabindex="-1" data-native-scene="email">E-mail</button>
+      <button type="button" role="tab" aria-controls="nativeStage" aria-selected="false" tabindex="-1" data-native-scene="chat">ChatGPT</button>
+      <button type="button" role="tab" aria-controls="nativeStage" aria-selected="false" tabindex="-1" data-native-scene="message">Messages</button>
     </div>
 
     <div class="stage-wrap rv">
-      <div class="stage">
-        <div class="stage-caption"><span>macOS concept preview</span><span>planned shortcut · ⌥ space</span></div>
+      <div class="stage" id="nativeStage" role="tabpanel">
+        <div class="stage-caption"><span>macOS concept preview · profile <b id="sceneProfile" style="color:var(--rq3);font-weight:500">frontend</b></span><span>planned shortcut · ⌥ space</span></div>
         <div class="menubar">
-          <div class="l"><span>●</span><span style="font-weight:600;color:var(--tx2)">Code</span><span>File</span><span>Edit</span><span>View</span></div>
+          <div class="l"><span>●</span><span id="sceneApp" style="font-weight:600;color:var(--tx2)">Code</span><span>File</span><span>Edit</span><span>View</span></div>
           <div class="r"><span class="rqb"><i id="mbDot"></i>rq</span><span>13:25</span></div>
         </div>
-        <div class="editor">
-          <div class="editor-head"><i class="r1" aria-hidden="true">&#8203;</i><i class="r2" aria-hidden="true">&#8203;</i><i class="r3" aria-hidden="true">&#8203;</i><span>Header.tsx</span></div>
-          <div class="editor-body">
-            <div class="ln">12<br>13<br>14<br>15<br>16<br>17<br>18</div>
-            <pre><span class="kw">export function</span> Header() {
+        <div class="editor app-code" id="sceneWindow">
+          <div class="editor-head"><i class="r1" aria-hidden="true">&#8203;</i><i class="r2" aria-hidden="true">&#8203;</i><i class="r3" aria-hidden="true">&#8203;</i><span id="sceneDocumentLabel">Header.tsx</span></div>
+          <div class="editor-body" id="sceneSurface">
+            <div class="code-gutter">12<br>13<br>14<br>15<br>16<br>17<br>18</div>
+            <pre class="code-document"><span class="kw">export function</span> Header() {
   <span class="kw">return</span> (
     &lt;header className=<span class="str">"flex items-center"</span>&gt;
       <span id="selText" class="sel-text">{/* fix the form on mobile dont touch auth */}</span>
@@ -597,7 +656,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 
         <div class="capsule" id="capsule">
           <div class="cap-head">
-            <span class="rqn">rq</span><span>selection · Code</span>
+            <span class="rqn">rq</span><span id="capSource">selection · Code</span>
             <span class="ctx" id="capCtx"><span id="capCtxTxt">local analysis…</span></span>
           </div>
           <div class="cap-act" id="capAct"></div>
@@ -606,7 +665,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
           <div class="cap-actions" id="capActions"></div>
         </div>
 
-        <div class="toast" id="toast">✓ replaced <span style="color:var(--tx4)">· ⌘Z to undo</span></div>
+        <div class="toast" id="toast">✓ <span id="toastContext">replaced in Code</span> <span style="color:var(--tx4)">· ⌘Z to undo</span></div>
       </div>
     </div>
 
@@ -711,14 +770,16 @@ async function typeInto(node, text, cps, chunk=1){
   }
   node.textContent = text;
 }
-async function streamInto(node, text, caret){
+async function streamInto(node, text, caret, shouldContinue = () => true){
   node.textContent = "";
   if (caret) caret.style.display = "inline-block";
   for (let i = 0; i < text.length; i += 2){
+    if (!shouldContinue()) return;
     node.textContent = text.slice(0, i + 2);
     if (caret) node.after(caret);
     await sleep(16);
   }
+  if (!shouldContinue()) return;
   node.textContent = text;
   if (caret){ node.after(caret); caret.style.display = "none"; }
 }
@@ -906,11 +967,100 @@ const pio = new IntersectionObserver(es => es.forEach(e => {
 pio.observe(document.querySelector(".prof-lines"));
 
 /* ══════════ native UI scene ══════════ */
-const CAP_RESULT = "Fix the form on mobile while preserving the existing authentication behavior and without touching unrelated code.";
-const CAP_SRC = "{/* fix the form on mobile dont touch auth */}";
-const CAP_NEW = "{/* " + "Fix the form on mobile while preserving the existing authentication behavior." + " */}";
+const NATIVE_SCENARIOS = [
+  {
+    id: "code",
+    app: "Code",
+    documentLabel: "Header.tsx",
+    profile: "frontend",
+    windowClass: "app-code",
+    surfaceHtml: `<div class="code-gutter">12<br>13<br>14<br>15<br>16<br>17<br>18</div><pre class="code-document"><span class="kw">export function</span> Header() {
+  <span class="kw">return</span> (
+    &lt;header className=<span class="str">"flex items-center"</span>&gt;
+      <span id="selText" class="sel-text">{/* fix the form on mobile dont touch auth */}</span>
+      &lt;Navigation /&gt;
+    &lt;/header&gt;
+  )
+}</pre>`,
+    source: "{/* fix the form on mobile dont touch auth */}",
+    result: "Fix the form on mobile while preserving the existing authentication behavior and without touching unrelated code.",
+    replacement: "{/* Fix the form on mobile while preserving the existing authentication behavior. */}",
+  },
+  {
+    id: "email",
+    app: "Mail",
+    documentLabel: "Message to Maya",
+    profile: "writing",
+    windowClass: "app-mail",
+    surfaceHtml: `<aside class="mail-sidebar"><div class="mail-compose-btn">New message</div><div class="mail-folder on"><span>Inbox</span><span>4</span></div><div class="mail-folder"><span>Flagged</span></div><div class="mail-folder"><span>Sent</span></div><div class="mail-folder"><span>Drafts</span><span>1</span></div></aside><div class="mail-compose"><div class="mail-field"><b>To</b><span>Maya Chen</span></div><div class="mail-field"><b>Subject</b><span>Friday demo</span></div><div class="mail-copy"><span id="selText" class="sel-text">hey can we move the demo to friday afternoon i need more time</span></div></div>`,
+    source: "hey can we move the demo to friday afternoon i need more time",
+    result: "Hi Maya, could we move the demo to Friday afternoon? I would appreciate a little more preparation time. Thank you.",
+    replacement: "Hi Maya, could we move the demo to Friday afternoon? I would appreciate a little more preparation time. Thank you.",
+  },
+  {
+    id: "chat",
+    app: "ChatGPT",
+    documentLabel: "New conversation",
+    profile: "clean",
+    windowClass: "app-chat",
+    surfaceHtml: `<aside class="chat-sidebar"><div class="chat-brand"><span class="chat-mark">AI</span><span>ChatGPT</span></div><div class="chat-new">＋ New chat</div><div class="chat-history on">Database choice</div><div class="chat-history">Landing page notes</div></aside><div class="chat-main"><div class="chat-top">ChatGPT <span style="color:#6f6f6f">⌄</span></div><div class="chat-center"><div class="chat-question">What can I help with?</div></div><div class="chat-composer"><div class="chat-composer-text"><span id="selText" class="sel-text">compare postgres and mongodb for my app</span></div><div class="chat-tools"><span>＋ &nbsp; Tools</span><span class="chat-send">↑</span></div></div></div>`,
+    source: "compare postgres and mongodb for my app",
+    result: "Compare PostgreSQL and MongoDB for a new application. Cover data modeling, transactions, scaling, operational complexity and the conditions that would make each option preferable.",
+    replacement: "Compare PostgreSQL and MongoDB for a new application. Cover data modeling, transactions, scaling, operational complexity and when each option is preferable.",
+  },
+  {
+    id: "message",
+    app: "Messages",
+    documentLabel: "Maya Chen",
+    profile: "writing",
+    windowClass: "app-message",
+    surfaceHtml: `<aside class="messages-sidebar"><div class="messages-search">Search</div><div class="messages-contact on"><span class="messages-avatar">MC</span><span><b>Maya Chen</b><small>Are we still on for today?</small></span></div><div class="messages-contact"><span class="messages-avatar" style="background:#426c64">PT</span><span><b>Product team</b><small>Alex: The build is ready</small></span></div></aside><div class="messages-main"><div class="messages-head">Maya Chen<small>iMessage</small></div><div class="messages-feed"><div class="message-bubble them">Are we still on track for today’s deployment?</div><div class="message-bubble me">I’m checking the last test run now.</div></div><div class="messages-compose"><span>＋</span><div class="messages-input"><span id="selText" class="sel-text">deploy is delayed tests are failing will update later</span></div><span>↑</span></div></div>`,
+    source: "deploy is delayed tests are failing will update later",
+    result: "The deployment is delayed while we resolve failing tests. I’ll send you another update as soon as the test suite is green.",
+    replacement: "The deployment is delayed while we resolve failing tests. I’ll send you another update as soon as the test suite is green.",
+  },
+];
+const nativeSceneButtons = [...document.querySelectorAll("[data-native-scene]")];
+let activeNativeScene = 0;
+let nativeSceneVersion = 0;
+let nativeSceneStarted = false;
 
-async function nativeLoop(){
+function resetNativeFeedback(){
+  $("capsule").classList.remove("on");
+  $("toast").classList.remove("on");
+  $("capVerdict").innerHTML = "";
+  $("capActions").innerHTML = "";
+  $("capStream").textContent = "";
+  $("capAct").classList.remove("on");
+  $("mbDot").classList.remove("working");
+  $("capCtxTxt").textContent = "local analysis…";
+}
+
+function renderNativeScene(scene){
+  resetNativeFeedback();
+  $("sceneApp").textContent = scene.app;
+  $("sceneProfile").textContent = scene.profile;
+  $("sceneDocumentLabel").textContent = scene.documentLabel;
+  $("sceneWindow").className = `editor ${scene.windowClass}`;
+  $("sceneSurface").innerHTML = scene.surfaceHtml;
+  $("capSource").textContent = `selection · ${scene.app}`;
+  $("toastContext").textContent = `replaced in ${scene.app}`;
+}
+
+function renderNativeStatic(scene){
+  $("capsule").classList.add("on");
+  $("capCtxTxt").innerHTML = `<span class="pf">${scene.profile}</span>&nbsp;· detected locally`;
+  $("capStream").textContent = scene.result;
+  $("capVerdict").innerHTML = '<span style="color:var(--ok)">✓ quality: good</span><span>no scope warning detected</span>';
+  $("capActions").innerHTML = '<span style="color:var(--tx2)"><kbd>⏎</kbd> replace</span><span><kbd>⌥</kbd> compare</span><span class="ml"><kbd>⌘C</kbd> copy</span>';
+}
+
+async function waitForNativeScene(ms, version){
+  await sleep(ms);
+  return version === nativeSceneVersion;
+}
+
+async function nativeLoop(scene, version){
   const cap = $("capsule"), ctx = $("capCtxTxt"), act = $("capAct"),
         stream = $("capStream"), caret = $("capCaret"),
         verdict = $("capVerdict"), actions = $("capActions"),
@@ -919,50 +1069,81 @@ async function nativeLoop(){
   const A_READY = '<span style="color:var(--tx2)"><kbd>⏎</kbd> replace</span><span><kbd>⌥</kbd> compare</span><span class="ml"><kbd>⌘C</kbd> copy</span>';
   for (;;){
     // idle: text selected, reqraft invisible
-    sel.textContent = CAP_SRC;
+    sel.textContent = scene.source;
     sel.className = "sel-text";
     cap.classList.remove("on"); toast.classList.remove("on");
     verdict.innerHTML = ""; actions.innerHTML = ""; stream.textContent = "";
     act.classList.remove("on"); dot.classList.remove("working");
-    ctx.textContent = "local analysis…"; ctx.className = "";
-    await sleep(1600);
+    ctx.textContent = "local analysis…";
+    if (!await waitForNativeScene(1600, version)) return;
 
     // capsule appears, local analysis
     cap.classList.add("on"); act.classList.add("on");
-    await sleep(1100);
-    ctx.innerHTML = '<span class="pf">frontend</span>&nbsp;· detected locally';
-    await sleep(800);
+    if (!await waitForNativeScene(1100, version)) return;
+    ctx.innerHTML = `<span class="pf">${scene.profile}</span>&nbsp;· detected locally`;
+    if (!await waitForNativeScene(800, version)) return;
 
     // generation streams
     dot.classList.add("working");
-    await streamInto(stream, CAP_RESULT, caret);
+    await streamInto(stream, scene.result, caret, () => version === nativeSceneVersion);
+    if (version !== nativeSceneVersion) return;
     act.classList.remove("on"); dot.classList.remove("working");
     verdict.innerHTML = V_READY;
     actions.innerHTML = A_READY;
-    await sleep(2300);
+    if (!await waitForNativeScene(2300, version)) return;
 
     // accept: replace in place, disappear
     cap.classList.remove("on");
-    sel.textContent = CAP_NEW;
+    sel.textContent = scene.replacement;
     sel.className = "sel-text replaced";
     toast.classList.add("on");
-    await sleep(1100);
+    if (!await waitForNativeScene(1100, version)) return;
     sel.className = "sel-text plain";
-    await sleep(2000);
+    if (!await waitForNativeScene(2000, version)) return;
     toast.classList.remove("on");
-    await sleep(700);
+    if (!await waitForNativeScene(700, version)) return;
   }
 }
+
+function setNativeScene(index){
+  activeNativeScene = (index + NATIVE_SCENARIOS.length) % NATIVE_SCENARIOS.length;
+  const scene = NATIVE_SCENARIOS[activeNativeScene];
+  nativeSceneVersion += 1;
+  nativeSceneButtons.forEach((button, buttonIndex) => {
+    const selected = buttonIndex === activeNativeScene;
+    button.setAttribute("aria-selected", String(selected));
+    button.classList.toggle("on", selected);
+    button.tabIndex = selected ? 0 : -1;
+  });
+  renderNativeScene(scene);
+  if (!nativeSceneStarted) return;
+  if (RM) renderNativeStatic(scene);
+  else nativeLoop(scene, nativeSceneVersion);
+}
+
+nativeSceneButtons.forEach((button, index) => {
+  button.addEventListener("click", () => setNativeScene(index));
+  button.addEventListener("keydown", event => {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const direction = event.key === "ArrowRight" ? 1 : -1;
+    const nextIndex = (activeNativeScene + direction + NATIVE_SCENARIOS.length) % NATIVE_SCENARIOS.length;
+    setNativeScene(nextIndex);
+    nativeSceneButtons[nextIndex].focus();
+  });
+});
+setNativeScene(0);
+
 if (RM){
-  const cap = $("capsule");
-  cap.classList.add("on");
-  $("capCtxTxt").innerHTML = '<span class="pf">frontend</span>&nbsp;· detected locally';
-  $("capStream").textContent = CAP_RESULT;
-  $("capVerdict").innerHTML = '<span style="color:var(--ok)">✓ quality: good</span><span>no scope warning detected</span>';
-  $("capActions").innerHTML = '<span style="color:var(--tx2)"><kbd>⏎</kbd> replace</span><span><kbd>⌥</kbd> compare</span><span class="ml"><kbd>⌘C</kbd> copy</span>';
+  nativeSceneStarted = true;
+  renderNativeStatic(NATIVE_SCENARIOS[activeNativeScene]);
 } else {
   const nio = new IntersectionObserver(es => es.forEach(e => {
-    if (e.isIntersecting){ nio.disconnect(); nativeLoop(); }
+    if (e.isIntersecting){
+      nio.disconnect();
+      nativeSceneStarted = true;
+      nativeLoop(NATIVE_SCENARIOS[activeNativeScene], nativeSceneVersion);
+    }
   }), {threshold:.2});
   nio.observe($("capsule"));
 }
