@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  appendPastedText,
+  decodePastedText,
   isCtrlCKey,
   normalizeTypedText,
   resolveStreamedResultPreview,
@@ -64,6 +66,16 @@ describe("interactive keyboard contract", () => {
 
   it("keeps pasted multiline text while stripping terminal paste markers", () => {
     expect(normalizeTypedText("\u001B[200~ligne 1\nligne 2\u001B[201~")).toBe("ligne 1\nligne 2");
+  });
+
+  it("appends native OpenTUI paste events without flattening multiline text", () => {
+    const pastedText = decodePastedText(new TextEncoder().encode("ligne 1\nligne 2"));
+
+    expect(appendPastedText("Contexte :\n", pastedText)).toBe("Contexte :\nligne 1\nligne 2");
+  });
+
+  it("removes terminal control sequences from pasted text", () => {
+    expect(appendPastedText("", "\u001b[31mtexte rouge\u001b[0m")).toBe("texte rouge");
   });
 
   it("does not display raw JSON envelopes while streaming", () => {

@@ -1,4 +1,5 @@
 import type { KeyEvent } from "@opentui/core";
+import { stripVTControlCharacters } from "node:util";
 
 import { previewRewritten } from "../core/stream-preview.js";
 
@@ -14,7 +15,7 @@ export function isCtrlVKey(key: Pick<KeyEvent, "ctrl" | "name" | "sequence">): b
 }
 
 export function normalizeTypedText(sequence: string): string {
-  const withoutPasteMarkers = sequence
+  const withoutPasteMarkers = stripVTControlCharacters(sequence)
     .replaceAll(BRACKETED_PASTE_START, "")
     .replaceAll(BRACKETED_PASTE_END, "");
   let output = "";
@@ -26,6 +27,14 @@ export function normalizeTypedText(sequence: string): string {
   }
 
   return output;
+}
+
+export function appendPastedText(currentInput: string, pastedText: string): string {
+  return `${currentInput}${normalizeTypedText(pastedText)}`;
+}
+
+export function decodePastedText(bytes: Uint8Array): string {
+  return new TextDecoder().decode(bytes);
 }
 
 export function resolveStreamedResultPreview(partialText: string): string {

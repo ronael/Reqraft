@@ -11,6 +11,8 @@ import { executeReprompt, type ExecuteRepromptInput } from "../application/repro
 import type { Config } from "../config/schema.js";
 import { getFallbackModelForProvider } from "../models/presets.js";
 import { formatCost, formatDuration, formatTokenValue, qualityLabel } from "../ui/formatters.js";
+import { ansi, ANSI, type AnsiStyleOptions } from "../ui/ansi.js";
+import { detectCapabilities } from "../ui/theme/capabilities.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -185,17 +187,18 @@ function writePrimaryOutput(
   options: RepromptCliOptions,
   output: RepromptOutput,
 ): void {
+  const style = quickOutputStyle();
   if (options.json) {
     output.log(JSON.stringify(result, null, 2));
     return;
   }
   if (options.diff) {
-    output.log(formatDiff(result.original, result.rewritten));
+    output.log(formatDiff(result.original, result.rewritten, style));
     return;
   }
   output.log(result.rewritten);
   if (options.explain) {
-    output.error(formatExplain(result));
+    output.error(formatExplain(result, style));
   }
 }
 
@@ -210,12 +213,17 @@ async function outputResult(
   const showsDetailedQuality = !options.json && !options.explain && result.warnings.length > 0;
   if (showsDetailedQuality) {
     output.error("");
-    output.error(formatQuality(result));
+    output.error(formatQuality(result, quickOutputStyle()));
   }
 
   if (!options.json && (options.stats ?? defaultShowStats)) {
     output.error("");
-    output.error(formatStats(result, { includeQuality: !showsDetailedQuality }));
+    output.error(
+      formatStats(result, {
+        ...quickOutputStyle(),
+        includeQuality: !showsDetailedQuality,
+      }),
+    );
   }
 
   if (options.copy) {
@@ -231,39 +239,59 @@ async function outputResult(
 
 export function formatStats(
   result: RepromptResult,
-  options: { includeQuality?: boolean } = {},
+  options: AnsiStyleOptions & { includeQuality?: boolean } = {},
 ): string {
-  const lines = ["Stats"];
+  const color = options.color ?? false;
+  const metric = (label: string, value: string): string =>
+    `${ansi(label, ANSI.dim, color)} ${value}`;
+  const lines = [ansi("Stats", ANSI.boldAccent, color)];
   if (result.latencyMs !== undefined) {
-    lines.push(`Durée ${formatDuration(result.latencyMs)}`);
+    lines.push(metric("Durée", formatDuration(result.latencyMs)));
   }
-  lines.push(`Entrée ${formatTokenValue(result.usage?.inputTokens)}`);
-  lines.push(`Sortie visible ${formatTokenValue(result.usage?.visibleOutputTokens)}`);
-  lines.push(`Raisonnement ${formatTokenValue(result.usage?.reasoningTokens)}`);
-  lines.push(`Sortie totale ${formatTokenValue(result.usage?.outputTokens)}`);
+  lines.push(metric("Entrée", formatTokenValue(result.usage?.inputTokens)));
+  lines.push(metric("Sortie visible", formatTokenValue(result.usage?.visibleOutputTokens)));
+  lines.push(metric("Raisonnement", formatTokenValue(result.usage?.reasoningTokens)));
+  lines.push(metric("Sortie totale", formatTokenValue(result.usage?.outputTokens)));
 
   if (result.usage?.estimatedCost !== undefined) {
-    lines.push(`Coût estimé ${formatCost(result.usage.estimatedCost, result.usage.currency)}`);
+    lines.push(
+      metric("Coût estimé", formatCost(result.usage.estimatedCost, result.usage.currency)),
+    );
   } else {
-    lines.push("Coût estimé non disponible");
+    lines.push(metric("Coût estimé", "non disponible"));
   }
 
-  lines.push(`Provider ${result.provider} · Modèle ${result.model}`);
+  lines.push(
+    `${ansi("Provider", ANSI.dim, color)} ${ansi(result.provider, ANSI.accent, color)} · ${ansi("Modèle", ANSI.dim, color)} ${ansi(result.model, ANSI.accent, color)}`,
+  );
   if (options.includeQuality ?? true) {
-    lines.push(`Qualité ${qualityLabel(result.quality.status)}`);
+    const qualityColor = result.quality.status === "good" ? ANSI.success : ANSI.warning;
+    lines.push(
+      `${ansi("Qualité", ANSI.dim, color)} ${ansi(qualityLabel(result.quality.status), qualityColor, color)}`,
+    );
   }
   return lines.join("\n");
 }
 
-export function formatQuality(result: RepromptResult): string {
-  const lines = [`Qualité ${qualityLabel(result.quality.status)}`];
+export function formatQuality(result: RepromptResult, options: AnsiStyleOptions = {}): string {
+  const color = options.color ?? false;
+  const separatorCharacter = options.unicode === false ? "-" : "─";
+  const lines = [
+    ansi(separatorCharacter.repeat(40), ANSI.dim, color),
+    ansi(`Qualité ${qualityLabel(result.quality.status)}`, ANSI.boldWarning, color),
+  ];
   for (const warning of result.warnings) {
-    lines.push(`- ${warning}`);
+    lines.push(`${ansi("!", ANSI.warning, color)} ${warning}`);
   }
   return lines.join("\n");
 }
 
-function formatDiff(original: string, rewritten: string): string {
+export function formatDiff(
+  original: string,
+  rewritten: string,
+  options: AnsiStyleOptions = {},
+): string {
+  const color = options.color ?? false;
   const originalLines = original.split("\n");
   const rewrittenLines = rewritten.split("\n");
   const output: string[] = [];
@@ -273,27 +301,34 @@ function formatDiff(original: string, rewritten: string): string {
     const originalLine = originalLines[i] ?? "";
     const rewrittenLine = rewrittenLines[i] ?? "";
     if (originalLine !== rewrittenLine) {
-      output.push(`- ${originalLine}`);
-      output.push(`+ ${rewrittenLine}`);
+      output.push(ansi(`- ${originalLine}`, ANSI.danger, color));
+      output.push(ansi(`+ ${rewrittenLine}`, ANSI.success, color));
     } else {
-      output.push(`  ${originalLine}`);
+      output.push(ansi(`  ${originalLine}`, ANSI.dim, color));
     }
   }
 
   return output.join("\n");
 }
 
-function formatExplain(result: RepromptResult): string {
-  const lines = ["Modifications :"];
+export function formatExplain(result: RepromptResult, options: AnsiStyleOptions = {}): string {
+  const color = options.color ?? false;
+  const bullet = options.unicode === false ? ">" : "›";
+  const lines = [`${ansi("Modifications", ANSI.boldAccent, color)} :`];
   for (const change of result.changes) {
-    lines.push(`- ${change}`);
+    lines.push(`${ansi(bullet, ANSI.accent, color)} ${change}`);
   }
   if (result.warnings.length > 0) {
     lines.push("");
-    lines.push("Avertissements :");
+    lines.push(`${ansi("Avertissements", ANSI.warning, color)} :`);
     for (const warning of result.warnings) {
-      lines.push(`- ${warning}`);
+      lines.push(`${ansi("!", ANSI.warning, color)} ${warning}`);
     }
   }
   return lines.join("\n");
+}
+
+function quickOutputStyle(): Required<AnsiStyleOptions> {
+  const capabilities = detectCapabilities(process.env, process.stdout.isTTY, process.platform);
+  return { color: capabilities.color, unicode: capabilities.unicode };
 }

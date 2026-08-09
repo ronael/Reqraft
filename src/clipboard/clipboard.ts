@@ -14,6 +14,10 @@ export async function readClipboard(): Promise<string> {
 export async function writeClipboard(text: string): Promise<void> {
   try {
     await clipboard.write(text);
+    const persistedText = await clipboard.read();
+    if (persistedText !== text) {
+      throw new Error("la vérification du contenu a échoué");
+    }
   } catch (error) {
     throw new Error(
       `Impossible d'écrire dans le presse-papiers : ${error instanceof Error ? error.message : String(error)}`,

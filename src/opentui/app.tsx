@@ -1,6 +1,12 @@
 /* @jsxImportSource @opentui/react */
 import { createCliRenderer, TextAttributes, type KeyEvent, type MouseEvent } from "@opentui/core";
-import { createRoot, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
+import {
+  createRoot,
+  useKeyboard,
+  usePaste,
+  useRenderer,
+  useTerminalDimensions,
+} from "@opentui/react";
 import process from "node:process";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
@@ -9,7 +15,7 @@ import { executeReprompt } from "../application/reprompt.js";
 import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "../config/loader.js";
 import type { Config } from "../config/schema.js";
-import type { RepromptLevel, RepromptResult } from "../core/types.js";
+import type { RepromptLevel } from "../core/types.js";
 import { parseLevel } from "../core/levels.js";
 import { createUiRepromptInput } from "../ui/app-actions.js";
 import {
@@ -45,25 +51,29 @@ import {
   LEVEL_OPTIONS,
 } from "../ui/modal-options.js";
 import { resolveSubmit, describeInput } from "../ui/prompt-input.js";
-import { describeResultMeta } from "../ui/result-meta.js";
-import { formatResultView } from "../ui/result-view.js";
 import { createLayout, pickerOptionIndexAt, type Layout } from "./layout.js";
 import {
+  appendPastedText,
+  decodePastedText,
   isCtrlCKey,
   isCtrlVKey,
   normalizeTypedText,
-  resolveStreamedResultPreview,
 } from "./input.js";
 import { SHORTCUTS } from "./shortcuts-view.js";
 import { actionLines, shortModel } from "./text.js";
 import { createOpenTuiRendererOptions } from "./renderer-options.js";
+import {
+  resolveVisibleResult,
+  resultMeta,
+  resultTitle,
+  resultTone,
+  type TuiStatus,
+} from "./result-presentation.js";
 import { COLOR, toneColor } from "./theme.js";
 import { TextViewport } from "./text-viewport.js";
 
 type OverlayId = Exclude<ModalType, "commands">;
 type FocusElement = "editor" | "result";
-type TuiStatus = "idle" | "loading" | "streaming" | "success" | "error";
-
 export async function runOpenTuiApp(): Promise<void> {
   const renderer = await createCliRenderer(createOpenTuiRendererOptions());
   createRoot(renderer).render(<OpenTuiApp />);
@@ -199,6 +209,12 @@ function OpenTuiApp(): React.ReactNode {
       setStatus("error");
     }
   }, []);
+
+  usePaste((event) => {
+    if (state.modal || focusedElement !== "editor") return;
+    const pastedText = decodePastedText(event.bytes);
+    setState((prev) => updatePromptInput(prev, appendPastedText(prev.input, pastedText)));
+  });
 
   useEffect(() => {
     const onSigint = (): void => {
@@ -991,46 +1007,6 @@ function pickerTitle(overlay: Exclude<OverlayId, null>): string {
   if (overlay === "provider") return "Changer de provider";
   if (overlay === "model") return "Changer de modèle";
   return "Aide";
-}
-
-function resultTitle(state: AppState, status: TuiStatus): string {
-  if (status === "error" && !state.result) return "Erreur";
-  if (status === "loading" || status === "streaming") return "Génération";
-  if (state.view === "diff") return "Diff";
-  if (state.view === "explain") return "Explication";
-  return "Prompt amélioré";
-}
-
-function resultTone(status: TuiStatus): "neutral" | "accent" | "success" | "error" {
-  if (status === "error") return "error";
-  if (status === "loading" || status === "streaming") return "accent";
-  if (status === "success") return "success";
-  return "neutral";
-}
-
-function resultMeta(result: RepromptResult | null, status: TuiStatus, startedAt: number): string {
-  if (status === "loading" || status === "streaming") {
-    const elapsed =
-      startedAt > 0 ? `${((Date.now() - startedAt) / 1000).toFixed(1)} s` : "en cours";
-    return `${elapsed} · réception`;
-  }
-  return describeResultMeta(result, false);
-}
-
-function resolveVisibleResult({
-  state,
-  partialText,
-  status,
-}: {
-  state: AppState;
-  partialText: string;
-  status: TuiStatus;
-}): string {
-  if ((status === "loading" || status === "streaming") && partialText) {
-    return resolveStreamedResultPreview(partialText);
-  }
-  if (!state.result) return "";
-  return formatResultView(state.result, state.view);
 }
 
 function handleEditorKey(
