@@ -16,10 +16,10 @@
   "scripts": {
     "dev": "tsx src/cli.tsx",
     "build": "tsup",
-    "lint": "eslint src tests benchmark --ext .ts,.tsx",
-    "lint:fix": "eslint src tests benchmark --ext .ts,.tsx --fix",
-    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\"",
+    "lint": "eslint src tests benchmark scripts --ext .ts,.tsx",
+    "lint:fix": "eslint src tests benchmark scripts --ext .ts,.tsx --fix",
+    "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\" \"scripts/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\" \"scripts/**/*.ts\"",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
@@ -29,6 +29,7 @@
     "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm test:coverage",
     "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",
     "release:check": "pnpm quality && pnpm pack:dry-run",
+    "release": "tsx scripts/release.ts",
     "publish:public": "pnpm publish --access public",
     "prepublishOnly": "pnpm quality",
     "prepack": "pnpm build"
