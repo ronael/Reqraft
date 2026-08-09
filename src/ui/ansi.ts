@@ -11,6 +11,7 @@ export const ANSI = {
   warning: "38;2;251;191;36",
   danger: "38;2;251;113;133",
   dim: "2",
+  bold: "1",
   boldAccent: "1;38;2;167;139;250",
   boldWarning: "1;38;2;251;191;36",
 } as const;

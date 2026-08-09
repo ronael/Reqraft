@@ -99,6 +99,27 @@ describe("init assistant helpers", () => {
     expect(summary).not.toContain("secret-value");
   });
 
+  it("uses the Reqraft hierarchy for an interactive colour summary", () => {
+    const summary = buildSummary(
+      createInitConfig({
+        provider: "openai",
+        model: "gpt-4.1-mini",
+        profile: "auto",
+        level: "standard",
+        copyAfterGeneration: false,
+        stream: true,
+        timeoutMs: 30000,
+      }),
+      { envName: "OPENAI_API_KEY", detected: true, message: "OPENAI_API_KEY détectée." },
+      { color: true, unicode: true },
+    );
+
+    expect(summary).toContain("\u001b[1;38;2;167;139;250mConfiguration Reqraft\u001b[0m");
+    expect(summary).toContain("\u001b[2mProvider\u001b[0m");
+    expect(summary).toContain("\u001b[38;2;167;139;250mOpenAI\u001b[0m");
+    expect(summary).toContain("\u001b[38;2;52;211;153mdétectée dans OPENAI_API_KEY\u001b[0m");
+  });
+
   it("recommends secure credential storage after init", () => {
     const note = buildPostInitSecurityNote({
       envName: "OPENAI_API_KEY",
