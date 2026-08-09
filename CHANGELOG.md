@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.1.5 (2026-08-09)
+
+- Refined the interactive setup hierarchy with clearer choices, prompts and status feedback.
+- Added terminal-aware colours and Unicode symbols with clean fallbacks for pipes and limited terminals.
+- Improved API key instructions and the final configuration summary.
+
+## 0.1.4 (2026-08-09)
+
+- Improved the native terminal experience and its visual presentation.
+- Fixed clipboard write validation for `--copy`.
+- Refined the public documentation, landing page and alpha messaging.
+- Updated GitHub Actions to current Node runtimes.
+
 ## 0.1.3 (2026-08-09)
 
 - Aligned the published package metadata, repository links and CLI version output.
