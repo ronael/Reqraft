@@ -4,7 +4,7 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Reqraft — Shape the request. Keep the intent.</title>
-<meta name="description" content="Reqraft turns a rough request into a clearer prompt and runs local fidelity checks for scope drift. Open-source CLI, native UI in development." />
+<meta name="description" content="Reqraft is a public-alpha CLI that turns a rough request into a clearer prompt and runs local fidelity checks for scope drift." />
 <link rel="canonical" href="https://ronael.github.io/Reqraft/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Reqraft" />
@@ -85,6 +85,9 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .hero h1{font-size:clamp(42px,6.6vw,84px);line-height:1.02;font-weight:600;letter-spacing:-.035em;color:#fff}
 .hero h1 em{font-family:var(--mono);font-style:normal;font-weight:500;font-size:.86em;letter-spacing:-.03em;color:var(--rq3)}
 .hero h1 em::after{content:"▌";margin-left:.08em;color:var(--rq2);animation:blink 1.1s steps(2) infinite}
+.alpha-status{display:inline-flex;align-items:center;flex-wrap:wrap;gap:4px 9px;margin-bottom:24px;font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--rq3)}
+.alpha-status::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--rq);box-shadow:0 0 0 4px var(--rq-dim)}
+.alpha-status .phase{color:var(--tx3)}
 .hero-sub{margin-top:26px;color:var(--tx2);font-size:16.5px;max-width:470px}
 .hero-sub strong{color:var(--tx);font-weight:500}
 .hero-cta{margin-top:36px;display:flex;align-items:center;gap:18px;flex-wrap:wrap}
@@ -376,6 +379,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   <div class="hero-fade"></div>
   <div class="wrap hero-grid">
     <div>
+      <div class="alpha-status"><span>Public alpha</span><span class="phase">Under active development</span></div>
       <h1>Shape the request.<br><em>Keep the intent.</em></h1>
       <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>then checks for known scope additions and disproportionate expansion.</strong></p>
       <div class="hero-cta">
