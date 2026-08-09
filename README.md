@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://raw.githubusercontent.com/ronael/Reqraft/main/docs/assets/reqraft-readme.png" alt="Reqraft — Shape the request. Keep the intent." width="100%" />
+  <img src="https://ronael.github.io/Reqraft/docs/assets/reqraft-readme.png" alt="Reqraft — Shape the request. Keep the intent." width="100%" />
 </p>
 
 <p align="center">
