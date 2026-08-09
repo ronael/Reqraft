@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.1.3 (2026-08-09)
+
+- Aligned the published package metadata, repository links and CLI version output.
+- Hardened release provenance and GitHub Actions permissions.
+- Updated development-only vulnerable dependency ranges and verified the npm package contents.
+- Documented the supported security model and vulnerability reporting path.
+
 ## 0.1.2 (2026-08-08)
 
 - Migrated the main interactive experience to OpenTUI.

@@ -1,6 +1,6 @@
 {
   "name": "@reqraft/cli",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "CLI open source de reprompting — transforme une demande brute en un prompt clair, fidèle et directement exploitable par une IA.",
   "main": "./dist/cli.js",
   "type": "module",
@@ -45,8 +45,26 @@
   ],
   "author": "Reqraft Contributors",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ronael/Reqraft.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ronael/Reqraft/issues"
+  },
+  "homepage": "https://github.com/ronael/Reqraft#readme",
   "publishConfig": {
-    "access": "public"
+    "access": "public",
+    "provenance": true
+  },
+  "pnpm": {
+    "overrides": {
+      "brace-expansion@1.1.16": "1.1.18",
+      "brace-expansion@2.1.3": "2.1.4",
+      "brace-expansion@5.0.8": "5.0.9",
+      "esbuild@0.27.7": "0.28.2",
+      "js-yaml@4.3.0": "4.3.1"
+    }
   },
   "packageManager": "pnpm@10.6.5",
   "engines": {
@@ -67,7 +85,7 @@
     "@eslint/js": "^9.11.1",
     "@types/node": "^22.7.4",
     "@types/react": "^19.2.0",
-    "@vitest/coverage-v8": "2.1.9",
+    "@vitest/coverage-v8": "4.1.10",
     "eslint": "^9.11.1",
     "eslint-plugin-react": "^7.37.1",
     "eslint-plugin-react-hooks": "^5.0.0",
@@ -78,6 +96,7 @@
     "tsx": "^4.19.1",
     "typescript": "^5.6.2",
     "typescript-eslint": "^8.8.0",
-    "vitest": "^2.1.2"
+    "vite": "8.2.1",
+    "vitest": "^4.1.10"
   }
 }
