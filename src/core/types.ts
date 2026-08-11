@@ -8,17 +8,34 @@ export const DEFAULT_FIDELITY_MODE = "balanced" satisfies FidelityMode;
 export type QualityStatus = "good" | "review" | "risky";
 export type QualitySeverity = "info" | "warning" | "critical";
 
-export interface QualitySignal {
-  code:
-    | "unsupported_additions"
-    | "disproportionate_expansion"
-    | "output_truncated"
-    | "model_warning"
-    | "unstructured_response";
-  severity: QualitySeverity;
-  message: string;
-  details?: string[];
-}
+export type UnsupportedAddition =
+  | "testimonials"
+  | "faq"
+  | "cta"
+  | "pricing"
+  | "footer"
+  | "header"
+  | "responsive"
+  | "seo"
+  | "animations"
+  | "authentication"
+  | "database"
+  | "color_palette"
+  | "performance";
+
+export type QualitySignal =
+  | {
+      code: "unsupported_additions";
+      severity: "info" | "warning";
+      params: { additions: UnsupportedAddition[] };
+    }
+  | {
+      code: "disproportionate_expansion";
+      severity: "info" | "warning";
+    }
+  | { code: "output_truncated"; severity: "critical" }
+  | { code: "model_warning"; severity: "warning"; detail: string }
+  | { code: "unstructured_response"; severity: "warning" };
 
 export interface QualityAssessment {
   status: QualityStatus;
@@ -31,7 +48,7 @@ export interface RepromptRequest {
   level: RepromptLevel;
   provider: string;
   model: string;
-  language?: string;
+  outputLanguage?: string;
   includeChanges: boolean;
 }
 
@@ -43,7 +60,6 @@ export interface RepromptResult {
   provider: string;
   model: string;
   changes: string[];
-  warnings: string[];
   quality: QualityAssessment;
   usage?: {
     inputTokens?: number;
@@ -95,8 +111,9 @@ export interface ProviderResponse {
 
 export interface ProviderHealth {
   ok: boolean;
-  message: string;
+  code?: "missing_configuration" | "unreachable" | "invalid_configuration";
   missingConfiguration?: string[];
+  detail?: string;
 }
 
 export interface ProviderAdapter {

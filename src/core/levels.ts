@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { ReqraftError } from "./errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 
 export const REPROMPT_LEVELS = ["minimal", "standard", "complete"] as const;
 export type RepromptLevel = (typeof REPROMPT_LEVELS)[number];
@@ -8,7 +10,9 @@ export const RepromptLevelSchema = z.enum(REPROMPT_LEVELS);
 export function parseLevel(level: string): RepromptLevel {
   const result = RepromptLevelSchema.safeParse(level);
   if (!result.success) {
-    throw new Error(`Niveau invalide : ${level}. Choix : minimal, standard, complete.`);
+    throw new ReqraftError("level.invalid", EXIT_CODES.INVALID_INPUT, {
+      params: { level, allowed: [...REPROMPT_LEVELS] },
+    });
   }
   return result.data;
 }

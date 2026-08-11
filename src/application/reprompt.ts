@@ -29,6 +29,7 @@ export interface ExecuteRepromptInput {
   fidelityMode?: FidelityMode;
   timeoutMs?: number;
   maxOutputTokens?: number;
+  outputLanguage?: string;
   /** Cancellation owned by the caller, for interactive interrupts. */
   signal?: AbortSignal;
   /** Receives text as it arrives when streaming is enabled. */
@@ -73,6 +74,7 @@ export async function executeReprompt(
       fidelityMode: input.fidelityMode,
       timeoutMs: input.timeoutMs,
       maxOutputTokens: input.maxOutputTokens,
+      outputLanguage: input.outputLanguage,
       signal: input.signal,
       onDelta: input.onDelta,
     }),

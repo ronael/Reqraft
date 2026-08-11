@@ -2,21 +2,22 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import type { UiLocale } from "../i18n/locale.js";
+import { createTranslator } from "../i18n/translate.js";
 
-export function runOpenTuiAppLauncher(): number {
+export function runOpenTuiAppLauncher(uiLocale?: UiLocale): number {
+  const t = createTranslator(uiLocale ?? "en");
   const entry = resolveStandaloneEntry();
   if (!entry) {
-    throw new Error("Entrée OpenTUI introuvable. Lance `pnpm build` puis réessaie.");
+    throw new Error(t("opentui.entryMissing"));
   }
   const bun = resolveBunBinary();
   if (!bun) {
-    throw new Error(
-      'Le mode interactif OpenTUI requiert Bun. Installe Bun ou utilise `rp "ton prompt"` en mode commande.',
-    );
+    throw new Error(t("opentui.bunRequired"));
   }
 
   const result = spawnSync(bun, [entry], {
-    env: process.env,
+    env: uiLocale ? { ...process.env, REQRAFT_UI_LOCALE: uiLocale } : process.env,
     stdio: "inherit",
   });
 

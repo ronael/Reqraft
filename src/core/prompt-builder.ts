@@ -12,7 +12,7 @@ export interface PromptBuildInput {
   input: string;
   profile: PromptProfile;
   level: RepromptRequest["level"];
-  language?: string;
+  outputLanguage?: string;
   includeChanges: boolean;
 }
 
@@ -55,7 +55,7 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
     "```",
     request.input,
     "```",
-    request.language ? `\nLangue attendue : ${request.language}` : "",
+    request.outputLanguage ? `\nLangue attendue : ${request.outputLanguage}` : "",
   ].join("\n");
 
   return { systemPrompt, userPrompt };
@@ -77,7 +77,7 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
     "```",
     request.input,
     "```",
-    request.language ? `Langue attendue : ${request.language}` : "",
+    request.outputLanguage ? `Langue attendue : ${request.outputLanguage}` : "",
   ]
     .filter(Boolean)
     .join("\n");

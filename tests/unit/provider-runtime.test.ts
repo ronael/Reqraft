@@ -37,7 +37,7 @@ describe("provider runtime", () => {
         defaultModel: "mock-model",
         env: {},
       }),
-    ).toThrow("Provider non supporté : unknown");
+    ).toThrow("provider.unsupported");
   });
 
   it("hydrates credential providers from catalog env names", async () => {

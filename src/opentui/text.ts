@@ -12,8 +12,8 @@ export function actionLines(
   rows: number,
   status: string,
   shortcuts: readonly string[],
+  statusText = status === "streaming" ? "receiving tokens..." : "ready",
 ): string[] {
-  const statusText = status === "streaming" ? "réception des tokens..." : "prêt";
   const items = [...shortcuts, statusText];
   const lines: string[] = [];
   let current = "";

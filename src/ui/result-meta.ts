@@ -1,6 +1,9 @@
 import type { RepromptResult } from "../core/types.js";
 import { formatDuration } from "./formatters.js";
 import type { PanelTone } from "./theme/types.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
+
+const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 export interface ResultPanelStatus {
   isLoading: boolean;
@@ -12,12 +15,16 @@ export interface ResultPanelStatus {
  * Right side of the result panel header: tokens and elapsed time once a run
  * finishes, a plain state word otherwise.
  */
-export function describeResultMeta(result: RepromptResult | null, isLoading: boolean): string {
+export function describeResultMeta(
+  result: RepromptResult | null,
+  isLoading: boolean,
+  t: Translator = DEFAULT_TRANSLATOR,
+): string {
   if (isLoading) {
-    return "en cours…";
+    return `${t("tui.loading")}…`;
   }
   if (!result) {
-    return "en attente";
+    return t("result.pending");
   }
 
   const parts: string[] = [];

@@ -24,7 +24,7 @@ function createHealthyProvider(id: BuiltinProvider): ProviderAdapter {
       return Promise.resolve({ text: "ok" });
     },
     validateConfiguration() {
-      return Promise.resolve({ ok: true, message: "OK" });
+      return Promise.resolve({ ok: true });
     },
   };
 }

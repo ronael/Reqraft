@@ -13,11 +13,9 @@ export async function providerFetch(
       throw error;
     }
 
-    throw new ProviderError(
-      `${providerName} est inaccessible. Vérifie ta connexion réseau, la base URL du provider et réessaie.`,
-      EXIT_CODES.PROVIDER_NETWORK,
-      error,
-    );
+    throw new ProviderError("provider.request_failed", EXIT_CODES.PROVIDER_NETWORK, error, {
+      provider: providerName,
+    });
   }
 }
 

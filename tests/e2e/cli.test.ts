@@ -31,6 +31,7 @@ function testEnv(): NodeJS.ProcessEnv {
     HOME: TEST_CONFIG_HOME,
     APPDATA: TEST_CONFIG_HOME,
     XDG_CONFIG_HOME: TEST_CONFIG_HOME,
+    REQRAFT_UI_LOCALE: "fr",
   };
 }
 
@@ -80,11 +81,39 @@ describe("CLI e2e", () => {
     const { stdout, exitCode } = run('"test" --provider mock --json');
     expect(exitCode).toBe(0);
     const json = JSON.parse(stdout) as {
-      rewritten: string;
-      quality: { status: string; signals: unknown[] };
+      schemaVersion: number;
+      ok: boolean;
+      result: { rewritten: string; quality: { status: string; signals: unknown[] } };
     };
-    expect(json.rewritten).toContain("[mock]");
-    expect(json.quality).toEqual({ status: "good", signals: [] });
+    expect(json.schemaVersion).toBe(1);
+    expect(json.ok).toBe(true);
+    expect(json.result.rewritten).toContain("[mock]");
+    expect(json.result.quality).toEqual({ status: "good", signals: [] });
+  });
+
+  it("keeps JSON content identical across UI locales", () => {
+    const en = run('"test" --provider mock --json --ui-locale en');
+    const fr = run('"test" --provider mock --json --ui-locale fr');
+
+    expect(en.exitCode).toBe(0);
+    expect(fr.exitCode).toBe(0);
+    expect(en.stderr).toBe("");
+    expect(fr.stderr).toBe("");
+    const enJson = JSON.parse(en.stdout) as { result: { latencyMs?: number } };
+    const frJson = JSON.parse(fr.stdout) as { result: { latencyMs?: number } };
+    delete enJson.result.latencyMs;
+    delete frJson.result.latencyMs;
+    expect(enJson).toEqual(frJson);
+  });
+
+  it("keeps structured JSON errors byte-identical across UI locales", () => {
+    const en = run('"test" --provider mock --timeout 0 --json --ui-locale en');
+    const fr = run('"test" --provider mock --timeout 0 --json --ui-locale fr');
+
+    expect(en.exitCode).toBe(EXIT_CODES.INVALID_INPUT);
+    expect(fr.exitCode).toBe(EXIT_CODES.INVALID_INPUT);
+    expect(en.stdout).toBe(fr.stdout);
+    expect(en.stdout).toContain('"code": "runtime.option_invalid"');
   });
 
   it("shows stats when requested", () => {
@@ -124,7 +153,7 @@ describe("CLI e2e", () => {
 
   it("rejects invalid runtime limits with an actionable error", () => {
     const { stdout, stderr, exitCode } = run('"test" --provider mock --timeout 0');
-    expect(exitCode).toBe(1);
+    expect(exitCode).toBe(EXIT_CODES.INVALID_INPUT);
     expect(stdout).toBe("");
     expect(stderr).toContain("Le timeout doit être un entier strictement positif.");
   });
@@ -142,7 +171,7 @@ describe("CLI e2e", () => {
     const { stdout, stderr, exitCode } = run("config set showStats yes");
     expect(exitCode).toBe(2);
     expect(stdout).toBe("");
-    expect(stderr).toContain("showStats attend true ou false");
+    expect(stderr).toContain("Valeur invalide pour showStats");
   });
 
   it("lists providers from the public catalog", () => {

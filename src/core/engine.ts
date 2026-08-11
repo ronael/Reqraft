@@ -21,7 +21,7 @@ export interface EngineOptions {
   level: RepromptLevel;
   provider: ProviderAdapter;
   model: string;
-  language?: string;
+  outputLanguage?: string;
   includeChanges: boolean;
   stream?: boolean;
   temperature?: number;
@@ -42,7 +42,7 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     input: options.input,
     profile: options.profile,
     level: options.level,
-    language: options.language,
+    outputLanguage: options.outputLanguage,
     includeChanges: options.includeChanges,
   });
 
@@ -97,14 +97,13 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
           {
             code: "output_truncated" as const,
             severity: "critical" as const,
-            message: "Le provider indique que la réponse a atteint sa limite de sortie.",
           },
         ]
       : [];
-  const modelSignals = parsed.warnings.map((warning) => ({
+  const modelSignals = parsed.modelWarnings.map((warning) => ({
     code: "model_warning" as const,
     severity: "warning" as const,
-    message: warning,
+    detail: warning,
   }));
   const formatSignals =
     parsed.format === "raw"
@@ -112,8 +111,6 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
           {
             code: "unstructured_response" as const,
             severity: "warning" as const,
-            message:
-              "Le provider n’a pas respecté le format structuré attendu ; la sortie brute reste disponible.",
           },
         ]
       : [];
@@ -133,9 +130,6 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     provider: options.provider.id,
     model: response.model ?? options.model,
     changes: options.includeChanges ? parsed.changes : [],
-    warnings: quality.signals
-      .filter((signal) => signal.severity !== "info")
-      .map((signal) => signal.message),
     quality,
     usage: response.usage
       ? {

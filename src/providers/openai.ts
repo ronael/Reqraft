@@ -85,7 +85,7 @@ export class OpenAIProvider implements ProviderAdapter {
     });
 
     if (!response.ok) {
-      raiseProviderError(response, await response.text());
+      raiseProviderError(this.id, response, await response.text());
     }
 
     if (request.stream && response.body) {
@@ -126,7 +126,7 @@ export class OpenAIProvider implements ProviderAdapter {
     });
     const text = await response.text();
     if (!response.ok) {
-      raiseProviderError(response, text);
+      raiseProviderError(this.id, response, text);
     }
     const data = JSON.parse(text) as { data: { id: string }[] };
     return data.data.map((m) => ({
@@ -140,11 +140,11 @@ export class OpenAIProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: `Clé API OpenAI manquante (${this.missingConfiguration.join(", ")}).`,
+        code: "missing_configuration",
         missingConfiguration: this.missingConfiguration,
       });
     }
-    return Promise.resolve({ ok: true, message: "OpenAI est configuré." });
+    return Promise.resolve({ ok: true });
   }
 }
 

@@ -16,7 +16,6 @@ function makeResult(overrides: Partial<RepromptResult> = {}): RepromptResult {
     provider: "mock",
     model: "mock-model",
     changes: [],
-    warnings: [],
     quality: { status: "good", signals: [] },
     ...overrides,
   };
@@ -56,14 +55,13 @@ describe("CLI output formatting", () => {
 
   it("does not repeat quality in stats after detailed warnings", () => {
     const result = makeResult({
-      warnings: ["Ambiguïté critique."],
       quality: {
         status: "review",
         signals: [
           {
             code: "model_warning",
             severity: "warning",
-            message: "Ambiguïté critique.",
+            detail: "Ambiguïté critique.",
           },
         ],
       },
@@ -75,8 +73,16 @@ describe("CLI output formatting", () => {
 
   it("visually separates a quality warning from the generated prompt", () => {
     const result = makeResult({
-      warnings: ["Le composant cible reste ambigu."],
-      quality: { status: "review", signals: [] },
+      quality: {
+        status: "review",
+        signals: [
+          {
+            code: "model_warning",
+            severity: "warning",
+            detail: "Le composant cible reste ambigu.",
+          },
+        ],
+      },
     });
     const output = formatQuality(result, { color: true, unicode: true });
 

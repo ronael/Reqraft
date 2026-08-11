@@ -10,8 +10,12 @@ import {
   getProviderEnvName,
   listCredentialProviders,
 } from "../providers/catalog.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 
 const execFileAsync = promisify(execFile);
+const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 /** Linux Secret Service CLI, and the attribute pair identifying a Reqraft key. */
 const SECRET_TOOL = "secret-tool";
@@ -62,42 +66,54 @@ interface LogoutDependencies {
 export async function login(
   provider: CredentialProvider,
   dependencies: LoginDependencies = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<void> {
   const output = dependencies.output ?? {
     log: console.log,
     write: process.stdout.write.bind(process.stdout),
   };
   const env = dependencies.env ?? process.env;
-  printScreen(`Connexion à ${provider}`, "Stockage sécurisé du système", output);
-  output.log("La clé ne sera jamais écrite dans config.json.\n");
+  printScreen(t("auth.login.title", { provider }), t("auth.login.subtitle"), output);
+  output.log(t("auth.login.configNote"));
   const secret = await (dependencies.readSecret ?? readSecret)(
-    `Clé API ${provider} (saisie masquée) : `,
+    t("auth.login.prompt", { provider }),
   );
-  if (!secret) throw new Error("Aucune clé fournie.");
+  if (!secret) throw new Error(t("auth.login.missing"));
   assertCredentialIsNotPlaceholder(secret);
-  output.write("Vérification de la clé… ");
+  output.write(t("auth.login.checking"));
   await (dependencies.validateCredential ?? validateCredential)(provider, secret);
-  output.log("valide.");
-  await (dependencies.setCredential ?? setCredential)(provider, secret);
-  output.log(`Clé ${provider} enregistrée dans le stockage sécurisé du système.`);
+  output.log(t("auth.login.valid"));
+  try {
+    await (dependencies.setCredential ?? setCredential)(provider, secret);
+  } catch (error) {
+    throw new ReqraftError("credential.storage_unavailable", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { provider },
+      cause: error,
+    });
+  }
+  output.log(t("auth.login.saved", { provider }));
   const envName = getProviderEnvName(provider);
   if (env[envName]) {
-    output.log(
-      `Attention : ${envName} est déjà définie et reste prioritaire sur le stockage sécurisé.`,
-    );
-    output.log(
-      `Supprime cette variable si elle contient une ancienne clé, puis relance ton terminal.`,
-    );
+    output.log(t("auth.login.envPriority", { envName }));
+    output.log(t("auth.login.envAdvice"));
   }
 }
 
 export async function logout(
   provider: CredentialProvider,
   dependencies: LogoutDependencies = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<void> {
   const output = dependencies.output ?? console;
-  await (dependencies.deleteCredential ?? deleteCredential)(provider);
-  output.log(`Clé ${provider} supprimée du stockage sécurisé.`);
+  try {
+    await (dependencies.deleteCredential ?? deleteCredential)(provider);
+  } catch (error) {
+    throw new ReqraftError("credential.storage_unavailable", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { provider },
+      cause: error,
+    });
+  }
+  output.log(t("auth.logout.done", { provider }));
 }
 
 /**
@@ -108,13 +124,16 @@ async function describeCredentialSource(
   provider: CredentialProvider,
   envCredential: string | undefined,
   readCredential: (provider: CredentialProvider) => Promise<string | undefined> = getCredential,
+  t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<string> {
   if (envCredential) {
     return isPlaceholderCredential(envCredential)
-      ? "variable d'environnement invalide (valeur d'exemple)"
-      : "variable d'environnement";
+      ? t("auth.source.invalidEnvironment")
+      : t("auth.source.environment");
   }
-  return (await readCredential(provider)) ? "stockage sécurisé" : "non configurée";
+  return (await readCredential(provider))
+    ? t("auth.source.secureStorage")
+    : t("auth.source.notConfigured");
 }
 
 interface CredentialStatusDependencies {
@@ -125,21 +144,22 @@ interface CredentialStatusDependencies {
 
 export async function credentialStatus(
   dependencies: CredentialStatusDependencies = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<void> {
   const env = dependencies.env ?? process.env;
   const output = dependencies.output ?? console;
   const readCredential = dependencies.readCredential ?? getCredential;
-  printScreen("Clés API", "Source active pour chaque provider", output);
+  printScreen(t("auth.status.title"), t("auth.status.subtitle"), output);
   for (const { id: provider } of listCredentialProviders()) {
     const envCredential = env[getProviderEnvName(provider)];
-    const source = await describeCredentialSource(provider, envCredential, readCredential);
+    const source = await describeCredentialSource(provider, envCredential, readCredential, t);
     output.log(`${provider.padEnd(10)} ${source}`);
   }
 }
 
 export function assertCredentialIsNotPlaceholder(secret: string): void {
   if (isPlaceholderCredential(secret)) {
-    throw new Error("Cette valeur ressemble à un exemple, pas à une véritable clé API.");
+    throw new ReqraftError("credential.placeholder", EXIT_CODES.INVALID_CONFIGURATION);
   }
 }
 
@@ -148,9 +168,9 @@ export function assertEnvironmentCredentials(env: NodeJS.ProcessEnv): void {
     const envName = getProviderEnvName(provider);
     const secret = env[envName];
     if (secret && isPlaceholderCredential(secret)) {
-      throw new Error(
-        `${envName} contient une valeur d’exemple invalide. Corrige-la ou supprime-la avant de relancer Reqraft.`,
-      );
+      throw new ReqraftError("credential.placeholder", EXIT_CODES.INVALID_CONFIGURATION, {
+        params: { envName },
+      });
     }
   }
 }

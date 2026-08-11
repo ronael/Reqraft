@@ -13,6 +13,11 @@ import { getFallbackModelForProvider } from "../models/presets.js";
 import { formatCost, formatDuration, formatTokenValue, qualityLabel } from "../ui/formatters.js";
 import { ansi, ANSI, type AnsiStyleOptions } from "../ui/ansi.js";
 import { detectCapabilities } from "../ui/theme/capabilities.js";
+import { describeQualitySignal, visibleQualitySignals } from "../ui/quality.js";
+import { serializeJsonError, serializeJsonSuccess } from "../presentation/json-contract.js";
+import { normalizeReqraftError, ReqraftError } from "../core/errors.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
+import { formatUiError } from "../ui/errors.js";
 
 export interface RepromptCliOptions {
   text?: string;
@@ -35,12 +40,15 @@ export interface RepromptCliOptions {
   verbose?: boolean;
   force?: boolean;
   redactSecrets?: boolean;
+  outputLanguage?: string;
 }
 
 interface RepromptOutput {
   log(message: string): void;
   error(message: string): void;
 }
+
+const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 /**
  * Applies the local secret policy before any text leaves the machine.
@@ -52,6 +60,7 @@ function applySecretPolicy(
   input: string,
   options: RepromptCliOptions,
   output: RepromptOutput,
+  t: Translator,
 ): { input?: string; exitCode?: number } {
   const secrets = detectSecrets(input);
   if (secrets.length === 0 || options.force) {
@@ -61,36 +70,42 @@ function applySecretPolicy(
     return { input: redactSecrets(input) };
   }
 
-  output.error("Un secret potentiel a été détecté dans le texte.");
+  output.error(t("reprompt.secretDetected"));
   for (const secret of secrets) {
     output.error(`  - ${secret.type}`);
   }
-  output.error("Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.");
+  output.error(t("reprompt.secretAdvice"));
   return { exitCode: EXIT_CODES.SECRET_DETECTED };
 }
 
-function reportFatalError(error: unknown, verbose: boolean, output: RepromptOutput): number {
-  const message = error instanceof Error ? error.message : String(error);
-  output.error(`Erreur : ${message}`);
-  if (verbose && error instanceof Error && error.stack) {
-    output.error(error.stack);
+function reportFatalError(
+  error: unknown,
+  verbose: boolean,
+  output: RepromptOutput,
+  provider: string,
+  t: Translator,
+): number {
+  output.error(`${t("common.error")} : ${formatUiError(error, provider, t)}`);
+  if (verbose && error instanceof ReqraftError && error.detail) {
+    output.error(error.detail);
   }
-  return EXIT_CODES.GENERAL_ERROR;
+  return error instanceof ReqraftError ? error.exitCode : EXIT_CODES.GENERAL_ERROR;
 }
 
 export async function runReprompt(
   options: RepromptCliOptions,
   output: RepromptOutput = console,
+  t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<number> {
   try {
     const config = await loadConfig();
     const rawInput = await resolveInput(options);
     if (!rawInput) {
-      output.error("Aucune entrée fournie. Utilisez rp --help pour voir les options.");
+      output.error(t("reprompt.inputMissing"));
       return EXIT_CODES.INVALID_INPUT;
     }
 
-    const secretPolicy = applySecretPolicy(rawInput, options, output);
+    const secretPolicy = applySecretPolicy(rawInput, options, output, t);
     if (secretPolicy.exitCode !== undefined) {
       return secretPolicy.exitCode;
     }
@@ -100,12 +115,23 @@ export async function runReprompt(
     );
 
     if (detectedProfile && options.verbose) {
-      output.error(`Profil détecté : ${result.profile}`);
+      output.error(t("reprompt.profileDetected", { profile: result.profile }));
     }
 
-    return await outputResult(result, options, config.showStats, output);
+    return await outputResult(result, options, config.showStats, output, t);
   } catch (error) {
-    return reportFatalError(error, options.verbose ?? false, output);
+    if (options.json) {
+      const normalized = normalizeReqraftError(error);
+      output.log(serializeJsonError(normalized));
+      return normalized.exitCode;
+    }
+    return reportFatalError(
+      error,
+      options.verbose ?? false,
+      output,
+      options.provider ?? "provider",
+      t,
+    );
   }
 }
 
@@ -128,10 +154,14 @@ export function createCliRepromptInput(
     fidelityMode: options.fidelity ?? config.fidelityMode,
     timeoutMs: resolveTimeout(options.timeout, config.timeoutMs),
     maxOutputTokens: resolvePositiveInteger(
-      "La limite de sortie",
+      "maxOutputTokens",
       options.maxOutputTokens,
       config.maxOutputTokens,
     ),
+    outputLanguage:
+      (options.outputLanguage ?? config.outputLanguage) === "auto"
+        ? undefined
+        : (options.outputLanguage ?? config.outputLanguage),
   };
 }
 
@@ -144,18 +174,20 @@ function resolveRequestedModel(config: Config, options: RepromptCliOptions): str
 }
 
 function resolveTimeout(option: string | undefined, configured: number): number {
-  return resolvePositiveInteger("Le timeout", option, configured) ?? configured;
+  return resolvePositiveInteger("timeout", option, configured) ?? configured;
 }
 
 function resolvePositiveInteger(
-  label: string,
+  optionName: "timeout" | "maxOutputTokens",
   option: string | undefined,
   configured: number | undefined,
 ): number | undefined {
   if (option === undefined) return configured;
   const value = Number(option);
   if (!Number.isInteger(value) || value <= 0) {
-    throw new Error(`${label} doit être un entier strictement positif.`);
+    throw new ReqraftError("runtime.option_invalid", EXIT_CODES.INVALID_INPUT, {
+      params: { option: optionName, expected: "positive_integer" },
+    });
   }
   return value;
 }
@@ -186,10 +218,11 @@ function writePrimaryOutput(
   result: RepromptResult,
   options: RepromptCliOptions,
   output: RepromptOutput,
+  t: Translator,
 ): void {
   const style = quickOutputStyle();
   if (options.json) {
-    output.log(JSON.stringify(result, null, 2));
+    output.log(serializeJsonSuccess(result));
     return;
   }
   if (options.diff) {
@@ -198,7 +231,7 @@ function writePrimaryOutput(
   }
   output.log(result.rewritten);
   if (options.explain) {
-    output.error(formatExplain(result, style));
+    output.error(formatExplain(result, style, t));
   }
 }
 
@@ -207,28 +240,34 @@ async function outputResult(
   options: RepromptCliOptions,
   defaultShowStats: boolean,
   output: RepromptOutput,
+  t: Translator,
 ): Promise<number> {
-  writePrimaryOutput(result, options, output);
+  writePrimaryOutput(result, options, output, t);
 
-  const showsDetailedQuality = !options.json && !options.explain && result.warnings.length > 0;
+  const showsDetailedQuality =
+    !options.json && !options.explain && visibleQualitySignals(result.quality).length > 0;
   if (showsDetailedQuality) {
     output.error("");
-    output.error(formatQuality(result, quickOutputStyle()));
+    output.error(formatQuality(result, quickOutputStyle(), t));
   }
 
   if (!options.json && (options.stats ?? defaultShowStats)) {
     output.error("");
     output.error(
-      formatStats(result, {
-        ...quickOutputStyle(),
-        includeQuality: !showsDetailedQuality,
-      }),
+      formatStats(
+        result,
+        {
+          ...quickOutputStyle(),
+          includeQuality: !showsDetailedQuality,
+        },
+        t,
+      ),
     );
   }
 
   if (options.copy) {
     await writeClipboard(result.rewritten);
-    output.error("Résultat copié dans le presse-papiers.");
+    output.error(t("reprompt.copied"));
   }
 
   if (options.failOnQuality && result.quality.status !== "good") {
@@ -240,48 +279,62 @@ async function outputResult(
 export function formatStats(
   result: RepromptResult,
   options: AnsiStyleOptions & { includeQuality?: boolean } = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): string {
   const color = options.color ?? false;
   const metric = (label: string, value: string): string =>
     `${ansi(label, ANSI.dim, color)} ${value}`;
-  const lines = [ansi("Stats", ANSI.boldAccent, color)];
+  const lines = [ansi(t("stats.title"), ANSI.boldAccent, color)];
   if (result.latencyMs !== undefined) {
-    lines.push(metric("Durée", formatDuration(result.latencyMs)));
+    lines.push(metric(t("stats.duration"), formatDuration(result.latencyMs)));
   }
-  lines.push(metric("Entrée", formatTokenValue(result.usage?.inputTokens)));
-  lines.push(metric("Sortie visible", formatTokenValue(result.usage?.visibleOutputTokens)));
-  lines.push(metric("Raisonnement", formatTokenValue(result.usage?.reasoningTokens)));
-  lines.push(metric("Sortie totale", formatTokenValue(result.usage?.outputTokens)));
+  lines.push(metric(t("stats.input"), formatTokenValue(result.usage?.inputTokens, t)));
+  lines.push(
+    metric(t("stats.visibleOutput"), formatTokenValue(result.usage?.visibleOutputTokens, t)),
+  );
+  lines.push(metric(t("stats.reasoning"), formatTokenValue(result.usage?.reasoningTokens, t)));
+  lines.push(metric(t("stats.totalOutput"), formatTokenValue(result.usage?.outputTokens, t)));
 
   if (result.usage?.estimatedCost !== undefined) {
     lines.push(
-      metric("Coût estimé", formatCost(result.usage.estimatedCost, result.usage.currency)),
+      metric(
+        t("stats.estimatedCost"),
+        formatCost(result.usage.estimatedCost, result.usage.currency),
+      ),
     );
   } else {
-    lines.push(metric("Coût estimé", "non disponible"));
+    lines.push(metric(t("stats.estimatedCost"), t("stats.unavailable")));
   }
 
   lines.push(
-    `${ansi("Provider", ANSI.dim, color)} ${ansi(result.provider, ANSI.accent, color)} · ${ansi("Modèle", ANSI.dim, color)} ${ansi(result.model, ANSI.accent, color)}`,
+    `${ansi(t("stats.provider"), ANSI.dim, color)} ${ansi(result.provider, ANSI.accent, color)} · ${ansi(t("stats.model"), ANSI.dim, color)} ${ansi(result.model, ANSI.accent, color)}`,
   );
   if (options.includeQuality ?? true) {
     const qualityColor = result.quality.status === "good" ? ANSI.success : ANSI.warning;
     lines.push(
-      `${ansi("Qualité", ANSI.dim, color)} ${ansi(qualityLabel(result.quality.status), qualityColor, color)}`,
+      `${ansi(t("stats.quality"), ANSI.dim, color)} ${ansi(qualityLabel(result.quality.status, t), qualityColor, color)}`,
     );
   }
   return lines.join("\n");
 }
 
-export function formatQuality(result: RepromptResult, options: AnsiStyleOptions = {}): string {
+export function formatQuality(
+  result: RepromptResult,
+  options: AnsiStyleOptions = {},
+  t: Translator = DEFAULT_TRANSLATOR,
+): string {
   const color = options.color ?? false;
   const separatorCharacter = options.unicode === false ? "-" : "─";
   const lines = [
     ansi(separatorCharacter.repeat(40), ANSI.dim, color),
-    ansi(`Qualité ${qualityLabel(result.quality.status)}`, ANSI.boldWarning, color),
+    ansi(
+      result.quality.status === "risky" ? t("quality.risky") : t("quality.review"),
+      ANSI.boldWarning,
+      color,
+    ),
   ];
-  for (const warning of result.warnings) {
-    lines.push(`${ansi("!", ANSI.warning, color)} ${warning}`);
+  for (const signal of visibleQualitySignals(result.quality)) {
+    lines.push(`${ansi("!", ANSI.warning, color)} ${describeQualitySignal(signal, t)}`);
   }
   return lines.join("\n");
 }
@@ -311,18 +364,23 @@ export function formatDiff(
   return output.join("\n");
 }
 
-export function formatExplain(result: RepromptResult, options: AnsiStyleOptions = {}): string {
+export function formatExplain(
+  result: RepromptResult,
+  options: AnsiStyleOptions = {},
+  t: Translator = DEFAULT_TRANSLATOR,
+): string {
   const color = options.color ?? false;
   const bullet = options.unicode === false ? ">" : "›";
-  const lines = [`${ansi("Modifications", ANSI.boldAccent, color)} :`];
+  const lines = [`${ansi(t("explain.changes"), ANSI.boldAccent, color)} :`];
   for (const change of result.changes) {
     lines.push(`${ansi(bullet, ANSI.accent, color)} ${change}`);
   }
-  if (result.warnings.length > 0) {
+  const signals = visibleQualitySignals(result.quality);
+  if (signals.length > 0) {
     lines.push("");
-    lines.push(`${ansi("Avertissements", ANSI.warning, color)} :`);
-    for (const warning of result.warnings) {
-      lines.push(`${ansi("!", ANSI.warning, color)} ${warning}`);
+    lines.push(`${ansi(t("explain.warnings"), ANSI.warning, color)} :`);
+    for (const signal of signals) {
+      lines.push(`${ansi("!", ANSI.warning, color)} ${describeQualitySignal(signal, t)}`);
     }
   }
   return lines.join("\n");

@@ -2,6 +2,9 @@
 
 ## Status and decision
 
+Implementation status: completed for Reqraft `0.2.0` on 2026-08-10. This file
+remains the architecture and compatibility contract for future locales.
+
 This document is the source of truth for the first Reqraft internationalisation
 implementation. It replaces the previous feasibility note, which correctly
 separated interface locale from generated-output language but did not audit the

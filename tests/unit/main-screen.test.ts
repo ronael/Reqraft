@@ -13,7 +13,6 @@ const result: RepromptResult = {
   provider: "mock",
   model: "mock-model",
   changes: [],
-  warnings: [],
   quality: { status: "good", signals: [] },
   latencyMs: 1_120,
   usage: { visibleOutputTokens: 31 },
@@ -53,7 +52,7 @@ describe("result panel metadata", () => {
   });
 
   it("reports progress during the run", () => {
-    expect(describeResultMeta(null, true)).toBe("en cours…");
+    expect(describeResultMeta(null, true)).toBe("chargement…");
   });
 
   it("reports tokens and elapsed time once finished", () => {
@@ -115,9 +114,13 @@ describe("structured errors", () => {
     expect(JSON.stringify(described)).not.toContain("leaked");
   });
 
-  it("keeps an unknown failure readable", () => {
+  it("does not expose an arbitrary unknown failure", () => {
     const described = describeUiError(new Error("Réseau injoignable"), "openai");
 
-    expect(described).toEqual({ title: "Erreur", message: "Réseau injoignable" });
+    expect(described).toEqual({
+      title: "Erreur",
+      message: "Une erreur inattendue est survenue.",
+    });
+    expect(described.message).not.toContain("Réseau injoignable");
   });
 });

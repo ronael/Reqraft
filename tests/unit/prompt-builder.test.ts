@@ -83,4 +83,17 @@ describe("prompt builder", () => {
     expect(systemPrompt).toContain("sans symptôme précis");
     expect(systemPrompt).toContain("structure du code, champs ou validations");
   });
+
+  it("keeps output language independent from UI localisation", () => {
+    const { userPrompt } = buildPrompt({
+      input: "Rewrite this request",
+      profile: frontendProfile,
+      level: "standard",
+      outputLanguage: "fr",
+      includeChanges: false,
+    });
+
+    expect(userPrompt).toContain("Langue attendue : fr");
+    expect(userPrompt).toContain("Rewrite this request");
+  });
 });

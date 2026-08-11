@@ -44,11 +44,11 @@ export class MistralProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: `Clé API Mistral manquante (${this.missingConfiguration.join(", ")}).`,
+        code: "missing_configuration",
         missingConfiguration: this.missingConfiguration,
       });
     }
-    return Promise.resolve({ ok: true, message: "Mistral est configuré." });
+    return Promise.resolve({ ok: true });
   }
 }
 

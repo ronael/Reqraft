@@ -59,6 +59,6 @@ describe("generation cancellation", () => {
     const pending = run(controller.signal, 30_000);
     controller.abort();
 
-    await expect(pending).rejects.toThrow("Génération interrompue.");
+    await expect(pending).rejects.toMatchObject({ errorCode: "request.cancelled", exitCode: 0 });
   });
 });

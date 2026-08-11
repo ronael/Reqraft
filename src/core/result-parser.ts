@@ -9,7 +9,7 @@ const ResultSchema = z.object({
 export interface ParsedResult {
   rewritten: string;
   changes: string[];
-  warnings: string[];
+  modelWarnings: string[];
   format: "structured" | "raw";
 }
 
@@ -50,15 +50,15 @@ export function parseResult(text: string): ParsedResult {
     return {
       rewritten: validated.rewritten,
       changes: validated.changes,
-      warnings: validated.warnings,
+      modelWarnings: validated.warnings,
       format: "structured",
     };
   } catch {
     // Fallback: treat the whole text as rewritten if JSON parsing fails.
     return {
       rewritten: cleaned,
-      changes: ["Le modèle n'a pas retourné de JSON valide ; sortie brute conservée."],
-      warnings: ["La réponse n’était pas structurée ; la sortie brute a été conservée."],
+      changes: [],
+      modelWarnings: [],
       format: "raw",
     };
   }

@@ -1,19 +1,36 @@
 import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import { ReqraftError, type ReqraftErrorCode } from "../core/errors.js";
 import { EXIT_CODES } from "../utils/exit-codes.js";
 
-export class ProviderError extends Error {
+export class ProviderError extends ReqraftError {
   readonly httpStatus?: number;
 
   constructor(
     message: string,
     readonly code: number,
     readonly cause?: unknown,
-    options: { httpStatus?: number } = {},
+    options: { httpStatus?: number; provider?: string } = {},
   ) {
-    super(message);
+    const httpStatus = options.httpStatus;
+    super(providerErrorCode(httpStatus), code, {
+      params: {
+        ...(options.provider ? { provider: options.provider } : {}),
+        ...(httpStatus === undefined ? {} : { httpStatus }),
+      },
+      cause,
+    });
     this.name = "ProviderError";
-    this.httpStatus = options.httpStatus;
+    this.message = message;
+    this.httpStatus = httpStatus;
   }
+}
+
+function providerErrorCode(status: number | undefined): ReqraftErrorCode {
+  if (status === 401 || status === 403) return "provider.authentication_failed";
+  if (status === 402) return "provider.insufficient_credit";
+  if (status === 429) return "provider.rate_limited";
+  if (status !== undefined && status >= 500) return "provider.unavailable";
+  return "provider.request_failed";
 }
 
 /**
@@ -30,7 +47,7 @@ function resolveExitCode(status: number): number {
   return EXIT_CODES.PROVIDER_NETWORK;
 }
 
-export function raiseProviderError(response: Response, body: string): never {
+export function raiseProviderError(provider: string, response: Response, body: string): never {
   const code = resolveExitCode(response.status);
   throw new ProviderError(
     `Provider error ${String(response.status)}: ${body.slice(
@@ -39,6 +56,6 @@ export function raiseProviderError(response: Response, body: string): never {
     )}`,
     code,
     undefined,
-    { httpStatus: response.status },
+    { httpStatus: response.status, provider },
   );
 }

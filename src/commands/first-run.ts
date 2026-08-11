@@ -34,6 +34,8 @@ import {
   listProviderDefinitions,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "../providers/catalog.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
+import { modelDescription } from "../presentation/catalog-labels.js";
 
 interface InitProviderChoice {
   label: string;
@@ -44,7 +46,6 @@ interface InitProviderChoice {
 interface ApiKeyStatus {
   envName?: string;
   detected: boolean;
-  message: string;
   optional?: boolean;
 }
 
@@ -76,15 +77,13 @@ interface RunFirstRunOptions {
   shell?: string;
 }
 
-const MODEL_ID_PROMPT = "Identifiant du modèle";
-const SETUP_CANCELLED = "Initialisation annulée.\n";
-const RESTART_TERMINAL_NOTE = "Relance ton terminal pour une configuration permanente.";
+const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 export function getInitProfileChoices(): string[] {
   return [AUTO_PROFILE_ID, ...listProfiles().map((profile) => profile.id)];
 }
 
-export function getInitProviderChoices(): InitProviderChoice[] {
+export function getInitProviderChoices(t: Translator = DEFAULT_TRANSLATOR): InitProviderChoice[] {
   const choices = listProviderDefinitions()
     .filter((definition) => definition.visibleInInit)
     .map((definition) => ({
@@ -95,7 +94,7 @@ export function getInitProviderChoices(): InitProviderChoice[] {
   return [
     ...choices,
     {
-      label: "Serveur local compatible OpenAI",
+      label: t("init.localProvider"),
       provider: OPENAI_COMPATIBLE_PROVIDER_ID,
       local: true,
     },
@@ -114,7 +113,6 @@ export function buildApiKeyStatus(
     return {
       detected: false,
       optional,
-      message: "Aucune variable de clé API nécessaire.",
     };
   }
 
@@ -123,55 +121,64 @@ export function buildApiKeyStatus(
     envName,
     detected,
     optional,
-    message: `${envName} ${detected ? "détectée" : "non détectée"}.`,
   };
+}
+
+function formatApiKeyStatus(status: ApiKeyStatus, t: Translator): string {
+  if (!status.envName) return t("init.keyNotRequired");
+  return status.detected
+    ? t("init.keyDetected", { envName: status.envName })
+    : t("init.keyNotDetected", { envName: status.envName });
 }
 
 export function buildShellInstructions(
   envName: string,
   shell = process.env.SHELL ?? "",
   visual: AnsiStyleOptions = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): string {
   const lowerShell = shell.toLowerCase();
+  const placeholderKey = t("init.placeholderKey");
+  const restartTerminal = t("init.restartTerminal");
   if (lowerShell.includes("fish")) {
     return [
-      formatInitSection("Session actuelle et configuration permanente", visual),
+      formatInitSection(t("init.currentAndPermanent"), visual),
       "",
-      formatInitCommand(`set -Ux ${envName} "votre-clé"`, visual),
+      formatInitCommand(`set -Ux ${envName} "${placeholderKey}"`, visual),
       "",
-      RESTART_TERMINAL_NOTE,
+      restartTerminal,
     ].join("\n");
   }
 
   if (lowerShell.includes("powershell") || lowerShell.includes("pwsh")) {
     return [
-      formatInitSection("Session actuelle", visual),
+      formatInitSection(t("init.currentSession"), visual),
       "",
-      formatInitCommand(`$env:${envName}="votre-clé"`, visual),
+      formatInitCommand(`$env:${envName}="${placeholderKey}"`, visual),
       "",
-      formatInitSection("Configuration utilisateur permanente", visual),
+      formatInitSection(t("init.userPermanent"), visual),
       "",
       "[Environment]::SetEnvironmentVariable(",
       `  "${envName}",`,
-      '  "votre-clé",',
+      `  "${placeholderKey}",`,
       '  "User"',
       ")",
       "",
-      RESTART_TERMINAL_NOTE,
+      restartTerminal,
     ].join("\n");
   }
 
   const rcFile = lowerShell.includes("bash") ? "~/.bashrc" : "~/.zshrc";
   return [
-    formatInitSection("Session actuelle", visual),
+    formatInitSection(t("init.currentSession"), visual),
     "",
-    formatInitCommand(`export ${envName}="votre-clé"`, visual),
+    formatInitCommand(`export ${envName}="${placeholderKey}"`, visual),
     "",
-    formatInitSection("Configuration permanente", visual),
+    formatInitSection(t("init.permanent"), visual),
     "",
-    formatInitCommand(`echo 'export ${envName}="votre-clé"' >> ${rcFile}`, visual),
+    formatInitCommand(`echo 'export ${envName}="${placeholderKey}"' >> ${rcFile}`, visual),
     "",
-    RESTART_TERMINAL_NOTE,
+    restartTerminal,
   ].join("\n");
 }
 
@@ -207,30 +214,46 @@ export function buildSummary(
   config: Config,
   keyStatus: ApiKeyStatus,
   visual: AnsiStyleOptions = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): string {
   const maxOutputSummary =
     config.maxOutputTokens === undefined
-      ? "adaptative"
+      ? t("doctor.adaptive")
       : `${String(config.maxOutputTokens)} tokens`;
   const lines = [
-    formatInitSection("Configuration Reqraft", visual),
+    formatInitSection(t("init.summary"), visual),
     "",
     formatInitMetric("Provider", providerLabel(config.defaultProvider), "info", visual),
-    formatInitMetric("Modèle", config.defaultModel, "info", visual),
+    formatInitMetric(t("doctor.model"), config.defaultModel, "info", visual),
     formatInitMetric(
-      "Clé API",
-      formatKeySummary(keyStatus),
+      t("init.apiKey"),
+      formatKeySummary(keyStatus, t),
       keyStatus.detected || keyStatus.optional ? "success" : "warning",
       visual,
     ),
-    formatInitMetric("Profil", config.defaultProfile, "info", visual),
-    formatInitMetric("Niveau", config.defaultLevel, "info", visual),
-    formatInitMetric("Copie auto.", config.copyAfterGeneration ? "oui" : "non", "text", visual),
-    formatInitMetric("Streaming", config.stream ? "oui" : "non", "text", visual),
-    formatInitMetric("Timeout", `${String(config.timeoutMs)} ms`, "text", visual),
-    formatInitMetric("Sortie max.", maxOutputSummary, "text", visual),
-    formatInitMetric("Stats", config.showStats ? "oui" : "non", "text", visual),
-    formatInitMetric("Télémétrie", "désactivée", "success", visual),
+    formatInitMetric(t("doctor.profile"), config.defaultProfile, "info", visual),
+    formatInitMetric(t("init.level"), config.defaultLevel, "info", visual),
+    formatInitMetric(
+      t("init.copyAuto"),
+      config.copyAfterGeneration ? t("init.yes") : t("init.no"),
+      "text",
+      visual,
+    ),
+    formatInitMetric(
+      t("init.streaming"),
+      config.stream ? t("init.yes") : t("init.no"),
+      "text",
+      visual,
+    ),
+    formatInitMetric(t("doctor.timeout"), `${String(config.timeoutMs)} ms`, "text", visual),
+    formatInitMetric(t("init.maxOutput"), maxOutputSummary, "text", visual),
+    formatInitMetric(
+      t("stats.title"),
+      config.showStats ? t("init.yes") : t("init.no"),
+      "text",
+      visual,
+    ),
+    formatInitMetric(t("init.telemetry"), t("init.disabled"), "success", visual),
   ];
 
   const compatible = firstCompatibleProvider(config);
@@ -239,13 +262,18 @@ export function buildSummary(
     lines.splice(
       6,
       0,
-      formatInitMetric("Variable clé", compatible.apiKeyEnv ?? "aucune", "text", visual),
+      formatInitMetric(
+        t("init.keyVariable"),
+        compatible.apiKeyEnv ?? t("init.none"),
+        "text",
+        visual,
+      ),
     );
     lines.splice(
       7,
       0,
       formatInitMetric(
-        "Nom provider",
+        t("init.providerName"),
         compatible.name ?? getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label,
         "text",
         visual,
@@ -260,6 +288,7 @@ export function buildPostInitSecurityNote(
   keyStatus: ApiKeyStatus,
   shell = process.env.SHELL ?? "",
   visual: AnsiStyleOptions = {},
+  t: Translator = DEFAULT_TRANSLATOR,
 ): string {
   if (!keyStatus.envName || keyStatus.detected) {
     return "";
@@ -267,7 +296,7 @@ export function buildPostInitSecurityNote(
   const credentialProvider = credentialProviderFromEnvName(keyStatus.envName);
   const secureStorageLines = credentialProvider
     ? [
-        "Méthode recommandée, avec le coffre-fort sécurisé du système :",
+        t("init.secureMethod"),
         "",
         formatInitCommand(`rp auth login ${credentialProvider}`, visual),
         "",
@@ -275,13 +304,13 @@ export function buildPostInitSecurityNote(
     : [];
 
   return [
-    formatInitSection("Clé API à configurer", visual),
+    formatInitSection(t("init.keySetup"), visual),
     "",
-    "La configuration est enregistrée, mais la connexion au provider nécessite encore une clé.",
+    t("init.keyRequiredNote"),
     ...secureStorageLines,
-    "Alternative par variable d'environnement :",
+    t("init.envAlternative"),
     "",
-    buildShellInstructions(keyStatus.envName, shell, visual),
+    buildShellInstructions(keyStatus.envName, shell, visual, t),
   ].join("\n");
 }
 
@@ -289,10 +318,18 @@ export function buildPostInitSecurityNote(
 async function confirmOverwrite(io: InitIo, question: string): Promise<Config | null> {
   const confirmed = await askConfirm(io, question, false);
   if (!confirmed) {
-    io.write(`${formatInitStatus(SETUP_CANCELLED.trim(), "warning", io.visual)}\n`);
+    writeCancellation(io);
     return null;
   }
   return DEFAULT_CONFIG;
+}
+
+function writeCancellation(io: InitIo): void {
+  io.write(`${formatInitStatus(io.t("init.cancelled"), "warning", io.visual)}\n`);
+}
+
+async function askModelText(io: InitIo, currentModel: string): Promise<string> {
+  return await askText(io, io.t("init.modelId"), currentModel);
 }
 
 /**
@@ -311,15 +348,12 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
 
   if (reset) {
     writeIntro(io);
-    return await confirmOverwrite(
-      io,
-      "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ?",
-    );
+    return await confirmOverwrite(io, io.t("init.overwriteDefaults"));
   }
 
   const action = await askExistingConfigAction(io, existingConfig);
   if (action === "cancel") {
-    io.write(`${formatInitStatus(SETUP_CANCELLED.trim(), "warning", io.visual)}\n`);
+    writeCancellation(io);
     return null;
   }
   if (action === "show") {
@@ -327,7 +361,7 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
     return null;
   }
   if (action === "reset") {
-    return await confirmOverwrite(io, "Confirmer l'écrasement de la configuration existante ?");
+    return await confirmOverwrite(io, io.t("init.overwrite"));
   }
   return existingConfig;
 }
@@ -348,24 +382,24 @@ async function runConfigurationLoop(
       collected.compatibleProvider?.apiKeyEnv,
     );
 
-    io.write(`\n${buildSummary(config, keyStatus, io.visual)}\n\n`);
-    const decision = await askMenu(io, "Que souhaites-tu faire ?", [
-      "Enregistrer la configuration",
-      "Modifier un choix",
-      "Annuler",
+    io.write(`\n${buildSummary(config, keyStatus, io.visual, io.t)}\n\n`);
+    const decision = await askMenu(io, io.t("init.nextAction"), [
+      io.t("init.save"),
+      io.t("init.modify"),
+      io.t("init.cancel"),
     ]);
 
     if (decision === 1) {
       continue;
     }
     if (decision === 2) {
-      io.write(`${formatInitStatus(SETUP_CANCELLED.trim(), "warning", io.visual)}\n`);
+      writeCancellation(io);
       return;
     }
 
     await saveConfig(config);
     await verifySavedConfig(config, keyStatus, io);
-    const securityNote = buildPostInitSecurityNote(keyStatus, shell, io.visual);
+    const securityNote = buildPostInitSecurityNote(keyStatus, shell, io.visual, io.t);
     if (securityNote) {
       io.write(`\n${securityNote}\n`);
     }
@@ -374,9 +408,12 @@ async function runConfigurationLoop(
   }
 }
 
-export async function runFirstRunSetup(options: RunFirstRunOptions = {}): Promise<void> {
+export async function runFirstRunSetup(
+  options: RunFirstRunOptions = {},
+  t: Translator = DEFAULT_TRANSLATOR,
+): Promise<void> {
   const env = options.env ?? process.env;
-  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env);
+  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env, t);
   await hydrateCredentials(env);
   const shell = options.shell ?? process.env.SHELL ?? "";
 
@@ -406,10 +443,10 @@ async function askModelIdentifier(
 ): Promise<string> {
   if (compatibleProvider?.baseUrl) {
     if (compatibleProvider.id === "local") {
-      return await askText(io, MODEL_ID_PROMPT, defaults.defaultModel || "local-model");
+      return await askModelText(io, defaults.defaultModel || "local-model");
     }
     if (compatibleProvider.id === "custom") {
-      return await askText(io, MODEL_ID_PROMPT, defaults.defaultModel);
+      return await askModelText(io, defaults.defaultModel);
     }
   }
   return await askModel(io, provider, defaults.defaultModel);
@@ -434,20 +471,20 @@ async function collectConfig(
     );
     io.write(
       `${formatInitStatus(
-        keyStatus.message,
+        formatApiKeyStatus(keyStatus, io.t),
         keyStatus.detected || keyStatus.optional ? "success" : "warning",
         io.visual,
       )}\n`,
     );
 
     if (!keyStatus.detected && !keyStatus.optional) {
-      const keyAction = await askMenu(io, "Comment souhaites-tu continuer ?", [
-        "Afficher les instructions de configuration",
-        "Continuer sans clé pour le moment",
-        "Revenir au choix du provider",
+      const keyAction = await askMenu(io, io.t("init.continueHow"), [
+        io.t("init.showInstructions"),
+        io.t("init.continueWithoutKey"),
+        io.t("init.backProvider"),
       ]);
       if (keyAction === 0 && keyStatus.envName) {
-        io.write(`\n${buildShellInstructions(keyStatus.envName, shell, io.visual)}\n\n`);
+        io.write(`\n${buildShellInstructions(keyStatus.envName, shell, io.visual, io.t)}\n\n`);
       }
       if (keyAction === 2) {
         continue;
@@ -469,36 +506,32 @@ async function collectConfig(
       level: await askLevel(io, defaults.defaultLevel),
       copyAfterGeneration: await askConfirm(
         io,
-        "Copier automatiquement le résultat dans le presse-papiers ?",
+        io.t("init.copyQuestion"),
         defaults.copyAfterGeneration,
       ),
-      stream: await askConfirm(
-        io,
-        "Afficher progressivement la réponse lorsque le provider le permet ?",
-        defaults.stream,
-      ),
+      stream: await askConfirm(io, io.t("init.streamQuestion"), defaults.stream),
       timeoutMs: await askTimeout(io, defaults.timeoutMs),
     };
   }
 }
 
 function writeIntro(io: InitIo): void {
-  io.write(`${formatInitHeading("reqraft init", "Configuration guidée", io.visual)}\n\n`);
-  io.write("Configure ton provider, ton modèle et tes préférences locales.\n");
-  io.write("Aucun prompt ni aucune clé API ne sera écrit dans config.json.\n\n");
+  io.write(`${formatInitHeading("reqraft init", io.t("init.subtitle"), io.visual)}\n\n`);
+  io.write(`${io.t("init.intro")}\n`);
+  io.write(`${io.t("init.security")}\n\n`);
 }
 
 async function askExistingConfigAction(
   io: InitIo,
   existingConfig: Config,
 ): Promise<"modify" | "reset" | "show" | "cancel"> {
-  io.write(`${formatInitSection("Configuration existante", io.visual)}\n`);
-  io.write("Une configuration Reqraft existe déjà.\n\n");
+  io.write(`${formatInitSection(io.t("init.existingTitle"), io.visual)}\n`);
+  io.write(`${io.t("init.existing")}\n\n`);
   const choice = await askMenu(io, "", [
-    "Modifier la configuration existante",
-    "Recommencer avec les valeurs par défaut",
-    "Afficher la configuration",
-    "Annuler",
+    io.t("init.modifyExisting"),
+    io.t("init.resetDefaults"),
+    io.t("init.showConfig"),
+    io.t("init.cancel"),
   ]);
   if (choice === 1) return "reset";
   if (choice === 2) {
@@ -510,20 +543,20 @@ async function askExistingConfigAction(
 }
 
 async function askProvider(io: InitIo, defaults: Config): Promise<InitProviderChoice> {
-  const choices = getInitProviderChoices();
+  const choices = getInitProviderChoices(io.t);
   const defaultIndex = Math.max(
     choices.findIndex((choice) => choice.provider === defaults.defaultProvider),
     0,
   );
   const index = await askMenu(
     io,
-    "Quel provider souhaites-tu utiliser ?",
+    io.t("init.providerQuestion"),
     choices.map((choice) => choice.label),
     defaultIndex,
   );
   const fallback = choices[0];
   if (!fallback) {
-    throw new Error("Aucun provider disponible.");
+    throw new Error(io.t("init.noProvider"));
   }
   return choices[index] ?? fallback;
 }
@@ -535,25 +568,23 @@ async function askCompatibleProvider(
 ): Promise<CompatibleProviderInput> {
   const existing = firstCompatibleProvider(defaults);
   const idDefault = local ? "local" : "custom";
-  const id = await askText(io, "Identifiant interne du provider", existing?.id ?? idDefault);
+  const id = await askText(io, io.t("init.internalProviderId"), existing?.id ?? idDefault);
   const name = await askText(
     io,
-    "Nom personnalisé du provider",
+    io.t("init.customProviderName"),
     existing?.name ??
-      (local ? "Serveur local" : getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label),
+      (local
+        ? io.t("init.localServer")
+        : getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label),
   );
   const baseUrl = await askText(
     io,
     "Base URL",
     existing?.baseUrl ?? (local ? "http://localhost:11434/v1" : "https://example.com/v1"),
   );
-  const apiKeyEnv = await askText(
-    io,
-    "Variable d'environnement contenant la clé (optionnelle)",
-    existing?.apiKeyEnv ?? "",
-  );
-  const headersInput = await askText(io, "Headers personnalisés JSON (optionnel)", "");
-  const customHeaders = parseHeaders(headersInput);
+  const apiKeyEnv = await askText(io, io.t("init.apiKeyEnv"), existing?.apiKeyEnv ?? "");
+  const headersInput = await askText(io, io.t("init.customHeaders"), "");
+  const customHeaders = parseHeaders(headersInput, io.t);
   return {
     id,
     name: name ? name : undefined,
@@ -566,7 +597,7 @@ async function askCompatibleProvider(
 async function askModel(io: InitIo, provider: InitProvider, currentModel: string): Promise<string> {
   const presets = getPresetModels().filter((preset) => preset.provider === provider);
   if (presets.length === 0) {
-    return await askText(io, MODEL_ID_PROMPT, currentModel);
+    return await askModelText(io, currentModel);
   }
 
   const recommended = presets.find((preset) => preset.recommended);
@@ -574,12 +605,15 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
     ...(recommended ? [recommended] : []),
     ...presets.filter((preset) => preset.id !== recommended?.id),
   ];
-  const labels = ordered.map((preset) => `${preset.name} (${preset.id}) - ${preset.description}`);
-  labels.push("Saisir un identifiant manuellement");
+  const labels = ordered.map(
+    (preset) =>
+      `${preset.name} (${preset.id}) - ${modelDescription(preset.id, preset.description, io.t)}`,
+  );
+  labels.push(io.t("init.manualModel"));
 
-  const index = await askMenu(io, "Quel modèle souhaites-tu utiliser ?", labels);
+  const index = await askMenu(io, io.t("init.modelQuestion"), labels);
   if (index === labels.length - 1) {
-    return await askText(io, MODEL_ID_PROMPT, currentModel);
+    return await askModelText(io, currentModel);
   }
   return ordered[index]?.id ?? currentModel;
 }
@@ -587,7 +621,7 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
 async function askProfile(io: InitIo, currentProfile: string): Promise<string> {
   const profiles = getInitProfileChoices();
   const defaultIndex = Math.max(profiles.indexOf(currentProfile), 0);
-  const index = await askMenu(io, "Profil par défaut", profiles, defaultIndex);
+  const index = await askMenu(io, io.t("init.defaultProfile"), profiles, defaultIndex);
   return profiles[index] ?? AUTO_PROFILE_ID;
 }
 
@@ -597,7 +631,7 @@ async function askLevel(
 ): Promise<Config["defaultLevel"]> {
   const levels = [...REPROMPT_LEVELS];
   const defaultIndex = Math.max(levels.indexOf(currentLevel), 1);
-  const index = await askMenu(io, "Niveau", levels, defaultIndex);
+  const index = await askMenu(io, io.t("init.level"), levels, defaultIndex);
   return levels[index] ?? "standard";
 }
 
@@ -605,16 +639,14 @@ async function askTimeout(io: InitIo, currentTimeout: number): Promise<number> {
   for (;;) {
     const answer = await askText(
       io,
-      "Timeout en millisecondes",
+      io.t("init.timeoutQuestion"),
       String(currentTimeout > 0 ? currentTimeout : REPROMPT_POLICY.runtime.defaultTimeoutMs),
     );
     const timeout = Number(answer);
     if (Number.isInteger(timeout) && timeout > 0) {
       return timeout;
     }
-    io.write(
-      `${formatInitStatus("Le timeout doit être un entier strictement positif.", "error", io.visual)}\n`,
-    );
+    io.write(`${formatInitStatus(io.t("init.timeoutInvalid"), "error", io.visual)}\n`);
   }
 }
 
@@ -631,22 +663,20 @@ async function verifySavedConfig(
     saved.defaultProfile !== expected.defaultProfile ||
     saved.defaultLevel !== expected.defaultLevel
   ) {
-    throw new Error("La configuration relue ne correspond pas aux choix enregistrés.");
+    throw new Error(io.t("init.savedMismatch"));
   }
 
-  io.write(
-    `\n${formatInitStatus("Configuration enregistrée avec succès.", "success", io.visual)}\n\n`,
-  );
-  io.write(`${formatInitSection("Configuration active", io.visual)}\n\n`);
-  io.write(`${formatInitMetric("Fichier", configPath(), "text", io.visual)}\n`);
+  io.write(`\n${formatInitStatus(io.t("init.saved"), "success", io.visual)}\n\n`);
+  io.write(`${formatInitSection(io.t("init.active"), io.visual)}\n\n`);
+  io.write(`${formatInitMetric(io.t("doctor.file"), configPath(), "text", io.visual)}\n`);
   io.write(
     `${formatInitMetric("Provider", providerLabel(saved.defaultProvider), "info", io.visual)}\n`,
   );
-  io.write(`${formatInitMetric("Modèle", saved.defaultModel, "info", io.visual)}\n`);
+  io.write(`${formatInitMetric(io.t("doctor.model"), saved.defaultModel, "info", io.visual)}\n`);
   io.write(
     `${formatInitMetric(
-      "Clé API",
-      keyStatus.detected ? "détectée" : "non détectée",
+      io.t("init.apiKey"),
+      keyStatus.detected ? io.t("doctor.configured") : io.t("doctor.notConfigured"),
       keyStatus.detected ? "success" : "warning",
       io.visual,
     )}\n`,
@@ -663,7 +693,7 @@ async function maybeRunConnectionTest(
     return;
   }
 
-  const wantsTest = await askConfirm(io, "Tester maintenant la connexion au provider ?", false);
+  const wantsTest = await askConfirm(io, io.t("init.connectionQuestion"), false);
   if (!wantsTest) {
     return;
   }
@@ -684,7 +714,7 @@ async function maybeRunConnectionTest(
     });
     io.write(
       `${formatInitStatus(
-        `Connexion réussie en ${String(Date.now() - startedAt)} ms.`,
+        io.t("init.connectionSuccess", { durationMs: Date.now() - startedAt }),
         "success",
         io.visual,
       )}\n`,
@@ -692,7 +722,9 @@ async function maybeRunConnectionTest(
   } catch (error) {
     io.write(
       `${formatInitStatus(
-        `Test de connexion échoué : ${formatUiError(error, config.defaultProvider)}`,
+        io.t("init.connectionFailed", {
+          reason: formatUiError(error, config.defaultProvider, io.t),
+        }),
         "error",
         io.visual,
       )}\n`,
@@ -718,13 +750,13 @@ function firstCompatibleProvider(
   };
 }
 
-function formatKeySummary(status: ApiKeyStatus): string {
+function formatKeySummary(status: ApiKeyStatus, t: Translator): string {
   if (!status.envName) {
-    return "facultative";
+    return t("init.keyOptional");
   }
   return status.detected
-    ? `détectée dans ${status.envName}`
-    : `non détectée dans ${status.envName}`;
+    ? t("init.keyDetectedIn", { envName: status.envName })
+    : t("init.keyNotDetectedIn", { envName: status.envName });
 }
 
 function providerLabel(provider: Config["defaultProvider"]): string {
@@ -739,29 +771,36 @@ function credentialProviderFromEnvName(envName: string): CredentialProvider | un
   return match?.id;
 }
 
-function parseHeaders(input: string): Record<string, string> | undefined {
+function parseHeaders(input: string, t: Translator): Record<string, string> | undefined {
   if (!input.trim()) {
     return undefined;
   }
   const parsed = JSON.parse(input) as unknown;
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error("Les headers personnalisés doivent être un objet JSON.");
+    throw new Error(t("init.headersInvalid"));
   }
   return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
 }
 
 interface InitIo {
   visual: AnsiStyleOptions;
+  t: Translator;
   write(message: string): void;
   question(prompt: string): Promise<string>;
   close(): void;
 }
 
-function createIo(input: Readable, output: Writable, env: NodeJS.ProcessEnv): InitIo {
+function createIo(
+  input: Readable,
+  output: Writable,
+  env: NodeJS.ProcessEnv,
+  t: Translator,
+): InitIo {
   const rl = readline.createInterface({ input, output });
   const visual = detectCapabilities(env, Boolean((output as Writable & { isTTY?: boolean }).isTTY));
   return {
     visual,
+    t,
     write(message: string): void {
       output.write(message);
     },
@@ -794,7 +833,7 @@ async function askMenu(
 
   for (;;) {
     const answer = await io.question(
-      formatInitPrompt("Votre choix", String(defaultIndex + 1), io.visual),
+      formatInitPrompt(io.t("init.yourChoice"), String(defaultIndex + 1), io.visual),
     );
     if (!answer) {
       return defaultIndex;
@@ -803,7 +842,7 @@ async function askMenu(
     if (Number.isInteger(index) && index >= 0 && index < choices.length) {
       return index;
     }
-    io.write(`${formatInitStatus("Choix invalide.", "error", io.visual)}\n`);
+    io.write(`${formatInitStatus(io.t("init.invalidChoice"), "error", io.visual)}\n`);
   }
 }
 
@@ -820,7 +859,7 @@ async function askConfirm(io: InitIo, question: string, defaultValue: boolean): 
     if (["n", "non", "no"].includes(answer)) {
       return false;
     }
-    io.write(`${formatInitStatus("Réponds par oui ou non.", "error", io.visual)}\n`);
+    io.write(`${formatInitStatus(io.t("init.yesNo"), "error", io.visual)}\n`);
   }
 }
 

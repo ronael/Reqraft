@@ -6,13 +6,17 @@ import type {
   QualitySeverity,
   QualitySignal,
   RepromptLevel,
+  UnsupportedAddition,
 } from "./types.js";
 
 const UNSUPPORTED_ADDITION_TERMS = [
-  { label: "témoignages", patterns: ["témoignage", "témoignages", "testimonial", "testimonials"] },
-  { label: "FAQ", patterns: ["faq", "questions fréquentes"] },
   {
-    label: "CTA",
+    id: "testimonials",
+    patterns: ["témoignage", "témoignages", "testimonial", "testimonials"],
+  },
+  { id: "faq", patterns: ["faq", "questions fréquentes"] },
+  {
+    id: "cta",
     patterns: [
       "cta",
       "appel à l'action",
@@ -21,19 +25,19 @@ const UNSUPPORTED_ADDITION_TERMS = [
       "bouton de conversion",
     ],
   },
-  { label: "pricing", patterns: ["pricing", "tarifs", "prix"] },
-  { label: "footer", patterns: ["footer", "pied de page"] },
-  { label: "header", patterns: ["header", "en-tête", "en tête"] },
-  { label: "responsive", patterns: ["responsive", "mobile", "desktop"] },
-  { label: "SEO", patterns: ["seo", "référencement"] },
-  { label: "animations", patterns: ["animation", "animations", "transition", "transitions"] },
-  { label: "authentification", patterns: ["authentification", "login", "connexion"] },
-  { label: "base de données", patterns: ["base de données", "database", "bdd"] },
-  { label: "palette détaillée", patterns: ["palette", "couleurs", "blanc", "noir", "gris"] },
-  { label: "performance", patterns: ["performance", "performances", "chargement"] },
-] as const;
+  { id: "pricing", patterns: ["pricing", "tarifs", "prix"] },
+  { id: "footer", patterns: ["footer", "pied de page"] },
+  { id: "header", patterns: ["header", "en-tête", "en tête"] },
+  { id: "responsive", patterns: ["responsive", "mobile", "desktop"] },
+  { id: "seo", patterns: ["seo", "référencement"] },
+  { id: "animations", patterns: ["animation", "animations", "transition", "transitions"] },
+  { id: "authentication", patterns: ["authentification", "login", "connexion"] },
+  { id: "database", patterns: ["base de données", "database", "bdd"] },
+  { id: "color_palette", patterns: ["palette", "couleurs", "blanc", "noir", "gris"] },
+  { id: "performance", patterns: ["performance", "performances", "chargement"] },
+] as const satisfies readonly { id: UnsupportedAddition; patterns: readonly string[] }[];
 
-export function detectUnsupportedAdditions(input: string, output: string): string[] {
+export function detectUnsupportedAdditions(input: string, output: string): UnsupportedAddition[] {
   const normalizedInput = normalize(input);
   const normalizedOutput = normalize(output);
 
@@ -43,7 +47,7 @@ export function detectUnsupportedAdditions(input: string, output: string): strin
     );
     const inInput = term.patterns.some((pattern) => containsLexicalTerm(normalizedInput, pattern));
     return inOutput && !inInput;
-  }).map((term) => term.label);
+  }).map((term) => term.id);
 }
 
 function containsLexicalTerm(text: string, pattern: string): boolean {
@@ -78,8 +82,7 @@ export function assessFidelity(
     signals.push({
       code: "unsupported_additions",
       severity: mode === "strict" ? "warning" : "info",
-      message: `Éléments potentiellement ajoutés sans demande explicite : ${additions.join(", ")}.`,
-      details: additions,
+      params: { additions },
     });
   }
 
@@ -87,7 +90,6 @@ export function assessFidelity(
     signals.push({
       code: "disproportionate_expansion",
       severity: mode === "permissive" ? "info" : "warning",
-      message: "La reformulation est nettement plus développée que la demande d’origine.",
     });
   }
 

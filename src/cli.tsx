@@ -1,5 +1,5 @@
 import process from "node:process";
-import { Command } from "commander";
+import { Command, CommanderError, Help } from "commander";
 import { version } from "./version.js";
 import { runReprompt } from "./commands/reprompt.js";
 import { runConfig } from "./commands/config.js";
@@ -11,6 +11,10 @@ import { runAuth } from "./commands/auth.js";
 import { listCredentialProviders } from "./providers/catalog.js";
 import type { FidelityMode } from "./core/types.js";
 import { runOpenTuiAppLauncher } from "./opentui/launcher.js";
+import { loadConfig } from "./config/loader.js";
+import { findUiLocalePreference, resolveUiLocale, systemLocaleCandidates } from "./i18n/locale.js";
+import { createTranslator } from "./i18n/translate.js";
+import { formatUiError } from "./ui/errors.js";
 
 interface CliOptions {
   profile?: string;
@@ -30,9 +34,34 @@ interface CliOptions {
   maxOutputTokens?: string;
   failOnQuality?: boolean;
   verbose?: boolean;
+  uiLocale?: string;
+  outputLanguage?: string;
 }
 
+const cliLocalePreference = findUiLocalePreference(process.argv);
+let configuredLocale: string | undefined;
+try {
+  configuredLocale = (await loadConfig()).uiLocale;
+} catch {
+  // The command surface reports the configuration error after locale bootstrap.
+}
+let localeBootstrapError: unknown;
+let uiLocale: "en" | "fr" = "en";
+try {
+  uiLocale = resolveUiLocale({
+    cli: cliLocalePreference,
+    config: configuredLocale,
+    env: process.env.REQRAFT_UI_LOCALE,
+    systemLocales: systemLocaleCandidates(),
+  });
+} catch (error) {
+  localeBootstrapError = error;
+}
+const t = createTranslator(uiLocale);
+
 const program = new Command();
+program.exitOverride();
+program.configureOutput({ writeErr: () => undefined });
 const AUTH_PROVIDER_HINT = listCredentialProviders()
   .map((provider) => provider.id)
   .join(", ");
@@ -43,119 +72,157 @@ function applyExitCode(exitCode: number): void {
   }
 }
 
+function reportTopLevelError(message: string, exitCode: number): void {
+  console.error(`${t("common.error")} : ${message}`);
+  process.exitCode = exitCode;
+}
+
+function configureLocalizedHelp(command: Command): void {
+  command.helpOption("-h, --help", t("cli.help"));
+  command.createHelp = (): Help => {
+    const help = new Help();
+    const formatHelp = help.formatHelp.bind(help);
+    help.formatHelp = (target, activeHelp): string =>
+      formatHelp(target, activeHelp)
+        .replace(/^Usage:/m, `${t("cli.help.usage")}:`)
+        .replace(/^Arguments:/m, `${t("cli.help.arguments")}:`)
+        .replace(/^Options:/m, `${t("cli.help.options")}:`)
+        .replace(/^Commands:/m, `${t("cli.help.commands")}:`);
+    return help;
+  };
+  for (const child of command.commands) configureLocalizedHelp(child);
+}
+
+async function parseProgram(): Promise<void> {
+  try {
+    await program.parseAsync();
+  } catch (error) {
+    if (error instanceof CommanderError) {
+      if (error.exitCode !== 0) reportTopLevelError(t("cli.invalidCommand"), error.exitCode);
+      else process.exitCode = error.exitCode;
+      return;
+    }
+    reportTopLevelError(formatUiError(error, "provider", t), 1);
+  }
+}
+
 program
   .name("rp")
   .alias("reprompt")
-  .description("Transforme une demande brute en un prompt clair et exploitable.")
-  .version(version, "-v, --version", "Affiche la version")
-  .argument("[text]", "Texte à reformuler")
-  .option("-p, --profile <profile>", "Profil de reformulation")
-  .option("-l, --level <level>", "Niveau de transformation (minimal, standard, complete)")
-  .option("--provider <provider>", "Provider LLM")
-  .option("-m, --model <model>", "Modèle LLM")
-  .option("-c, --copy", "Copier le résultat dans le presse-papiers")
-  .option("--clipboard", "Lire le texte depuis le presse-papiers")
-  .option("-f, --file <path>", "Lire le texte depuis un fichier")
-  .option("--json", "Sortie structurée en JSON")
-  .option("--diff", "Afficher un diff entre l'original et le résultat")
-  .option("--explain", "Afficher une explication des modifications")
-  .option("--stats", "Afficher les statistiques de génération")
-  .option("--fidelity <mode>", "Politique de fidélité (permissive, balanced, strict)")
-  .option("--no-stream", "Désactiver le streaming")
-  .option("--timeout <ms>", "Timeout en millisecondes")
-  .option("--max-output-tokens <tokens>", "Plafond de tokens de sortie pour cette génération")
-  .option("--fail-on-quality", "Retourner un code non nul si le résultat doit être vérifié")
-  .option("--verbose", "Mode verbeux")
-  .option("--force", "Forcer l'envoi malgré un secret détecté")
-  .option("--redact-secrets", "Masquer automatiquement les secrets détectés")
+  .description(t("cli.description"))
+  .version(version, "-v, --version", t("common.version"))
+  .helpOption("-h, --help", t("cli.help"))
+  .argument("[text]", t("cli.argument.text"))
+  .option("-p, --profile <profile>", t("cli.option.profile"))
+  .option("-l, --level <level>", t("cli.option.level"))
+  .option("--provider <provider>", t("cli.option.provider"))
+  .option("-m, --model <model>", t("cli.option.model"))
+  .option("-c, --copy", t("cli.option.copy"))
+  .option("--clipboard", t("cli.option.clipboard"))
+  .option("-f, --file <path>", t("cli.option.file"))
+  .option("--json", t("cli.option.json"))
+  .option("--diff", t("cli.option.diff"))
+  .option("--explain", t("cli.option.explain"))
+  .option("--stats", t("cli.option.stats"))
+  .option("--fidelity <mode>", t("cli.option.fidelity"))
+  .option("--no-stream", t("cli.option.noStream"))
+  .option("--timeout <ms>", t("cli.option.timeout"))
+  .option("--max-output-tokens <tokens>", t("cli.option.maxOutputTokens"))
+  .option("--fail-on-quality", t("cli.option.failOnQuality"))
+  .option("--verbose", t("cli.option.verbose"))
+  .option("--force", t("cli.option.force"))
+  .option("--redact-secrets", t("cli.option.redactSecrets"))
+  .option("--ui-locale <locale>", t("cli.option.uiLocale"))
+  .option("--output-language <language>", t("cli.option.outputLanguage"))
   .action(async (text: string | undefined, options: CliOptions) => {
     if (process.stdin.isTTY && !text && !options.clipboard && !options.file) {
-      applyExitCode(runOpenTuiAppLauncher());
+      applyExitCode(runOpenTuiAppLauncher(uiLocale));
       return;
     }
-    applyExitCode(await runReprompt({ text, ...options }));
+    applyExitCode(await runReprompt({ text, ...options }, console, t));
   });
 
 program
   .command("auth")
-  .description("Gère les clés API dans le stockage sécurisé")
-  .argument("<action>", "login, logout, status")
+  .description(t("cli.auth.description"))
+  .argument("<action>", t("cli.auth.action"))
   .argument("[provider]", AUTH_PROVIDER_HINT)
   .action(async (action: string, provider?: string) => {
-    applyExitCode(await runAuth(action, provider));
+    applyExitCode(await runAuth(action, provider, {}, t));
   });
 
 program
   .command("profiles")
-  .description("Liste les profils disponibles")
+  .description(t("cli.profiles.description"))
   .action(() => {
-    runProfilesList();
+    runProfilesList(console, t);
   });
 
 program
   .command("providers")
-  .description("Liste les providers disponibles")
+  .description(t("cli.providers.description"))
   .action(() => {
-    runProvidersList();
+    runProvidersList(console, t);
   });
 
 program
   .command("models")
-  .description("Liste les modèles recommandés")
+  .description(t("cli.models.description"))
   .action(() => {
-    runModelsList();
+    runModelsList(console, t);
   });
 
 program
   .command("init")
-  .description("Lance l'assistant de configuration initiale")
-  .option("--reset", "Recommencer avec les valeurs par défaut")
+  .description(t("cli.init.description"))
+  .option("--reset", t("cli.reset"))
   .action(async (options: { reset?: boolean }) => {
-    await runFirstRunSetup({ reset: options.reset });
+    await runFirstRunSetup({ reset: options.reset }, t);
   });
 
 program
   .command("config")
-  .description("Gère la configuration")
-  .argument("[action]", "get, set, path, setup")
-  .argument("[key]", "Clé de configuration")
-  .argument("[value]", "Valeur de configuration")
-  .option("--reset", "Avec setup, recommencer avec les valeurs par défaut")
+  .description(t("cli.config.description"))
+  .argument("[action]", t("cli.config.action"))
+  .argument("[key]", t("cli.config.key"))
+  .argument("[value]", t("cli.config.value"))
+  .option("--reset", t("cli.reset"))
   .action(async (action?: string, key?: string, value?: string, options?: { reset?: boolean }) => {
     if (action === "setup") {
-      await runFirstRunSetup({ reset: options?.reset });
+      await runFirstRunSetup({ reset: options?.reset }, t);
       return;
     }
-    applyExitCode(await runConfig(action, key, value));
+    applyExitCode(await runConfig(action, key, value, console, t));
   });
 
 program
   .command("doctor")
-  .description("Vérifie l'installation et la configuration")
+  .description(t("cli.doctor.description"))
   .action(async () => {
-    await runDoctor();
+    await runDoctor({}, t);
   });
 
 program
   .command("alias")
-  .description("Gère les alias shell")
-  .argument("<action>", "set, remove, list")
-  .argument("[name]", "Nom de l'alias")
-  .option("--dry-run", "Afficher la modification sans l'appliquer")
+  .description(t("cli.alias.description"))
+  .argument("<action>", t("cli.alias.action"))
+  .argument("[name]", t("cli.alias.name"))
+  .option("--dry-run", t("cli.alias.dryRun"))
   .action(async (action: string, name?: string, options?: { dryRun?: boolean }) => {
-    applyExitCode(await runAlias(action, name, options ?? {}));
+    applyExitCode(await runAlias(action, name, options ?? {}, t));
   });
 
 program
   .command("version")
-  .description("Affiche la version")
+  .description(t("common.version"))
   .action(() => {
     console.log(version);
   });
 
-try {
-  await program.parseAsync();
-} catch (error) {
-  console.error(`Erreur : ${error instanceof Error ? error.message : String(error)}`);
-  process.exitCode = 1;
+configureLocalizedHelp(program);
+
+if (localeBootstrapError) {
+  reportTopLevelError(t("cli.invalidLocale"), 2);
+} else {
+  await parseProgram();
 }

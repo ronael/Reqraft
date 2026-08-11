@@ -85,14 +85,25 @@ describe("alias manager on temporary files", () => {
   });
 
   it("rejects invalid aliases", async () => {
-    await expect(setAlias(configPath, "bash", "", false)).rejects.toThrow("vide");
-    await expect(setAlias(configPath, "bash", "rp", false)).rejects.toThrow("réservé");
-    await expect(setAlias(configPath, "bash", "a b", false)).rejects.toThrow("invalides");
+    await expect(setAlias(configPath, "bash", "", false)).rejects.toMatchObject({
+      errorCode: "alias.name_empty",
+    });
+    await expect(setAlias(configPath, "bash", "rp", false)).rejects.toMatchObject({
+      errorCode: "alias.name_reserved",
+      params: { name: "rp" },
+    });
+    await expect(setAlias(configPath, "bash", "a b", false)).rejects.toMatchObject({
+      errorCode: "alias.name_invalid",
+      params: { name: "a b" },
+    });
   });
 
   it("rejects duplicate aliases", async () => {
     await setAlias(configPath, "bash", "p", false);
-    await expect(setAlias(configPath, "bash", "p", false)).rejects.toThrow("existe déjà");
+    await expect(setAlias(configPath, "bash", "p", false)).rejects.toMatchObject({
+      errorCode: "alias.exists",
+      params: { name: "p", path: configPath },
+    });
   });
 });
 

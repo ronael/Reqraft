@@ -41,8 +41,7 @@ describe("init assistant helpers", () => {
 
     expect(status.envName).toBe("ANTHROPIC_API_KEY");
     expect(status.detected).toBe(true);
-    expect(status.message).toBe("ANTHROPIC_API_KEY détectée.");
-    expect(status.message).not.toContain("secret-value");
+    expect(JSON.stringify(status)).not.toContain("secret-value");
   });
 
   it("builds shell instructions without embedding a real key", () => {
@@ -91,7 +90,7 @@ describe("init assistant helpers", () => {
         stream: true,
         timeoutMs: 30000,
       }),
-      { envName: "ANTHROPIC_API_KEY", detected: true, message: "ANTHROPIC_API_KEY détectée." },
+      { envName: "ANTHROPIC_API_KEY", detected: true },
     );
 
     expect(summary).toContain("Clé API");
@@ -110,7 +109,7 @@ describe("init assistant helpers", () => {
         stream: true,
         timeoutMs: 30000,
       }),
-      { envName: "OPENAI_API_KEY", detected: true, message: "OPENAI_API_KEY détectée." },
+      { envName: "OPENAI_API_KEY", detected: true },
       { color: true, unicode: true },
     );
 
@@ -124,7 +123,6 @@ describe("init assistant helpers", () => {
     const note = buildPostInitSecurityNote({
       envName: "OPENAI_API_KEY",
       detected: false,
-      message: "OPENAI_API_KEY non détectée.",
     });
 
     expect(note).toContain("rp auth login openai");
@@ -137,7 +135,6 @@ describe("init assistant helpers", () => {
     const note = buildPostInitSecurityNote({
       envName: "OPENROUTER_API_KEY",
       detected: false,
-      message: "OPENROUTER_API_KEY non détectée.",
     });
 
     expect(note).not.toContain("rp auth login openai");

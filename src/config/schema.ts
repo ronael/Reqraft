@@ -9,6 +9,9 @@ import {
   DEFAULT_PROVIDER_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "../providers/catalog.js";
+import { UI_LOCALES } from "../i18n/locale.js";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 
 export const DEFAULT_PROFILE_ID = AUTO_PROFILE_ID;
 
@@ -42,6 +45,8 @@ export const ConfigSchema = z
     showStats: BooleanConfigSchema.default(false),
     fidelityMode: z.enum(FIDELITY_MODES).default(DEFAULT_FIDELITY_MODE),
     telemetry: z.boolean().default(false),
+    uiLocale: z.enum(["auto", ...UI_LOCALES]).default("auto"),
+    outputLanguage: z.string().trim().min(1).default("auto"),
     providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
   })
   .passthrough();
@@ -62,6 +67,8 @@ const CONFIG_KEYS = [
   "showStats",
   "fidelityMode",
   "telemetry",
+  "uiLocale",
+  "outputLanguage",
 ] as const;
 
 const BOOLEAN_CONFIG_KEYS = [
@@ -96,14 +103,28 @@ export function parseConfigValue(key: ConfigKey, value: string): unknown {
   if (BOOLEAN_CONFIG_KEYS.includes(key as (typeof BOOLEAN_CONFIG_KEYS)[number])) {
     if (value === "true") return true;
     if (value === "false") return false;
-    throw new Error(`${key} attend true ou false.`);
+    throw invalidConfigValue(key, "true | false");
   }
 
   if (NUMBER_CONFIG_KEYS.includes(key as (typeof NUMBER_CONFIG_KEYS)[number])) {
     return Number(value);
   }
 
+  if (key === "uiLocale" && value !== "auto" && !UI_LOCALES.includes(value as "en" | "fr")) {
+    throw invalidConfigValue(key, "auto | en | fr");
+  }
+
+  if (key === "outputLanguage" && value.trim().length === 0) {
+    throw invalidConfigValue(key, "auto | BCP 47");
+  }
+
   return value;
+}
+
+function invalidConfigValue(key: ConfigKey, expected: string): ReqraftError {
+  return new ReqraftError("config.value_invalid", EXIT_CODES.INVALID_CONFIGURATION, {
+    params: { key, expected },
+  });
 }
 
 export function isValidLevel(level: string): level is RepromptLevel {

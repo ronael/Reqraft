@@ -3,6 +3,8 @@ import { AnthropicProvider } from "./anthropic.js";
 import { DeepSeekProvider } from "./deepseek.js";
 import { MistralProvider } from "./mistral.js";
 import { MockProvider } from "./mock.js";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 import { OpenAIProvider } from "./openai.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
 import type { Config } from "../config/schema.js";
@@ -64,7 +66,9 @@ export function createProvider(
 ): ProviderAdapter {
   const factory = PROVIDER_FACTORIES.get(id);
   if (!factory) {
-    throw new Error(`Provider non supporté : ${id}`);
+    throw new ReqraftError("provider.unsupported", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { provider: id },
+    });
   }
   return factory(env, config);
 }
@@ -75,7 +79,9 @@ function createCredentialProvider(
 ): ProviderAdapter {
   const factory = CREDENTIAL_PROVIDER_FACTORIES.get(definition.id);
   if (!factory) {
-    throw new Error(`Provider sans adapter configuré : ${definition.id}`);
+    throw new ReqraftError("provider.unsupported", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { provider: definition.id },
+    });
   }
 
   return factory(env[definition.apiKeyEnvName] ?? "", [definition.apiKeyEnvName]);

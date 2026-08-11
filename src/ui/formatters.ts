@@ -1,14 +1,20 @@
 import type { RepromptResult } from "../core/types.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
 
-export function qualityLabel(status: RepromptResult["quality"]["status"]): string {
+const DEFAULT_TRANSLATOR = createTranslator("fr");
+
+export function qualityLabel(
+  status: RepromptResult["quality"]["status"],
+  t: Translator = DEFAULT_TRANSLATOR,
+): string {
   switch (status) {
     case "risky":
-      return "risquée";
+      return t("quality.statusRisky");
     case "review":
-      return "à vérifier";
+      return t("quality.statusReview");
     case "good":
     default:
-      return "correcte";
+      return t("quality.statusGood");
   }
 }
 
@@ -19,8 +25,11 @@ export function formatDuration(milliseconds: number): string {
   return `${(milliseconds / 1000).toFixed(2)} s`;
 }
 
-export function formatTokenValue(value: number | undefined): string {
-  return value === undefined ? "non communiqué" : `${String(value)} tokens`;
+export function formatTokenValue(
+  value: number | undefined,
+  t: Translator = DEFAULT_TRANSLATOR,
+): string {
+  return value === undefined ? t("stats.notReported") : t("stats.tokens", { value });
 }
 
 export function formatTokenMetric(label: string, tokens: number | undefined): string | undefined {

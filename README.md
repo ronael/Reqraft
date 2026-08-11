@@ -104,6 +104,20 @@ rp --clipboard
 rp "your request" --json
 ```
 
+Starting with `0.2.0`, JSON uses a locale-neutral, versioned envelope:
+
+```json
+{
+  "schemaVersion": 1,
+  "ok": true,
+  "result": {}
+}
+```
+
+Failures use the same envelope with `ok: false` and a stable error `code`,
+optional `params`, and numeric `exitCode`. Human-readable translated messages
+are intentionally excluded so scripts receive the same JSON in every UI locale.
+
 ### Diff view
 
 ```bash
@@ -200,6 +214,33 @@ rp config setup              # compatibility alias for rp init
 rp config setup --reset      # compatibility alias for rp init --reset
 rp doctor                    # verify config, keys and provider readiness
 ```
+
+## Language
+
+Reqraft supports English and French for both the quick CLI and the interactive
+terminal UI. Automatic detection uses the terminal locale and falls back to
+English. Override it for one command or persist the preference:
+
+```bash
+rp --ui-locale fr "corrige ce texte"
+rp --ui-locale en --help
+rp config set uiLocale fr    # auto, en, or fr
+```
+
+For CI or temporary shell configuration, use `REQRAFT_UI_LOCALE=en` or
+`REQRAFT_UI_LOCALE=fr`.
+
+The generated prompt language is independent from the interface language.
+`auto` preserves the input language; an explicit value asks the provider for a
+specific output language:
+
+```bash
+rp "rewrite this request" --output-language fr
+rp config set outputLanguage auto
+```
+
+Changing `uiLocale` never changes the machine-readable JSON contract or the
+requested output language.
 
 `rp init` never stores API keys in `config.json`. When a key is missing, it recommends
 `rp auth login <provider>` for secure system storage and also prints shell-specific

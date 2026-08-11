@@ -1,13 +1,21 @@
 import type { RepromptResult } from "../core/types.js";
+import { describeQualitySignal, visibleQualitySignals } from "./quality.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
+
+const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 export type ResultViewMode = "result" | "diff" | "explain";
 
-export function formatResultView(result: RepromptResult, view: ResultViewMode): string {
+export function formatResultView(
+  result: RepromptResult,
+  view: ResultViewMode,
+  t: Translator = DEFAULT_TRANSLATOR,
+): string {
   switch (view) {
     case "diff":
       return formatDiff(result.original, result.rewritten);
     case "explain":
-      return formatExplain(result);
+      return formatExplain(result, t);
     case "result":
       return result.rewritten;
   }
@@ -33,16 +41,17 @@ export function formatDiff(original: string, rewritten: string): string {
   return output.join("\n");
 }
 
-export function formatExplain(result: RepromptResult): string {
-  const lines = ["Modifications :"];
+export function formatExplain(result: RepromptResult, t: Translator = DEFAULT_TRANSLATOR): string {
+  const lines = [`${t("explain.changes")} :`];
   for (const change of result.changes) {
     lines.push(`- ${change}`);
   }
-  if (result.warnings.length > 0) {
+  const signals = visibleQualitySignals(result.quality);
+  if (signals.length > 0) {
     lines.push("");
-    lines.push("Avertissements :");
-    for (const warning of result.warnings) {
-      lines.push(`- ${warning}`);
+    lines.push(`${t("explain.warnings")} :`);
+    for (const signal of signals) {
+      lines.push(`- ${describeQualitySignal(signal, t)}`);
     }
   }
   return lines.join("\n");

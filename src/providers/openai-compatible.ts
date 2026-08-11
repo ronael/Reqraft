@@ -69,7 +69,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     });
 
     if (!response.ok) {
-      raiseProviderError(response, await response.text());
+      raiseProviderError(this.id, response, await response.text());
     }
 
     if (request.stream && response.body) {
@@ -105,7 +105,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     });
     const text = await response.text();
     if (!response.ok) {
-      raiseProviderError(response, text);
+      raiseProviderError(this.id, response, text);
     }
     const data = JSON.parse(text) as { data: { id: string }[] };
     return data.data.map((m) => ({
@@ -119,10 +119,10 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     if (!this.options.baseUrl) {
       return Promise.resolve({
         ok: false,
-        message: "URL de base manquante pour le provider openai-compatible.",
+        code: "missing_configuration",
         missingConfiguration: ["baseUrl"],
       });
     }
-    return Promise.resolve({ ok: true, message: "Provider openai-compatible configuré." });
+    return Promise.resolve({ ok: true });
   }
 }

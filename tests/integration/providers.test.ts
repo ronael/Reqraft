@@ -155,8 +155,8 @@ describe("OpenAI provider", () => {
       }),
     ).rejects.toMatchObject({
       name: "ProviderError",
-      message:
-        "OpenAI est inaccessible. Vérifie ta connexion réseau, la base URL du provider et réessaie.",
+      errorCode: "provider.request_failed",
+      params: { provider: "OpenAI" },
     } satisfies Partial<ProviderError>);
   });
 });

@@ -16,7 +16,7 @@ describe("secure credentials", () => {
     (secret) => {
       expect(() => {
         assertCredentialIsNotPlaceholder(secret);
-      }).toThrow("ressemble à un exemple");
+      }).toThrow("credential.placeholder");
     },
   );
 
@@ -29,7 +29,7 @@ describe("secure credentials", () => {
   it("rejects a placeholder from the environment before a provider request", () => {
     expect(() => {
       assertEnvironmentCredentials({ OPENAI_API_KEY: "ta-clé" });
-    }).toThrow("OPENAI_API_KEY contient une valeur d’exemple invalide");
+    }).toThrow("credential.placeholder");
   });
 
   it("reports credential source from injected environment and secure storage", async () => {
@@ -94,7 +94,9 @@ describe("secure credentials", () => {
         validateCredential,
         setCredential,
       }),
-    ).rejects.toThrow("ressemble à un exemple");
+    ).rejects.toMatchObject({
+      errorCode: "credential.placeholder",
+    });
 
     expect(validateCredential).not.toHaveBeenCalled();
     expect(setCredential).not.toHaveBeenCalled();

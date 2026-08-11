@@ -5,6 +5,8 @@ import { bashHandler } from "./shells/bash.js";
 import { fishHandler } from "./shells/fish.js";
 import { powershellHandler } from "./shells/powershell.js";
 import { zshHandler } from "./shells/zsh.js";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 
 const HANDLERS: Record<Exclude<ShellType, "unknown">, typeof bashHandler> = {
   bash: bashHandler,
@@ -23,13 +25,13 @@ export interface AliasOperation {
 
 export function validateAlias(name: string): void {
   if (!name || name.length === 0) {
-    throw new Error("Le nom de l'alias ne peut pas être vide.");
+    throw new ReqraftError("alias.name_empty", EXIT_CODES.INVALID_INPUT);
   }
   if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-    throw new Error("Le nom de l'alias contient des caractères invalides.");
+    throw new ReqraftError("alias.name_invalid", EXIT_CODES.INVALID_INPUT, { params: { name } });
   }
   if (["rp", "reprompt", "rm", "sudo", "cd"].includes(name)) {
-    throw new Error(`Le nom '${name}' est réservé ou dangereux.`);
+    throw new ReqraftError("alias.name_reserved", EXIT_CODES.INVALID_INPUT, { params: { name } });
   }
 }
 
@@ -66,7 +68,9 @@ export async function setAlias(
     .filter((name): name is string => name !== null);
 
   if (existingAliases.includes(alias)) {
-    throw new Error(`L'alias '${alias}' existe déjà dans ${configPath}.`);
+    throw new ReqraftError("alias.exists", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { name: alias, path: configPath },
+    });
   }
 
   const newInside = [...existingAliases, alias].map((a) => handler.formatAlias(a)).join("\n");
@@ -104,7 +108,9 @@ export async function removeAlias(
     .filter((name): name is string => name !== null);
 
   if (!existingAliases.includes(alias)) {
-    throw new Error(`L'alias '${alias}' n'existe pas dans ${configPath}.`);
+    throw new ReqraftError("alias.not_found", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { name: alias, path: configPath },
+    });
   }
 
   const remainingAliases = existingAliases.filter((a) => a !== alias);

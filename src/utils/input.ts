@@ -1,5 +1,7 @@
 import { readFile } from "node:fs/promises";
 import process from "node:process";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "./exit-codes.js";
 
 export async function readStdin(): Promise<string> {
   const chunks: Buffer[] = [];
@@ -21,8 +23,9 @@ export async function readFileContent(path: string): Promise<string> {
     const content = await readFile(path, "utf8");
     return content.trim();
   } catch (error) {
-    throw new Error(
-      `Impossible de lire le fichier ${path} : ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new ReqraftError("input.file_unreadable", EXIT_CODES.INVALID_INPUT, {
+      params: { path },
+      cause: error,
+    });
   }
 }

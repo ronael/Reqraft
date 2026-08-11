@@ -12,7 +12,7 @@ describe("fidelity checks", () => {
     );
 
     expect(additions).toEqual(
-      expect.arrayContaining(["header", "témoignages", "FAQ", "footer", "palette détaillée"]),
+      expect.arrayContaining(["header", "testimonials", "faq", "footer", "color_palette"]),
     );
   });
 
@@ -40,7 +40,7 @@ describe("fidelity checks", () => {
       "Ajoute un bouton d'action et un appel à l'action visible.",
     );
 
-    expect(additions).toContain("CTA");
+    expect(additions).toContain("cta");
   });
 
   it("detects disproportionate expansion for very short inputs", () => {

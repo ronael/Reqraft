@@ -48,6 +48,7 @@ export function createLayout(
   height: number,
   provider: string,
   model: string,
+  t: Translator = createTranslator("fr"),
 ): Layout {
   const normalizedWidth = Math.max(LAYOUT.minWidth, Math.min(width || 100, LAYOUT.maxWidth));
   const normalizedHeight = Math.max(LAYOUT.minHeight, height || 30);
@@ -81,10 +82,10 @@ export function createLayout(
   const pickerLeft = compact ? LAYOUT.picker.left.compact : LAYOUT.picker.left.regular;
   const pickerWidth = compact ? LAYOUT.picker.width.compact : LAYOUT.picker.width.regular;
   const labels = [
-    ["profile", "profil auto ^P"],
-    ["level", "niveau standard ^L"],
-    ["provider", `provider ${provider} ^I`],
-    ["model", `modèle ${shortModel(model)} ^O`],
+    ["profile", `${t("tui.profile")} auto ^P`],
+    ["level", `${t("tui.level")} standard ^L`],
+    ["provider", `${t("tui.provider")} ${provider} ^I`],
+    ["model", `${t("tui.model")} ${shortModel(model)} ^O`],
   ] as const;
   let cursor = compact ? 2 : 4;
   const badgeZones = labels.map(([id, label]) => {
@@ -127,3 +128,4 @@ export function pickerOptionIndexAt(
 function shortModel(model: string): string {
   return model.length > 14 ? `${model.slice(0, 11)}…` : model;
 }
+import { createTranslator, type Translator } from "../i18n/translate.js";

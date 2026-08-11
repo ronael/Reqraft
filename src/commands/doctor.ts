@@ -12,6 +12,7 @@ import {
   listProviderDefinitions,
   type BuiltinProvider,
 } from "../providers/catalog.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
 
 interface DoctorOutput {
   log(message: string): void;
@@ -30,37 +31,42 @@ interface DoctorDependencies {
   ) => ProviderAdapter;
 }
 
-export async function runDoctor(dependencies: DoctorDependencies = {}): Promise<void> {
+const DEFAULT_TRANSLATOR = createTranslator("fr");
+
+export async function runDoctor(
+  dependencies: DoctorDependencies = {},
+  t: Translator = DEFAULT_TRANSLATOR,
+): Promise<void> {
   const output = dependencies.output ?? console;
   const config = await (dependencies.loadConfig ?? loadConfig)();
   const env = dependencies.env ?? process.env;
   await (dependencies.hydrateCredentials ?? hydrateCredentials)(env);
 
-  printScreen("reqraft doctor", "État de la configuration et des providers", output);
-  output.log("Configuration");
-  printKeyValue("Fichier", (dependencies.configPath ?? getConfigPath)(), output);
-  printKeyValue("Provider", config.defaultProvider, output);
-  printKeyValue("Modèle", config.defaultModel, output);
-  printKeyValue("Profil", config.defaultProfile, output);
-  printKeyValue("Timeout", `${String(config.timeoutMs)} ms`, output);
+  printScreen("reqraft doctor", t("doctor.subtitle"), output);
+  output.log(t("doctor.configuration"));
+  printKeyValue(t("doctor.file"), (dependencies.configPath ?? getConfigPath)(), output);
+  printKeyValue(t("doctor.provider"), config.defaultProvider, output);
+  printKeyValue(t("doctor.model"), config.defaultModel, output);
+  printKeyValue(t("doctor.profile"), config.defaultProfile, output);
+  printKeyValue(t("doctor.timeout"), `${String(config.timeoutMs)} ms`, output);
   printKeyValue(
-    "Sortie max.",
+    t("doctor.maxOutput"),
     config.maxOutputTokens === undefined
-      ? "adaptative"
+      ? t("doctor.adaptive")
       : `${String(config.maxOutputTokens)} tokens`,
     output,
   );
   output.log("");
 
-  output.log("Clés API");
+  output.log(t("doctor.apiKeys"));
   for (const definition of listCredentialProviders()) {
     const key = getProviderEnvName(definition.id);
-    const present = env[key] ? "configuré" : "non configuré";
+    const present = env[key] ? t("doctor.configured") : t("doctor.notConfigured");
     output.log(`  ${definition.label.padEnd(10)} : ${present}`);
   }
   output.log("");
 
-  output.log("Providers");
+  output.log(t("doctor.providers"));
   for (const definition of listProviderDefinitions()) {
     const { id } = definition;
     try {
@@ -68,11 +74,12 @@ export async function runDoctor(dependencies: DoctorDependencies = {}): Promise<
       const health = await provider.validateConfiguration();
       const missing = health.missingConfiguration?.join(", ");
       const missingLabel =
-        missing ?? (isCredentialProvider(id) ? getProviderEnvName(id) : "configuration");
-      const status = health.ok ? "OK" : `manque ${missingLabel}`;
+        missing ??
+        (isCredentialProvider(id) ? getProviderEnvName(id) : t("doctor.configurationValue"));
+      const status = health.ok ? "OK" : t("doctor.missing", { value: missingLabel });
       output.log(`  ${definition.label.padEnd(20)} : ${status}`);
     } catch {
-      output.log(`  ${id.padEnd(20)} : erreur`);
+      output.log(`  ${id.padEnd(20)} : ${t("doctor.error")}`);
     }
   }
 }

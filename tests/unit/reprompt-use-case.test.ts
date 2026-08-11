@@ -13,7 +13,6 @@ function makeResult(overrides: Partial<RepromptResult> = {}): RepromptResult {
     provider: "mock",
     model: "mock-model",
     changes: [],
-    warnings: [],
     quality: { status: "good", signals: [] },
     ...overrides,
   };

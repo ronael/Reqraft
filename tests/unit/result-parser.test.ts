@@ -55,6 +55,6 @@ describe("parseResult", () => {
     const result = parseResult("just some text");
     expect(result.rewritten).toBe("just some text");
     expect(result.format).toBe("raw");
-    expect(result.warnings.length).toBeGreaterThan(0);
+    expect(result.modelWarnings).toEqual([]);
   });
 });

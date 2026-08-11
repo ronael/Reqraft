@@ -46,8 +46,8 @@ describe("Ctrl+Enter is not advertised", () => {
 
 describe("describeInput", () => {
   it("reports an empty prompt", () => {
-    expect(describeInput("")).toBe("0 ligne");
-    expect(describeInput("   ")).toBe("0 ligne");
+    expect(describeInput("")).toBe("0 lignes · 0 mots");
+    expect(describeInput("   ")).toBe("0 lignes · 0 mots");
   });
 
   it("counts a single line and word", () => {

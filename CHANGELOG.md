@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 (2026-08-10)
+
+- Added complete English and French localisation for the CLI, setup, operational commands and OpenTUI.
+- Added `--ui-locale`, `REQRAFT_UI_LOCALE` and the persistent `uiLocale` setting with automatic system-locale detection.
+- Added independent `--output-language` and `outputLanguage` controls; `auto` continues to preserve the input language.
+- Replaced translated core diagnostics and expected failures with stable codes and typed parameters.
+- Versioned `--json` with `schemaVersion: 1` success/error envelopes that do not vary with the UI locale.
+- Removed the unreachable legacy Ink renderer and its dependencies after the OpenTUI migration.
+
+### Breaking change
+
+`--json` no longer serialises `RepromptResult` directly. Consumers must read the
+result from `result` when `ok` is `true`, or the stable error from `error` when
+`ok` is `false`. The former top-level result `warnings` field has been replaced
+by structured `result.quality.signals`.
+
 ## 0.1.5 (2026-08-09)
 
 - Refined the interactive setup hierarchy with clearer choices, prompts and status feedback.

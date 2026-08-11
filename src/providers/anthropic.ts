@@ -55,7 +55,7 @@ export class AnthropicProvider implements ProviderAdapter {
 
     if (!response.ok) {
       const text = await response.text();
-      raiseProviderError(response, text);
+      raiseProviderError(this.id, response, text);
     }
 
     if (request.stream && response.body) {
@@ -96,7 +96,7 @@ export class AnthropicProvider implements ProviderAdapter {
     });
     const text = await response.text();
     if (!response.ok) {
-      raiseProviderError(response, text);
+      raiseProviderError(this.id, response, text);
     }
     const data = JSON.parse(text) as { data: { id: string; display_name?: string }[] };
     return data.data.map((m) => ({
@@ -110,11 +110,11 @@ export class AnthropicProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: `Clé API Anthropic manquante (${this.missingConfiguration.join(", ")}).`,
+        code: "missing_configuration",
         missingConfiguration: this.missingConfiguration,
       });
     }
-    return Promise.resolve({ ok: true, message: "Anthropic est configuré." });
+    return Promise.resolve({ ok: true });
   }
 }
 

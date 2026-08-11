@@ -24,7 +24,7 @@ export class MockProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    return Promise.resolve({ ok: true, message: "Mock provider is always available" });
+    return Promise.resolve({ ok: true });
   }
 }
 

@@ -4,6 +4,8 @@ import { randomUUID } from "node:crypto";
 import path from "node:path";
 import { ConfigSchema, type Config } from "./schema.js";
 import { getConfigPath } from "./paths.js";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 
 export const DEFAULT_CONFIG: Config = ConfigSchema.parse({});
 
@@ -18,9 +20,10 @@ export async function loadConfig(): Promise<Config> {
     const parsed = JSON.parse(content) as unknown;
     return ConfigSchema.parse(parsed);
   } catch (error) {
-    throw new Error(
-      `Configuration corrompue (${configPath}) : ${error instanceof Error ? error.message : String(error)}`,
-    );
+    throw new ReqraftError("config.invalid", EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { path: configPath },
+      cause: error,
+    });
   }
 }
 

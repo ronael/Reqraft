@@ -37,13 +37,10 @@ export class DeepSeekProvider implements ProviderAdapter {
     if (!this.apiKey) {
       return Promise.resolve({
         ok: false,
-        message: `Clé API DeepSeek manquante (${this.missingConfiguration.join(", ")}).`,
+        code: "missing_configuration",
         missingConfiguration: this.missingConfiguration,
       });
     }
-    return Promise.resolve({
-      ok: true,
-      message: "DeepSeek est configuré.",
-    });
+    return Promise.resolve({ ok: true });
   }
 }

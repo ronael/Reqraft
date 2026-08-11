@@ -21,11 +21,15 @@ describe("config schema", () => {
       timeoutMs: 60000,
       showChanges: true,
       showStats: true,
+      uiLocale: "fr",
+      outputLanguage: "en",
       telemetry: false,
     });
     expect(config.defaultProvider).toBe("openai");
     expect(config.timeoutMs).toBe(60000);
     expect(config.showStats).toBe(true);
+    expect(config.uiLocale).toBe("fr");
+    expect(config.outputLanguage).toBe("en");
   });
 
   it("applies defaults", () => {
@@ -37,6 +41,8 @@ describe("config schema", () => {
     expect(config.fidelityMode).toBe(DEFAULT_FIDELITY_MODE);
     expect(config.timeoutMs).toBe(30000);
     expect(config.showStats).toBe(false);
+    expect(config.uiLocale).toBe("auto");
+    expect(config.outputLanguage).toBe("auto");
   });
 
   it("derives the loader defaults from the schema defaults", () => {
@@ -63,9 +69,11 @@ describe("config schema", () => {
   it("parses config command values with strict boolean handling", () => {
     expect(parseConfigValue("showStats", "true")).toBe(true);
     expect(parseConfigValue("showStats", "false")).toBe(false);
-    expect(() => parseConfigValue("showStats", "yes")).toThrow("showStats attend true ou false");
+    expect(() => parseConfigValue("showStats", "yes")).toThrow("config.value_invalid");
     expect(parseConfigValue("timeoutMs", "5000")).toBe(5000);
     expect(parseConfigValue("defaultProfile", "frontend")).toBe("frontend");
+    expect(parseConfigValue("uiLocale", "fr")).toBe("fr");
+    expect(() => parseConfigValue("uiLocale", "de")).toThrow("config.value_invalid");
   });
 
   it("merges with priority CLI > env > file > defaults", () => {

@@ -25,7 +25,7 @@ class CaptureProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    return Promise.resolve({ ok: true, message: "ok" });
+    return Promise.resolve({ ok: true });
   }
 }
 
@@ -43,7 +43,7 @@ class EmptyProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    return Promise.resolve({ ok: true, message: "ok" });
+    return Promise.resolve({ ok: true });
   }
 }
 
@@ -64,7 +64,7 @@ class ExpandingProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    return Promise.resolve({ ok: true, message: "ok" });
+    return Promise.resolve({ ok: true });
   }
 }
 
@@ -85,7 +85,7 @@ class TruncatedProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    return Promise.resolve({ ok: true, message: "ok" });
+    return Promise.resolve({ ok: true });
   }
 }
 
@@ -106,7 +106,7 @@ class WaitingProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    return Promise.resolve({ ok: true, message: "ok" });
+    return Promise.resolve({ ok: true });
   }
 }
 
@@ -155,7 +155,7 @@ describe("engine", () => {
         model: "gpt-5-mini",
         includeChanges: false,
       }),
-    ).rejects.toThrow("sans produire de texte visible");
+    ).rejects.toMatchObject({ errorCode: "result.empty", exitCode: 5 });
   });
 
   it("keeps permissive fidelity findings as non-blocking information", async () => {
@@ -169,7 +169,6 @@ describe("engine", () => {
       fidelityMode: "permissive",
     });
 
-    expect(result.warnings).toEqual([]);
     expect(result.quality.signals).toContainEqual(
       expect.objectContaining({
         code: "unsupported_additions",
@@ -251,6 +250,9 @@ describe("engine", () => {
         includeChanges: false,
         timeoutMs: 10,
       }),
-    ).rejects.toThrow("10 ms");
+    ).rejects.toMatchObject({
+      errorCode: "request.timeout",
+      params: { timeoutMs: 10 },
+    });
   });
 });

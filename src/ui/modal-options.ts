@@ -7,6 +7,10 @@ import {
 import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
 import { listProfiles } from "../profiles/registry.js";
 import { listProviderDefinitions } from "../providers/catalog.js";
+import { createTranslator, type Translator } from "../i18n/translate.js";
+import { profileDescription } from "../presentation/catalog-labels.js";
+
+const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 export interface SelectOption<T extends string> {
   label: string;
@@ -29,11 +33,11 @@ export const HELP_OPTIONS: SelectOption<string>[] = [
   { label: "Ctrl+R — reset", value: "reset" },
 ];
 
-export function getProfileOptions(): SelectOption<string>[] {
+export function getProfileOptions(t: Translator = DEFAULT_TRANSLATOR): SelectOption<string>[] {
   return [
-    { label: "auto (détection)", value: AUTO_PROFILE_ID },
+    { label: t("profile.autoDetection"), value: AUTO_PROFILE_ID },
     ...listProfiles().map((profile) => ({
-      label: `${profile.name} — ${profile.description}`,
+      label: `${profile.name} — ${profileDescription(profile.id, profile.description, t)}`,
       value: profile.id,
     })),
   ];

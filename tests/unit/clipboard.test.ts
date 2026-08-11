@@ -28,8 +28,8 @@ describe("clipboard writes", () => {
     clipboardMock.write.mockResolvedValue();
     clipboardMock.read.mockResolvedValue("ancien contenu");
 
-    await expect(writeClipboard("nouveau contenu")).rejects.toThrow(
-      "la vérification du contenu a échoué",
-    );
+    await expect(writeClipboard("nouveau contenu")).rejects.toMatchObject({
+      errorCode: "clipboard.write_failed",
+    });
   });
 });

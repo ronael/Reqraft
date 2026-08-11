@@ -1,11 +1,8 @@
-import { ProviderError } from "../providers/errors.js";
+import { ReqraftError } from "./errors.js";
 
-export class EmptyProviderResponseError extends ProviderError {
+export class EmptyProviderResponseError extends ReqraftError {
   constructor() {
-    super(
-      "Le modèle a consommé la limite de sortie sans produire de texte visible. Réessaie avec un effort de raisonnement plus faible, une limite supérieure ou un modèle plus rapide.",
-      5,
-    );
+    super("result.empty", 5);
     this.name = "EmptyProviderResponseError";
   }
 }

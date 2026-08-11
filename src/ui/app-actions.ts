@@ -21,6 +21,10 @@ export function createUiRepromptInput(
     fidelityMode: config?.fidelityMode,
     timeoutMs: config?.timeoutMs,
     maxOutputTokens: config?.maxOutputTokens,
+    outputLanguage:
+      config?.outputLanguage && config.outputLanguage !== "auto"
+        ? config.outputLanguage
+        : undefined,
   };
 }
 

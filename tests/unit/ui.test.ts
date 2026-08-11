@@ -50,11 +50,11 @@ const COPY_ERROR: UiError = { title: "Erreur", message: "copie impossible" };
 describe("quality notice", () => {
   it("keeps React keys unique when several model warnings share the same code", () => {
     const first = qualitySignalViewKey(
-      { code: "model_warning", severity: "warning", message: "Premier warning" },
+      { code: "model_warning", severity: "warning", detail: "Premier warning" },
       0,
     );
     const second = qualitySignalViewKey(
-      { code: "model_warning", severity: "warning", message: "Second warning" },
+      { code: "model_warning", severity: "warning", detail: "Second warning" },
       1,
     );
 
@@ -71,8 +71,10 @@ describe("result view formatting", () => {
     provider: "mock",
     model: "mock-model",
     changes: ["Correction de la casse.", "Ponctuation ajoutée."],
-    warnings: ["Ambiguïté conservée."],
-    quality: { status: "review", signals: [] },
+    quality: {
+      status: "review",
+      signals: [{ code: "model_warning", severity: "warning", detail: "Ambiguïté conservée." }],
+    },
   };
 
   it("returns the rewritten prompt for the result view", () => {
@@ -176,7 +178,6 @@ describe("app state transitions", () => {
     provider: "mock",
     model: "mock-model",
     changes: [],
-    warnings: [],
     quality: { status: "good", signals: [] },
   };
 
@@ -195,6 +196,8 @@ describe("app state transitions", () => {
         showChanges: true,
         copyAfterGeneration: false,
         telemetry: false,
+        uiLocale: "auto",
+        outputLanguage: "auto",
         fidelityMode: "balanced",
         timeoutMs: 30_000,
       },
@@ -312,6 +315,8 @@ describe("app action inputs", () => {
         showChanges: true,
         copyAfterGeneration: false,
         telemetry: false,
+        uiLocale: "auto",
+        outputLanguage: "auto",
         fidelityMode: "strict",
         timeoutMs: 12_000,
         maxOutputTokens: 900,

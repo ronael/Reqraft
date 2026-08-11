@@ -1,4 +1,6 @@
 import type { PromptProfile } from "./types.js";
+import { ReqraftError } from "../core/errors.js";
+import { EXIT_CODES } from "../utils/exit-codes.js";
 import { cleanProfile } from "./clean.js";
 import { codeProfile } from "./code.js";
 import { debugProfile } from "./debug.js";
@@ -56,7 +58,9 @@ export function resolveProfile(
   }
   const profile = getProfile(requested);
   if (!profile) {
-    throw new Error(`Profil inconnu : ${requested}`);
+    throw new ReqraftError("profile.unknown", EXIT_CODES.INVALID_INPUT, {
+      params: { profile: requested },
+    });
   }
   return { profile, detected: false };
 }

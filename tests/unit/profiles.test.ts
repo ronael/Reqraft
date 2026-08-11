@@ -47,7 +47,7 @@ describe("profile registry", () => {
   });
 
   it("throws on unknown explicit profile", () => {
-    expect(() => resolveProfile("nope", "test")).toThrow("Profil inconnu");
+    expect(() => resolveProfile("nope", "test")).toThrow("profile.unknown");
   });
 });
 
