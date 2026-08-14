@@ -11,7 +11,8 @@ export const SETTINGS_HEIGHT = 480;
 
 export interface SettingsWindowOptions {
   preloadPath: string;
-  rendererFile: string;
+  /** `rq://` URL of the renderer, surface already applied. */
+  rendererUrl: string;
   devServerUrl?: string;
 }
 
@@ -36,10 +37,6 @@ export function createSettingsWindow(options: SettingsWindowOptions): Electron.B
     window.show();
   });
 
-  if (options.devServerUrl) {
-    void window.loadURL(`${options.devServerUrl}?surface=settings`);
-  } else {
-    void window.loadFile(options.rendererFile, { query: { surface: "settings" } });
-  }
+  void window.loadURL(options.devServerUrl ?? options.rendererUrl);
   return window;
 }

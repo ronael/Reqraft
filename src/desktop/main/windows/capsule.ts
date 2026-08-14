@@ -13,7 +13,8 @@ export const CAPSULE_HEIGHT = 380;
 
 export interface CapsuleWindowOptions {
   preloadPath: string;
-  rendererFile: string;
+  /** `rq://` URL of the renderer (custom protocol — modules fail on file://). */
+  rendererUrl: string;
   /** Vite dev server URL; when absent the built renderer is loaded. */
   devServerUrl?: string;
 }
@@ -59,11 +60,7 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
     }
   });
 
-  if (options.devServerUrl) {
-    void window.loadURL(options.devServerUrl);
-  } else {
-    void window.loadFile(options.rendererFile);
-  }
+  void window.loadURL(options.devServerUrl ?? options.rendererUrl);
 
   return {
     window,

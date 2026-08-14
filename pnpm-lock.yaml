@@ -20,7 +20,7 @@ importers:
         version: 0.4.5(typescript@5.9.3)(web-tree-sitter@0.25.10)
       '@opentui/react':
         specifier: 0.4.5
-        version: 0.4.5(react-devtools-core@7.0.1)(react@19.2.0)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)
+        version: 0.4.5(react-devtools-core@7.0.1)(react@19.2.8)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)
       clipboardy:
         specifier: ^4.0.0
         version: 4.0.0
@@ -28,8 +28,8 @@ importers:
         specifier: ^12.1.0
         version: 12.1.0
       react:
-        specifier: ^19.2.0
-        version: 19.2.0
+        specifier: ^19.2.8
+        version: 19.2.8
       zod:
         specifier: ^3.23.8
         version: 3.25.76
@@ -74,8 +74,8 @@ importers:
         specifier: ^3.3.3
         version: 3.9.6
       react-dom:
-        specifier: ^19.2.0
-        version: 19.2.8(react@19.2.0)
+        specifier: ^19.2.8
+        version: 19.2.8(react@19.2.8)
       tsup:
         specifier: ^8.3.0
         version: 8.5.1(jiti@2.7.0)(postcss@8.5.26)(tsx@4.23.1)(typescript@5.9.3)(yaml@2.9.0)
@@ -2493,8 +2493,8 @@ packages:
     peerDependencies:
       react: ^19.2.0
 
-  react@19.2.0:
-    resolution: {integrity: sha512-tmbWg6W31tQLeB5cdIBOicJDJRR2KzXsV7uSK9iNfLWQ5bIZfxuPEHp7M8wiHyHnn0DD1i7w3Zmin0FtkrwoCQ==}
+  react@19.2.8:
+    resolution: {integrity: sha512-PWaYA1L/q9u2u7xYQi+Y3L3Yfnie7XyLeaJICV1MGD6LprsBxcAqGjYyr0eY3p+QdsA+x/Irkt4Qif8D63+Sbw==}
     engines: {node: '>=0.10.0'}
 
   read-binary-file-arch@1.0.6:
@@ -3564,12 +3564,12 @@ snapshots:
     transitivePeerDependencies:
       - typescript
 
-  '@opentui/react@0.4.5(react-devtools-core@7.0.1)(react@19.2.0)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)':
+  '@opentui/react@0.4.5(react-devtools-core@7.0.1)(react@19.2.8)(typescript@5.9.3)(web-tree-sitter@0.25.10)(ws@8.21.1)':
     dependencies:
       '@opentui/core': 0.4.5(typescript@5.9.3)(web-tree-sitter@0.25.10)
-      react: 19.2.0
+      react: 19.2.8
       react-devtools-core: 7.0.1
-      react-reconciler: 0.33.0(react@19.2.0)
+      react-reconciler: 0.33.0(react@19.2.8)
       ws: 8.21.1
     transitivePeerDependencies:
       - typescript
@@ -5639,19 +5639,19 @@ snapshots:
       - bufferutil
       - utf-8-validate
 
-  react-dom@19.2.8(react@19.2.0):
+  react-dom@19.2.8(react@19.2.8):
     dependencies:
-      react: 19.2.0
+      react: 19.2.8
       scheduler: 0.27.0
 
   react-is@16.13.1: {}
 
-  react-reconciler@0.33.0(react@19.2.0):
+  react-reconciler@0.33.0(react@19.2.8):
     dependencies:
-      react: 19.2.0
+      react: 19.2.8
       scheduler: 0.27.0
 
-  react@19.2.0: {}
+  react@19.2.8: {}
 
   read-binary-file-arch@1.0.6:
     dependencies:

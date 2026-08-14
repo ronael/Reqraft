@@ -10,7 +10,8 @@ export const POPOVER_HEIGHT = 260;
 
 export interface PopoverWindowOptions {
   preloadPath: string;
-  rendererFile: string;
+  /** `rq://` URL of the renderer, surface already applied. */
+  rendererUrl: string;
   devServerUrl?: string;
 }
 
@@ -51,11 +52,7 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
     }
   });
 
-  if (options.devServerUrl) {
-    void window.loadURL(`${options.devServerUrl}?surface=popover`);
-  } else {
-    void window.loadFile(options.rendererFile, { query: { surface: "popover" } });
-  }
+  void window.loadURL(options.devServerUrl ?? options.rendererUrl);
 
   function show(trayBounds: Electron.Rectangle): void {
     const display = screen.getDisplayNearestPoint({

@@ -22,6 +22,7 @@ import {
   requestAccessibility,
 } from "./permissions.js";
 import { RepromptService } from "./reprompt-service.js";
+import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createTray } from "./tray.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
@@ -36,6 +37,10 @@ import { createSettingsWindow } from "./windows/settings.js";
  * 3. the app runs accessory-style, without a Dock icon on macOS.
  */
 applyCrashReportPolicy(crashReporter);
+
+// Scheme privileges are startup-only: they must be declared before the app
+// is ready, so they live at module top level next to the crash policy.
+registerSchemePrivileges();
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -65,14 +70,28 @@ function bootstrap(): void {
     );
 
     const mainDir = path.dirname(fileURLToPath(import.meta.url));
-    const windowOptions = {
+    registerRendererProtocol(path.join(mainDir, "../renderer"));
+    const devServerUrl = process.env.REQRAFT_DESKTOP_DEV_SERVER;
+    const withSurface = (surface?: "popover" | "settings"): string | undefined => {
+      if (devServerUrl === undefined) {
+        return undefined;
+      }
+      return surface === undefined ? devServerUrl : `${devServerUrl}?surface=${surface}`;
+    };
+    const windowDefaults = {
       preloadPath: path.join(mainDir, "../preload/index.cjs"),
-      rendererFile: path.join(mainDir, "../renderer/index.html"),
-      devServerUrl: process.env.REQRAFT_DESKTOP_DEV_SERVER,
     };
 
-    const capsule = createCapsuleWindow(windowOptions);
-    const popover = createPopoverWindow(windowOptions);
+    const capsule = createCapsuleWindow({
+      ...windowDefaults,
+      rendererUrl: rqRendererUrl(),
+      devServerUrl: withSurface(),
+    });
+    const popover = createPopoverWindow({
+      ...windowDefaults,
+      rendererUrl: rqRendererUrl("popover"),
+      devServerUrl: withSurface("popover"),
+    });
 
     // Filled by registerShortcuts below; read through IPC by the settings
     // Shortcuts tab (§5.5: a taken shortcut is visible, never silent).
@@ -82,7 +101,11 @@ function bootstrap(): void {
     let settingsWindow: Electron.BrowserWindow | null = null;
     const openSettings = (): void => {
       if (settingsWindow === null || settingsWindow.isDestroyed()) {
-        settingsWindow = createSettingsWindow(windowOptions);
+        settingsWindow = createSettingsWindow({
+          ...windowDefaults,
+          rendererUrl: rqRendererUrl("settings"),
+          devServerUrl: withSurface("settings"),
+        });
         settingsWindow.on("closed", () => {
           settingsWindow = null;
         });
