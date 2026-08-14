@@ -66,6 +66,22 @@ export function placeCapsule(anchor: CapsuleAnchor, capsule: Size, workArea: Wor
   return { x, y: clamp(y, minY, maxY) };
 }
 
+/** Under the tray icon, horizontally centred on it, clamped to the screen. */
+export function placePopover(
+  trayBounds: { x: number; y: number; width: number; height: number },
+  popover: Size,
+  workArea: WorkArea,
+): Point {
+  return placeCapsule(
+    {
+      kind: "cursor",
+      point: { x: trayBounds.x + trayBounds.width / 2, y: trayBounds.y + trayBounds.height },
+    },
+    popover,
+    workArea,
+  );
+}
+
 function clamp(value: number, min: number, max: number): number {
   // A capsule larger than the work area makes min > max: pin to the origin.
   if (min > max) {

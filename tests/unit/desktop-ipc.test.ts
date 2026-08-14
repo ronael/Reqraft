@@ -146,12 +146,14 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       doctorRun: "doctor:run",
       permissionsState: "permissions:state",
       permissionsRequest: "permissions:request",
+      profilesList: "profiles:list",
+      windowOpenSettings: "window:open-settings",
       runDelta: "run:delta",
       runDone: "run:done",
       runError: "run:error",
       runCancelled: "run:cancelled",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(10);
+    expect(REQUEST_CHANNELS).toHaveLength(12);
     expect(PUSH_CHANNELS).toHaveLength(4);
   });
 
@@ -575,5 +577,55 @@ describe("canaux capture et permissions (lot 2)", () => {
     await expect(
       harness.ipcMain.invoke(IPC_CHANNELS.doctorRun, undefined, harness.sender),
     ).rejects.toThrow(/desktop\.not_implemented/);
+  });
+});
+
+describe("profiles:list et window:open-settings (lot 4)", () => {
+  it("profiles:list expose identité et libellés, jamais les instructions", async () => {
+    const harness = setup({});
+    const profiles = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.profilesList,
+      undefined,
+      harness.sender,
+    )) as { id: string; name: string; description: string }[];
+
+    expect(profiles.length).toBeGreaterThan(1);
+    expect(profiles[0]).toMatchObject({ id: "auto" });
+    for (const profile of profiles) {
+      expect(Object.keys(profile).sort((a, b) => a.localeCompare(b))).toEqual([
+        "description",
+        "id",
+        "name",
+      ]);
+    }
+    expect(JSON.stringify(profiles)).not.toContain("instructions");
+  });
+
+  it("window:open-settings appelle le callback injecté, sans réponse", async () => {
+    const openSettings = vi.fn();
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      openSettings,
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.windowOpenSettings,
+      undefined,
+      harness.sender,
+    );
+    expect(openSettings).toHaveBeenCalledOnce();
+    expect(response).toBeUndefined();
+  });
+
+  it("window:open-settings sans fenêtre câblée reste un no-op propre", async () => {
+    const harness = setup({});
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.windowOpenSettings,
+      undefined,
+      harness.sender,
+    );
+    expect(response).toBeUndefined();
   });
 });

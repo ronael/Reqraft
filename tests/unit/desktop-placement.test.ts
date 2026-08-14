@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { placeCapsule, type WorkArea } from "../../src/desktop/main/windows/placement.js";
+import {
+  placeCapsule,
+  placePopover,
+  type WorkArea,
+} from "../../src/desktop/main/windows/placement.js";
 
 const CAPSULE = { width: 560, height: 480 };
 const WORK_AREA: WorkArea = { x: 0, y: 25, width: 1512, height: 955 };
@@ -58,5 +62,21 @@ describe("placeCapsule (DESKTOP.md §3, §4.3)", () => {
     );
     expect(Number.isFinite(position.x)).toBe(true);
     expect(Number.isFinite(position.y)).toBe(true);
+  });
+});
+
+describe("placePopover (lot 4)", () => {
+  const POPOVER = { width: 320, height: 260 };
+
+  it("s'ouvre sous l'icône de la menu bar, centrée sur elle", () => {
+    const position = placePopover({ x: 1300, y: 0, width: 24, height: 22 }, POPOVER, WORK_AREA);
+    // centrée sur 1312 → 1312 - 160 = 1152 ; sous l'icône → 22 + 8 = 30,
+    // clampée au bord haut de la zone de travail → 25 + 12 = 37
+    expect(position).toEqual({ x: 1152, y: 37 });
+  });
+
+  it("icône au bord droit : le popover reste dans l'écran", () => {
+    const position = placePopover({ x: 1500, y: 0, width: 12, height: 22 }, POPOVER, WORK_AREA);
+    expect(position.x + POPOVER.width).toBeLessThanOrEqual(WORK_AREA.width - 12);
   });
 });

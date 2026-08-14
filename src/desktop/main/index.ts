@@ -10,6 +10,8 @@ import {
   screen,
   systemPreferences,
 } from "electron";
+import { executeReprompt } from "../../application/reprompt.js";
+import { loadConfig } from "../../config/loader.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
 import { registerIpcHandlers } from "./ipc.js";
@@ -19,8 +21,12 @@ import {
   probePermissions,
   requestAccessibility,
 } from "./permissions.js";
+import { RepromptService } from "./reprompt-service.js";
 import { registerShortcuts } from "./shortcuts.js";
+import { createTray } from "./tray.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
+import { createPopoverWindow } from "./windows/popover.js";
+import { createSettingsWindow } from "./windows/settings.js";
 
 /**
  * Desktop bootstrap. Order matters:
@@ -58,21 +64,67 @@ function bootstrap(): void {
       process.platform,
     );
 
+    const mainDir = path.dirname(fileURLToPath(import.meta.url));
+    const windowOptions = {
+      preloadPath: path.join(mainDir, "../preload/index.cjs"),
+      rendererFile: path.join(mainDir, "../renderer/index.html"),
+      devServerUrl: process.env.REQRAFT_DESKTOP_DEV_SERVER,
+    };
+
+    const capsule = createCapsuleWindow(windowOptions);
+    const popover = createPopoverWindow(windowOptions);
+
+    // Settings window: created on demand, recreated if the user closed it.
+    let settingsWindow: Electron.BrowserWindow | null = null;
+    const openSettings = (): void => {
+      if (settingsWindow === null || settingsWindow.isDestroyed()) {
+        settingsWindow = createSettingsWindow(windowOptions);
+        settingsWindow.on("closed", () => {
+          settingsWindow = null;
+        });
+      } else {
+        settingsWindow.show();
+        settingsWindow.focus();
+      }
+    };
+
+    // The menu-bar tray mirrors run lifecycle: busy while a run is in
+    // flight, error on failure, back to rest otherwise (lot 4).
+    const tray = createTray({
+      onTogglePopover: (bounds) => {
+        popover.toggle(bounds);
+      },
+      onOpenSettings: openSettings,
+    });
+
     registerIpcHandlers({
       ipcMain,
       clipboard,
       captureService,
+      service: new RepromptService({
+        executeReprompt,
+        loadConfig,
+        env: process.env,
+        onRunEvent: (event) => {
+          switch (event) {
+            case "start":
+              tray.setState("busy");
+              break;
+            case "done":
+            case "cancelled":
+              tray.setState("repos");
+              break;
+            case "error":
+              tray.setState("error");
+              break;
+          }
+        },
+      }),
       probePermissions: async () => await probePermissions(permissionsProbe),
       requestAccessibility: () => {
         requestAccessibility(systemPreferences);
       },
-    });
-
-    const mainDir = path.dirname(fileURLToPath(import.meta.url));
-    const capsule = createCapsuleWindow({
-      preloadPath: path.join(mainDir, "../preload/index.cjs"),
-      rendererFile: path.join(mainDir, "../renderer/index.html"),
-      devServerUrl: process.env.REQRAFT_DESKTOP_DEV_SERVER,
+      openSettings,
     });
 
     const resolution = registerShortcuts(
@@ -104,6 +156,7 @@ function bootstrap(): void {
 
     app.on("will-quit", () => {
       globalShortcut.unregisterAll();
+      tray.destroy();
     });
   });
 

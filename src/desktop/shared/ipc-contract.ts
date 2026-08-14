@@ -113,6 +113,17 @@ export interface PermissionsRequestResult {
   accessibility: boolean;
 }
 
+/**
+ * A profile as the renderer is allowed to see it: identity and wording only.
+ * `instructions` (the prompt itself) and `detect` (a function) never cross
+ * the IPC — the engine owns them.
+ */
+export interface ProfileSummary {
+  id: string;
+  name: string;
+  description: string;
+}
+
 // --- Main → renderer, pushed ----------------------------------------------------
 
 export interface RunDeltaPayload {
@@ -179,6 +190,8 @@ export interface ReqraftBridge {
   runDoctor(): Promise<DoctorReport>;
   permissionsState(): Promise<PermissionsState>;
   requestPermissions(): Promise<PermissionsRequestResult>;
+  listProfiles(): Promise<ProfileSummary[]>;
+  openSettings(): Promise<void>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;
   onRunError(listener: (payload: RunErrorPayload) => void): Unsubscribe;

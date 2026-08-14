@@ -18,6 +18,11 @@ export const IPC_CHANNELS = {
   doctorRun: "doctor:run",
   permissionsState: "permissions:state",
   permissionsRequest: "permissions:request",
+  // Contract amendment (WORKLOG lot 4): the popover needs the profile catalog,
+  // and both popover and capsule need to open the settings window. §8.1's
+  // table predates those surfaces; channels are still defined ONLY here.
+  profilesList: "profiles:list",
+  windowOpenSettings: "window:open-settings",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -39,6 +44,8 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.doctorRun,
   IPC_CHANNELS.permissionsState,
   IPC_CHANNELS.permissionsRequest,
+  IPC_CHANNELS.profilesList,
+  IPC_CHANNELS.windowOpenSettings,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

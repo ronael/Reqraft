@@ -1,12 +1,15 @@
 import { createRoot } from "react-dom/client";
 import { PALETTE_VALUES } from "../../ui/theme/palette-values.js";
-import { App } from "./capsule/App.js";
+import { App as CapsuleApp } from "./capsule/App.js";
+import { PopoverApp } from "./popover/PopoverApp.js";
+import { SettingsApp } from "./settings/SettingsApp.js";
 import "./shared/desktop.css";
 
 /**
- * Renderer entry point. Brand colours come from the single source of truth,
- * `ui/theme/palette-values.ts`, injected as CSS custom properties; neutral
- * greys stay local to `desktop.css` until lot 3 defines shared tokens.
+ * Renderer entry point. One bundle, three surfaces: the main process picks
+ * through the `surface` query parameter (capsule by default, popover under
+ * the tray icon, settings window). Brand colours come from the single source
+ * of truth, `ui/theme/palette-values.ts`, injected as CSS custom properties.
  */
 const THEME_VARIABLES: Record<string, string> = {
   "--rq-accent": PALETTE_VALUES.accent,
@@ -25,4 +28,17 @@ for (const [name, value] of Object.entries(THEME_VARIABLES)) {
   document.documentElement.style.setProperty(name, value);
 }
 
-createRoot(rootElement).render(<App />);
+const surface = new URLSearchParams(window.location.search).get("surface");
+
+function Surface(): React.JSX.Element {
+  switch (surface) {
+    case "popover":
+      return <PopoverApp />;
+    case "settings":
+      return <SettingsApp />;
+    default:
+      return <CapsuleApp />;
+  }
+}
+
+createRoot(rootElement).render(<Surface />);

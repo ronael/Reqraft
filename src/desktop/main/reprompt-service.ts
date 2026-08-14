@@ -24,6 +24,8 @@ export interface RepromptServiceDependencies {
   createRunId?: () => string;
   /** Macrotask scheduler, injected so tests control the kick ordering. */
   schedule?: (callback: () => void) => void;
+  /** Lot 4: lifecycle notifications driving the menu-bar tray state. */
+  onRunEvent?: (event: "start" | "done" | "error" | "cancelled") => void;
 }
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
@@ -95,6 +97,7 @@ export class RepromptService {
   ): Promise<void> {
     const t = this.translator;
     const providerId = request.providerId ?? config.defaultProvider;
+    this.dependencies.onRunEvent?.("start");
     try {
       // The local secret policy applies before any text leaves the machine,
       // exactly like the CLI path (DESKTOP.md §9).
@@ -104,6 +107,7 @@ export class RepromptService {
           runId,
           error: this.secretError(),
         });
+        this.dependencies.onRunEvent?.("error");
         return;
       }
 
@@ -143,15 +147,18 @@ export class RepromptService {
 
       this.results.set(runId, result);
       this.emit(sender, IPC_CHANNELS.runDone, { runId, result });
+      this.dependencies.onRunEvent?.("done");
     } catch (error) {
       if (controller.signal.aborted) {
         this.emit(sender, IPC_CHANNELS.runCancelled, { runId });
+        this.dependencies.onRunEvent?.("cancelled");
         return;
       }
       this.emit(sender, IPC_CHANNELS.runError, {
         runId,
         error: describeUiError(error, providerId, t),
       });
+      this.dependencies.onRunEvent?.("error");
     } finally {
       this.controllers.delete(runId);
     }

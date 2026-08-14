@@ -9,6 +9,8 @@ import {
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "../../providers/catalog.js";
 import { IPC_CHANNELS } from "../shared/ipc-channels.js";
+import { AUTO_PROFILE_ID } from "../../profiles/profile-ids.js";
+import { listProfiles } from "../../profiles/registry.js";
 import {
   ConfigWriteRequestSchema,
   EmptyRequestSchema,
@@ -59,6 +61,8 @@ export interface DesktopIpcDependencies {
   probePermissions?: () => Promise<PermissionsReport>;
   /** Lot 2: triggers the macOS Accessibility prompt (explicit action only). */
   requestAccessibility?: () => void;
+  /** Lot 4: opens the settings window (from the popover or the capsule). */
+  openSettings?: () => void;
 }
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
@@ -153,6 +157,25 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
       ? await dependencies.probePermissions()
       : { accessibility: false };
     return { accessibility: report.accessibility };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.profilesList, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    // The renderer gets identity and wording only — instructions and the
+    // detect function stay in the engine. "auto" leads: it is the default.
+    return [
+      { id: AUTO_PROFILE_ID, name: "Auto", description: "Détection locale du profil" },
+      ...listProfiles().map((profile) => ({
+        id: profile.id,
+        name: profile.name,
+        description: profile.description,
+      })),
+    ];
+  });
+
+  ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    dependencies.openSettings?.();
   });
 }
 
