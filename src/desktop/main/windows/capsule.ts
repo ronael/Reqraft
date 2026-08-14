@@ -33,9 +33,8 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): BrowserWindo
     },
   });
 
-  window.once("ready-to-show", () => {
-    window.show();
-  });
+  // No ready-to-show reveal: the capsule stays hidden until a global shortcut
+  // triggers it. It is not a windowed app, it appears on demand (§1).
 
   if (options.devServerUrl) {
     void window.loadURL(options.devServerUrl);

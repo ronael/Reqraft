@@ -20,6 +20,8 @@ import {
   type SafeConfig,
 } from "../shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
+import type { CaptureService } from "./capture-service.js";
+import type { PermissionsReport } from "./permissions.js";
 
 /**
  * IPC handlers — registration only (DESKTOP.md §8.1). Channel names and
@@ -51,6 +53,12 @@ export interface DesktopIpcDependencies {
   saveConfig?: (config: Config) => Promise<void>;
   hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
   env?: NodeJS.ProcessEnv;
+  /** Lot 2: capture/reinjection orchestrator. Absent in tests → degraded. */
+  captureService?: CaptureService;
+  /** Lot 2: permissions probe (§5.9). Absent → explicit degraded mode. */
+  probePermissions?: () => Promise<PermissionsReport>;
+  /** Lot 2: triggers the macOS Accessibility prompt (explicit action only). */
+  requestAccessibility?: () => void;
 }
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
@@ -74,11 +82,12 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
 
   ipcMain.handle(IPC_CHANNELS.captureSelection, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
-    // Lot 2: capture of the current selection (DESKTOP.md §5.1).
-    throw new NotImplementedIpcError(IPC_CHANNELS.captureSelection);
+    // The stash was filled by the global-shortcut trigger, before the capsule
+    // took the focus. Without it there is nothing to capture: free input.
+    return dependencies.captureService?.consumeStashed() ?? { empty: true };
   });
 
-  ipcMain.handle(IPC_CHANNELS.resultAccept, (_event, payload) => {
+  ipcMain.handle(IPC_CHANNELS.resultAccept, async (_event, payload) => {
     const { runId, mode } = ResultAcceptRequestSchema.parse(payload);
     const result = service.storedResult(runId);
     if (!result) {
@@ -88,9 +97,12 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
       clipboard.writeText(result.rewritten);
       return { applied: true };
     }
-    // "replace" needs focus restoration and keystroke injection — lot 2
-    // (DESKTOP.md §5.2). Until then the capsule degrades to copy.
-    return { applied: false };
+    // "replace" reinjects into the recorded source app — never into whatever
+    // is frontmost now, which would be the capsule itself (§5.2).
+    if (!dependencies.captureService) {
+      return { applied: false };
+    }
+    return await dependencies.captureService.replace(result.rewritten);
   });
 
   ipcMain.handle(IPC_CHANNELS.configRead, async (_event, payload) => {
@@ -118,17 +130,29 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     throw new NotImplementedIpcError(IPC_CHANNELS.doctorRun);
   });
 
-  ipcMain.handle(IPC_CHANNELS.permissionsState, (_event, payload) => {
+  ipcMain.handle(IPC_CHANNELS.permissionsState, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
-    // Lot 2: real Accessibility/Automation probing (DESKTOP.md §5.9). Until
-    // then the app reports the explicit degraded mode promised by §2.6.
-    return { accessibility: false, canReplace: false, reason: "desktop.permissions_pending" };
+    if (!dependencies.probePermissions) {
+      // No probe wired (tests): the explicit degraded mode promised by §2.6.
+      return { accessibility: false, canReplace: false, reason: "desktop.permissions_pending" };
+    }
+    const report = await dependencies.probePermissions();
+    return {
+      accessibility: report.accessibility,
+      canReplace: report.canReplace,
+      ...(report.gap === "none" ? {} : { reason: report.message }),
+    };
   });
 
-  ipcMain.handle(IPC_CHANNELS.permissionsRequest, (_event, payload) => {
+  ipcMain.handle(IPC_CHANNELS.permissionsRequest, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
-    // Lot 2 — and only on explicit user action, never at startup.
-    throw new NotImplementedIpcError(IPC_CHANNELS.permissionsRequest);
+    // Only ever on explicit user action, never at startup (§5.9). The system
+    // answer arrives asynchronously: re-probe afterwards.
+    dependencies.requestAccessibility?.();
+    const report = dependencies.probePermissions
+      ? await dependencies.probePermissions()
+      : { accessibility: false };
+    return { accessibility: report.accessibility };
   });
 }
 

@@ -86,7 +86,7 @@ function streamingExecute(
 
 interface Harness {
   ipcMain: FakeIpcMain;
-  clipboard: { writeText: ReturnType<typeof vi.fn> };
+  clipboard: { writeText: ReturnType<typeof vi.fn<(text: string) => void>> };
   execute: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
   saveConfig: ReturnType<typeof vi.fn>;
   sender: RunEventSender;
@@ -114,7 +114,7 @@ function setup(options: {
   });
 
   const ipcMain = new FakeIpcMain();
-  const clipboard = { writeText: vi.fn() };
+  const clipboard = { writeText: vi.fn<(text: string) => void>() };
   registerIpcHandlers({
     ipcMain,
     clipboard,
@@ -409,29 +409,142 @@ describe("providers:status", () => {
   });
 });
 
-describe("canaux stubbés en attente des lots suivants", () => {
-  it("capture:selection, doctor:run et permissions:request refusent proprement", async () => {
+describe("canaux capture et permissions (lot 2)", () => {
+  it("capture:selection sans trigger préalable ouvre la saisie libre", async () => {
     const harness = setup({});
-    for (const channel of [
+    const response = await harness.ipcMain.invoke(
       IPC_CHANNELS.captureSelection,
-      IPC_CHANNELS.doctorRun,
-      IPC_CHANNELS.permissionsRequest,
-    ]) {
-      await expect(harness.ipcMain.invoke(channel, undefined, harness.sender)).rejects.toThrow(
-        /desktop\.not_implemented/,
-      );
-    }
+      undefined,
+      harness.sender,
+    );
+    expect(response).toEqual({ empty: true });
   });
 
-  it("permissions:state répond un mode dégradé explicite (§2.6)", async () => {
+  it("capture:selection relaie le stash du service quand il existe", async () => {
+    const captureService = {
+      consumeStashed: () => ({ text: "sélection", sourceApp: "TextEdit" }),
+      replace: () => Promise.resolve({ applied: true }),
+    };
     const harness = setup({});
-    const state = (await harness.ipcMain.invoke(
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      captureService: captureService as never,
+    });
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.captureSelection,
+      undefined,
+      harness.sender,
+    );
+    expect(response).toEqual({ text: "sélection", sourceApp: "TextEdit" });
+  });
+
+  it("permissions:state relaie le rapport de la sonde, avec la raison du manque", async () => {
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      probePermissions: () =>
+        Promise.resolve({
+          accessibility: true,
+          automation: false,
+          canReplace: false,
+          gap: "automation",
+          message: "Accessibilité accordée, Automatisation refusée.",
+        }),
+    });
+    const response = await harness.ipcMain.invoke(
       IPC_CHANNELS.permissionsState,
       undefined,
       harness.sender,
-    )) as { accessibility: boolean; canReplace: boolean; reason?: string };
-    expect(state.accessibility).toBe(false);
-    expect(state.canReplace).toBe(false);
-    expect(typeof state.reason).toBe("string");
+    );
+    expect(response).toEqual({
+      accessibility: true,
+      canReplace: false,
+      reason: "Accessibilité accordée, Automatisation refusée.",
+    });
+  });
+
+  it("permissions:request déclenche la demande puis re-sonde", async () => {
+    const requestAccessibility = vi.fn();
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      requestAccessibility,
+      probePermissions: () =>
+        Promise.resolve({
+          accessibility: true,
+          automation: true,
+          canReplace: true,
+          gap: "none",
+          message: "Accessibilité et Automatisation accordées.",
+        }),
+    });
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.permissionsRequest,
+      undefined,
+      harness.sender,
+    );
+    expect(requestAccessibility).toHaveBeenCalledOnce();
+    expect(response).toEqual({ accessibility: true });
+  });
+
+  it("result:accept replace délègue au service de capture", async () => {
+    const replace = vi.fn(() => Promise.resolve({ applied: true }));
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      service: new RepromptService({
+        executeReprompt: streamingExecute(),
+        loadConfig: () => Promise.resolve(MOCK_CONFIG),
+        env: {},
+        createRunId: () => "run-1",
+      }),
+      captureService: {
+        consumeStashed: () => ({ empty: true }),
+        replace,
+      } as never,
+    });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "replace" },
+      harness.sender,
+    );
+    expect(response).toEqual({ applied: true });
+    expect(replace).toHaveBeenCalledWith("demande reformulée");
+  });
+
+  it("permissions sans sonde câblée : mode dégradé explicite (§2.6)", async () => {
+    const harness = setup({});
+    const state = await harness.ipcMain.invoke(
+      IPC_CHANNELS.permissionsState,
+      undefined,
+      harness.sender,
+    );
+    expect(state).toEqual({
+      accessibility: false,
+      canReplace: false,
+      reason: "desktop.permissions_pending",
+    });
+    const request = await harness.ipcMain.invoke(
+      IPC_CHANNELS.permissionsRequest,
+      undefined,
+      harness.sender,
+    );
+    expect(request).toEqual({ accessibility: false });
+  });
+
+  it("doctor:run refuse proprement en attendant le lot 5", async () => {
+    const harness = setup({});
+    await expect(
+      harness.ipcMain.invoke(IPC_CHANNELS.doctorRun, undefined, harness.sender),
+    ).rejects.toThrow(/desktop\.not_implemented/);
   });
 });

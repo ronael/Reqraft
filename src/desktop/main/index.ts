@@ -1,9 +1,24 @@
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
-import { app, clipboard, crashReporter, ipcMain } from "electron";
+import {
+  app,
+  clipboard,
+  crashReporter,
+  globalShortcut,
+  ipcMain,
+  systemPreferences,
+} from "electron";
+import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
 import { registerIpcHandlers } from "./ipc.js";
+import { createMacosBridge, createOsascriptRunner } from "./macos.js";
+import {
+  createSystemPermissionsProbe,
+  probePermissions,
+  requestAccessibility,
+} from "./permissions.js";
+import { registerShortcuts } from "./shortcuts.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
 
 /**
@@ -33,13 +48,62 @@ function bootstrap(): void {
   });
 
   void app.whenReady().then(() => {
-    registerIpcHandlers({ ipcMain, clipboard });
+    const bridge = createMacosBridge(createOsascriptRunner());
+    const captureService = new CaptureService({ bridge, clipboard });
+    const permissionsProbe = createSystemPermissionsProbe(
+      systemPreferences,
+      bridge,
+      process.env,
+      process.platform,
+    );
+
+    registerIpcHandlers({
+      ipcMain,
+      clipboard,
+      captureService,
+      probePermissions: async () => await probePermissions(permissionsProbe),
+      requestAccessibility: () => {
+        requestAccessibility(systemPreferences);
+      },
+    });
 
     const mainDir = path.dirname(fileURLToPath(import.meta.url));
-    createCapsuleWindow({
+    const capsule = createCapsuleWindow({
       preloadPath: path.join(mainDir, "../preload/index.cjs"),
       rendererFile: path.join(mainDir, "../renderer/index.html"),
       devServerUrl: process.env.REQRAFT_DESKTOP_DEV_SERVER,
+    });
+
+    const resolution = registerShortcuts(
+      (accelerator, handler) => globalShortcut.register(accelerator, handler),
+      {
+        onCapture: () => {
+          // Record the source app and capture BEFORE the capsule takes the
+          // focus (§5.2), then show.
+          void captureService.trigger().then(() => {
+            capsule.show();
+            capsule.focus();
+          });
+        },
+        onInput: () => {
+          captureService.clear();
+          capsule.show();
+          capsule.focus();
+        },
+      },
+      process.env.REQRAFT_SHORTCUT,
+    );
+
+    if (resolution.registered.length === 0) {
+      // §5.5: never silent. The settings window (lot 5) will surface this;
+      // until then the failure is at least on record.
+      console.error(
+        `Reqraft: aucun raccourci global disponible (refusés : ${resolution.rejected.join(", ")})`,
+      );
+    }
+
+    app.on("will-quit", () => {
+      globalShortcut.unregisterAll();
     });
   });
 
