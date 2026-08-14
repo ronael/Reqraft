@@ -15,7 +15,7 @@ export interface SettingsWindowOptions {
   devServerUrl?: string;
 }
 
-export function createSettingsWindow(options: SettingsWindowOptions): BrowserWindow {
+export function createSettingsWindow(options: SettingsWindowOptions): Electron.BrowserWindow {
   const window = new BrowserWindow({
     width: SETTINGS_WIDTH,
     height: SETTINGS_HEIGHT,

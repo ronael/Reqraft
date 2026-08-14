@@ -10,3 +10,17 @@
   before adding a custom terminal primitive.
 - Non-interactive commands stay in `src/commands/` and must keep clean
   stdout/stderr behavior.
+
+## Desktop (Electron)
+
+- The desktop app lives in `src/desktop/` (`main/`, `preload/`, `renderer/`,
+  `shared/`) and shares the engine through direct source imports — never
+  duplicate business logic there.
+- The renderer never imports `src/core/`, `src/providers/`, `src/auth/` or
+  `src/application/`; everything goes through the IPC contract, defined in
+  the single file `src/desktop/shared/ipc-channels.ts`. New channels are
+  added there only, with a Zod schema in `ipc-contract.ts`.
+- Feature parity across CLI/TUI/desktop is enforced by the capability
+  registry in `src/capabilities/` and its drift tests.
+- Reference doc: `docs/internal/DESKTOP.md`; work journal:
+  `docs/internal/WORKLOG.md` (both git-ignored, local).

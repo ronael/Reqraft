@@ -1,4 +1,4 @@
-import { BrowserWindow, screen, type Rectangle } from "electron";
+import { BrowserWindow, screen } from "electron";
 import { placePopover } from "./placement.js";
 
 /**
@@ -15,9 +15,9 @@ export interface PopoverWindowOptions {
 }
 
 export interface PopoverWindow {
-  window: BrowserWindow;
-  toggle(trayBounds: Rectangle): void;
-  show(trayBounds: Rectangle): void;
+  window: Electron.BrowserWindow;
+  toggle(trayBounds: Electron.Rectangle): void;
+  show(trayBounds: Electron.Rectangle): void;
   hide(): void;
 }
 
@@ -57,7 +57,7 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
     void window.loadFile(options.rendererFile, { query: { surface: "popover" } });
   }
 
-  function show(trayBounds: Rectangle): void {
+  function show(trayBounds: Electron.Rectangle): void {
     const display = screen.getDisplayNearestPoint({
       x: trayBounds.x,
       y: trayBounds.y,

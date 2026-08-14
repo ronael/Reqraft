@@ -19,7 +19,7 @@ export interface CapsuleWindowOptions {
 }
 
 export interface CapsuleWindow {
-  window: BrowserWindow;
+  window: Electron.BrowserWindow;
   /** Places the capsule on its anchor, then shows and focuses it. */
   show(anchor: CapsuleAnchor): void;
   hide(): void;

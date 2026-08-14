@@ -21,6 +21,10 @@ extraMetadata:
 files:
   - dist/desktop/**
   - package.json
+  # Everything the app runs is bundled by tsup/Vite — the production
+  # dependencies (opentui, react…) belong to the CLI surface and would only
+  # bloat the asar.
+  - "!node_modules/**"
 
 # Tout est bundlé par tsup/Vite : aucune dépendance native à dépaqueter pour
 # l'instant (osascript est un binaire système, pas un module). Si un module

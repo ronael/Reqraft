@@ -1,4 +1,4 @@
-import { Menu, Tray, app, nativeImage, type Rectangle } from "electron";
+import { Menu, Tray, app, nativeImage } from "electron";
 import { trayIconPng, trayTooltip, type TrayState } from "./tray-icon.js";
 
 /**
@@ -9,7 +9,7 @@ import { trayIconPng, trayTooltip, type TrayState } from "./tray-icon.js";
  * The click toggles the popover; the menu stays for Quit and Settings.
  */
 export interface TrayActions {
-  onTogglePopover: (anchorBounds: Rectangle) => void;
+  onTogglePopover: (anchorBounds: Electron.Rectangle) => void;
   onOpenSettings: () => void;
 }
 
