@@ -1,0 +1,437 @@
+import { describe, expect, it, vi } from "vitest";
+import type {
+  ExecuteRepromptInput,
+  ExecuteRepromptResult,
+} from "../../src/application/reprompt.js";
+import { DEFAULT_CONFIG } from "../../src/config/loader.js";
+import type { Config } from "../../src/config/schema.js";
+import type { RepromptResult } from "../../src/core/types.js";
+import {
+  registerIpcHandlers,
+  sanitizeConfigForRenderer,
+  type IpcEventLike,
+  type IpcMainLike,
+} from "../../src/desktop/main/ipc.js";
+import { RepromptService, type RunEventSender } from "../../src/desktop/main/reprompt-service.js";
+import {
+  IPC_CHANNELS,
+  PUSH_CHANNELS,
+  REQUEST_CHANNELS,
+} from "../../src/desktop/shared/ipc-channels.js";
+
+const FAKE_RESULT: RepromptResult = {
+  original: "demande brute",
+  rewritten: "demande reformulée",
+  profile: "general",
+  level: "standard",
+  provider: "mock",
+  model: "mock-model",
+  changes: ["demande clarifiée"],
+  quality: { status: "good", signals: [] },
+};
+
+const MOCK_CONFIG: Config = { ...DEFAULT_CONFIG, defaultProvider: "mock" };
+
+class FakeIpcMain implements IpcMainLike {
+  private readonly handlers = new Map<string, (event: IpcEventLike, payload: unknown) => unknown>();
+
+  handle(channel: string, listener: (event: IpcEventLike, payload: unknown) => unknown): void {
+    this.handlers.set(channel, listener);
+  }
+
+  registeredChannels(): string[] {
+    return [...this.handlers.keys()];
+  }
+
+  invoke(channel: string, payload: unknown, sender: RunEventSender): Promise<unknown> {
+    const handler = this.handlers.get(channel);
+    if (!handler) {
+      return Promise.reject(new Error(`Aucun handler pour ${channel}`));
+    }
+    // Like the real ipcMain: a handler that throws synchronously surfaces as
+    // a rejected promise to the renderer, never as a synchronous throw.
+    try {
+      return Promise.resolve(handler({ sender }, payload));
+    } catch (error) {
+      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
+    }
+  }
+}
+
+function createFakeSender(): {
+  sender: RunEventSender;
+  sent: { channel: string; payload: unknown }[];
+  state: { destroyed: boolean };
+} {
+  const sent: { channel: string; payload: unknown }[] = [];
+  const state = { destroyed: false };
+  const sender: RunEventSender = {
+    send: (channel, payload) => {
+      sent.push({ channel, payload });
+    },
+    isDestroyed: () => state.destroyed,
+  };
+  return { sender, sent, state };
+}
+
+function streamingExecute(
+  result: RepromptResult = FAKE_RESULT,
+): (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult> {
+  return vi.fn((input: ExecuteRepromptInput): Promise<ExecuteRepromptResult> => {
+    input.onDelta?.("fragment-1 ");
+    input.onDelta?.("fragment-2");
+    return Promise.resolve({ result, detectedProfile: false });
+  });
+}
+
+interface Harness {
+  ipcMain: FakeIpcMain;
+  clipboard: { writeText: ReturnType<typeof vi.fn> };
+  execute: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
+  saveConfig: ReturnType<typeof vi.fn>;
+  sender: RunEventSender;
+  sent: { channel: string; payload: unknown }[];
+  state: { destroyed: boolean };
+}
+
+function setup(options: {
+  execute?: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
+  config?: Config;
+  env?: NodeJS.ProcessEnv;
+  hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
+}): Harness {
+  const config = options.config ?? MOCK_CONFIG;
+  const env = options.env ?? {};
+  const execute = options.execute ?? streamingExecute();
+  const saveConfig = vi.fn((_config: Config) => Promise.resolve());
+  const { sender, sent, state } = createFakeSender();
+
+  const service = new RepromptService({
+    executeReprompt: execute,
+    loadConfig: () => Promise.resolve(config),
+    env,
+    createRunId: () => "run-1",
+  });
+
+  const ipcMain = new FakeIpcMain();
+  const clipboard = { writeText: vi.fn() };
+  registerIpcHandlers({
+    ipcMain,
+    clipboard,
+    service,
+    loadConfig: () => Promise.resolve(config),
+    saveConfig,
+    hydrateCredentials: options.hydrateCredentials ?? (() => Promise.resolve()),
+    env,
+  });
+  return { ipcMain, clipboard, execute, saveConfig, sender, sent, state };
+}
+
+function sentChannels(harness: Harness, channel: string): unknown[] {
+  return harness.sent.filter((event) => event.channel === channel).map((event) => event.payload);
+}
+
+describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
+  it("définit les canaux exacts du contrat, en un seul endroit", () => {
+    expect(IPC_CHANNELS).toEqual({
+      repromptStart: "reprompt:start",
+      repromptCancel: "reprompt:cancel",
+      captureSelection: "capture:selection",
+      resultAccept: "result:accept",
+      configRead: "config:read",
+      configWrite: "config:write",
+      providersStatus: "providers:status",
+      doctorRun: "doctor:run",
+      permissionsState: "permissions:state",
+      permissionsRequest: "permissions:request",
+      runDelta: "run:delta",
+      runDone: "run:done",
+      runError: "run:error",
+      runCancelled: "run:cancelled",
+    });
+    expect(REQUEST_CHANNELS).toHaveLength(10);
+    expect(PUSH_CHANNELS).toHaveLength(4);
+  });
+
+  it("enregistre un handler pour chaque canal requête du contrat", () => {
+    const harness = setup({});
+    for (const channel of REQUEST_CHANNELS) {
+      expect(harness.ipcMain.registeredChannels()).toContain(channel);
+    }
+  });
+});
+
+describe("validation Zod des messages entrants", () => {
+  it("rejette un reprompt:start sans input", async () => {
+    const harness = setup({});
+    await expect(
+      harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, {}, harness.sender),
+    ).rejects.toThrow();
+    await expect(
+      harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: 42 }, harness.sender),
+    ).rejects.toThrow();
+    expect(harness.execute).not.toHaveBeenCalled();
+  });
+
+  it("rejette un result:accept avec un mode inconnu", async () => {
+    const harness = setup({});
+    await expect(
+      harness.ipcMain.invoke(
+        IPC_CHANNELS.resultAccept,
+        { runId: "run-1", mode: "inject" },
+        harness.sender,
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejette tout payload sur les canaux déclarés void", async () => {
+    const harness = setup({});
+    await expect(
+      harness.ipcMain.invoke(IPC_CHANNELS.configRead, { unexpected: true }, harness.sender),
+    ).rejects.toThrow();
+  });
+});
+
+describe("cycle de vie reprompt via IPC", () => {
+  it("achemine start → deltas → done avec le même runId", async () => {
+    const harness = setup({});
+    const response = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.repromptStart,
+      { input: "demande brute" },
+      harness.sender,
+    )) as { runId: string };
+    expect(response).toEqual({ runId: "run-1" });
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    const deltas = sentChannels(harness, IPC_CHANNELS.runDelta) as {
+      runId: string;
+      chunk: string;
+    }[];
+    expect(deltas.map((delta) => delta.chunk)).toEqual(["fragment-1 ", "fragment-2"]);
+    for (const delta of deltas) {
+      expect(delta.runId).toBe("run-1");
+    }
+    const done = sentChannels(harness, IPC_CHANNELS.runDone)[0] as {
+      runId: string;
+      result: RepromptResult;
+    };
+    expect(done.runId).toBe("run-1");
+    expect(done.result.rewritten).toBe("demande reformulée");
+  });
+
+  it("émet run:cancelled quand le run est interrompu", async () => {
+    const execute = vi.fn(
+      (input: ExecuteRepromptInput): Promise<ExecuteRepromptResult> =>
+        new Promise((_resolve, reject) => {
+          // The abort may already have fired when the engine starts: a run
+          // cancelled before its first await must still settle.
+          if (input.signal?.aborted) {
+            reject(new Error("interrompu"));
+            return;
+          }
+          input.signal?.addEventListener("abort", () => {
+            reject(new Error("interrompu"));
+          });
+        }),
+    );
+    const harness = setup({ execute });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(execute).toHaveBeenCalled();
+    });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptCancel, { runId: "run-1" }, harness.sender);
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runCancelled)).toEqual([{ runId: "run-1" }]);
+    });
+    expect(sentChannels(harness, IPC_CHANNELS.runError)).toHaveLength(0);
+  });
+
+  it("émet run:error avec une UiError quand le moteur échoue", async () => {
+    const execute = vi.fn((_input: ExecuteRepromptInput): Promise<ExecuteRepromptResult> => {
+      return Promise.reject(new Error("réseau KO"));
+    });
+    const harness = setup({ execute });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runError)).toHaveLength(1);
+    });
+    const payload = sentChannels(harness, IPC_CHANNELS.runError)[0] as {
+      runId: string;
+      error: { title: string; message: string };
+    };
+    expect(payload.runId).toBe("run-1");
+    expect(payload.error.title.length).toBeGreaterThan(0);
+    expect(payload.error.message.length).toBeGreaterThan(0);
+  });
+
+  it("bloque les secrets avant tout appel provider, comme le CLI", async () => {
+    const harness = setup({});
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.repromptStart,
+      { input: "voici ma clé AKIAIOSFODNN7EXAMPLE à utiliser" },
+      harness.sender,
+    );
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runError)).toHaveLength(1);
+    });
+    expect(harness.execute).not.toHaveBeenCalled();
+  });
+
+  it("n'émet plus rien quand la fenêtre est détruite (§5.6)", async () => {
+    const harness = setup({});
+    harness.state.destroyed = true;
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(harness.sent).toHaveLength(0);
+  });
+});
+
+describe("result:accept", () => {
+  async function finishRun(harness: Harness): Promise<void> {
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+  }
+
+  it("mode copy : écrit le résultat dans le presse-papiers", async () => {
+    const harness = setup({});
+    await finishRun(harness);
+    const response = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "copy" },
+      harness.sender,
+    )) as { applied: boolean };
+    expect(response).toEqual({ applied: true });
+    expect(harness.clipboard.writeText).toHaveBeenCalledWith("demande reformulée");
+  });
+
+  it("mode replace : dégradé explicite tant que le lot 2 n'est pas livré", async () => {
+    const harness = setup({});
+    await finishRun(harness);
+    const response = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "replace" },
+      harness.sender,
+    )) as { applied: boolean };
+    expect(response).toEqual({ applied: false });
+    expect(harness.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it("runId inconnu : applied false, sans erreur", async () => {
+    const harness = setup({});
+    const response = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "inconnu", mode: "copy" },
+      harness.sender,
+    )) as { applied: boolean };
+    expect(response).toEqual({ applied: false });
+  });
+});
+
+describe("config via IPC", () => {
+  it("config:read ne laisse jamais passer les en-têtes personnalisés", async () => {
+    const config: Config = {
+      ...MOCK_CONFIG,
+      providers: {
+        perso: {
+          type: "openai-compatible",
+          baseUrl: "https://llm.example.com",
+          customHeaders: { Authorization: "Bearer secret-token" },
+        },
+      },
+    };
+    const harness = setup({ config });
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.configRead,
+      undefined,
+      harness.sender,
+    );
+    expect(JSON.stringify(response)).not.toContain("secret-token");
+    expect(JSON.stringify(response)).not.toContain("customHeaders");
+    expect(JSON.stringify(response)).toContain("https://llm.example.com");
+  });
+
+  it("config:write fusionne le patch et force telemetry à false", async () => {
+    const harness = setup({});
+    const response = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.configWrite,
+      { stream: false, telemetry: true },
+      harness.sender,
+    )) as Config;
+    expect(harness.saveConfig).toHaveBeenCalledOnce();
+    const saved = harness.saveConfig.mock.calls[0]?.[0] as Config;
+    expect(saved.stream).toBe(false);
+    expect(saved.telemetry).toBe(false);
+    expect(response.stream).toBe(false);
+    expect(response.telemetry).toBe(false);
+  });
+
+  it("sanitizeConfigForRenderer conserve une config sans providers custom", () => {
+    expect(sanitizeConfigForRenderer(MOCK_CONFIG)).toEqual(MOCK_CONFIG);
+  });
+});
+
+describe("providers:status", () => {
+  it("distingue environnement, trousseau et non configuré — jamais de valeur", async () => {
+    const env: NodeJS.ProcessEnv = { OPENAI_API_KEY: "sk-never-leaks" };
+    const hydrateCredentials = vi.fn((target: NodeJS.ProcessEnv): Promise<void> => {
+      target.ANTHROPIC_API_KEY = "sk-ant-never-leaks";
+      return Promise.resolve();
+    });
+    const harness = setup({ env, hydrateCredentials });
+    const statuses = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.providersStatus,
+      undefined,
+      harness.sender,
+    )) as { id: string; configured: boolean; source: string }[];
+
+    const byId = new Map(statuses.map((status) => [status.id, status]));
+    expect(byId.get("openai")).toEqual({ id: "openai", configured: true, source: "environment" });
+    expect(byId.get("anthropic")).toEqual({
+      id: "anthropic",
+      configured: true,
+      source: "keychain",
+    });
+    expect(byId.get("deepseek")).toEqual({
+      id: "deepseek",
+      configured: false,
+      source: "not_configured",
+    });
+    expect(byId.get("mock")).toEqual({ id: "mock", configured: true, source: "builtin" });
+    expect(JSON.stringify(statuses)).not.toContain("never-leaks");
+  });
+});
+
+describe("canaux stubbés en attente des lots suivants", () => {
+  it("capture:selection, doctor:run et permissions:request refusent proprement", async () => {
+    const harness = setup({});
+    for (const channel of [
+      IPC_CHANNELS.captureSelection,
+      IPC_CHANNELS.doctorRun,
+      IPC_CHANNELS.permissionsRequest,
+    ]) {
+      await expect(harness.ipcMain.invoke(channel, undefined, harness.sender)).rejects.toThrow(
+        /desktop\.not_implemented/,
+      );
+    }
+  });
+
+  it("permissions:state répond un mode dégradé explicite (§2.6)", async () => {
+    const harness = setup({});
+    const state = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.permissionsState,
+      undefined,
+      harness.sender,
+    )) as { accessibility: boolean; canReplace: boolean; reason?: string };
+    expect(state.accessibility).toBe(false);
+    expect(state.canReplace).toBe(false);
+    expect(typeof state.reason).toBe("string");
+  });
+});

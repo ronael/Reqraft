@@ -1,0 +1,149 @@
+/*
+ * Lot 1 capsule styles. Brand colours arrive as CSS custom properties
+ * injected from `ui/theme/palette-values.ts` (single source); neutral greys
+ * are local until lot 3 defines the shared desktop tokens.
+ */
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #131316;
+  color: #e4e4e7;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.capsule {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+}
+
+.capsule-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.capsule-header h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.capsule-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--rq-accent);
+}
+
+.capsule-input {
+  width: 100%;
+  resize: vertical;
+  padding: 10px 12px;
+  border: 1px solid #2e2e33;
+  border-radius: 8px;
+  background: #1c1c21;
+  color: inherit;
+  font: inherit;
+}
+
+.capsule-input:focus {
+  outline: none;
+  border-color: var(--rq-accent);
+}
+
+.capsule-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.button-primary {
+  background: var(--rq-accent-strong);
+  color: #ffffff;
+}
+
+.button-secondary {
+  background: #2e2e33;
+  color: #e4e4e7;
+}
+
+.capsule-panel {
+  padding: 12px;
+  border: 1px solid #2e2e33;
+  border-radius: 8px;
+  background: #1c1c21;
+}
+
+.capsule-panel h2 {
+  margin: 0 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.capsule-panel-danger {
+  border-color: var(--rq-danger);
+}
+
+.capsule-stream {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+
+.muted {
+  color: #a1a1aa;
+}
+
+.verdict {
+  margin: 0 0 8px;
+  font-weight: 600;
+}
+
+.verdict-good {
+  color: var(--rq-success);
+}
+
+.verdict-review {
+  color: var(--rq-warning);
+}
+
+.verdict-risky {
+  color: var(--rq-danger);
+}
+
+.capsule-changes {
+  margin: 8px 0 0;
+  padding-left: 18px;
+  color: #a1a1aa;
+  font-size: 13px;
+}
