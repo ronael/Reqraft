@@ -36,6 +36,7 @@ import {
 } from "../providers/catalog.js";
 import { createTranslator, type Translator } from "../i18n/translate.js";
 import { modelDescription } from "../presentation/catalog-labels.js";
+import type { UiLocalePreference } from "../i18n/locale.js";
 
 interface InitProviderChoice {
   label: string;
@@ -65,6 +66,8 @@ interface InitConfigInput {
   copyAfterGeneration: boolean;
   stream: boolean;
   timeoutMs: number;
+  uiLocale?: Config["uiLocale"];
+  outputLanguage?: Config["outputLanguage"];
   compatibleProvider?: CompatibleProviderInput;
   existing?: Config;
 }
@@ -203,6 +206,9 @@ export function createInitConfig(input: InitConfigInput): Config {
     copyAfterGeneration: input.copyAfterGeneration,
     stream: input.stream,
     timeoutMs: input.timeoutMs,
+    uiLocale: input.uiLocale ?? input.existing?.uiLocale ?? DEFAULT_CONFIG.uiLocale,
+    outputLanguage:
+      input.outputLanguage ?? input.existing?.outputLanguage ?? DEFAULT_CONFIG.outputLanguage,
     showChanges: input.existing?.showChanges ?? DEFAULT_CONFIG.showChanges,
     showStats: input.existing?.showStats ?? DEFAULT_CONFIG.showStats,
     telemetry: false,
@@ -233,6 +239,13 @@ export function buildSummary(
     ),
     formatInitMetric(t("doctor.profile"), config.defaultProfile, "info", visual),
     formatInitMetric(t("init.level"), config.defaultLevel, "info", visual),
+    formatInitMetric(t("init.uiLanguage"), formatUiLocale(config.uiLocale, t), "text", visual),
+    formatInitMetric(
+      t("init.outputLanguage"),
+      formatOutputLanguage(config.outputLanguage, t),
+      "text",
+      visual,
+    ),
     formatInitMetric(
       t("init.copyAuto"),
       config.copyAfterGeneration ? t("init.yes") : t("init.no"),
@@ -509,6 +522,8 @@ async function collectConfig(
         io.t("init.copyQuestion"),
         defaults.copyAfterGeneration,
       ),
+      uiLocale: await askUiLocale(io, defaults.uiLocale),
+      outputLanguage: await askOutputLanguage(io, defaults.outputLanguage),
       stream: await askConfirm(io, io.t("init.streamQuestion"), defaults.stream),
       timeoutMs: await askTimeout(io, defaults.timeoutMs),
     };
@@ -633,6 +648,35 @@ async function askLevel(
   const defaultIndex = Math.max(levels.indexOf(currentLevel), 1);
   const index = await askMenu(io, io.t("init.level"), levels, defaultIndex);
   return levels[index] ?? "standard";
+}
+
+async function askUiLocale(
+  io: InitIo,
+  currentLocale: Config["uiLocale"],
+): Promise<UiLocalePreference> {
+  const choices: UiLocalePreference[] = ["auto", "en", "fr"];
+  const labels = choices.map((choice) => formatUiLocale(choice, io.t));
+  const defaultIndex = Math.max(choices.indexOf(currentLocale), 0);
+  const index = await askMenu(io, io.t("init.uiLanguageQuestion"), labels, defaultIndex);
+  return choices[index] ?? "auto";
+}
+
+async function askOutputLanguage(
+  io: InitIo,
+  currentLanguage: Config["outputLanguage"],
+): Promise<string> {
+  const commonChoices = ["auto", "en", "fr"] as const;
+  const labels = [
+    ...commonChoices.map((choice) => formatOutputLanguage(choice, io.t)),
+    io.t("init.outputLanguageCustom"),
+  ];
+  const commonIndex = commonChoices.findIndex((choice) => choice === currentLanguage);
+  const defaultIndex = commonIndex >= 0 ? commonIndex : labels.length - 1;
+  const index = await askMenu(io, io.t("init.outputLanguageQuestion"), labels, defaultIndex);
+  if (index === labels.length - 1) {
+    return await askText(io, io.t("init.outputLanguageCustomPrompt"), currentLanguage);
+  }
+  return commonChoices[index] ?? "auto";
 }
 
 async function askTimeout(io: InitIo, currentTimeout: number): Promise<number> {
@@ -761,6 +805,19 @@ function formatKeySummary(status: ApiKeyStatus, t: Translator): string {
 
 function providerLabel(provider: Config["defaultProvider"]): string {
   return getProviderDefinition(provider).label;
+}
+
+function formatUiLocale(locale: Config["uiLocale"], t: Translator): string {
+  if (locale === "auto") return t("init.languageAuto");
+  if (locale === "en") return t("init.languageEnglish");
+  return t("init.languageFrench");
+}
+
+function formatOutputLanguage(language: Config["outputLanguage"], t: Translator): string {
+  if (language === "auto") return t("init.outputLanguageAuto");
+  if (language === "en") return t("init.languageEnglish");
+  if (language === "fr") return t("init.languageFrench");
+  return language;
 }
 
 function credentialProviderFromEnvName(envName: string): CredentialProvider | undefined {

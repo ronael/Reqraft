@@ -95,7 +95,26 @@ describe("init assistant helpers", () => {
 
     expect(summary).toContain("Clé API");
     expect(summary).toContain("détectée dans ANTHROPIC_API_KEY");
+    expect(summary).toContain("Langue interface");
+    expect(summary).toContain("Langue générée");
     expect(summary).not.toContain("secret-value");
+  });
+
+  it("persists language preferences from init without coupling UI and output languages", () => {
+    const config = createInitConfig({
+      provider: "openai",
+      model: "gpt-4.1-mini",
+      profile: "auto",
+      level: "standard",
+      copyAfterGeneration: false,
+      stream: true,
+      timeoutMs: 30000,
+      uiLocale: "fr",
+      outputLanguage: "en",
+    });
+
+    expect(config.uiLocale).toBe("fr");
+    expect(config.outputLanguage).toBe("en");
   });
 
   it("uses the Reqraft hierarchy for an interactive colour summary", () => {

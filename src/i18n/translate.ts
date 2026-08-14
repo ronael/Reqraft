@@ -176,6 +176,16 @@ export interface MessageParameters {
   "init.backProvider": undefined;
   "init.copyQuestion": undefined;
   "init.streamQuestion": undefined;
+  "init.uiLanguage": undefined;
+  "init.uiLanguageQuestion": undefined;
+  "init.outputLanguage": undefined;
+  "init.outputLanguageQuestion": undefined;
+  "init.outputLanguageAuto": undefined;
+  "init.outputLanguageCustom": undefined;
+  "init.outputLanguageCustomPrompt": undefined;
+  "init.languageAuto": undefined;
+  "init.languageEnglish": undefined;
+  "init.languageFrench": undefined;
   "init.subtitle": undefined;
   "init.intro": undefined;
   "init.security": undefined;
