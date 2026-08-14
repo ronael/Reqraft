@@ -39,6 +39,7 @@ const bridge: ReqraftBridge = {
   requestPermissions: () => ipcRenderer.invoke(IPC_CHANNELS.permissionsRequest),
   listProfiles: () => ipcRenderer.invoke(IPC_CHANNELS.profilesList),
   openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
+  shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),
   onRunDelta: (listener) =>
     subscribe(IPC_CHANNELS.runDelta, (payload) => {
       listener(payload as RunDeltaPayload);

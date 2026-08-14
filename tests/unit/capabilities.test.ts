@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { CAPABILITIES } from "../../src/capabilities/registry.js";
 import { listCliCapabilities, listUnregisteredCliOptions } from "../../src/capabilities/cli.js";
+import { listDesktopCapabilities } from "../../src/capabilities/desktop.js";
 import { listTuiCapabilities } from "../../src/capabilities/tui.js";
 import { createCliProgram } from "../../src/cli-program.js";
 import { createTranslator } from "../../src/i18n/translate.js";
@@ -12,34 +13,38 @@ describe("capability registry", () => {
   it("exposes every registered capability on each surface it declares", () => {
     const cli = listCliCapabilities(program);
     const tui = listTuiCapabilities();
+    const desktop = listDesktopCapabilities();
 
     for (const capability of CAPABILITIES) {
-      // The desktop surface is not implemented yet, only cli and tui are checked.
       if (capability.surfaces.includes("cli")) {
         expect(cli, `cli must expose ${capability.id}`).toContain(capability.id);
       }
       if (capability.surfaces.includes("tui")) {
         expect(tui, `tui must expose ${capability.id}`).toContain(capability.id);
       }
+      if (capability.surfaces.includes("desktop")) {
+        expect(desktop, `desktop must expose ${capability.id}`).toContain(capability.id);
+      }
     }
   });
 
   it("rejects capabilities exposed by a surface but missing from the registry", () => {
-    for (const id of listCliCapabilities(program)) {
-      expect(
-        CAPABILITIES.some(
-          (capability) => capability.id === id && capability.surfaces.includes("cli"),
-        ),
-        `cli exposes ${id} without a registry entry`,
-      ).toBe(true);
-    }
-    for (const id of listTuiCapabilities()) {
-      expect(
-        CAPABILITIES.some(
-          (capability) => capability.id === id && capability.surfaces.includes("tui"),
-        ),
-        `tui exposes ${id} without a registry entry`,
-      ).toBe(true);
+    const surfaces = {
+      cli: listCliCapabilities(program),
+      tui: listTuiCapabilities(),
+      desktop: listDesktopCapabilities(),
+    } as const;
+    for (const [surface, ids] of Object.entries(surfaces)) {
+      for (const id of ids) {
+        expect(
+          CAPABILITIES.some(
+            (capability) =>
+              capability.id === id &&
+              capability.surfaces.includes(surface as "cli" | "tui" | "desktop"),
+          ),
+          `${surface} exposes ${id} without a registry entry`,
+        ).toBe(true);
+      }
     }
     // Symmetric CLI check on real options: any Commander option that is
     // neither a registered capability nor a known non-capability option drifted.

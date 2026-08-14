@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { RepromptLevelSchema } from "../../core/levels.js";
-import { ConfigSchema, type Config } from "../../config/schema.js";
+import { ConfigSchema, type Config, type ConfigKey } from "../../config/schema.js";
 import type { RepromptResult } from "../../core/types.js";
 import type { UiError } from "../../ui/errors.js";
 
@@ -75,12 +75,15 @@ export interface ResultAcceptResponse {
  * keep their name and URL but never their headers, which may carry an
  * Authorization token. API keys never appear in `Config` at all — they live
  * in the environment and the keychain (DESKTOP.md §2.2).
+ *
+ * Built with `Pick` over the known keys: `Config` is a passthrough schema
+ * (string index signature), and `Omit` would widen every field to `unknown`.
  */
 export type SafeCustomProviderConfig = Omit<
   NonNullable<Config["providers"]>[string],
   "customHeaders"
 >;
-export type SafeConfig = Omit<Config, "providers"> & {
+export type SafeConfig = Pick<Config, ConfigKey> & {
   providers?: Record<string, SafeCustomProviderConfig>;
 };
 
@@ -122,6 +125,13 @@ export interface ProfileSummary {
   id: string;
   name: string;
   description: string;
+}
+
+/** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
+export interface ShortcutStateInfo {
+  registered: { accelerator: string; label: string; intent: "capture" | "input" }[];
+  /** Accelerators whose registration returned false — already taken (§5.5). */
+  rejected: string[];
 }
 
 // --- Main → renderer, pushed ----------------------------------------------------
@@ -192,6 +202,7 @@ export interface ReqraftBridge {
   requestPermissions(): Promise<PermissionsRequestResult>;
   listProfiles(): Promise<ProfileSummary[]>;
   openSettings(): Promise<void>;
+  shortcutsState(): Promise<ShortcutStateInfo>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;
   onRunError(listener: (payload: RunErrorPayload) => void): Unsubscribe;

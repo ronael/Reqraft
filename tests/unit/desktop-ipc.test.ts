@@ -148,12 +148,13 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       permissionsRequest: "permissions:request",
       profilesList: "profiles:list",
       windowOpenSettings: "window:open-settings",
+      shortcutsState: "shortcuts:state",
       runDelta: "run:delta",
       runDone: "run:done",
       runError: "run:error",
       runCancelled: "run:cancelled",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(12);
+    expect(REQUEST_CHANNELS).toHaveLength(13);
     expect(PUSH_CHANNELS).toHaveLength(4);
   });
 
@@ -572,11 +573,51 @@ describe("canaux capture et permissions (lot 2)", () => {
     expect(request).toEqual({ accessibility: false });
   });
 
-  it("doctor:run refuse proprement en attendant le lot 5", async () => {
+  it("doctor:run renvoie le rapport structuré injecté", async () => {
     const harness = setup({});
-    await expect(
-      harness.ipcMain.invoke(IPC_CHANNELS.doctorRun, undefined, harness.sender),
-    ).rejects.toThrow(/desktop\.not_implemented/);
+    const report = { checks: [{ id: "provider:mock", ok: true }] };
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      runDoctorReport: () => Promise.resolve(report),
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.doctorRun,
+      undefined,
+      harness.sender,
+    );
+    expect(response).toEqual(report);
+  });
+
+  it("shortcuts:state relaie la résolution des raccourcis (§5.5)", async () => {
+    const harness = setup({});
+    const resolution = {
+      registered: [{ accelerator: "Alt+Space", label: "⌥Espace", intent: "capture" as const }],
+      rejected: ["Alt+Shift+Space"],
+    };
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      shortcutState: () => resolution,
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.shortcutsState,
+      undefined,
+      harness.sender,
+    );
+    expect(response).toEqual(resolution);
+  });
+
+  it("shortcuts:state sans source câblée annonce un état vide honnête", async () => {
+    const harness = setup({});
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.shortcutsState,
+      undefined,
+      harness.sender,
+    );
+    expect(response).toEqual({ registered: [], rejected: [] });
   });
 });
 

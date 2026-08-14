@@ -14,14 +14,16 @@ import { listProfiles } from "../../profiles/registry.js";
 import {
   ConfigWriteRequestSchema,
   EmptyRequestSchema,
-  NotImplementedIpcError,
   RepromptCancelRequestSchema,
   RepromptStartRequestSchema,
   ResultAcceptRequestSchema,
+  type DoctorReport,
   type ProviderStatus,
   type SafeConfig,
+  type ShortcutStateInfo,
 } from "../shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
+import { buildDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
 
@@ -63,6 +65,10 @@ export interface DesktopIpcDependencies {
   requestAccessibility?: () => void;
   /** Lot 4: opens the settings window (from the popover or the capsule). */
   openSettings?: () => void;
+  /** Lot 5: structured doctor report (settings Diagnostic tab). */
+  runDoctorReport?: () => Promise<DoctorReport>;
+  /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
+  shortcutState?: () => ShortcutStateInfo;
 }
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
@@ -128,10 +134,12 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     return listProviderStatuses(env, hydrate, load);
   });
 
-  ipcMain.handle(IPC_CHANNELS.doctorRun, (_event, payload) => {
+  ipcMain.handle(IPC_CHANNELS.doctorRun, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
-    // Lot 5: reuse of the doctor use case behind a structured report.
-    throw new NotImplementedIpcError(IPC_CHANNELS.doctorRun);
+    if (dependencies.runDoctorReport) {
+      return await dependencies.runDoctorReport();
+    }
+    return await buildDoctorReport({ env });
   });
 
   ipcMain.handle(IPC_CHANNELS.permissionsState, async (_event, payload) => {
@@ -176,6 +184,12 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     dependencies.openSettings?.();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.shortcutsState, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    // Without a wired source (tests), report the honest empty state.
+    return dependencies.shortcutState?.() ?? { registered: [], rejected: [] };
   });
 }
 

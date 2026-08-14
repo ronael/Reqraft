@@ -365,6 +365,8 @@ export function App(): React.JSX.Element {
               <span className="muted">{verdictDetail}</span>
               <span className="capsule-meta">
                 niveau {finalResult.level} · {finalResult.model}
+                {finalResult.latencyMs !== undefined &&
+                  ` · ${(finalResult.latencyMs / 1000).toFixed(1)} s`}
               </span>
             </>
           )}

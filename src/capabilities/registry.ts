@@ -82,10 +82,13 @@ export const CAPABILITIES: Capability[] = [
     cliFlag: "--diff",
   },
   {
+    // Pas de « desktop » : la capsule affiche le verdict de fidélité et le
+    // diff, pas la liste des modifications (`changes`) — la maquette §4.3 ne
+    // la prévoit pas et l'ajouter encombrerait la surface signature.
     id: "show-explain",
     label: "Afficher l'explication",
     description: "Décrire les modifications apportées au texte d'origine.",
-    surfaces: ["cli", "tui", "desktop"],
+    surfaces: ["cli", "tui"],
     requiresResult: true,
     cliFlag: "--explain",
   },

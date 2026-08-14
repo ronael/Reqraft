@@ -463,3 +463,106 @@ kbd {
 .settings-placeholder {
   font-size: 12px;
 }
+
+/* ── Réglages (lot 5) ────────────────────────────────────────────────── */
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.settings-tab {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: #71717a;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.settings-tab-active {
+  background: rgba(255, 255, 255, 0.07);
+  color: #e4e4e7;
+}
+
+.settings-panel {
+  padding: 8px 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 40px);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.settings-row-button {
+  cursor: pointer;
+}
+
+.settings-row-button:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-row-active {
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.settings-row-title {
+  font-size: 12px;
+  color: #e4e4e7;
+}
+
+.settings-row-detail {
+  font-size: 11px;
+  color: #71717a;
+}
+
+.settings-warning {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.05);
+  font-size: 11px;
+  line-height: 16px;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.settings-note {
+  font-size: 11px;
+}
+
+.settings-select,
+.settings-input {
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: #1c1c21;
+  color: #e4e4e7;
+  font-size: 12px;
+}
+
+.settings-input {
+  width: 220px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 0;
+}

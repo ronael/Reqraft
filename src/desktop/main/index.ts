@@ -22,7 +22,7 @@ import {
   requestAccessibility,
 } from "./permissions.js";
 import { RepromptService } from "./reprompt-service.js";
-import { registerShortcuts } from "./shortcuts.js";
+import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createTray } from "./tray.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow } from "./windows/popover.js";
@@ -73,6 +73,10 @@ function bootstrap(): void {
 
     const capsule = createCapsuleWindow(windowOptions);
     const popover = createPopoverWindow(windowOptions);
+
+    // Filled by registerShortcuts below; read through IPC by the settings
+    // Shortcuts tab (§5.5: a taken shortcut is visible, never silent).
+    let shortcutResolution: ShortcutResolution = { registered: [], rejected: [] };
 
     // Settings window: created on demand, recreated if the user closed it.
     let settingsWindow: Electron.BrowserWindow | null = null;
@@ -125,6 +129,7 @@ function bootstrap(): void {
         requestAccessibility(systemPreferences);
       },
       openSettings,
+      shortcutState: () => shortcutResolution,
     });
 
     const resolution = registerShortcuts(
@@ -145,6 +150,7 @@ function bootstrap(): void {
       },
       process.env.REQRAFT_SHORTCUT,
     );
+    shortcutResolution = resolution;
 
     if (resolution.registered.length === 0) {
       // §5.5: never silent. The settings window (lot 5) will surface this;

@@ -23,6 +23,7 @@ export const IPC_CHANNELS = {
   // table predates those surfaces; channels are still defined ONLY here.
   profilesList: "profiles:list",
   windowOpenSettings: "window:open-settings",
+  shortcutsState: "shortcuts:state",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -46,6 +47,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.permissionsRequest,
   IPC_CHANNELS.profilesList,
   IPC_CHANNELS.windowOpenSettings,
+  IPC_CHANNELS.shortcutsState,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */
