@@ -1,13 +1,15 @@
-import { BrowserWindow } from "electron";
+import { BrowserWindow, screen } from "electron";
+import { placeCapsule, type CapsuleAnchor } from "./placement.js";
 
 /**
- * The capsule window (DESKTOP.md §4.3): width fixed at 560, height reserved
- * up front so the window never jumps while the stream arrives. Lot 1 keeps a
- * plain framed window; frameless transparent anchoring lands with lot 3.
+ * The capsule window (DESKTOP.md §3, §4.3): 560 wide, frameless, transparent,
+ * HUD vibrancy, above other windows, anchored at the cursor. The minimum
+ * height is reserved up front so the window never jumps while the stream
+ * arrives.
  */
-
 export const CAPSULE_WIDTH = 560;
-export const CAPSULE_MIN_HEIGHT = 480;
+/** Roughly header + 8 body lines + footer: the reserved minimum (§4.3). */
+export const CAPSULE_HEIGHT = 380;
 
 export interface CapsuleWindowOptions {
   preloadPath: string;
@@ -16,14 +18,27 @@ export interface CapsuleWindowOptions {
   devServerUrl?: string;
 }
 
-export function createCapsuleWindow(options: CapsuleWindowOptions): BrowserWindow {
+export interface CapsuleWindow {
+  window: BrowserWindow;
+  /** Places the capsule on its anchor, then shows and focuses it. */
+  show(anchor: CapsuleAnchor): void;
+  hide(): void;
+}
+
+export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindow {
   const window = new BrowserWindow({
     width: CAPSULE_WIDTH,
-    height: CAPSULE_MIN_HEIGHT,
-    minWidth: CAPSULE_WIDTH,
-    minHeight: CAPSULE_MIN_HEIGHT,
+    height: CAPSULE_HEIGHT,
+    resizable: false,
     show: false,
-    autoHideMenuBar: true,
+    frame: false,
+    transparent: true,
+    hasShadow: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    // macOS: panel behaviour + HUD vibrancy.
+    type: "panel",
+    vibrancy: "hud",
     webPreferences: {
       preload: options.preloadPath,
       // Non-negotiable (DESKTOP.md §2.3).
@@ -33,13 +48,40 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): BrowserWindo
     },
   });
 
-  // No ready-to-show reveal: the capsule stays hidden until a global shortcut
-  // triggers it. It is not a windowed app, it appears on demand (§1).
+  // Visible on every macOS space, like a HUD panel.
+  window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+
+  // The capsule is transient: losing the focus dissolves it. The replacement
+  // flow relies on this — the source app gets the focus back (§5.2).
+  window.on("blur", () => {
+    if (!window.webContents.isDevToolsOpened()) {
+      window.hide();
+    }
+  });
 
   if (options.devServerUrl) {
     void window.loadURL(options.devServerUrl);
   } else {
     void window.loadFile(options.rendererFile);
   }
-  return window;
+
+  return {
+    window,
+    show(anchor) {
+      const referencePoint =
+        anchor.kind === "cursor" ? anchor.point : screen.getCursorScreenPoint();
+      const display = screen.getDisplayNearestPoint(referencePoint);
+      const { x, y } = placeCapsule(
+        anchor,
+        { width: CAPSULE_WIDTH, height: CAPSULE_HEIGHT },
+        display.workArea,
+      );
+      window.setPosition(x, y);
+      window.show();
+      window.focus();
+    },
+    hide() {
+      window.hide();
+    },
+  };
 }

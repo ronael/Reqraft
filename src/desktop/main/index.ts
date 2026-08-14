@@ -7,6 +7,7 @@ import {
   crashReporter,
   globalShortcut,
   ipcMain,
+  screen,
   systemPreferences,
 } from "electron";
 import { CaptureService } from "./capture-service.js";
@@ -79,16 +80,15 @@ function bootstrap(): void {
       {
         onCapture: () => {
           // Record the source app and capture BEFORE the capsule takes the
-          // focus (§5.2), then show.
+          // focus (§5.2), then show anchored at the cursor (§3).
+          const cursor = screen.getCursorScreenPoint();
           void captureService.trigger().then(() => {
-            capsule.show();
-            capsule.focus();
+            capsule.show({ kind: "cursor", point: cursor });
           });
         },
         onInput: () => {
           captureService.clear();
-          capsule.show();
-          capsule.focus();
+          capsule.show({ kind: "centered" });
         },
       },
       process.env.REQRAFT_SHORTCUT,

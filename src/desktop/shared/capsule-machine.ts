@@ -54,22 +54,28 @@ export type CapsuleEvent =
   /** esc. */
   | "fermer";
 
+/** State constants reused across the table, helpers and the state list. */
+const GENERATION: CapsuleState = "génération";
+const STREAMING: CapsuleState = "streaming";
+
 /** The §8.2 table, literally. Anything not listed here returns null. */
-const TRANSITIONS: Readonly<Record<CapsuleState, Readonly<Partial<Record<CapsuleEvent, CapsuleState>>>>> = {
+const TRANSITIONS: Readonly<
+  Record<CapsuleState, Readonly<Partial<Record<CapsuleEvent, CapsuleState>>>>
+> = {
   fermée: { raccourci: "capture" },
   capture: {
     capturé: "analyse",
     "rien-à-capturer": "saisie",
   },
   saisie: { validation: "analyse" },
-  analyse: { "profil-détecté": "génération" },
-  génération: {
-    "premier-fragment": "streaming",
+  analyse: { "profil-détecté": GENERATION },
+  [GENERATION]: {
+    "premier-fragment": STREAMING,
     "résultat-complet": "prêt",
     interruption: "fermée",
     échec: "erreur",
   },
-  streaming: {
+  [STREAMING]: {
     "résultat-complet": "prêt",
     interruption: "prêt",
     échec: "erreur",
@@ -91,13 +97,10 @@ const TRANSITIONS: Readonly<Record<CapsuleState, Readonly<Partial<Record<Capsule
  * knows whether partial text was received; this helper encodes the rule.
  */
 export function interruptTarget(state: CapsuleState, hasPartialText: boolean): CapsuleState | null {
-  if (state !== "génération" && state !== "streaming") {
+  if (state !== GENERATION && state !== STREAMING) {
     return null;
   }
-  if (hasPartialText) {
-    return "prêt";
-  }
-  return TRANSITIONS[state].interruption ?? null;
+  return hasPartialText ? "prêt" : "fermée";
 }
 
 export function transition(state: CapsuleState, event: CapsuleEvent): CapsuleState | null {
@@ -110,8 +113,8 @@ export const CAPSULE_STATES: readonly CapsuleState[] = [
   "capture",
   "saisie",
   "analyse",
-  "génération",
-  "streaming",
+  GENERATION,
+  STREAMING,
   "prêt",
   "comparaison",
   "application",

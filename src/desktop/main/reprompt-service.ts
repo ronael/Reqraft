@@ -2,8 +2,10 @@ import { randomUUID } from "node:crypto";
 import type { executeReprompt } from "../../application/reprompt.js";
 import type { Config } from "../../config/schema.js";
 import { detectSecrets } from "../../core/secret-detector.js";
+import { previewRewritten } from "../../core/stream-preview.js";
 import type { RepromptResult } from "../../core/types.js";
 import { createTranslator, type Translator } from "../../i18n/translate.js";
+import { resolveProfile } from "../../profiles/registry.js";
 import { describeUiError, type UiError } from "../../ui/errors.js";
 import { IPC_CHANNELS } from "../shared/ipc-channels.js";
 import type { RepromptStartRequest, RepromptStartResponse } from "../shared/ipc-contract.js";
@@ -20,6 +22,8 @@ export interface RepromptServiceDependencies {
   env: NodeJS.ProcessEnv;
   translator?: Translator;
   createRunId?: () => string;
+  /** Macrotask scheduler, injected so tests control the kick ordering. */
+  schedule?: (callback: () => void) => void;
 }
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
@@ -36,18 +40,40 @@ export class RepromptService {
   private readonly controllers = new Map<string, AbortController>();
   private readonly results = new Map<string, RepromptResult>();
   private readonly translator: Translator;
+  private readonly schedule: (callback: () => void) => void;
 
   constructor(private readonly dependencies: RepromptServiceDependencies) {
     this.translator = dependencies.translator ?? DEFAULT_TRANSLATOR;
+    this.schedule = dependencies.schedule ?? ((callback) => setTimeout(callback, 0));
   }
 
-  /** Starts a run in the background; progress is pushed to `sender`. */
-  start(request: RepromptStartRequest, sender: RunEventSender): RepromptStartResponse {
+  /**
+   * Resolves the profile locally — the capsule's `analyse` state (§8.2) —
+   * then starts the run in the background.
+   *
+   * The response carries the detected profile, so the capsule displays the
+   * REAL profile from the first painted frame and never a hardcoded one (the
+   * spike's known bug). The run itself is kicked on a macrotask: the invoke
+   * response carrying the runId is always delivered before the first pushed
+   * event, otherwise the renderer would drop an instant failure (e.g.
+   * detected secrets) as belonging to an unknown run.
+   */
+  async start(
+    request: RepromptStartRequest,
+    sender: RunEventSender,
+  ): Promise<RepromptStartResponse> {
     const runId = this.dependencies.createRunId?.() ?? randomUUID();
     const controller = new AbortController();
     this.controllers.set(runId, controller);
-    void this.execute(runId, request, sender, controller);
-    return { runId };
+
+    const config = await this.dependencies.loadConfig();
+    const profileId = request.profileId ?? config.defaultProfile;
+    const { profile, detected } = resolveProfile(profileId, request.input);
+
+    this.schedule(() => {
+      void this.execute(runId, request, sender, controller, config);
+    });
+    return { runId, profile: profile.id, detectedProfile: detected };
   }
 
   /** Idempotent: cancelling an unknown or finished run is a no-op. */
@@ -65,14 +91,10 @@ export class RepromptService {
     request: RepromptStartRequest,
     sender: RunEventSender,
     controller: AbortController,
+    config: Config,
   ): Promise<void> {
     const t = this.translator;
-    let providerId = request.providerId ?? "provider";
-    // Yield once so the invoke response carrying the runId is always
-    // delivered before the first pushed event — otherwise the renderer would
-    // drop an instant failure (e.g. detected secrets) as belonging to an
-    // unknown run.
-    await Promise.resolve();
+    const providerId = request.providerId ?? config.defaultProvider;
     try {
       // The local secret policy applies before any text leaves the machine,
       // exactly like the CLI path (DESKTOP.md §9).
@@ -85,9 +107,11 @@ export class RepromptService {
         return;
       }
 
-      const config = await this.dependencies.loadConfig();
-      providerId = request.providerId ?? config.defaultProvider;
-
+      // The renderer never sees the raw provider envelope: deltas are decoded
+      // here through `previewRewritten` (core/stream-preview.ts, REUSED, not
+      // rewritten — DESKTOP.md lot 3) and pushed as displayable increments.
+      let raw = "";
+      let sentPreviewLength = 0;
       const { result } = await this.dependencies.executeReprompt({
         input: request.input,
         profileId: request.profileId ?? config.defaultProfile,
@@ -104,7 +128,16 @@ export class RepromptService {
         outputLanguage: config.outputLanguage === "auto" ? undefined : config.outputLanguage,
         signal: controller.signal,
         onDelta: (chunk) => {
-          this.emit(sender, IPC_CHANNELS.runDelta, { runId, chunk });
+          raw += chunk;
+          const preview = previewRewritten(raw);
+          const text = preview.kind === "pending" ? "" : preview.text;
+          if (text.length > sentPreviewLength) {
+            this.emit(sender, IPC_CHANNELS.runDelta, {
+              runId,
+              chunk: text.slice(sentPreviewLength),
+            });
+            sentPreviewLength = text.length;
+          }
         },
       });
 

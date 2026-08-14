@@ -16,6 +16,13 @@ import type { UiError } from "../../ui/errors.js";
 
 // --- Renderer → main, requests ------------------------------------------------
 
+/**
+ * Level cycle for the capsule's ⇥ shortcut. Mirrors `core/levels.ts`
+ * REPROMPT_LEVELS — the renderer may not import the core (§4.2), and a unit
+ * test fails if the two lists drift.
+ */
+export const REPROMPT_LEVEL_IDS = ["minimal", "standard", "complete"] as const;
+
 export const RepromptStartRequestSchema = z
   .object({
     input: z.string().min(1),
@@ -48,6 +55,13 @@ export type ConfigWriteRequest = z.infer<typeof ConfigWriteRequestSchema>;
 
 export interface RepromptStartResponse {
   runId: string;
+  /**
+   * The profile resolved LOCALLY at start (§8.2 `analyse` state): the capsule
+   * displays it from the first frame, never a hardcoded placeholder.
+   */
+  profile: string;
+  /** True when the profile was auto-detected rather than explicitly chosen. */
+  detectedProfile: boolean;
 }
 
 export type CaptureSelectionResponse = { text: string; sourceApp: string } | { empty: true };

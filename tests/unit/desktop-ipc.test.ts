@@ -5,6 +5,7 @@ import type {
 } from "../../src/application/reprompt.js";
 import { DEFAULT_CONFIG } from "../../src/config/loader.js";
 import type { Config } from "../../src/config/schema.js";
+import { REPROMPT_LEVELS } from "../../src/core/levels.js";
 import type { RepromptResult } from "../../src/core/types.js";
 import {
   registerIpcHandlers,
@@ -18,6 +19,7 @@ import {
   PUSH_CHANNELS,
   REQUEST_CHANNELS,
 } from "../../src/desktop/shared/ipc-channels.js";
+import { REPROMPT_LEVEL_IDS } from "../../src/desktop/shared/ipc-contract.js";
 
 const FAKE_RESULT: RepromptResult = {
   original: "demande brute",
@@ -153,6 +155,10 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
     expect(PUSH_CHANNELS).toHaveLength(4);
   });
 
+  it("les niveaux du contrat renderer ne dérivent pas du cœur", () => {
+    expect([...REPROMPT_LEVEL_IDS]).toEqual([...REPROMPT_LEVELS]);
+  });
+
   it("enregistre un handler pour chaque canal requête du contrat", () => {
     const harness = setup({});
     for (const channel of REQUEST_CHANNELS) {
@@ -199,8 +205,10 @@ describe("cycle de vie reprompt via IPC", () => {
       IPC_CHANNELS.repromptStart,
       { input: "demande brute" },
       harness.sender,
-    )) as { runId: string };
-    expect(response).toEqual({ runId: "run-1" });
+    )) as { runId: string; profile: string; detectedProfile: boolean };
+    expect(response.runId).toBe("run-1");
+    expect(typeof response.profile).toBe("string");
+    expect(response.detectedProfile).toBe(true);
 
     await vi.waitFor(() => {
       expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
@@ -220,6 +228,27 @@ describe("cycle de vie reprompt via IPC", () => {
     };
     expect(done.runId).toBe("run-1");
     expect(done.result.rewritten).toBe("demande reformulée");
+  });
+
+  it("décode l'enveloppe provider : le renderer ne reçoit que du texte affichable", async () => {
+    const execute = vi.fn((input: ExecuteRepromptInput): Promise<ExecuteRepromptResult> => {
+      input.onDelta?.('{"rewritten":"Bon');
+      input.onDelta?.("jour,");
+      input.onDelta?.(' voilà."}');
+      return Promise.resolve({ result: FAKE_RESULT, detectedProfile: false });
+    });
+    const harness = setup({ execute });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    const deltas = sentChannels(harness, IPC_CHANNELS.runDelta) as { chunk: string }[];
+    expect(deltas.map((delta) => delta.chunk).join("")).toBe("Bonjour, voilà.");
+    for (const delta of deltas) {
+      expect(delta.chunk).not.toContain('"rewritten"');
+    }
   });
 
   it("émet run:cancelled quand le run est interrompu", async () => {
