@@ -236,6 +236,12 @@ export interface MessageParameters {
   "tui.preparing": undefined;
   "tui.receiving": undefined;
   "tui.receivingTokens": undefined;
+  "tui.verdictFaithful": undefined;
+  "tui.verdictNoInvention": undefined;
+  "tui.verdictExpansion": undefined;
+  "tui.verdictUnrequested": undefined;
+  "tui.expansionRatio": { ratio: string };
+  "tui.expansionThreshold": { threshold: string };
   "tui.ready": undefined;
   "tui.profile": undefined;
   "tui.level": undefined;

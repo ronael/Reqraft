@@ -23,7 +23,7 @@ import { executeReprompt } from "../application/reprompt.js";
 import { readClipboard, writeClipboard } from "../clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "../config/loader.js";
 import type { Config } from "../config/schema.js";
-import type { QualityAssessment, RepromptLevel } from "../core/types.js";
+import type { QualityAssessment, RepromptLevel, RepromptResult } from "../core/types.js";
 import { parseLevel } from "../core/levels.js";
 import { createUiRepromptInput } from "../ui/app-actions.js";
 import {
@@ -80,6 +80,9 @@ import {
   type TuiStatus,
 } from "./result-presentation.js";
 import { COLOR, toneColor } from "./theme.js";
+import { ScanLine } from "./scan-line.js";
+import { FidelityVerdict } from "./verdict.js";
+import { DiffViewport } from "./diff-viewport.js";
 import { TextViewport } from "./text-viewport.js";
 import { createTranslator, type Translator } from "../i18n/translate.js";
 
@@ -410,6 +413,8 @@ function OpenTuiApp(): React.ReactNode {
       >
         <ResultArea
           result={visibleResult}
+          repromptResult={state.result}
+          view={state.view}
           quality={state.result?.quality ?? null}
           error={state.error}
           status={status}
@@ -599,6 +604,8 @@ function Badge({
 
 function ResultArea({
   result,
+  repromptResult,
+  view,
   quality,
   error,
   status,
@@ -608,6 +615,8 @@ function ResultArea({
   focused,
 }: Readonly<{
   result: string;
+  repromptResult: RepromptResult | null;
+  view: AppState["view"];
   quality: QualityAssessment | null;
   error: UiError | null;
   status: TuiStatus;
@@ -645,17 +654,19 @@ function ResultArea({
     );
   }
 
-  if (!result && (status === "loading" || status === "streaming")) {
+  // Loading / streaming: the landing's scan line replaces the spinner, the
+  // streamed text follows as it arrives (CLI v2).
+  if (status === "loading" || status === "streaming") {
     return (
-      <box
-        style={{ flexDirection: "column", height: stateRows, marginTop: 2, alignItems: "center" }}
-      >
-        <text fg={COLOR.accent} attributes={TextAttributes.BOLD}>
-          {t("tui.generating")}
-        </text>
-        <text attributes={TextAttributes.DIM}>
-          {status === "loading" ? t("tui.preparing") : t("tui.receiving")}
-        </text>
+      <box style={{ flexDirection: "column", height: stateRows, marginTop: 1, rowGap: 1 }}>
+        <ScanLine width={textWidth} />
+        {result ? (
+          <TextViewport text={result} rows={rows} width={textWidth} focused={focused} />
+        ) : (
+          <text attributes={TextAttributes.DIM}>
+            {status === "loading" ? t("tui.preparing") : t("tui.receiving")}
+          </text>
+        )}
       </box>
     );
   }
@@ -680,6 +691,8 @@ function ResultArea({
           tone="error"
         />
       )}
+      {/* CLI v2: verdict and gauge BEFORE the text, in every view. */}
+      {repromptResult && <FidelityVerdict result={repromptResult} t={t} />}
       {!error && warningMessages.length > 0 && (
         <TextViewport
           text={`! ${t("quality.review")} : ${warningMessages.join(" ")}`}
@@ -689,7 +702,11 @@ function ResultArea({
           scrollable={false}
         />
       )}
-      <TextViewport text={result} rows={rows} width={textWidth} focused={focused} />
+      {view === "diff" ? (
+        <DiffViewport text={result} rows={rows} width={textWidth} focused={focused} />
+      ) : (
+        <TextViewport text={result} rows={rows} width={textWidth} focused={focused} />
+      )}
     </box>
   );
 }

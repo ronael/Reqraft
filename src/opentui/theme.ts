@@ -8,6 +8,7 @@ export const COLOR = {
   muted: "#71717a",
   subtle: "#a1a1aa",
   accent: "#a78bfa",
+  accentStrong: "#8b5cf6",
   success: "#34d399",
   warning: "#fbbf24",
   error: "#fb7185",
