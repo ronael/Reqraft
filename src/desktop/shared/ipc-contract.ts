@@ -155,6 +155,15 @@ export interface RunCancelledPayload {
   runId: string;
 }
 
+/**
+ * Pushed when the capsule is (re)shown. `capture`: a selection trigger fired
+ * and the stash is ready — read it through `capture:selection`. `input`:
+ * free-input trigger, open on the input field.
+ */
+export interface CapsuleOpenedPayload {
+  mode: "capture" | "input";
+}
+
 // Re-exported so the renderer gets fully typed payloads without ever
 // importing the core, even for types (DESKTOP.md §4.2).
 export type { RepromptResult, UiError };
@@ -207,4 +216,5 @@ export interface ReqraftBridge {
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;
   onRunError(listener: (payload: RunErrorPayload) => void): Unsubscribe;
   onRunCancelled(listener: (payload: RunCancelledPayload) => void): Unsubscribe;
+  onCapsuleOpened(listener: (payload: CapsuleOpenedPayload) => void): Unsubscribe;
 }

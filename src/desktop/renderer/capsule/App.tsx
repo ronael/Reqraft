@@ -75,8 +75,25 @@ export function App(): React.JSX.Element {
     [dispatch, setStreamedBoth],
   );
 
-  // capture → analyse or saisie, once at mount.
-  useEffect(() => {
+  // Session lifecycle: the window persists between triggers (hidden, never
+  // destroyed), so every capsule:opened starts a FRESH session — otherwise a
+  // second shortcut would show the previous result.
+  const resetSession = useCallback(() => {
+    activeRunId.current = null;
+    setInput("");
+    setOrigin(null);
+    setProfile(null);
+    setDetectedProfile(false);
+    setStreamedBoth(() => "");
+    setResult(null);
+    setError(null);
+    setNotice(null);
+    setLevel("standard");
+  }, [setStreamedBoth]);
+
+  const beginCapture = useCallback(() => {
+    resetSession();
+    setState("capture");
     window.reqraft
       .captureSelection()
       .then((capture) => {
@@ -92,7 +109,18 @@ export function App(): React.JSX.Element {
       .catch(() => {
         dispatch("rien-à-capturer");
       });
-  }, [dispatch, startRun]);
+  }, [dispatch, resetSession, startRun]);
+
+  useEffect(() => {
+    return window.reqraft.onCapsuleOpened((payload) => {
+      if (payload.mode === "capture") {
+        beginCapture();
+      } else {
+        resetSession();
+        setState("saisie");
+      }
+    });
+  }, [beginCapture, resetSession]);
 
   // Run events, filtered by runId; every subscription is removed on unmount
   // (§5.6).
@@ -214,6 +242,7 @@ export function App(): React.JSX.Element {
       }
       if (event.key === "Escape") {
         cancelRun();
+        setState("fermée");
         window.close();
         return;
       }

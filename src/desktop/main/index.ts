@@ -22,6 +22,7 @@ import {
   requestAccessibility,
 } from "./permissions.js";
 import { RepromptService } from "./reprompt-service.js";
+import { IPC_CHANNELS } from "../shared/ipc-channels.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createTray } from "./tray.js";
@@ -160,15 +161,19 @@ function bootstrap(): void {
       {
         onCapture: () => {
           // Record the source app and capture BEFORE the capsule takes the
-          // focus (§5.2), then show anchored at the cursor (§3).
+          // focus (§5.2), then show anchored at the cursor (§3) and tell the
+          // renderer to start a fresh session — the window persists between
+          // triggers, it is hidden, never destroyed.
           const cursor = screen.getCursorScreenPoint();
           void captureService.trigger().then(() => {
             capsule.show({ kind: "cursor", point: cursor });
+            capsule.window.webContents.send(IPC_CHANNELS.capsuleOpened, { mode: "capture" });
           });
         },
         onInput: () => {
           captureService.clear();
           capsule.show({ kind: "centered" });
+          capsule.window.webContents.send(IPC_CHANNELS.capsuleOpened, { mode: "input" });
         },
       },
       process.env.REQRAFT_SHORTCUT,

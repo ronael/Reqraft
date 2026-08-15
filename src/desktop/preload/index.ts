@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import { IPC_CHANNELS } from "../shared/ipc-channels.js";
 import type {
+  CapsuleOpenedPayload,
   ReqraftBridge,
   RunCancelledPayload,
   RunDeltaPayload,
@@ -55,6 +56,10 @@ const bridge: ReqraftBridge = {
   onRunCancelled: (listener) =>
     subscribe(IPC_CHANNELS.runCancelled, (payload) => {
       listener(payload as RunCancelledPayload);
+    }),
+  onCapsuleOpened: (listener) =>
+    subscribe(IPC_CHANNELS.capsuleOpened, (payload) => {
+      listener(payload as CapsuleOpenedPayload);
     }),
 };
 

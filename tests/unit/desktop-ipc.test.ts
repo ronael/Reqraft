@@ -153,9 +153,10 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runDone: "run:done",
       runError: "run:error",
       runCancelled: "run:cancelled",
+      capsuleOpened: "capsule:opened",
     });
     expect(REQUEST_CHANNELS).toHaveLength(13);
-    expect(PUSH_CHANNELS).toHaveLength(4);
+    expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
   it("les niveaux du contrat renderer ne dérivent pas du cœur", () => {

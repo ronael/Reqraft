@@ -29,6 +29,9 @@ export const IPC_CHANNELS = {
   runDone: "run:done",
   runError: "run:error",
   runCancelled: "run:cancelled",
+  // Sent by the main each time the capsule is (re)shown: the window persists
+  // between triggers, so the renderer must reset its session on this event.
+  capsuleOpened: "capsule:opened",
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];
@@ -56,4 +59,5 @@ export const PUSH_CHANNELS = [
   IPC_CHANNELS.runDone,
   IPC_CHANNELS.runError,
   IPC_CHANNELS.runCancelled,
+  IPC_CHANNELS.capsuleOpened,
 ] as const;

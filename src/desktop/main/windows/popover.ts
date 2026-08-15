@@ -1,4 +1,4 @@
-import { BrowserWindow, screen } from "electron";
+import { BrowserWindow, app, screen } from "electron";
 import { placePopover } from "./placement.js";
 
 /**
@@ -52,9 +52,25 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
     }
   });
 
+  // Same rule as the capsule: closing means hiding, so the window stays
+  // reusable (esc in the popover, programmatic closes).
+  let quitting = false;
+  app.on("before-quit", () => {
+    quitting = true;
+  });
+  window.on("close", (event) => {
+    if (!quitting) {
+      event.preventDefault();
+      window.hide();
+    }
+  });
+
   void window.loadURL(options.devServerUrl ?? options.rendererUrl);
 
   function show(trayBounds: Electron.Rectangle): void {
+    if (window.isDestroyed()) {
+      return;
+    }
     const display = screen.getDisplayNearestPoint({
       x: trayBounds.x,
       y: trayBounds.y,
@@ -72,6 +88,9 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
   return {
     window,
     toggle(trayBounds) {
+      if (window.isDestroyed()) {
+        return;
+      }
       if (window.isVisible()) {
         window.hide();
       } else {
@@ -80,7 +99,9 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
     },
     show,
     hide() {
-      window.hide();
+      if (!window.isDestroyed()) {
+        window.hide();
+      }
     },
   };
 }

@@ -1,4 +1,4 @@
-import { BrowserWindow, screen } from "electron";
+import { BrowserWindow, app, screen } from "electron";
 import { placeCapsule, type CapsuleAnchor } from "./placement.js";
 
 /**
@@ -60,11 +60,28 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
     }
   });
 
+  // esc / ⏎ call `window.close()` in the renderer: convert that into a hide.
+  // Letting the window be destroyed would kill the NEXT shortcut trigger
+  // ("Object has been destroyed" on show).
+  let quitting = false;
+  app.on("before-quit", () => {
+    quitting = true;
+  });
+  window.on("close", (event) => {
+    if (!quitting) {
+      event.preventDefault();
+      window.hide();
+    }
+  });
+
   void window.loadURL(options.devServerUrl ?? options.rendererUrl);
 
   return {
     window,
     show(anchor) {
+      if (window.isDestroyed()) {
+        return;
+      }
       const referencePoint =
         anchor.kind === "cursor" ? anchor.point : screen.getCursorScreenPoint();
       const display = screen.getDisplayNearestPoint(referencePoint);
@@ -78,7 +95,9 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
       window.focus();
     },
     hide() {
-      window.hide();
+      if (!window.isDestroyed()) {
+        window.hide();
+      }
     },
   };
 }
