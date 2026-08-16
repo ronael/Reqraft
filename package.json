@@ -30,6 +30,7 @@
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
+    "snapshot:tui": "bun scripts/tui-snapshot.tsx",
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "typecheck": "tsc --noEmit",

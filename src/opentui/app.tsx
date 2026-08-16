@@ -88,7 +88,7 @@ import { createTranslator, type Translator } from "../i18n/translate.js";
 
 type OverlayId = Exclude<ModalType, "commands">;
 type FocusElement = "editor" | "result";
-const TranslatorContext = createContext<Translator>(createTranslator("en"));
+export const TranslatorContext = createContext<Translator>(createTranslator("en"));
 const useTranslator = (): Translator => useContext(TranslatorContext);
 
 export async function runOpenTuiApp(t: Translator = createTranslator("en")): Promise<void> {
@@ -100,7 +100,7 @@ export async function runOpenTuiApp(t: Translator = createTranslator("en")): Pro
   );
 }
 
-function OpenTuiApp(): React.ReactNode {
+export function OpenTuiApp(): React.ReactNode {
   const t = useTranslator();
   const renderer = useRenderer();
   const { width: terminalWidth, height: terminalHeight } = useTerminalDimensions();

@@ -10,6 +10,11 @@
   before adding a custom terminal primitive.
 - Non-interactive commands stay in `src/commands/` and must keep clean
   stdout/stderr behavior.
+- `pnpm snapshot:tui` (Bun required — OpenTUI's test renderer has no Node FFI
+  build) drives the real TUI at the keyboard against the `mock` provider and
+  writes cell-exact captures of each screen to `docs/design/snapshots/`
+  (HTML to look at, `.txt` frames to diff). Use it to check a UI change instead
+  of describing it.
 
 ## Desktop (Electron)
 
