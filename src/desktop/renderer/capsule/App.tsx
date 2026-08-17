@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AUTO_PROFILE_ID,
   REPROMPT_LEVEL_IDS,
   type RepromptResult,
   type UiError,
@@ -18,15 +19,18 @@ const QUALITY_LABELS: Record<RepromptResult["quality"]["status"], string> = {
  * The capsule (DESKTOP.md lot 3): the product's main surface. UI states are
  * driven by the §8.2 state machine — any transition the table refuses is a
  * no-op here. The fidelity verdict always renders BEFORE the rewritten text
- * (§2.5), and the displayed profile is the one resolved by the main process
- * at run start, never a placeholder (the spike's hardcoded-profile bug).
+ * (§2.5).
+ *
+ * The displayed profile is never hardcoded (the spike's known bug), but it is
+ * not always known at start either: an explicit profile is shown immediately,
+ * whereas `auto` is decided by the model during the run and only becomes
+ * displayable when the result arrives.
  */
 export function App(): React.JSX.Element {
   const [state, setState] = useState<CapsuleState>("capture");
   const [input, setInput] = useState("");
   const [origin, setOrigin] = useState<string | null>(null);
-  const [profile, setProfile] = useState<string | null>(null);
-  const [detectedProfile, setDetectedProfile] = useState(false);
+  const [requestedProfile, setRequestedProfile] = useState<string | null>(null);
   const [level, setLevel] = useState<Level>("standard");
   const [streamed, setStreamed] = useState("");
   const [result, setResult] = useState<RepromptResult | null>(null);
@@ -58,10 +62,10 @@ export function App(): React.JSX.Element {
         .startReprompt({ input: text, level: chosenLevel })
         .then((response) => {
           activeRunId.current = response.runId;
-          // analyse → profil-détecté → génération (§8.2): the real profile is
-          // known before the first network byte.
-          setProfile(response.profile);
-          setDetectedProfile(response.detectedProfile);
+          // analyse → profil-détecté → génération (§8.2). The event only means
+          // the run started: for `auto`, the applied profile is still unknown
+          // here and lands with the result.
+          setRequestedProfile(response.requestedProfile);
           dispatch("profil-détecté");
         })
         .catch((reason: unknown) => {
@@ -82,8 +86,7 @@ export function App(): React.JSX.Element {
     activeRunId.current = null;
     setInput("");
     setOrigin(null);
-    setProfile(null);
-    setDetectedProfile(false);
+    setRequestedProfile(null);
     setStreamedBoth(() => "");
     setResult(null);
     setError(null);
@@ -289,6 +292,14 @@ export function App(): React.JSX.Element {
   const verdictDetail =
     expansion === true ? "fonctionnalités non demandées" : "aucune invention détectée";
 
+  // `result.profile` is the profile actually applied and outranks anything
+  // known at start. Until it arrives, an explicit request is already its own
+  // answer, while `auto` has none to show yet.
+  const autoRequested = requestedProfile === AUTO_PROFILE_ID;
+  const appliedProfile = result?.profile ?? null;
+  const displayedProfile = appliedProfile ?? (autoRequested ? null : requestedProfile);
+  const awaitingDetection = autoRequested && appliedProfile === null;
+
   return (
     <main className="capsule">
       <header className="capsule-band">
@@ -297,12 +308,17 @@ export function App(): React.JSX.Element {
           {origin !== null ? `sélection · ${origin}` : "saisie libre"}
         </span>
         <span className="capsule-profile">
-          {running && profile === null && <span className="pulse">analyse locale…</span>}
-          {profile !== null && (
+          {running && awaitingDetection && (
             <>
-              profil <b>{profile}</b>
-              {detectedProfile && (
-                <span className="capsule-profile-note"> · détecté hors ligne</span>
+              profil <b>auto</b>
+              <span className="capsule-profile-note pulse"> · analyse…</span>
+            </>
+          )}
+          {displayedProfile !== null && (
+            <>
+              profil <b>{displayedProfile}</b>
+              {autoRequested && (
+                <span className="capsule-profile-note"> · détecté automatiquement</span>
               )}
             </>
           )}

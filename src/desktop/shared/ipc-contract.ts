@@ -3,6 +3,13 @@ import { RepromptLevelSchema } from "../../core/levels.js";
 import { ConfigSchema, type Config, type ConfigKey } from "../../config/schema.js";
 import type { RepromptResult } from "../../core/types.js";
 import type { UiError } from "../../ui/errors.js";
+import { AUTO_PROFILE_ID } from "../../profiles/profile-ids.js";
+
+/**
+ * Re-exported so the renderer can recognise the `auto` sentinel without
+ * importing from the core tree, which its bundle must stay free of.
+ */
+export { AUTO_PROFILE_ID };
 
 /**
  * IPC contract (DESKTOP.md §8.1): payload types and the Zod schemas validating
@@ -56,12 +63,16 @@ export type ConfigWriteRequest = z.infer<typeof ConfigWriteRequestSchema>;
 export interface RepromptStartResponse {
   runId: string;
   /**
-   * The profile resolved LOCALLY at start (§8.2 `analyse` state): the capsule
-   * displays it from the first frame, never a hardcoded placeholder.
+   * The profile the run was STARTED with, with aliases already canonicalised.
+   *
+   * For an explicit profile this is also the profile that will be applied, so
+   * the capsule can display it from the first frame. For `auto` this stays the
+   * `auto` sentinel: nothing is resolved locally at start. The model picks the
+   * profile in the same call that produces the rewrite, and the applied one
+   * only becomes known with the result — `RepromptResult.profile`, which is
+   * the single source of truth once a run is done.
    */
-  profile: string;
-  /** True when the profile was auto-detected rather than explicitly chosen. */
-  detectedProfile: boolean;
+  requestedProfile: string;
 }
 
 export type CaptureSelectionResponse = { text: string; sourceApp: string } | { empty: true };

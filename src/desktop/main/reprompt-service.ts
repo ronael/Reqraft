@@ -5,6 +5,7 @@ import { detectSecrets } from "../../core/secret-detector.js";
 import { previewRewritten } from "../../core/stream-preview.js";
 import type { RepromptResult } from "../../core/types.js";
 import { createTranslator, type Translator } from "../../i18n/translate.js";
+import { AUTO_PROFILE_ID } from "../../profiles/profile-ids.js";
 import { resolveProfile } from "../../profiles/registry.js";
 import { describeUiError, type UiError } from "../../ui/errors.js";
 import { IPC_CHANNELS } from "../shared/ipc-channels.js";
@@ -50,15 +51,19 @@ export class RepromptService {
   }
 
   /**
-   * Resolves the profile locally — the capsule's `analyse` state (§8.2) —
-   * then starts the run in the background.
+   * Validates the requested profile, then starts the run in the background.
    *
-   * The response carries the detected profile, so the capsule displays the
-   * REAL profile from the first painted frame and never a hardcoded one (the
-   * spike's known bug). The run itself is kicked on a macrotask: the invoke
-   * response carrying the runId is always delivered before the first pushed
-   * event, otherwise the renderer would drop an instant failure (e.g.
-   * detected secrets) as belonging to an unknown run.
+   * `resolveProfile` is called for its validation and alias canonicalisation
+   * only — an unknown id must reject the invoke here rather than surface later
+   * as a run error. It does NOT decide what `auto` means: no local heuristic
+   * resolves it anymore, so the response reports `auto` as-is and the applied
+   * profile arrives with the result (`RepromptResult.profile`). Keeping a
+   * single source of truth is why the response deliberately carries no guess.
+   *
+   * The run itself is kicked on a macrotask: the invoke response carrying the
+   * runId is always delivered before the first pushed event, otherwise the
+   * renderer would drop an instant failure (e.g. detected secrets) as
+   * belonging to an unknown run.
    */
   async start(
     request: RepromptStartRequest,
@@ -70,12 +75,15 @@ export class RepromptService {
 
     const config = await this.dependencies.loadConfig();
     const profileId = request.profileId ?? config.defaultProfile;
-    const { profile, detected } = resolveProfile(profileId, request.input);
+    const { profile } = resolveProfile(profileId);
 
     this.schedule(() => {
       void this.execute(runId, request, sender, controller, config);
     });
-    return { runId, profile: profile.id, detectedProfile: detected };
+    return {
+      runId,
+      requestedProfile: profile === "auto" ? AUTO_PROFILE_ID : profile.id,
+    };
   }
 
   /** Idempotent: cancelling an unknown or finished run is a no-op. */

@@ -19,7 +19,10 @@ import {
   PUSH_CHANNELS,
   REQUEST_CHANNELS,
 } from "../../src/desktop/shared/ipc-channels.js";
-import { REPROMPT_LEVEL_IDS } from "../../src/desktop/shared/ipc-contract.js";
+import {
+  REPROMPT_LEVEL_IDS,
+  type RepromptStartResponse,
+} from "../../src/desktop/shared/ipc-contract.js";
 
 const FAKE_RESULT: RepromptResult = {
   original: "demande brute",
@@ -209,10 +212,9 @@ describe("cycle de vie reprompt via IPC", () => {
       IPC_CHANNELS.repromptStart,
       { input: "demande brute" },
       harness.sender,
-    )) as { runId: string; profile: string; detectedProfile: boolean };
+    )) as RepromptStartResponse;
     expect(response.runId).toBe("run-1");
-    expect(typeof response.profile).toBe("string");
-    expect(response.detectedProfile).toBe(true);
+    expect(response.requestedProfile).toBe("auto");
 
     await vi.waitFor(() => {
       expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
@@ -669,5 +671,112 @@ describe("profiles:list et window:open-settings (lot 4)", () => {
       harness.sender,
     );
     expect(response).toBeUndefined();
+  });
+});
+
+/**
+ * `auto` is decided by the model inside the generation call, so the desktop
+ * must not pretend to know the applied profile before the result exists.
+ * These tests pin that boundary: `auto` in, `auto` reported at start, and the
+ * applied profile read only from `RepromptResult.profile`.
+ */
+describe("profil auto : détection côté modèle", () => {
+  function startWith(profileId?: string): {
+    harness: Harness;
+    started: Promise<unknown>;
+  } {
+    const harness = setup({});
+    const payload = profileId === undefined ? { input: "demande" } : { input: "demande", profileId };
+    return {
+      harness,
+      started: harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, payload, harness.sender),
+    };
+  }
+
+  it("transmet le sentinel auto au moteur, sans le résoudre localement", async () => {
+    const { harness, started } = startWith("auto");
+    const response = (await started) as RepromptStartResponse;
+
+    expect(response.requestedProfile).toBe("auto");
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+    expect(harness.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ profileId: "auto" }) as unknown as ExecuteRepromptInput,
+    );
+  });
+
+  it("ne prétend jamais connaître un profil appliqué au démarrage", async () => {
+    const { started } = startWith("auto");
+    const response = (await started) as RepromptStartResponse & { profile?: unknown };
+
+    // The old contract leaked a locally-resolved id here; nothing must fill
+    // that slot again, or the capsule would display a guess as a fact.
+    expect(response.profile).toBeUndefined();
+    expect(Object.keys(response).sort()).toEqual(["requestedProfile", "runId"]);
+  });
+
+  it("le profil réellement appliqué ne vient que du résultat", async () => {
+    const applied: RepromptResult = { ...FAKE_RESULT, profile: "frontend" };
+    const harness = setup({ execute: streamingExecute(applied) });
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.repromptStart,
+      { input: "demande", profileId: "auto" },
+      harness.sender,
+    );
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+    const done = sentChannels(harness, IPC_CHANNELS.runDone)[0] as { result: RepromptResult };
+    expect(done.result.profile).toBe("frontend");
+  });
+
+  it("reste fonctionnel quand la détection retombe sur clean", async () => {
+    const fellBack: RepromptResult = {
+      ...FAKE_RESULT,
+      profile: "clean",
+      quality: {
+        status: "good",
+        signals: [{ code: "profile_detection_fallback", severity: "info" }],
+      },
+    };
+    const harness = setup({ execute: streamingExecute(fellBack) });
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.repromptStart,
+      { input: "demande", profileId: "auto" },
+      harness.sender,
+    );
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+    const done = sentChannels(harness, IPC_CHANNELS.runDone)[0] as { result: RepromptResult };
+    expect(done.result.profile).toBe("clean");
+    // The signal rides the existing quality channel: no parallel desktop path.
+    expect(done.result.quality.signals).toContainEqual({
+      code: "profile_detection_fallback",
+      severity: "info",
+    });
+    expect(sentChannels(harness, IPC_CHANNELS.runError)).toHaveLength(0);
+  });
+
+  it("garde un profil explicite connu dès le démarrage", async () => {
+    const { harness, started } = startWith("frontend");
+    const response = (await started) as RepromptStartResponse;
+
+    expect(response.requestedProfile).toBe("frontend");
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+    expect(harness.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ profileId: "frontend" }) as unknown as ExecuteRepromptInput,
+    );
+  });
+
+  it("rejette un profil inconnu au démarrage plutôt qu'en cours de run", async () => {
+    const { harness, started } = startWith("nexistepas");
+    await expect(started).rejects.toThrow();
+    expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(0);
   });
 });

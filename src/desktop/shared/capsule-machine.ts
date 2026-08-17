@@ -31,7 +31,11 @@ export type CapsuleEvent =
   | "rien-à-capturer"
   /** Free input validated. */
   | "validation"
-  /** Local profile detection answered (instant, offline). */
+  /**
+   * The main process accepted the run and returned its `runId`. Named after
+   * the §8.2 table row; it no longer implies a profile was resolved, since
+   * `auto` is now decided by the model and only known with the result.
+   */
   | "profil-détecté"
   /** First streamed fragment arrived. */
   | "premier-fragment"
