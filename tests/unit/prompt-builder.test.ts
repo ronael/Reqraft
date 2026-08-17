@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { buildPrompt } from "../../src/core/prompt-builder.js";
+import { buildAutoDetectPrompt, buildPrompt } from "../../src/core/prompt-builder.js";
+import { BUILTIN_PROFILE_IDS } from "../../src/profiles/profile-ids.js";
 import { debugProfile } from "../../src/profiles/debug.js";
 import { frontendProfile } from "../../src/profiles/frontend.js";
 import { webDesignProfile } from "../../src/profiles/web-design.js";
@@ -95,5 +96,62 @@ describe("prompt builder", () => {
 
     expect(userPrompt).toContain("Langue attendue : fr");
     expect(userPrompt).toContain("Rewrite this request");
+  });
+});
+
+/**
+ * `auto`: no profile is resolved ahead of the call, so the merged prompt must
+ * carry every profile's rules and ask the model to report which one it
+ * applied — see core/engine.ts and core/result-parser.ts#resolveDetectedProfileId.
+ */
+describe("buildAutoDetectPrompt", () => {
+  it("lists every built-in profile so the model can pick one", () => {
+    const { systemPrompt } = buildAutoDetectPrompt({
+      input: "ajoute un bouton dans le dashboard",
+      level: "standard",
+      includeChanges: true,
+    });
+
+    for (const id of BUILTIN_PROFILE_IDS) {
+      expect(systemPrompt).toContain(id);
+    }
+    expect(systemPrompt).toContain("Aucun profil n'a été précisé");
+  });
+
+  it("asks for the chosen profile in the JSON contract", () => {
+    const { systemPrompt } = buildAutoDetectPrompt({
+      input: "ajoute un bouton",
+      level: "standard",
+      includeChanges: true,
+    });
+
+    expect(systemPrompt).toContain("rewritten (string), profile (string), changes (string[])");
+  });
+
+  it("collapses every profile's guidance into one shared note at the minimal level", () => {
+    const { systemPrompt } = buildAutoDetectPrompt({
+      input: "corrige juste ça",
+      level: "minimal",
+      includeChanges: true,
+    });
+
+    expect(systemPrompt).toContain("Le niveau minimal est prioritaire sur le profil retenu");
+    // `describeLevel` contributes one occurrence of its own; the point is that
+    // this note is not repeated once per candidate profile (it would say
+    // "niveau minimal est prioritaire" seven times otherwise).
+    expect(systemPrompt.match(/niveau minimal est prioritaire/gi)?.length).toBeLessThan(
+      BUILTIN_PROFILE_IDS.length,
+    );
+  });
+
+  it("keeps the same output-language footer as the explicit-profile prompt", () => {
+    const { userPrompt } = buildAutoDetectPrompt({
+      input: "Rewrite this request",
+      level: "standard",
+      outputLanguage: "fr",
+      includeChanges: true,
+    });
+
+    expect(userPrompt).toContain("Langue attendue : fr");
   });
 });

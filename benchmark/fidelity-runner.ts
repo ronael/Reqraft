@@ -48,7 +48,7 @@ async function runFidelityBenchmark(providerId: string, modelId?: string): Promi
 
   for (const benchmarkCase of FIDELITY_BENCHMARK_CASES) {
     try {
-      const { profile } = resolveProfile(benchmarkCase.profile, benchmarkCase.input);
+      const { profile } = resolveProfile(benchmarkCase.profile);
       const output = await rewrite({
         input: benchmarkCase.input,
         profile,

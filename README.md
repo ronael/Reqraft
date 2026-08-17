@@ -151,16 +151,16 @@ token-budget and fidelity contracts.
 
 Use `--profile <name>` to tune the rewriting style:
 
-| Profile      | Use case                        |
-| ------------ | ------------------------------- |
-| `auto`       | Detect the best profile locally |
-| `clean`      | Grammar and light clarification |
-| `code`       | Developer agents                |
-| `frontend`   | Frontend implementation         |
-| `web-design` | Visual design and landing pages |
-| `debug`      | Bugs and errors                 |
-| `review`     | Code audits and reviews         |
-| `writing`    | Emails, messages, documents     |
+| Profile      | Use case                                 |
+| ------------ | ----------------------------------------- |
+| `auto`       | The model picks the best-fitting profile |
+| `clean`      | Grammar and light clarification          |
+| `code`       | Developer agents                         |
+| `frontend`   | Frontend implementation                  |
+| `web-design` | Visual design and landing pages          |
+| `debug`      | Bugs and errors                          |
+| `review`     | Code audits and reviews                  |
+| `writing`    | Emails, messages, documents              |
 
 ## Levels
 

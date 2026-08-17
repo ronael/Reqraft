@@ -20,7 +20,7 @@ function hangingProvider(): ProviderAdapter {
 }
 
 function run(signal: AbortSignal | undefined, timeoutMs: number): Promise<unknown> {
-  const { profile } = resolveProfile("clean", "texte");
+  const { profile } = resolveProfile("clean");
   return rewrite({
     input: "corrige ce texte",
     profile,

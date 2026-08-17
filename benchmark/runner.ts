@@ -37,7 +37,7 @@ async function runBenchmark(providerId: string, modelId?: string): Promise<Bench
   let totalLatencyMs = 0;
 
   for (const benchmarkCase of BENCHMARK_DATASET) {
-    const { profile } = resolveProfile(benchmarkCase.profile, benchmarkCase.input);
+    const { profile } = resolveProfile(benchmarkCase.profile);
     const result = await rewrite({
       input: benchmarkCase.input,
       profile,

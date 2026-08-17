@@ -8,7 +8,6 @@ import { frontendProfile } from "./frontend.js";
 import { reviewProfile } from "./review.js";
 import { webDesignProfile } from "./web-design.js";
 import { writingProfile } from "./writing.js";
-import { detectProfile } from "./auto.js";
 import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "./profile-ids.js";
 
 export const BUILTIN_PROFILES: PromptProfile[] = [
@@ -44,17 +43,22 @@ export function getProfile(id: string): PromptProfile | undefined {
   return PROFILES_BY_ID.get(id) ?? PROFILES_BY_ALIAS.get(id);
 }
 
-export function resolveProfile(
-  requested: string,
-  input: string,
-): { profile: PromptProfile; detected: boolean } {
+/**
+ * Resolves what a requested profile id means for a generation.
+ *
+ * `auto` is not resolved here: no local heuristic decides it anymore. It is
+ * passed through as the `"auto"` sentinel, and it is the model — in the same
+ * call that produces the rewrite — that reports which profile it applied
+ * (`core/prompt-builder.ts#buildAutoDetectPrompt`,
+ * `core/result-parser.ts#resolveDetectedProfileId`). `detected` only tells the
+ * caller whether detection is happening, not what it will find.
+ */
+export function resolveProfile(requested: string): {
+  profile: PromptProfile | "auto";
+  detected: boolean;
+} {
   if (requested === AUTO_PROFILE_ID) {
-    const detectedId = detectProfile(input).profile;
-    const profile = getProfile(detectedId);
-    if (!profile) {
-      return { profile: cleanProfile, detected: true };
-    }
-    return { profile, detected: true };
+    return { profile: "auto", detected: true };
   }
   const profile = getProfile(requested);
   if (!profile) {

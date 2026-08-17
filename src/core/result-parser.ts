@@ -1,13 +1,17 @@
 import { z } from "zod";
+import { AUTO_FALLBACK_PROFILE_ID, BUILTIN_PROFILE_IDS } from "../profiles/profile-ids.js";
 
 const ResultSchema = z.object({
   rewritten: z.string().min(1),
+  /** Only present when the request used the `auto` profile (prompt-builder.ts#buildAutoDetectPrompt). */
+  profile: z.string().optional(),
   changes: z.array(z.string()).default([]),
   warnings: z.array(z.string()).default([]),
 });
 
 export interface ParsedResult {
   rewritten: string;
+  profile?: string;
   changes: string[];
   modelWarnings: string[];
   format: "structured" | "raw";
@@ -49,6 +53,7 @@ export function parseResult(text: string): ParsedResult {
     const validated = ResultSchema.parse(parsed);
     return {
       rewritten: validated.rewritten,
+      profile: validated.profile,
       changes: validated.changes,
       modelWarnings: validated.warnings,
       format: "structured",
@@ -62,4 +67,19 @@ export function parseResult(text: string): ParsedResult {
       format: "raw",
     };
   }
+}
+
+/**
+ * Validates the `profile` the model reported for an `auto` request.
+ *
+ * The model is a text generator, not a trusted enum source: a missing field,
+ * a malformed response, or a hallucinated id must not leak past this into a
+ * string every other surface (i18n labels, capability parity, the TUI's
+ * context row) assumes is one of `BUILTIN_PROFILE_IDS`. The fallback is a
+ * fixed constant, not a guess — see `profiles/profile-ids.ts`.
+ */
+export function resolveDetectedProfileId(raw: string | undefined): string {
+  const isKnownId = (id: string): id is (typeof BUILTIN_PROFILE_IDS)[number] =>
+    (BUILTIN_PROFILE_IDS as readonly string[]).includes(id);
+  return raw !== undefined && isKnownId(raw) ? raw : AUTO_FALLBACK_PROFILE_ID;
 }

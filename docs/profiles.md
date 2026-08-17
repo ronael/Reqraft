@@ -6,7 +6,7 @@ Profiles adapt the system prompt to the type of request. They are independent, t
 
 | Profile      | Description                                |
 |--------------|--------------------------------------------|
-| `auto`       | Local keyword-based detection              |
+| `auto`       | The model picks the best-fitting profile   |
 | `clean`      | Spelling, grammar, light clarification     |
 | `code`       | Developer agents                           |
 | `frontend`   | Frontend implementation                    |
@@ -17,7 +17,23 @@ Profiles adapt the system prompt to the type of request. They are independent, t
 
 ## Detection (`auto`)
 
-`auto` uses local keyword matching. It never calls an LLM to choose the profile. In case of low confidence, it falls back to `clean`.
+`auto` no longer runs a local keyword matcher — an offline heuristic scored 50%
+against the labelled cases in `benchmark/cases/dataset.ts`, and had no realistic
+path to being made reliable without turning into a larger keyword system to
+maintain by hand.
+
+Instead, the model picks the profile itself, in the same call that produces the
+rewrite: `core/prompt-builder.ts#buildAutoDetectPrompt` sends every built-in
+profile's rules along with the request, asks the model to determine which one
+fits best, and to report its choice in the `profile` field of its JSON response
+(`core/result-parser.ts#resolveDetectedProfileId` validates it against the
+known ids, defaulting to `clean` if the field is missing or unrecognised).
+
+This adds no extra network call and no extra latency over a normal generation —
+detection and rewriting happen in the same round trip. It does mean `auto`
+requires a configured provider, same as any other profile; there is no local
+fallback. This is not a new privacy exposure: the raw request already goes to
+the provider for the rewrite itself, with or without `auto`.
 
 ## Custom profiles
 

@@ -2,9 +2,9 @@ import type { PromptProfile } from "../profiles/types.js";
 import { resolveModelCapabilities } from "../models/capabilities.js";
 import { RequestCancelledError, RequestTimeoutError } from "./errors.js";
 import { assessFidelity, buildQualityAssessment } from "./fidelity.js";
-import { buildPrompt } from "./prompt-builder.js";
+import { buildAutoDetectPrompt, buildPrompt } from "./prompt-builder.js";
 import { REPROMPT_POLICY, resolveOutputTokenBudget } from "./reprompt-policy.js";
-import { parseResult } from "./result-parser.js";
+import { parseResult, resolveDetectedProfileId } from "./result-parser.js";
 import { DEFAULT_FIDELITY_MODE } from "./types.js";
 import type {
   ProviderAdapter,
@@ -17,7 +17,12 @@ import { assertNonEmptyResult } from "./validation.js";
 
 export interface EngineOptions {
   input: string;
-  profile: PromptProfile;
+  /**
+   * `"auto"` defers the profile choice to the model itself: the same call
+   * that produces the rewrite also reports which profile it applied (see
+   * `buildAutoDetectPrompt`). No separate classification round-trip.
+   */
+  profile: PromptProfile | "auto";
   level: RepromptLevel;
   provider: ProviderAdapter;
   model: string;
@@ -38,13 +43,21 @@ export interface EngineOptions {
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const start = Date.now();
 
-  const { systemPrompt, userPrompt } = buildPrompt({
-    input: options.input,
-    profile: options.profile,
-    level: options.level,
-    outputLanguage: options.outputLanguage,
-    includeChanges: options.includeChanges,
-  });
+  const { systemPrompt, userPrompt } =
+    options.profile === "auto"
+      ? buildAutoDetectPrompt({
+          input: options.input,
+          level: options.level,
+          outputLanguage: options.outputLanguage,
+          includeChanges: options.includeChanges,
+        })
+      : buildPrompt({
+          input: options.input,
+          profile: options.profile,
+          level: options.level,
+          outputLanguage: options.outputLanguage,
+          includeChanges: options.includeChanges,
+        });
 
   const timeoutMs = options.timeoutMs ?? REPROMPT_POLICY.runtime.defaultTimeoutMs;
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
@@ -125,7 +138,8 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   return {
     original: options.input,
     rewritten,
-    profile: options.profile.id,
+    profile:
+      options.profile === "auto" ? resolveDetectedProfileId(parsed.profile) : options.profile.id,
     level: options.level,
     provider: options.provider.id,
     model: response.model ?? options.model,
