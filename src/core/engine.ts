@@ -2,14 +2,15 @@ import type { PromptProfile } from "../profiles/types.js";
 import { resolveModelCapabilities } from "../models/capabilities.js";
 import { RequestCancelledError, RequestTimeoutError } from "./errors.js";
 import { assessFidelity, buildQualityAssessment } from "./fidelity.js";
-import { buildPrompt } from "./prompt-builder.js";
+import { buildAutoDetectPrompt, buildPrompt } from "./prompt-builder.js";
 import { REPROMPT_POLICY, resolveOutputTokenBudget } from "./reprompt-policy.js";
-import { parseResult } from "./result-parser.js";
+import { parseResult, resolveDetectedProfileId } from "./result-parser.js";
 import { DEFAULT_FIDELITY_MODE } from "./types.js";
 import type {
   ProviderAdapter,
   FidelityMode,
   ProviderRequest,
+  QualitySignal,
   RepromptLevel,
   RepromptResult,
 } from "./types.js";
@@ -17,7 +18,12 @@ import { assertNonEmptyResult } from "./validation.js";
 
 export interface EngineOptions {
   input: string;
-  profile: PromptProfile;
+  /**
+   * `"auto"` defers the profile choice to the model itself: the same call
+   * that produces the rewrite also reports which profile it applied (see
+   * `buildAutoDetectPrompt`). No separate classification round-trip.
+   */
+  profile: PromptProfile | "auto";
   level: RepromptLevel;
   provider: ProviderAdapter;
   model: string;
@@ -35,16 +41,55 @@ export interface EngineOptions {
   onDelta?: (chunk: string) => void;
 }
 
+/**
+ * The profile id a result reports, and — for `"auto"` only — the signal that
+ * makes a silent fallback observable instead of indistinguishable from a
+ * confident "clean" choice by the model.
+ *
+ * Severity `info`, deliberately: this is not a sign that the rewrite itself
+ * is unreliable, only that the profile guess defaulted. `info`-severity
+ * signals are excluded from `visibleQualitySignals` (`ui/quality.ts`) and
+ * from `resolveQualityStatus` (`core/fidelity.ts`), so this never turns an
+ * otherwise-fine `status: "good"` result into a "needs review" one, or adds
+ * warning-banner noise to every default `auto` run under a provider that
+ * simply never fills in `profile` (the `mock` provider, always). It is still
+ * fully present in `result.quality.signals` for anyone who checks — the
+ * benchmark in `benchmark/auto-profile-runner.ts` does.
+ */
+function resolveResultProfile(
+  requestedProfile: PromptProfile | "auto",
+  parsedProfile: string | undefined,
+): { profileId: string; fallbackSignal: QualitySignal | null } {
+  if (requestedProfile !== "auto") {
+    return { profileId: requestedProfile.id, fallbackSignal: null };
+  }
+  const detection = resolveDetectedProfileId(parsedProfile);
+  return {
+    profileId: detection.profileId,
+    fallbackSignal: detection.fellBack
+      ? { code: "profile_detection_fallback", severity: "info" }
+      : null,
+  };
+}
+
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const start = Date.now();
 
-  const { systemPrompt, userPrompt } = buildPrompt({
-    input: options.input,
-    profile: options.profile,
-    level: options.level,
-    outputLanguage: options.outputLanguage,
-    includeChanges: options.includeChanges,
-  });
+  const { systemPrompt, userPrompt } =
+    options.profile === "auto"
+      ? buildAutoDetectPrompt({
+          input: options.input,
+          level: options.level,
+          outputLanguage: options.outputLanguage,
+          includeChanges: options.includeChanges,
+        })
+      : buildPrompt({
+          input: options.input,
+          profile: options.profile,
+          level: options.level,
+          outputLanguage: options.outputLanguage,
+          includeChanges: options.includeChanges,
+        });
 
   const timeoutMs = options.timeoutMs ?? REPROMPT_POLICY.runtime.defaultTimeoutMs;
   const timeoutSignal = AbortSignal.timeout(timeoutMs);
@@ -85,6 +130,8 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const responseText = assertNonEmptyResult(response.text);
   const parsed = parseResult(responseText);
   const rewritten = assertNonEmptyResult(parsed.rewritten);
+  const { profileId, fallbackSignal } = resolveResultProfile(options.profile, parsed.profile);
+
   const fidelity = assessFidelity(
     options.input,
     rewritten,
@@ -119,13 +166,14 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     ...completionSignals,
     ...modelSignals,
     ...formatSignals,
+    ...(fallbackSignal ? [fallbackSignal] : []),
   ]);
   const latencyMs = Date.now() - start;
 
   return {
     original: options.input,
     rewritten,
-    profile: options.profile.id,
+    profile: profileId,
     level: options.level,
     provider: options.provider.id,
     model: response.model ?? options.model,

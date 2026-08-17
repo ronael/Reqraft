@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { parseResult, stripMarkdownFences } from "../../src/core/result-parser.js";
+import {
+  parseResult,
+  resolveDetectedProfileId,
+  stripMarkdownFences,
+} from "../../src/core/result-parser.js";
 
 describe("stripMarkdownFences", () => {
   it("removes json fences", () => {
@@ -56,5 +60,31 @@ describe("parseResult", () => {
     expect(result.rewritten).toBe("just some text");
     expect(result.format).toBe("raw");
     expect(result.modelWarnings).toEqual([]);
+  });
+
+  it("reads the profile field the auto prompt asks for", () => {
+    const result = parseResult('{"rewritten":"Salut","profile":"frontend","warnings":[]}');
+    expect(result.profile).toBe("frontend");
+  });
+
+  it("leaves profile undefined when the response omits it", () => {
+    const result = parseResult('{"rewritten":"Salut","warnings":[]}');
+    expect(result.profile).toBeUndefined();
+  });
+});
+
+describe("resolveDetectedProfileId", () => {
+  it("accepts any known built-in id, and reports no fallback", () => {
+    for (const id of ["clean", "code", "frontend", "web-design", "debug", "review", "writing"]) {
+      expect(resolveDetectedProfileId(id)).toEqual({ profileId: id, fellBack: false });
+    }
+  });
+
+  it("falls back to the fixed default when the field is missing", () => {
+    expect(resolveDetectedProfileId(undefined)).toEqual({ profileId: "clean", fellBack: true });
+  });
+
+  it("falls back to the fixed default on a hallucinated id, rather than trusting it", () => {
+    expect(resolveDetectedProfileId("marketing")).toEqual({ profileId: "clean", fellBack: true });
   });
 });

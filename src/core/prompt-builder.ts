@@ -1,6 +1,7 @@
 import type { RepromptRequest } from "./types.js";
 import type { PromptProfile } from "../profiles/types.js";
 import { BASE_SYSTEM_PROMPT } from "../profiles/base.js";
+import { BUILTIN_PROFILES } from "../profiles/registry.js";
 import { describeLevel } from "./levels.js";
 
 export interface BuiltPrompt {
@@ -14,6 +15,84 @@ export interface PromptBuildInput {
   level: RepromptRequest["level"];
   outputLanguage?: string;
   includeChanges: boolean;
+}
+
+export interface AutoDetectPromptInput {
+  input: string;
+  level: RepromptRequest["level"];
+  outputLanguage?: string;
+  includeChanges: boolean;
+}
+
+/**
+ * The `auto` profile, in one call.
+ *
+ * No profile is resolved ahead of this call — the model chooses one itself,
+ * from the same request that produces the rewrite, and reports its choice in
+ * the `profile` field of its JSON response (read back by
+ * `core/result-parser.ts#resolveDetectedProfileId`). No second generation
+ * call, no second network round-trip.
+ *
+ * That said, this is not free: the system prompt carries one condensed,
+ * level-aware guidance line per built-in profile (`levelAwareProfileGuidance`
+ * below — the same short line `buildPrompt` uses for a single known profile,
+ * not the long `PromptProfile.instructions` block, which nothing in this file
+ * reads), so whichever profile gets picked, its guidance is already in
+ * context. That is more input tokens than the explicit-profile prompt sends,
+ * proportional to the number of built-in profiles — see
+ * `benchmark/auto-profile-runner.ts` for a measured comparison, not a guess.
+ */
+export function buildAutoDetectPrompt(request: AutoDetectPromptInput): BuiltPrompt {
+  const levelDescription = describeLevel(request.level);
+  const menu = BUILTIN_PROFILES.map(
+    (profile) => `- ${profile.id} (${profile.name}) : ${profile.description}`,
+  ).join("\n");
+  const guidance =
+    request.level === "minimal"
+      ? "Le niveau minimal est prioritaire sur le profil retenu, quel qu'il soit : conserve uniquement l'action et les termes explicitement présents ; ne crée ni rubriques, ni checklist, ni critères supplémentaires."
+      : BUILTIN_PROFILES.map(
+          (profile) => `${profile.id} : ${levelAwareProfileGuidance(profile, request.level)}`,
+        ).join("\n");
+
+  const systemPrompt = [
+    "Tu es un assistant de reprompting. Tu reformules des demandes brutes en prompts clairs, fidèles et directement exploitables par une IA.",
+    "",
+    "Règles communes :",
+    BASE_SYSTEM_PROMPT,
+    "",
+    "Aucun profil n'a été précisé. Détermine d'abord, à partir du seul contenu de la demande, quel profil ci-dessous lui correspond le mieux, puis applique ses consignes. N'annonce jamais ce choix dans le texte reformulé : indique-le uniquement dans le champ profile de la réponse. Si la demande ne correspond clairement à aucun profil, choisis clean.",
+    "",
+    "Profils disponibles :",
+    menu,
+    "",
+    "Consignes par profil, adaptées au niveau demandé :",
+    guidance,
+    "",
+    levelDescription,
+    "",
+    "Contraintes de sortie :",
+    "- Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier.",
+    `- Le champ profile doit contenir exactement l'un de ces identifiants : ${BUILTIN_PROFILES.map((profile) => profile.id).join(", ")}.`,
+    "- Garde warnings vide sauf ambiguïté critique.",
+    "- N'ajoute pas d'analyse, de justification, de résumé ou de variantes hors du champ rewritten.",
+    "- Reste concis : chaque token généré doit aider l'utilisateur.",
+    "",
+    request.includeChanges
+      ? "Réponds au format JSON strict avec les champs : rewritten (string), profile (string), changes (string[]), warnings (string[])."
+      : "Réponds au format JSON strict avec les champs : rewritten (string), profile (string), warnings (string[]).",
+    "Ne mets pas de Markdown autour du JSON.",
+  ].join("\n");
+
+  const userPrompt = [
+    "Reformule la demande suivante :",
+    "",
+    "```",
+    request.input,
+    "```",
+    request.outputLanguage ? `\nLangue attendue : ${request.outputLanguage}` : "",
+  ].join("\n");
+
+  return { systemPrompt, userPrompt };
 }
 
 export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
@@ -85,7 +164,17 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
   return { systemPrompt, userPrompt };
 }
 
-function levelAwareProfileGuidance(
+/**
+ * Shared by `buildPrompt` (one known profile) and `buildAutoDetectPrompt`
+ * (once per built-in profile, so whichever one the model picks has its
+ * guidance on hand) — a single source for what "apply profile X at level Y"
+ * means. Deliberately a short, hand-written line per profile, not
+ * `PromptProfile.instructions` (the longer block used by custom profile
+ * parsing in `profiles/custom.ts`) — sending every profile's full
+ * instructions in `buildAutoDetectPrompt` would multiply the system prompt's
+ * size for comparatively little gained precision; this stays compact.
+ */
+export function levelAwareProfileGuidance(
   profile: PromptProfile,
   level: RepromptRequest["level"],
 ): string {

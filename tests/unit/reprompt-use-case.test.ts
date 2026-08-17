@@ -44,7 +44,7 @@ describe("reprompt use case", () => {
             makeResult({
               original: options.input,
               rewritten: `[mock] ${options.input}`,
-              profile: options.profile.id,
+              profile: options.profile === "auto" ? "auto" : options.profile.id,
               changes: ["Mock reformulation applied"],
             }),
           ),
@@ -58,6 +58,13 @@ describe("reprompt use case", () => {
   });
 
   it("returns auto profile detection metadata to callers", async () => {
+    // Detection now happens inside the same generation call, not as a local,
+    // synchronous pre-step: the fake `rewrite` below stands in for "the model,
+    // given the auto-detect prompt, decided frontend and reported it" — see
+    // core/prompt-builder.ts#buildAutoDetectPrompt and
+    // core/result-parser.ts#resolveDetectedProfileId.
+    let capturedProfile: EngineOptions["profile"] | undefined;
+
     const { result, detectedProfile } = await executeReprompt(
       {
         input: "corrige Dashboard.tsx",
@@ -75,10 +82,14 @@ describe("reprompt use case", () => {
           provider: new MockProvider(),
           model: input.requestedModel ?? input.defaultModel,
         }),
-        rewrite: (options) => Promise.resolve(makeResult({ profile: options.profile.id })),
+        rewrite: (options) => {
+          capturedProfile = options.profile;
+          return Promise.resolve(makeResult({ profile: "frontend" }));
+        },
       },
     );
 
+    expect(capturedProfile).toBe("auto");
     expect(result.profile).toBe("frontend");
     expect(detectedProfile).toBe(true);
   });

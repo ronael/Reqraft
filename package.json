@@ -32,6 +32,7 @@
     "test:watch": "vitest",
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
+    "benchmark:auto-profile": "tsx benchmark/auto-profile-runner.ts",
     "typecheck": "tsc --noEmit",
     "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm build:desktop && pnpm test:coverage",
     "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",

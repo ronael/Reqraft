@@ -53,7 +53,7 @@ export async function executeReprompt(
 ): Promise<ExecuteRepromptResult> {
   await dependencies.hydrateCredentials(input.env);
 
-  const { profile, detected } = resolveProfile(input.profileId, input.input);
+  const { profile, detected } = resolveProfile(input.profileId);
   const { provider, model, reasoningEffort } = dependencies.resolveProviderRuntime({
     providerId: input.providerId,
     requestedModel: input.requestedModel,

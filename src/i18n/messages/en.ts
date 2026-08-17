@@ -366,6 +366,8 @@ export const en = {
   "quality.unstructuredResponse": () =>
     "The provider returned an unstructured response; the text was preserved.",
   "quality.modelWarning": ({ detail }) => detail,
+  "quality.profileDetectionFallback": () =>
+    "The profile could not be determined with confidence; the clean profile was used as a fallback.",
   "addition.testimonials": () => "testimonials",
   "addition.faq": () => "FAQ",
   "addition.cta": () => "call to action",

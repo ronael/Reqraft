@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { detectProfile } from "../../src/profiles/auto.js";
 import { BUILTIN_PROFILE_IDS } from "../../src/profiles/profile-ids.js";
 import { getProfile, listProfiles, resolveProfile } from "../../src/profiles/registry.js";
 
@@ -20,45 +19,18 @@ describe("profile registry", () => {
     expect(profile?.id).toBe("web-design");
   });
 
-  it("auto resolves a frontend request", () => {
-    const { profile, detected } = resolveProfile("auto", "ajoute un bouton dans le dashboard");
+  // `auto` is not resolved here anymore — see core/prompt-builder.ts
+  // (buildAutoDetectPrompt) and core/result-parser.ts
+  // (resolveDetectedProfileId) for what replaced the old local keyword
+  // detector, and tests/unit/reprompt-use-case.test.ts for the flag this
+  // returns end to end.
+  it("defers auto to the model instead of resolving it locally", () => {
+    const { profile, detected } = resolveProfile("auto");
+    expect(profile).toBe("auto");
     expect(detected).toBe(true);
-    expect(profile.id).toBe("frontend");
-  });
-
-  it("auto resolves landing page requests to web-design", () => {
-    const { profile, detected } = resolveProfile(
-      "auto",
-      "je voudrais que me crée une landing page style apple en respectant les convention",
-    );
-    expect(detected).toBe(true);
-    expect(profile.id).toBe("web-design");
-  });
-
-  it("auto falls back to clean on generic input", () => {
-    const { profile, detected } = resolveProfile("auto", "bonjour comment vas tu aujourd'hui");
-    expect(detected).toBe(true);
-    expect(profile.id).toBe("clean");
-  });
-
-  it("auto falls back to clean on ambiguous input", () => {
-    const { profile } = resolveProfile("auto", "code design bug");
-    expect(profile.id).toBe("clean");
   });
 
   it("throws on unknown explicit profile", () => {
-    expect(() => resolveProfile("nope", "test")).toThrow("profile.unknown");
-  });
-});
-
-describe("profile detector", () => {
-  it("detects debug profile", () => {
-    const result = detectProfile("j'ai une erreur 500 dans la console");
-    expect(result.profile).toBe("debug");
-  });
-
-  it("detects code profile from code block", () => {
-    const result = detectProfile("```ts\nconst x = 1\n```\nexplique");
-    expect(result.profile).toBe("code");
+    expect(() => resolveProfile("nope")).toThrow("profile.unknown");
   });
 });

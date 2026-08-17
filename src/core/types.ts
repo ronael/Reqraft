@@ -35,7 +35,8 @@ export type QualitySignal =
     }
   | { code: "output_truncated"; severity: "critical" }
   | { code: "model_warning"; severity: "warning"; detail: string }
-  | { code: "unstructured_response"; severity: "warning" };
+  | { code: "unstructured_response"; severity: "warning" }
+  | { code: "profile_detection_fallback"; severity: "info" };
 
 export interface QualityAssessment {
   status: QualityStatus;

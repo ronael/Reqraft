@@ -256,3 +256,133 @@ describe("engine", () => {
     });
   });
 });
+
+/**
+ * `profile: "auto"` — the model picks a profile itself, in the same call that
+ * produces the rewrite, and reports its choice in the response's `profile`
+ * field. No separate classification round-trip, no local heuristic.
+ */
+describe("engine with the auto profile", () => {
+  it("sends a condensed guidance line for every built-in profile, and reads back which one was applied", async () => {
+    const provider = new CaptureProvider();
+
+    const result = await rewrite({
+      input: "ajoute un bouton dans le dashboard",
+      profile: "auto",
+      level: "standard",
+      provider,
+      model: "mock-model",
+      includeChanges: true,
+    });
+
+    for (const id of ["clean", "code", "frontend", "web-design", "debug", "review", "writing"]) {
+      expect(provider.request?.systemPrompt).toContain(id);
+    }
+    expect(provider.request?.systemPrompt).toContain("Aucun profil n'a été précisé");
+    // CaptureProvider always answers { rewritten: "ok" }, with no profile field:
+    // this is the "profile absent" case, observable as a fallback signal.
+    expect(result.profile).toBe("clean");
+    expect(result.quality.signals).toContainEqual(
+      expect.objectContaining({ code: "profile_detection_fallback", severity: "info" }),
+    );
+  });
+
+  it("uses the profile the model reports, when it is a known id", async () => {
+    const provider = new (class implements ProviderAdapter {
+      readonly id = "capture";
+      readonly name = "Capture";
+      generate(request: ProviderRequest): Promise<ProviderResponse> {
+        return Promise.resolve({
+          text: JSON.stringify({ rewritten: "ok", profile: "frontend", warnings: [] }),
+          usage: { inputTokens: 1, outputTokens: 1 },
+          model: request.model,
+        });
+      }
+      validateConfiguration(): Promise<ProviderHealth> {
+        return Promise.resolve({ ok: true });
+      }
+    })();
+
+    const result = await rewrite({
+      input: "ajoute un bouton dans le dashboard",
+      profile: "auto",
+      level: "standard",
+      provider,
+      model: "mock-model",
+      includeChanges: true,
+    });
+
+    expect(result.profile).toBe("frontend");
+    // A confident, valid choice is not a fallback — no signal to raise.
+    expect(result.quality.signals).not.toContainEqual(
+      expect.objectContaining({ code: "profile_detection_fallback" }),
+    );
+  });
+
+  it("falls back to clean when the model reports an id that does not exist", async () => {
+    const provider = new (class implements ProviderAdapter {
+      readonly id = "capture";
+      readonly name = "Capture";
+      generate(request: ProviderRequest): Promise<ProviderResponse> {
+        return Promise.resolve({
+          text: JSON.stringify({ rewritten: "ok", profile: "invented-profile", warnings: [] }),
+          usage: { inputTokens: 1, outputTokens: 1 },
+          model: request.model,
+        });
+      }
+      validateConfiguration(): Promise<ProviderHealth> {
+        return Promise.resolve({ ok: true });
+      }
+    })();
+
+    const result = await rewrite({
+      input: "peu importe",
+      profile: "auto",
+      level: "standard",
+      provider,
+      model: "mock-model",
+      includeChanges: true,
+    });
+
+    expect(result.profile).toBe("clean");
+    expect(result.quality.signals).toContainEqual(
+      expect.objectContaining({ code: "profile_detection_fallback", severity: "info" }),
+    );
+  });
+
+  it("falls back to clean, with both signals, when the response is not structured JSON at all", async () => {
+    const provider = new (class implements ProviderAdapter {
+      readonly id = "capture";
+      readonly name = "Capture";
+      generate(request: ProviderRequest): Promise<ProviderResponse> {
+        // Plain text, not JSON: parseResult reads it as "raw" and finds no
+        // fields at all, `profile` included.
+        return Promise.resolve({
+          text: "Voici le prompt reformulé, sans JSON autour.",
+          usage: { inputTokens: 1, outputTokens: 1 },
+          model: request.model,
+        });
+      }
+      validateConfiguration(): Promise<ProviderHealth> {
+        return Promise.resolve({ ok: true });
+      }
+    })();
+
+    const result = await rewrite({
+      input: "peu importe",
+      profile: "auto",
+      level: "standard",
+      provider,
+      model: "mock-model",
+      includeChanges: true,
+    });
+
+    expect(result.profile).toBe("clean");
+    expect(result.quality.signals).toContainEqual(
+      expect.objectContaining({ code: "unstructured_response" }),
+    );
+    expect(result.quality.signals).toContainEqual(
+      expect.objectContaining({ code: "profile_detection_fallback" }),
+    );
+  });
+});
