@@ -7,13 +7,17 @@ import { defineConfig } from "vite";
  * by the main process, hence the relative base. The CSP in
  * `src/desktop/renderer/index.html` only allows self-hosted assets, so
  * everything is bundled — no remote code ever reaches the renderer.
+ *
+ * Output sits beside the main/preload bundles under `release/desktop/bundle`,
+ * outside the `dist/` tree the npm package publishes. See
+ * `tsup.desktop.config.ts` for why the split is structural.
  */
 export default defineConfig({
   root: fileURLToPath(new URL("./src/desktop/renderer", import.meta.url)),
   base: "./",
   plugins: [react()],
   build: {
-    outDir: fileURLToPath(new URL("./dist/desktop/renderer", import.meta.url)),
+    outDir: fileURLToPath(new URL("./release/desktop/bundle/renderer", import.meta.url)),
     emptyOutDir: true,
     target: "es2022",
     sourcemap: true,

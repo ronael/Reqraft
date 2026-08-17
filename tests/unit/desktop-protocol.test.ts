@@ -7,7 +7,7 @@ import {
   RQ_SCHEME,
 } from "../../src/desktop/main/protocol.js";
 
-const RENDERER_DIR = path.resolve("/app/dist/desktop/renderer");
+const RENDERER_DIR = path.resolve("/app/release/desktop/bundle/renderer");
 
 describe("rq:// protocol (renderer over custom scheme)", () => {
   it("rqRendererUrl produit l'URL de la surface demandée", () => {

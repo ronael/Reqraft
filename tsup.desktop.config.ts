@@ -8,11 +8,20 @@ import { defineConfig } from "tsup";
  * which is the only format a `sandbox: true` preload accepts.
  *
  * `electron` stays external: it is provided by the runtime.
+ *
+ * Output lives under `release/`, never under `dist/`: `dist/` is what the npm
+ * package publishes (`files: ["dist"]`), and nothing Electron belongs in
+ * `@reqraft/cli`. Keeping the two trees physically apart makes that leak
+ * impossible by construction rather than by a cleanup step.
+ *
+ * The internal `main/` `preload/` `renderer/` layout is load-bearing: the main
+ * process resolves its siblings relatively (`path.join(mainDir, "../renderer")`),
+ * so the tree can move as a whole but must not be rearranged internally.
  */
 export default defineConfig([
   {
     entry: { "main/index": "src/desktop/main/index.ts" },
-    outDir: "dist/desktop",
+    outDir: "release/desktop/bundle",
     format: ["esm"],
     target: "es2022",
     platform: "node",
@@ -26,7 +35,7 @@ export default defineConfig([
   },
   {
     entry: { "preload/index": "src/desktop/preload/index.ts" },
-    outDir: "dist/desktop",
+    outDir: "release/desktop/bundle",
     format: ["cjs"],
     target: "es2022",
     platform: "node",

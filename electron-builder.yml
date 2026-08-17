@@ -16,10 +16,18 @@ copyright: Copyright © 2026 Reqraft Contributors
 # Le package.json racine pointe sur le CLI npm ; l'app Electron démarre sur le
 # bundle desktop (lot 6 : deux builds distincts, jamais un seul).
 extraMetadata:
-  main: dist/desktop/main/index.mjs
+  main: release/desktop/bundle/main/index.mjs
+
+# Sorties desktop confinées hors de `dist/`, que le package npm publie via
+# `files: ["dist"]`. Par défaut electron-builder écrit dans `dist/`, ce qui
+# faisait embarquer le .app entier dans @reqraft/cli : `output` ci-dessous est
+# ce qui rend la fuite structurellement impossible.
+directories:
+  output: release/desktop/package
+  buildResources: build
 
 files:
-  - dist/desktop/**
+  - release/desktop/bundle/**
   - package.json
   # Everything the app runs is bundled by tsup/Vite — the production
   # dependencies (opentui, react…) belong to the CLI surface and would only
