@@ -10,6 +10,7 @@ import type {
   ProviderAdapter,
   FidelityMode,
   ProviderRequest,
+  QualitySignal,
   RepromptLevel,
   RepromptResult,
 } from "./types.js";
@@ -38,6 +39,37 @@ export interface EngineOptions {
   signal?: AbortSignal;
   /** Receives text as it arrives when streaming is enabled. */
   onDelta?: (chunk: string) => void;
+}
+
+/**
+ * The profile id a result reports, and — for `"auto"` only — the signal that
+ * makes a silent fallback observable instead of indistinguishable from a
+ * confident "clean" choice by the model.
+ *
+ * Severity `info`, deliberately: this is not a sign that the rewrite itself
+ * is unreliable, only that the profile guess defaulted. `info`-severity
+ * signals are excluded from `visibleQualitySignals` (`ui/quality.ts`) and
+ * from `resolveQualityStatus` (`core/fidelity.ts`), so this never turns an
+ * otherwise-fine `status: "good"` result into a "needs review" one, or adds
+ * warning-banner noise to every default `auto` run under a provider that
+ * simply never fills in `profile` (the `mock` provider, always). It is still
+ * fully present in `result.quality.signals` for anyone who checks — the
+ * benchmark in `benchmark/auto-profile-runner.ts` does.
+ */
+function resolveResultProfile(
+  requestedProfile: PromptProfile | "auto",
+  parsedProfile: string | undefined,
+): { profileId: string; fallbackSignal: QualitySignal | null } {
+  if (requestedProfile !== "auto") {
+    return { profileId: requestedProfile.id, fallbackSignal: null };
+  }
+  const detection = resolveDetectedProfileId(parsedProfile);
+  return {
+    profileId: detection.profileId,
+    fallbackSignal: detection.fellBack
+      ? { code: "profile_detection_fallback", severity: "info" }
+      : null,
+  };
 }
 
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
@@ -98,6 +130,8 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const responseText = assertNonEmptyResult(response.text);
   const parsed = parseResult(responseText);
   const rewritten = assertNonEmptyResult(parsed.rewritten);
+  const { profileId, fallbackSignal } = resolveResultProfile(options.profile, parsed.profile);
+
   const fidelity = assessFidelity(
     options.input,
     rewritten,
@@ -132,14 +166,14 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     ...completionSignals,
     ...modelSignals,
     ...formatSignals,
+    ...(fallbackSignal ? [fallbackSignal] : []),
   ]);
   const latencyMs = Date.now() - start;
 
   return {
     original: options.input,
     rewritten,
-    profile:
-      options.profile === "auto" ? resolveDetectedProfileId(parsed.profile) : options.profile.id,
+    profile: profileId,
     level: options.level,
     provider: options.provider.id,
     model: response.model ?? options.model,

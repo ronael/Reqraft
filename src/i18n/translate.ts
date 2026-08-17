@@ -343,6 +343,7 @@ export interface MessageParameters {
   "quality.outputTruncated": undefined;
   "quality.unstructuredResponse": undefined;
   "quality.modelWarning": { detail: string };
+  "quality.profileDetectionFallback": undefined;
   "addition.testimonials": undefined;
   "addition.faq": undefined;
   "addition.cta": undefined;

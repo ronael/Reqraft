@@ -74,17 +74,17 @@ describe("parseResult", () => {
 });
 
 describe("resolveDetectedProfileId", () => {
-  it("accepts any known built-in id", () => {
+  it("accepts any known built-in id, and reports no fallback", () => {
     for (const id of ["clean", "code", "frontend", "web-design", "debug", "review", "writing"]) {
-      expect(resolveDetectedProfileId(id)).toBe(id);
+      expect(resolveDetectedProfileId(id)).toEqual({ profileId: id, fellBack: false });
     }
   });
 
   it("falls back to the fixed default when the field is missing", () => {
-    expect(resolveDetectedProfileId(undefined)).toBe("clean");
+    expect(resolveDetectedProfileId(undefined)).toEqual({ profileId: "clean", fellBack: true });
   });
 
   it("falls back to the fixed default on a hallucinated id, rather than trusting it", () => {
-    expect(resolveDetectedProfileId("marketing")).toBe("clean");
+    expect(resolveDetectedProfileId("marketing")).toEqual({ profileId: "clean", fellBack: true });
   });
 });

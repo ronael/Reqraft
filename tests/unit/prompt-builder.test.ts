@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { buildAutoDetectPrompt, buildPrompt } from "../../src/core/prompt-builder.js";
 import { BUILTIN_PROFILE_IDS } from "../../src/profiles/profile-ids.js";
+import { codeProfile } from "../../src/profiles/code.js";
 import { debugProfile } from "../../src/profiles/debug.js";
 import { frontendProfile } from "../../src/profiles/frontend.js";
 import { webDesignProfile } from "../../src/profiles/web-design.js";
@@ -100,9 +101,11 @@ describe("prompt builder", () => {
 });
 
 /**
- * `auto`: no profile is resolved ahead of the call, so the merged prompt must
- * carry every profile's rules and ask the model to report which one it
- * applied — see core/engine.ts and core/result-parser.ts#resolveDetectedProfileId.
+ * `auto`: no profile is resolved ahead of the call, so the merged prompt lists
+ * every built-in profile with a condensed, level-aware guidance line each
+ * (never the long `PromptProfile.instructions` block — see the comment on
+ * `buildAutoDetectPrompt`) and asks the model to report which one it applied
+ * — see core/engine.ts and core/result-parser.ts#resolveDetectedProfileId.
  */
 describe("buildAutoDetectPrompt", () => {
   it("lists every built-in profile so the model can pick one", () => {
@@ -144,6 +147,33 @@ describe("buildAutoDetectPrompt", () => {
     );
   });
 
+  it("carries a per-profile guidance line, not the collapsed note, at standard and complete", () => {
+    for (const level of ["standard", "complete"] as const) {
+      const { systemPrompt } = buildAutoDetectPrompt({
+        input: "ajoute un bouton",
+        level,
+        includeChanges: true,
+      });
+
+      // The frontend guidance line is profile-specific, unlike the minimal
+      // level's single shared note — proves per-profile guidance survives at
+      // both levels, not just the one already covered above.
+      expect(systemPrompt).toContain("Profil frontend :");
+      expect(systemPrompt).not.toContain("Le niveau minimal est prioritaire");
+    }
+  });
+
+  it("carries the complete level's own description, same as the explicit-profile prompt", () => {
+    const { systemPrompt } = buildAutoDetectPrompt({
+      input: "ajoute un bouton",
+      level: "complete",
+      includeChanges: true,
+    });
+
+    expect(systemPrompt).toContain("Niveau complet");
+    expect(systemPrompt).toContain("ne jamais inventer de décision");
+  });
+
   it("keeps the same output-language footer as the explicit-profile prompt", () => {
     const { userPrompt } = buildAutoDetectPrompt({
       input: "Rewrite this request",
@@ -153,5 +183,23 @@ describe("buildAutoDetectPrompt", () => {
     });
 
     expect(userPrompt).toContain("Langue attendue : fr");
+  });
+
+  // Locks in the compact-prompt decision: sending every profile's full
+  // `.instructions` block (paragraphs of bullet lists) instead of the short
+  // guidance line would multiply the system prompt's size for auto requests.
+  // If this test starts failing because someone wired `.instructions` in,
+  // that is the token-cost regression to catch before it ships.
+  it("sends the condensed guidance line per profile, not the long instructions block", () => {
+    const { systemPrompt } = buildAutoDetectPrompt({
+      input: "ajoute un bouton",
+      level: "standard",
+      includeChanges: true,
+    });
+
+    expect(systemPrompt).not.toContain(codeProfile.instructions);
+    // A prefix long enough to be distinctive is enough to prove the whole
+    // multi-line block was not spliced in.
+    expect(systemPrompt).not.toContain(codeProfile.instructions.slice(0, 80));
   });
 });

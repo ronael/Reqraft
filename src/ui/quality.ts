@@ -36,6 +36,8 @@ export function describeQualitySignal(
       return t("quality.unstructuredResponse");
     case "model_warning":
       return t("quality.modelWarning", { detail: signal.detail });
+    case "profile_detection_fallback":
+      return t("quality.profileDetectionFallback");
   }
 }
 

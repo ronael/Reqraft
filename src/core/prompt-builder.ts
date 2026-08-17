@@ -30,12 +30,17 @@ export interface AutoDetectPromptInput {
  * No profile is resolved ahead of this call — the model chooses one itself,
  * from the same request that produces the rewrite, and reports its choice in
  * the `profile` field of its JSON response (read back by
- * `core/result-parser.ts#resolveDetectedProfileId`). This costs nothing beyond
- * today's single generation call: no separate classification round-trip.
+ * `core/result-parser.ts#resolveDetectedProfileId`). No second generation
+ * call, no second network round-trip.
  *
- * Every profile's rules are included so that whichever one gets picked, its
- * guidance is already in context — nothing is decided in a first pass and
- * applied in a second one that doesn't exist.
+ * That said, this is not free: the system prompt carries one condensed,
+ * level-aware guidance line per built-in profile (`levelAwareProfileGuidance`
+ * below — the same short line `buildPrompt` uses for a single known profile,
+ * not the long `PromptProfile.instructions` block, which nothing in this file
+ * reads), so whichever profile gets picked, its guidance is already in
+ * context. That is more input tokens than the explicit-profile prompt sends,
+ * proportional to the number of built-in profiles — see
+ * `benchmark/auto-profile-runner.ts` for a measured comparison, not a guess.
  */
 export function buildAutoDetectPrompt(request: AutoDetectPromptInput): BuiltPrompt {
   const levelDescription = describeLevel(request.level);
@@ -161,8 +166,13 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
 
 /**
  * Shared by `buildPrompt` (one known profile) and `buildAutoDetectPrompt`
- * (every profile, so whichever one the model picks has its rules on hand) —
- * a single source for what "apply profile X at level Y" means.
+ * (once per built-in profile, so whichever one the model picks has its
+ * guidance on hand) — a single source for what "apply profile X at level Y"
+ * means. Deliberately a short, hand-written line per profile, not
+ * `PromptProfile.instructions` (the longer block used by custom profile
+ * parsing in `profiles/custom.ts`) — sending every profile's full
+ * instructions in `buildAutoDetectPrompt` would multiply the system prompt's
+ * size for comparatively little gained precision; this stays compact.
  */
 export function levelAwareProfileGuidance(
   profile: PromptProfile,

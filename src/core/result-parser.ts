@@ -69,6 +69,17 @@ export function parseResult(text: string): ParsedResult {
   }
 }
 
+export interface DetectedProfileResolution {
+  profileId: string;
+  /**
+   * True when `raw` was missing or not a recognised id, so `profileId` above
+   * is the fixed fallback rather than something the model actually reported.
+   * The caller uses this to raise `profile_detection_fallback` — see
+   * `core/engine.ts` — without engine.ts having to re-check membership itself.
+   */
+  fellBack: boolean;
+}
+
 /**
  * Validates the `profile` the model reported for an `auto` request.
  *
@@ -78,8 +89,11 @@ export function parseResult(text: string): ParsedResult {
  * context row) assumes is one of `BUILTIN_PROFILE_IDS`. The fallback is a
  * fixed constant, not a guess — see `profiles/profile-ids.ts`.
  */
-export function resolveDetectedProfileId(raw: string | undefined): string {
+export function resolveDetectedProfileId(raw: string | undefined): DetectedProfileResolution {
   const isKnownId = (id: string): id is (typeof BUILTIN_PROFILE_IDS)[number] =>
     (BUILTIN_PROFILE_IDS as readonly string[]).includes(id);
-  return raw !== undefined && isKnownId(raw) ? raw : AUTO_FALLBACK_PROFILE_ID;
+  if (raw !== undefined && isKnownId(raw)) {
+    return { profileId: raw, fellBack: false };
+  }
+  return { profileId: AUTO_FALLBACK_PROFILE_ID, fellBack: true };
 }

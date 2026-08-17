@@ -88,7 +88,15 @@ describe("CLI e2e", () => {
     expect(json.schemaVersion).toBe(1);
     expect(json.ok).toBe(true);
     expect(json.result.rewritten).toContain("[mock]");
-    expect(json.result.quality).toEqual({ status: "good", signals: [] });
+    // No `--profile` flag: this runs on the default, `auto`. The mock
+    // provider never reports a `profile` field, so `auto` always falls back
+    // to `clean` here — observable as an `info`-severity signal (does not
+    // change `status`, see core/engine.ts#resolveResultProfile), not as
+    // `signals: []`.
+    expect(json.result.quality).toEqual({
+      status: "good",
+      signals: [{ code: "profile_detection_fallback", severity: "info" }],
+    });
   });
 
   it("keeps JSON content identical across UI locales", () => {

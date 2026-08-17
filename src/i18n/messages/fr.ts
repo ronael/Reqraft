@@ -375,6 +375,8 @@ export const fr = {
   "quality.unstructuredResponse": () =>
     "Le provider a renvoyé une réponse non structurée ; le texte a été conservé.",
   "quality.modelWarning": ({ detail }) => detail,
+  "quality.profileDetectionFallback": () =>
+    "Le profil n'a pas pu être déterminé avec certitude ; le profil clean a été utilisé par défaut.",
   "addition.testimonials": () => "témoignages",
   "addition.faq": () => "FAQ",
   "addition.cta": () => "appel à l'action",
