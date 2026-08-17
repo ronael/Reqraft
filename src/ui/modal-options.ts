@@ -1,5 +1,6 @@
 import type { RepromptLevel } from "../core/types.js";
 import { REPROMPT_LEVELS } from "../core/levels.js";
+import { CAPABILITIES } from "../capabilities/registry.js";
 import {
   getPresetModels,
   getFallbackModelForProvider as getPresetFallbackModelForProvider,
@@ -60,20 +61,32 @@ export function getFallbackModelForProvider(provider: string): string {
   return getPresetFallbackModelForProvider(provider) ?? "";
 }
 
+/**
+ * Action de palette associée à chaque capacité du registre exposée dans la
+ * TUI. Les capacités sans entrée ici (`interrupt`, les capacités CLI ou
+ * desktop) ne passent pas par la palette.
+ */
+export const COMMAND_ACTION_BY_CAPABILITY: Readonly<Record<string, ModalCommandAction>> = {
+  reformulate: "generate",
+  "select-profile": "profile",
+  "select-level": "level",
+  "select-provider": "provider",
+  "select-model": "model",
+  "show-result": "result",
+  "show-diff": "diff",
+  "show-explain": "explain",
+  "copy-result": "copy",
+};
+
+/**
+ * Options de la palette, dérivées du registre de capacités : libellés, ordre
+ * et condition `requiresResult` viennent de `CAPABILITIES`.
+ */
 export function getCommandOptions(hasResult: boolean): SelectOption<ModalCommandAction>[] {
-  return [
-    { label: "Générer ou régénérer", value: "generate" },
-    { label: "Changer de profil", value: "profile" },
-    { label: "Changer de niveau", value: "level" },
-    { label: "Changer de provider", value: "provider" },
-    { label: "Changer de modèle", value: "model" },
-    ...(hasResult
-      ? [
-          { label: "Afficher le résultat", value: "result" as const },
-          { label: "Afficher le diff", value: "diff" as const },
-          { label: "Afficher l'explication", value: "explain" as const },
-          { label: "Copier le résultat", value: "copy" as const },
-        ]
-      : []),
-  ];
+  return CAPABILITIES.flatMap((capability) => {
+    const action = COMMAND_ACTION_BY_CAPABILITY[capability.id];
+    if (action === undefined) return [];
+    if (capability.requiresResult === true && !hasResult) return [];
+    return [{ label: capability.label, value: action }];
+  });
 }

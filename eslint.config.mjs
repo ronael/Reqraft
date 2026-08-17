@@ -85,6 +85,54 @@ export default tseslint.config(
     },
   },
   {
+    // DESKTOP.md §4.2, règle 1 : le renderer ne parle jamais au cœur, tout
+    // passe par l'IPC. Bloquant, types compris.
+    files: ["src/desktop/renderer/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: [
+                "**/core",
+                "**/core/**",
+                "**/providers",
+                "**/providers/**",
+                "**/auth",
+                "**/auth/**",
+                "**/application",
+                "**/application/**",
+              ],
+              message:
+                "Le renderer ne parle jamais au cœur : tout passe par l'IPC (DESKTOP.md §2.1 et §4.2).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // DESKTOP.md §4.2, règle 2 : les modules purs de src/ui (hors components/
+    // et hooks/) restent réutilisables par la TUI comme par le desktop.
+    files: ["src/ui/**/*.{ts,tsx}"],
+    ignores: ["src/ui/components/**", "src/ui/hooks/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["react-dom", "react-dom/**", "ink", "ink/**", "@opentui/*", "@opentui/**"],
+              message:
+                "Les modules purs de src/ui ne dépendent d'aucune surface de rendu (DESKTOP.md §4.2).",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     ignores: ["dist", "node_modules", "*.config.*", "coverage"],
   }
 );

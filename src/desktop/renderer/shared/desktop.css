@@ -1,0 +1,568 @@
+/*
+ * Capsule styles (DESKTOP.md lot 3), aligned on docs/design/reqraft-native-ui.html.
+ * Brand colours arrive as CSS custom properties injected from
+ * `ui/theme/palette-values.ts` (single source of truth).
+ */
+
+:root {
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  /* The window itself is transparent + HUD vibrancy: no opaque backdrop. */
+  background: transparent;
+  color: #e4e4e7;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, system-ui, sans-serif;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow: hidden;
+  user-select: none;
+}
+
+.capsule {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(16, 16, 23, 0.92);
+  box-shadow:
+    0 24px 70px rgba(0, 0, 0, 0.62),
+    0 0 0 1px rgba(167, 139, 250, 0.2),
+    0 0 60px rgba(139, 92, 246, 0.1);
+}
+
+/* ── Bandeau : origine du texte + profil détecté ─────────────────────── */
+
+.capsule-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  font-size: 11px;
+  /* Draggable region: the capsule has no title bar. */
+  -webkit-app-region: drag;
+}
+
+.capsule-brand {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 600;
+  color: var(--rq-accent);
+}
+
+.capsule-origin {
+  color: #71717a;
+}
+
+.capsule-profile {
+  margin-left: auto;
+  color: #a1a1aa;
+}
+
+.capsule-profile b {
+  color: var(--rq-accent);
+  font-weight: 600;
+}
+
+.capsule-profile-note {
+  color: #52525b;
+}
+
+.capsule-bar {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    var(--rq-accent-strong),
+    var(--rq-accent),
+    var(--rq-accent-strong)
+  );
+  background-size: 200% 100%;
+  animation: rq-slide 1.1s linear infinite;
+}
+
+@keyframes rq-slide {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+/* ── Corps ───────────────────────────────────────────────────────────── */
+
+.capsule-body {
+  flex: 1;
+  padding: 12px 14px;
+  overflow-y: auto;
+}
+
+.capsule-source {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #52525b;
+}
+
+.capsule-source-label {
+  flex-shrink: 0;
+  margin-top: 1px;
+  color: #3f3f46;
+}
+
+.capsule-source-text {
+  font-style: italic;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+}
+
+.capsule-stream {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 21px;
+  color: #f4f4f5;
+}
+
+.caret {
+  display: inline-block;
+  width: 7px;
+  height: 15px;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: var(--rq-accent);
+  animation: rq-blink 1s steps(2) infinite;
+}
+
+@keyframes rq-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.pulse {
+  animation: rq-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes rq-pulse {
+  0%,
+  100% {
+    opacity: 0.35;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.capsule-input {
+  width: 100%;
+  resize: none;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  color: inherit;
+  font: inherit;
+}
+
+.capsule-input:focus {
+  outline: none;
+  border-color: var(--rq-accent);
+}
+
+.capsule-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+button {
+  padding: 6px 14px;
+  border: none;
+  border-radius: 8px;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.button-primary {
+  background: var(--rq-accent-strong);
+  color: #ffffff;
+}
+
+.capsule-diff {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 19px;
+}
+
+.diff-before {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(251, 113, 133, 0.07);
+  color: rgba(254, 205, 211, 0.9);
+}
+
+.diff-after {
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: rgba(52, 211, 153, 0.07);
+  color: rgba(167, 243, 208, 0.9);
+}
+
+.error-title {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--rq-danger);
+}
+
+.error-detail {
+  margin: 4px 0 0;
+  font-size: 12px;
+  line-height: 20px;
+  color: #a1a1aa;
+}
+
+.capsule-notice {
+  margin: 8px 0 0;
+  font-size: 11px;
+  color: var(--rq-warning);
+}
+
+.muted {
+  color: #71717a;
+}
+
+.accent {
+  color: var(--rq-accent);
+}
+
+/* ── Pied : le verdict a sa propre rangée, les actions la suivante ────── */
+
+.capsule-footer {
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.capsule-verdict {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  font-size: 12px;
+}
+
+.verdict-good {
+  color: var(--rq-success);
+  font-weight: 600;
+}
+
+.verdict-review {
+  color: var(--rq-warning);
+  font-weight: 600;
+}
+
+.verdict-risky {
+  color: var(--rq-danger);
+  font-weight: 600;
+}
+
+.capsule-meta {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  color: #52525b;
+}
+
+.capsule-keys {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 6px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  color: #71717a;
+}
+
+.key-primary {
+  color: #d4d4d8;
+}
+
+.key-close {
+  margin-left: auto;
+}
+
+kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #d4d4d8;
+}
+
+/* ── Popover (lot 4) ─────────────────────────────────────────────────── */
+
+.popover {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(16, 16, 23, 0.92);
+  box-shadow:
+    0 18px 50px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+}
+
+.popover-input-zone {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.popover-input {
+  width: 100%;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: #e4e4e7;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  line-height: 20px;
+  outline: none;
+}
+
+.popover-controls {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.chip {
+  padding: 4px 8px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #71717a;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.chip:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.chip-active {
+  background: rgba(139, 92, 246, 0.2);
+  color: var(--rq-accent);
+}
+
+.chip-level {
+  margin-left: auto;
+  font-family: ui-monospace, monospace;
+  font-size: 10px;
+}
+
+.popover-section {
+  padding: 8px 12px;
+  overflow-y: auto;
+}
+
+.popover-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: #52525b;
+  margin-bottom: 4px;
+}
+
+.popover-result {
+  margin: 0 0 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  line-height: 16px;
+  color: #a1a1aa;
+  user-select: text;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.popover-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: auto;
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(0, 0, 0, 0.2);
+  font-size: 10px;
+  color: #52525b;
+}
+
+.popover-settings {
+  border: none;
+  background: transparent;
+  color: #a1a1aa;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+}
+
+.popover-settings:hover {
+  color: #ffffff;
+}
+
+/* ── Réglages (coquille lot 4, onglets lot 5) ────────────────────────── */
+
+.settings {
+  padding: 16px;
+  /* The settings window is a normal framed window, not a transparent panel. */
+  background: #131316;
+  min-height: 100vh;
+}
+
+.settings-band {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings-band h1 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.settings-placeholder {
+  font-size: 12px;
+}
+
+/* ── Réglages (lot 5) ────────────────────────────────────────────────── */
+
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 8px 12px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.settings-tab {
+  padding: 6px 10px;
+  border: none;
+  border-radius: 6px 6px 0 0;
+  background: transparent;
+  color: #71717a;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.settings-tab-active {
+  background: rgba(255, 255, 255, 0.07);
+  color: #e4e4e7;
+}
+
+.settings-panel {
+  padding: 8px 12px;
+  overflow-y: auto;
+  max-height: calc(100vh - 40px);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  padding: 8px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+}
+
+.settings-row-button {
+  cursor: pointer;
+}
+
+.settings-row-button:hover {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-row-active {
+  background: rgba(139, 92, 246, 0.1);
+}
+
+.settings-row-title {
+  font-size: 12px;
+  color: #e4e4e7;
+}
+
+.settings-row-detail {
+  font-size: 11px;
+  color: #71717a;
+}
+
+.settings-warning {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.05);
+  font-size: 11px;
+  line-height: 16px;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.settings-note {
+  font-size: 11px;
+}
+
+.settings-select,
+.settings-input {
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  background: #1c1c21;
+  color: #e4e4e7;
+  font-size: 12px;
+}
+
+.settings-input {
+  width: 220px;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding: 8px 0;
+}
