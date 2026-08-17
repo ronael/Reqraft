@@ -3,7 +3,7 @@ import { TextAttributes } from "@opentui/core";
 import type { RepromptResult } from "../core/types.js";
 import type { Translator } from "../i18n/translate.js";
 import { expansionGaugeModel, formatRatio } from "../ui/expansion-gauge.js";
-import { COLOR } from "./theme.js";
+import { COLOR } from "../ui/theme/tui.js";
 
 /**
  * Fidelity verdict + expansion gauge (CLI v2, docs/design/cli-v2.md): the

@@ -1,3 +1,12 @@
+/**
+ * Surface palette of the interactive TUI (CLI v2 design).
+ *
+ * Built on the shared `PALETTE_VALUES` so the TUI, the CLI and the desktop
+ * renderer stay on the exact same identity colours. The surface roles
+ * (backgrounds, borders, text tiers) are TUI-specific.
+ */
+import { PALETTE_VALUES } from "./palette-values.js";
+
 export const COLOR = {
   bg: "#09090b",
   panel: "#111113",
@@ -7,11 +16,11 @@ export const COLOR = {
   text: "#e4e4e7",
   muted: "#71717a",
   subtle: "#a1a1aa",
-  accent: "#a78bfa",
-  accentStrong: "#8b5cf6",
-  success: "#34d399",
-  warning: "#fbbf24",
-  error: "#fb7185",
+  accent: PALETTE_VALUES.accent,
+  accentStrong: PALETTE_VALUES.accentStrong,
+  success: PALETTE_VALUES.success,
+  warning: PALETTE_VALUES.warning,
+  error: PALETTE_VALUES.danger,
 } as const;
 
 export type PanelTone = "accent" | "neutral" | "success" | "warning" | "error";

@@ -1,6 +1,6 @@
 /* @jsxImportSource @opentui/react */
 import { useEffect, useState } from "react";
-import { COLOR } from "./theme.js";
+import { COLOR } from "../ui/theme/tui.js";
 
 /**
  * Scan line (CLI v2, docs/design/cli-v2.md): the landing's hero scan becomes

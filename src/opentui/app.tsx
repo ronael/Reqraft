@@ -79,7 +79,7 @@ import {
   resultTone,
   type TuiStatus,
 } from "./result-presentation.js";
-import { COLOR, toneColor } from "./theme.js";
+import { COLOR, toneColor } from "../ui/theme/tui.js";
 import { ScanLine } from "./scan-line.js";
 import { FidelityVerdict } from "./verdict.js";
 import { DiffViewport } from "./diff-viewport.js";

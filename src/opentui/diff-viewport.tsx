@@ -1,5 +1,5 @@
 /* @jsxImportSource @opentui/react */
-import { COLOR } from "./theme.js";
+import { COLOR } from "../ui/theme/tui.js";
 import { ScrollView } from "./scroll-view.js";
 import { wrapText } from "./text.js";
 
