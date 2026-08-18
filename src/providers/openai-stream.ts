@@ -1,4 +1,4 @@
-import type { ProviderResponse } from "../core/types.js";
+import type { ProviderResponse } from "@/core/types.js";
 import { ProviderError } from "./errors.js";
 import { parseDataLine, streamLines } from "./sse.js";
 

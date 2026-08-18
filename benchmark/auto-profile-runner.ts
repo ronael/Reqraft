@@ -9,11 +9,11 @@ import {
   type AutoProfileCaseResult,
   type PromptSizeComparison,
 } from "./auto-profile-scoring.js";
-import { rewrite } from "../src/core/engine.js";
-import { buildAutoDetectPrompt, buildPrompt } from "../src/core/prompt-builder.js";
-import { getProfile } from "../src/profiles/registry.js";
-import { createProvider } from "../src/providers/registry.js";
-import { resolveModel } from "../src/models/model-resolver.js";
+import { rewrite } from "@/core/engine.js";
+import { buildAutoDetectPrompt, buildPrompt } from "@/core/prompt-builder.js";
+import { getProfile } from "@/profiles/registry.js";
+import { createProvider } from "@/providers/registry.js";
+import { resolveModel } from "@/models/model-resolver.js";
 
 /**
  * Measures the real `auto` profile-detection path end to end:

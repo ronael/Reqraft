@@ -4,7 +4,7 @@ import type {
   ProviderRequest,
   ProviderResponse,
   ModelInfo,
-} from "../core/types.js";
+} from "@/core/types.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
 import { ProviderError } from "./errors.js";
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createLayout, pickerOptionIndexAt } from "../../src/opentui/layout.js";
+import { createLayout, pickerOptionIndexAt } from "@/apps/cli/opentui/layout.js";
 
 const WIDTHS = [40, 60, 80, 120] as const;
 

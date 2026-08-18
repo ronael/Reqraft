@@ -3,7 +3,7 @@ import {
   isWayland,
   probePermissions,
   type PermissionsProbe,
-} from "../../src/desktop/main/permissions.js";
+} from "@/apps/desktop/main/permissions.js";
 
 function createProbe(overrides: Partial<PermissionsProbe>): PermissionsProbe {
   return {

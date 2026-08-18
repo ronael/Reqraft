@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { trayIconPng, trayTooltip, type TrayState } from "../../src/desktop/main/tray-icon.js";
+import { trayIconPng, trayTooltip, type TrayState } from "@/apps/desktop/main/tray-icon.js";
 
 const PNG_SIGNATURE = Buffer.from([0x89, 0x50, 0x4e, 0x47]);
 

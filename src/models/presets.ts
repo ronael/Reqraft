@@ -1,5 +1,5 @@
-import type { ModelInfo } from "../core/types.js";
-import type { BuiltinProvider } from "../providers/catalog.js";
+import type { ModelInfo } from "@/core/types.js";
+import type { BuiltinProvider } from "@/providers/catalog.js";
 
 export const MODEL_PRESETS_UPDATED_AT = "2026-07-28";
 export const DEFAULT_MODEL_ID = "claude-haiku-4-5";

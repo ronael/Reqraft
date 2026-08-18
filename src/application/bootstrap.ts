@@ -1,6 +1,6 @@
-import { DEFAULT_CONFIG, loadConfig } from "../config/loader.js";
-import type { Config } from "../config/schema.js";
-import { hydrateCredentials } from "../auth/credentials.js";
+import { DEFAULT_CONFIG, loadConfig } from "@/config/loader.js";
+import type { Config } from "@/config/schema.js";
+import { hydrateCredentials } from "@/auth/credentials.js";
 
 export interface BootstrapDependencies {
   hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void>;

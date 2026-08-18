@@ -4,8 +4,8 @@ import {
   formatExplain,
   formatQuality,
   formatStats,
-} from "../../src/commands/reprompt.js";
-import type { RepromptResult } from "../../src/core/types.js";
+} from "@/apps/cli/commands/reprompt.js";
+import type { RepromptResult } from "@/core/types.js";
 
 function makeResult(overrides: Partial<RepromptResult> = {}): RepromptResult {
   return {

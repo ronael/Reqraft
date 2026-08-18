@@ -4,7 +4,7 @@ import type {
   ProviderRequest,
   ProviderResponse,
   ModelInfo,
-} from "../core/types.js";
+} from "@/core/types.js";
 import { parseDataLine, streamLines } from "./sse.js";
 import { ProviderError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";

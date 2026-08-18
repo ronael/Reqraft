@@ -4,7 +4,7 @@ import type {
   ProviderRequest,
   ProviderResponse,
   ModelInfo,
-} from "../core/types.js";
+} from "@/core/types.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
 
 export class DeepSeekProvider implements ProviderAdapter {

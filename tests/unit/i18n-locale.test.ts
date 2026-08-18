@@ -1,9 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  findUiLocalePreference,
-  normalizeSystemLocale,
-  resolveUiLocale,
-} from "../../src/i18n/locale.js";
+import { findUiLocalePreference, normalizeSystemLocale, resolveUiLocale } from "@/i18n/locale.js";
 
 describe("UI locale resolution", () => {
   it.each([

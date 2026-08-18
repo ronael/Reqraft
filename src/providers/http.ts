@@ -1,4 +1,4 @@
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { ProviderError } from "./errors.js";
 
 export async function providerFetch(

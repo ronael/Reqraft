@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { actionLines, shortModel, wrapText } from "../../src/opentui/text.js";
+import { actionLines, shortModel, wrapText } from "@/apps/cli/opentui/text.js";
 
 describe("OpenTUI text helpers", () => {
   it("wraps long text without losing words", () => {

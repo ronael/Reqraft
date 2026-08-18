@@ -4,7 +4,7 @@ import {
   formatInitHeading,
   formatInitPrompt,
   formatInitStatus,
-} from "../../src/ui/init-format.js";
+} from "@/apps/cli/ui/init-format.js";
 
 const COLOR = { color: true, unicode: true } as const;
 

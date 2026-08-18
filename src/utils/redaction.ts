@@ -1,4 +1,4 @@
-import { detectSecrets } from "../core/secret-detector.js";
+import { detectSecrets } from "@/core/secret-detector.js";
 
 export function redactSecrets(input: string): string {
   const matches = detectSecrets(input);

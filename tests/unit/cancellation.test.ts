@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { rewrite } from "../../src/core/engine.js";
-import { RequestCancelledError, RequestTimeoutError } from "../../src/core/errors.js";
-import { resolveProfile } from "../../src/profiles/registry.js";
-import type { ProviderAdapter, ProviderRequest } from "../../src/core/types.js";
+import { rewrite } from "@/core/engine.js";
+import { RequestCancelledError, RequestTimeoutError } from "@/core/errors.js";
+import { resolveProfile } from "@/profiles/registry.js";
+import type { ProviderAdapter, ProviderRequest } from "@/core/types.js";
 
 /** Provider that never answers until its request is aborted. */
 function hangingProvider(): ProviderAdapter {

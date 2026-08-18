@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { computeWindow, filterItems, moveIndex } from "../../src/ui/select-list.js";
+import { computeWindow, filterItems, moveIndex } from "@/apps/cli/ui/select-list.js";
 
 const models = [
   { label: "gpt-4.1-mini", value: "a", description: "OpenAI recommandé" },

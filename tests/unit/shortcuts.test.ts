@@ -3,9 +3,9 @@ import {
   RESERVED_CTRL_KEYS,
   resolveShortcut,
   type ShortcutContext,
-} from "../../src/ui/shortcuts.js";
-import { getShortcutHints } from "../../src/ui/shortcut-hints.js";
-import { resolveShortcutIntent } from "../../src/ui/shortcut-intents.js";
+} from "@/apps/cli/ui/shortcuts.js";
+import { getShortcutHints } from "@/apps/cli/ui/shortcut-hints.js";
+import { resolveShortcutIntent } from "@/apps/cli/ui/shortcut-intents.js";
 
 const idle: ShortcutContext = {
   hasModal: false,

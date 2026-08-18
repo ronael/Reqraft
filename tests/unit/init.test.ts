@@ -2,7 +2,7 @@ import { mkdtemp, readFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { ConfigSchema } from "../../src/config/schema.js";
+import { ConfigSchema } from "@/config/schema.js";
 import {
   buildApiKeyStatus,
   buildShellInstructions,
@@ -11,10 +11,10 @@ import {
   createInitConfig,
   getInitProfileChoices,
   getInitProviderChoices,
-} from "../../src/commands/first-run.js";
-import { saveConfig } from "../../src/config/loader.js";
-import { AUTO_PROFILE_ID } from "../../src/profiles/profile-ids.js";
-import { listProfiles } from "../../src/profiles/registry.js";
+} from "@/apps/cli/commands/first-run.js";
+import { saveConfig } from "@/config/loader.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
+import { listProfiles } from "@/profiles/registry.js";
 
 describe("init assistant helpers", () => {
   it("does not expose the mock provider to users", () => {

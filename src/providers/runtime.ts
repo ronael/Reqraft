@@ -1,10 +1,10 @@
-import type { Config } from "../config/schema.js";
-import type { ProviderAdapter, ProviderRequest } from "../core/types.js";
-import { resolveModel } from "../models/model-resolver.js";
+import type { Config } from "@/config/schema.js";
+import type { ProviderAdapter, ProviderRequest } from "@/core/types.js";
+import { resolveModel } from "@/models/model-resolver.js";
 import { isBuiltinProvider, type BuiltinProvider } from "./catalog.js";
 import { createProvider } from "./registry.js";
-import { ReqraftError } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { ReqraftError } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 type ReasoningEffort = NonNullable<ProviderRequest["reasoningEffort"]>;
 

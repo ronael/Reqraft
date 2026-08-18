@@ -79,15 +79,71 @@ export default tseslint.config(
   {
     // OpenTUI JSX uses terminal primitives (`box`, `text`, `scrollbox`) and
     // renderer props that the DOM-oriented React plugin cannot know about.
-    files: ["src/opentui/**/*.tsx"],
+    files: ["src/apps/cli/opentui/**/*.tsx"],
     rules: {
       "react/no-unknown-property": "off",
     },
   },
   {
+    // Le métier ne dépend jamais d'une application : la dépendance va toujours
+    // de `src/apps/**` vers les modules racine, jamais l'inverse. Ce qu'une
+    // app et le métier partagent vit dans `src/shared/`.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/apps/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/apps", "@/apps/**"],
+              message:
+                "Le code métier ne dépend jamais d'une application : déplacer le morceau partagé dans src/shared/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    // Les deux applications finales sont étanches : ni l'une ni l'autre
+    // n'importe l'autre. Ce qui est réellement commun vit dans src/shared ou
+    // dans un module métier (src/core, src/config…), jamais en travers.
+    files: ["src/apps/cli/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/apps/desktop", "@/apps/desktop/**"],
+              message: "Le CLI n'importe jamais l'application desktop.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
+    files: ["src/apps/desktop/**/*.{ts,tsx}"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/apps/cli", "@/apps/cli/**"],
+              message: "Le desktop n'importe jamais l'application CLI.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // DESKTOP.md §4.2, règle 1 : le renderer ne parle jamais au cœur, tout
     // passe par l'IPC. Bloquant, types compris.
-    files: ["src/desktop/renderer/**/*.{ts,tsx}"],
+    files: ["src/apps/desktop/renderer/**/*.{ts,tsx}"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -107,16 +163,20 @@ export default tseslint.config(
               message:
                 "Le renderer ne parle jamais au cœur : tout passe par l'IPC (DESKTOP.md §2.1 et §4.2).",
             },
+            {
+              group: ["@/apps/cli", "@/apps/cli/**"],
+              message: "Le desktop n'importe jamais l'application CLI.",
+            },
           ],
         },
       ],
     },
   },
   {
-    // DESKTOP.md §4.2, règle 2 : les modules purs de src/ui (hors components/
+    // DESKTOP.md §4.2, règle 2 : les modules purs de src/apps/cli/ui (hors components/
     // et hooks/) restent réutilisables par la TUI comme par le desktop.
-    files: ["src/ui/**/*.{ts,tsx}"],
-    ignores: ["src/ui/components/**", "src/ui/hooks/**"],
+    files: ["src/apps/cli/ui/**/*.{ts,tsx}"],
+    ignores: ["src/apps/cli/ui/components/**", "src/apps/cli/ui/hooks/**"],
     rules: {
       "no-restricted-imports": [
         "error",
@@ -125,7 +185,11 @@ export default tseslint.config(
             {
               group: ["react-dom", "react-dom/**", "ink", "ink/**", "@opentui/*", "@opentui/**"],
               message:
-                "Les modules purs de src/ui ne dépendent d'aucune surface de rendu (DESKTOP.md §4.2).",
+                "Les modules purs de src/apps/cli/ui ne dépendent d'aucune surface de rendu (DESKTOP.md §4.2).",
+            },
+            {
+              group: ["@/apps/desktop", "@/apps/desktop/**"],
+              message: "Le CLI n'importe jamais l'application desktop.",
             },
           ],
         },
@@ -134,5 +198,5 @@ export default tseslint.config(
   },
   {
     ignores: ["dist", "node_modules", "*.config.*", "coverage"],
-  }
+  },
 );

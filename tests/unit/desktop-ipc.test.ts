@@ -1,28 +1,25 @@
 import { describe, expect, it, vi } from "vitest";
-import type {
-  ExecuteRepromptInput,
-  ExecuteRepromptResult,
-} from "../../src/application/reprompt.js";
-import { DEFAULT_CONFIG } from "../../src/config/loader.js";
-import type { Config } from "../../src/config/schema.js";
-import { REPROMPT_LEVELS } from "../../src/core/levels.js";
-import type { RepromptResult } from "../../src/core/types.js";
+import type { ExecuteRepromptInput, ExecuteRepromptResult } from "@/application/reprompt.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
+import type { Config } from "@/config/schema.js";
+import { REPROMPT_LEVELS } from "@/core/levels.js";
+import type { RepromptResult } from "@/core/types.js";
 import {
   registerIpcHandlers,
   sanitizeConfigForRenderer,
   type IpcEventLike,
   type IpcMainLike,
-} from "../../src/desktop/main/ipc.js";
-import { RepromptService, type RunEventSender } from "../../src/desktop/main/reprompt-service.js";
+} from "@/apps/desktop/main/ipc.js";
+import { RepromptService, type RunEventSender } from "@/apps/desktop/main/reprompt-service.js";
 import {
   IPC_CHANNELS,
   PUSH_CHANNELS,
   REQUEST_CHANNELS,
-} from "../../src/desktop/shared/ipc-channels.js";
+} from "@/apps/desktop/shared/ipc-channels.js";
 import {
   REPROMPT_LEVEL_IDS,
   type RepromptStartResponse,
-} from "../../src/desktop/shared/ipc-contract.js";
+} from "@/apps/desktop/shared/ipc-contract.js";
 
 const FAKE_RESULT: RepromptResult = {
   original: "demande brute",

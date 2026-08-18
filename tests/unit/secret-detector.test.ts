@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { detectSecrets, hasSecrets } from "../../src/core/secret-detector.js";
-import { redactSecrets } from "../../src/utils/redaction.js";
+import { detectSecrets, hasSecrets } from "@/core/secret-detector.js";
+import { redactSecrets } from "@/utils/redaction.js";
 
 describe("secret detector", () => {
   it("detects GitHub token", () => {

@@ -1,4 +1,4 @@
-import type { RepromptLevel } from "../src/core/types.js";
+import type { RepromptLevel } from "@/core/types.js";
 
 export interface FidelityBenchmarkCase {
   id: string;

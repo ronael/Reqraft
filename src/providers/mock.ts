@@ -3,7 +3,7 @@ import type {
   ProviderHealth,
   ProviderRequest,
   ProviderResponse,
-} from "../core/types.js";
+} from "@/core/types.js";
 
 export class MockProvider implements ProviderAdapter {
   readonly id = "mock";

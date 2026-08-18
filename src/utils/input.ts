@@ -1,6 +1,6 @@
 import { readFile } from "node:fs/promises";
 import process from "node:process";
-import { ReqraftError } from "../core/errors.js";
+import { ReqraftError } from "@/core/errors.js";
 import { EXIT_CODES } from "./exit-codes.js";
 
 export async function readStdin(): Promise<string> {

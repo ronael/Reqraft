@@ -5,7 +5,7 @@ import {
   transition,
   type CapsuleEvent,
   type CapsuleState,
-} from "../../src/desktop/shared/capsule-machine.js";
+} from "@/apps/desktop/shared/capsule-machine.js";
 
 /**
  * DESKTOP.md §8.2: the transition table is the spec. These tests walk every

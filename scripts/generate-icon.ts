@@ -3,13 +3,13 @@
  *
  * Same throwaway PNG encoder as the tray icons (WORKLOG lot 4), kept this
  * time: the icon must be regenerable. Rounded violet square with the brand
- * dot, aligned on `src/ui/theme/palette-values.ts` (single source).
+ * dot, aligned on `src/shared/palette-values.ts` (single source).
  *
  * Usage: pnpm tsx scripts/generate-icon.ts
  */
 import { deflateSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { PALETTE_VALUES } from "../src/ui/theme/palette-values.js";
+import { PALETTE_VALUES } from "@/shared/palette-values.js";
 
 const SIZE = 1024;
 const CORNER_RADIUS = 220;

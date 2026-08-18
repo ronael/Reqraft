@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { detectColor, detectUnicode } from "../../src/ui/theme/capabilities.js";
-import { getPalette } from "../../src/ui/theme/palette.js";
-import { getSymbols } from "../../src/ui/theme/symbols.js";
-import { createTheme } from "../../src/ui/theme/tokens.js";
+import { detectColor, detectUnicode } from "@/shared/terminal/capabilities.js";
+import { getPalette } from "@/apps/cli/ui/theme/palette.js";
+import { getSymbols } from "@/apps/cli/ui/theme/symbols.js";
+import { createTheme } from "@/apps/cli/ui/theme/tokens.js";
 
 describe("colour detection", () => {
   it("colours a plain TTY", () => {

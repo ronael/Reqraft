@@ -1,4 +1,5 @@
 import { execFileSync } from "node:child_process";
+import process from "node:process";
 import { describe, expect, it } from "vitest";
 
 /**
@@ -28,15 +29,24 @@ interface PackReport {
   files: PackedFile[];
 }
 
+/**
+ * On Windows `npm` is a `.cmd` shim, and since the CVE-2024-27980 fix Node
+ * refuses to spawn `.cmd`/`.bat` directly — `execFileSync` raises EINVAL
+ * unless it goes through a shell. Every argument below is a fixed literal
+ * with no interpolated input, so the shell adds no injection surface.
+ */
+const IS_WINDOWS = process.platform === "win32";
+const NPM = IS_WINDOWS ? "npm.cmd" : "npm";
+
 /** `--ignore-scripts` keeps this from triggering a full `prepack` rebuild. */
 function packReport(): PackReport {
-  // `npm` has no stable absolute path across nvm, Volta, Homebrew and CI
-  // images, so pinning one would break this check everywhere. Fixed command
-  // literal, no interpolated input. Documented in docs/code-quality.md.
-  // eslint-disable-next-line sonarjs/no-os-command-from-path
-  const stdout = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+  // Neither name has a stable absolute path across nvm, Volta, Homebrew and CI
+  // images, so pinning one would break this check everywhere. The command is a
+  // fixed constant with no interpolated input.
+  const stdout = execFileSync(NPM, ["pack", "--dry-run", "--json", "--ignore-scripts"], {
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
+    shell: IS_WINDOWS,
   });
   const [report] = JSON.parse(stdout) as PackReport[];
   if (report === undefined) {

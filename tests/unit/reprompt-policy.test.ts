@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { REPROMPT_POLICY, resolveOutputTokenBudget } from "../../src/core/reprompt-policy.js";
+import { REPROMPT_POLICY, resolveOutputTokenBudget } from "@/core/reprompt-policy.js";
 
 describe("reprompt generation policy", () => {
   it("allocates more output room when the source text is longer", () => {

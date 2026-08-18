@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { runDoctor } from "../../src/commands/doctor.js";
-import { DEFAULT_CONFIG } from "../../src/config/loader.js";
-import type { ProviderAdapter, ProviderRequest, ProviderResponse } from "../../src/core/types.js";
-import type { BuiltinProvider } from "../../src/providers/catalog.js";
+import { runDoctor } from "@/apps/cli/commands/doctor.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
+import type { ProviderAdapter, ProviderRequest, ProviderResponse } from "@/core/types.js";
+import type { BuiltinProvider } from "@/providers/catalog.js";
 
 function captureOutput(): { output: { log(message: string): void }; logs: string[] } {
   const logs: string[] = [];

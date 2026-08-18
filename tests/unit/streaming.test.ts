@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { createLineSplitter, parseDataLine, streamLines } from "../../src/providers/sse.js";
-import { createStreamAccumulator } from "../../src/providers/anthropic.js";
-import { createChatCompletionAccumulator } from "../../src/providers/openai-stream.js";
+import { createLineSplitter, parseDataLine, streamLines } from "@/providers/sse.js";
+import { createStreamAccumulator } from "@/providers/anthropic.js";
+import { createChatCompletionAccumulator } from "@/providers/openai-stream.js";
 
 function streamOf(...chunks: string[]): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();

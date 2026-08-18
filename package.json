@@ -14,7 +14,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "dev": "tsx src/cli.tsx",
+    "dev": "tsx src/apps/cli/cli.tsx",
     "build": "tsup",
     "build:desktop": "pnpm build:desktop:main && pnpm build:desktop:renderer",
     "build:desktop:main": "tsup --config tsup.desktop.config.ts",

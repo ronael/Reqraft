@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { AUTO_FALLBACK_PROFILE_ID, BUILTIN_PROFILE_IDS } from "../profiles/profile-ids.js";
+import { AUTO_FALLBACK_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
 
 const ResultSchema = z.object({
   rewritten: z.string().min(1),

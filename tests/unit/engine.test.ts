@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { rewrite } from "../../src/core/engine.js";
-import { cleanProfile } from "../../src/profiles/clean.js";
-import { webDesignProfile } from "../../src/profiles/web-design.js";
-import { MockProvider } from "../../src/providers/mock.js";
+import { rewrite } from "@/core/engine.js";
+import { cleanProfile } from "@/profiles/clean.js";
+import { webDesignProfile } from "@/profiles/web-design.js";
+import { MockProvider } from "@/providers/mock.js";
 import type {
   ProviderAdapter,
   ProviderHealth,
   ProviderRequest,
   ProviderResponse,
-} from "../../src/core/types.js";
+} from "@/core/types.js";
 
 class CaptureProvider implements ProviderAdapter {
   readonly id = "capture";

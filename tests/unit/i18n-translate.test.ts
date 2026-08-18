@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createTranslator } from "../../src/i18n/translate.js";
+import { createTranslator } from "@/i18n/translate.js";
 
 describe("typed translation catalogues", () => {
   it("translates parameterless and parameterized messages", () => {

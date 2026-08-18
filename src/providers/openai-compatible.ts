@@ -4,7 +4,7 @@ import type {
   ProviderRequest,
   ProviderResponse,
   ModelInfo,
-} from "../core/types.js";
+} from "@/core/types.js";
 import { consumeChatCompletionStream } from "./openai-stream.js";
 import { raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";

@@ -5,7 +5,7 @@ import {
   rqRendererUrl,
   RQ_RENDERER_HOST,
   RQ_SCHEME,
-} from "../../src/desktop/main/protocol.js";
+} from "@/apps/desktop/main/protocol.js";
 
 const RENDERER_DIR = path.resolve("/app/release/desktop/bundle/renderer");
 

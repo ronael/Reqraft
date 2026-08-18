@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { previewRewritten } from "../../src/core/stream-preview.js";
+import { previewRewritten } from "@/core/stream-preview.js";
 
 /** Feeds a payload one character at a time, as a real stream would. */
 function previewAtEveryStep(payload: string): ReturnType<typeof previewRewritten>[] {
