@@ -2,7 +2,10 @@
 import { describe, expect, test } from "bun:test";
 import React, { act, useState } from "react";
 import { testRender } from "@opentui/react/test-utils";
+import { registerRendererTeardown, trackRenderer } from "./harness.js";
 import { TextEditor } from "@/apps/cli/tui/primitives/TextEditor.js";
+
+registerRendererTeardown();
 
 /**
  * Interaction tests for the editor primitive.
@@ -33,7 +36,7 @@ async function mountEditor(initial = ""): Promise<Harness> {
     return <TextEditor value={value} focused onChange={setValue} />;
   }
 
-  const setup = await testRender(<Host />, { width: 40, height: 8 });
+  const setup = trackRenderer(await testRender(<Host />, { width: 40, height: 8 }));
 
   /**
    * Every render pass has to happen inside `act`, flush included: OpenTUI

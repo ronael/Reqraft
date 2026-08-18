@@ -3,6 +3,7 @@ import { describe, expect, test } from "bun:test";
 import React, { act, useCallback, useMemo, useState } from "react";
 import { useTerminalDimensions } from "@opentui/react";
 import { testRender } from "@opentui/react/test-utils";
+import { registerRendererTeardown, trackRenderer } from "./harness.js";
 import { KeyCodes, pasteBytes } from "@opentui/core/testing";
 import { EditorScreen } from "@/apps/cli/tui/screens/EditorScreen.js";
 import { useKeyboardRouting } from "@/apps/cli/tui/app/use-keyboard-routing.js";
@@ -18,6 +19,8 @@ import {
 import { hasResult, isBusy, type ResultState } from "@/apps/cli/tui/model/result-state.js";
 import type { CommandId } from "@/apps/cli/tui/model/commands.js";
 import { createTranslator } from "@/i18n/translate.js";
+
+registerRendererTeardown();
 
 /**
  * `mockInput.pressKey` takes a KeyCodes name or a raw byte sequence — a
@@ -108,7 +111,7 @@ async function mountScreen(options: HostOptions = {}) {
     );
   }
 
-  const setup = await testRender(<Host />, { width, height });
+  const setup = trackRenderer(await testRender(<Host />, { width, height }));
   await setup.flush();
 
   /** Every helper drives the renderer, never the model. */
