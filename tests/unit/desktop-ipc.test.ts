@@ -686,7 +686,8 @@ describe("profil auto : détection côté modèle", () => {
     started: Promise<unknown>;
   } {
     const harness = setup({});
-    const payload = profileId === undefined ? { input: "demande" } : { input: "demande", profileId };
+    const payload =
+      profileId === undefined ? { input: "demande" } : { input: "demande", profileId };
     return {
       harness,
       started: harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, payload, harness.sender),
@@ -701,9 +702,7 @@ describe("profil auto : détection côté modèle", () => {
     await vi.waitFor(() => {
       expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
     });
-    expect(harness.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ profileId: "auto" }) as unknown as ExecuteRepromptInput,
-    );
+    expect(harness.execute).toHaveBeenCalledWith(expect.objectContaining({ profileId: "auto" }));
   });
 
   it("ne prétend jamais connaître un profil appliqué au démarrage", async () => {
@@ -713,7 +712,10 @@ describe("profil auto : détection côté modèle", () => {
     // The old contract leaked a locally-resolved id here; nothing must fill
     // that slot again, or the capsule would display a guess as a fact.
     expect(response.profile).toBeUndefined();
-    expect(Object.keys(response).sort()).toEqual(["requestedProfile", "runId"]);
+    expect(Object.keys(response).sort((a, b) => a.localeCompare(b))).toEqual([
+      "requestedProfile",
+      "runId",
+    ]);
   });
 
   it("le profil réellement appliqué ne vient que du résultat", async () => {
@@ -770,7 +772,7 @@ describe("profil auto : détection côté modèle", () => {
       expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
     });
     expect(harness.execute).toHaveBeenCalledWith(
-      expect.objectContaining({ profileId: "frontend" }) as unknown as ExecuteRepromptInput,
+      expect.objectContaining({ profileId: "frontend" }),
     );
   });
 

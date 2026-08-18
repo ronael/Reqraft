@@ -30,11 +30,19 @@ interface PackReport {
 
 /** `--ignore-scripts` keeps this from triggering a full `prepack` rebuild. */
 function packReport(): PackReport {
+  // `npm` has no stable absolute path across nvm, Volta, Homebrew and CI
+  // images, so pinning one would break this check everywhere. Fixed command
+  // literal, no interpolated input. Documented in docs/code-quality.md.
+  // eslint-disable-next-line sonarjs/no-os-command-from-path
   const stdout = execFileSync("npm", ["pack", "--dry-run", "--json", "--ignore-scripts"], {
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
   });
-  return (JSON.parse(stdout) as PackReport[])[0];
+  const [report] = JSON.parse(stdout) as PackReport[];
+  if (report === undefined) {
+    throw new Error("npm pack --dry-run returned no report");
+  }
+  return report;
 }
 
 /**
