@@ -131,6 +131,7 @@ export function Gallery(): React.ReactNode {
               rows={2}
               placeholder="Empty state"
               density={density}
+              t={t}
               onChange={() => undefined}
             />
             <PromptEditor
@@ -139,6 +140,7 @@ export function Gallery(): React.ReactNode {
               rows={2}
               meta="mock-model"
               density={density}
+              t={t}
               onChange={() => undefined}
             />
             <PromptEditor
@@ -147,6 +149,7 @@ export function Gallery(): React.ReactNode {
               rows={2}
               disabled
               density={density}
+              t={t}
               onChange={() => undefined}
             />
           </Stack>
@@ -171,6 +174,7 @@ export function Gallery(): React.ReactNode {
                 density={density}
                 emptyHint="nothing yet"
                 loadingLabel="generating…"
+                t={t}
               />
             ))}
           </Stack>
@@ -178,8 +182,8 @@ export function Gallery(): React.ReactNode {
 
         <Surface title="Toolbar · normal then compact" density={density}>
           <Stack direction="column" gap="xs">
-            <Toolbar values={SETTINGS} />
-            <Toolbar values={SETTINGS} compact />
+            <Toolbar values={SETTINGS} t={t} />
+            <Toolbar values={SETTINGS} t={t} compact />
           </Stack>
         </Surface>
 

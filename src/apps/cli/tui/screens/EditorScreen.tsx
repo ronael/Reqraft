@@ -9,7 +9,7 @@ import { theme } from "@/apps/cli/tui/theme/index.js";
 import { resolveLayout } from "@/apps/cli/tui/model/layout.js";
 import { hasResult, isBusy, type ResultState } from "@/apps/cli/tui/model/result-state.js";
 import type { CommandId } from "@/apps/cli/tui/model/commands.js";
-import type { FocusState } from "@/apps/cli/tui/model/focus.js";
+import { isZoneFocused, type FocusState } from "@/apps/cli/tui/model/focus.js";
 import type { Translator } from "@/i18n/translate.js";
 
 export interface EditorScreenProps {
@@ -56,11 +56,12 @@ export function EditorScreen({
   const editor = (
     <PromptEditor
       value={prompt}
-      focused={focus.zone === "editor"}
+      focused={isZoneFocused(focus, "editor")}
       rows={layout.editorRows}
       disabled={isBusy(result)}
       density={layout.mode === "compact" ? "compact" : "comfortable"}
       meta={layout.showMetadata ? settings.model : undefined}
+      t={t}
       onChange={onPromptChange}
     />
   );
@@ -68,11 +69,12 @@ export function EditorScreen({
   const panel = (
     <ResultPanel
       state={result}
-      focused={focus.zone === "result"}
+      focused={isZoneFocused(focus, "result")}
       height={Math.max(1, layout.editorRows)}
       density={layout.mode === "compact" ? "compact" : "comfortable"}
       emptyHint={t("tui.result.empty")}
       loadingLabel={t("tui.result.loading")}
+      t={t}
     />
   );
 
@@ -87,7 +89,12 @@ export function EditorScreen({
       }}
     >
       {layout.showMetadata && (
-        <Toolbar values={settings} compact={layout.mode === "compact"} onActivate={onCommand} />
+        <Toolbar
+          values={settings}
+          t={t}
+          compact={layout.mode === "compact"}
+          onActivate={onCommand}
+        />
       )}
 
       {layout.splitColumns ? (

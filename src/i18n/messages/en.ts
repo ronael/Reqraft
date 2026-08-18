@@ -400,4 +400,10 @@ export const en = {
   "tui.command.paste": () => "Paste",
   "tui.result.empty": () => "Nothing generated yet",
   "tui.result.loading": () => "Generating…",
+  "tui.panel.prompt": () => "Prompt",
+  "tui.panel.result": () => "Result",
+  "tui.field.profile": () => "profile",
+  "tui.field.level": () => "level",
+  "tui.field.provider": () => "provider",
+  "tui.field.model": () => "model",
 } satisfies MessageCatalogue;

@@ -80,3 +80,14 @@ export function restoreFocus(state: FocusState): FocusState {
 export function isSuspended(state: FocusState): boolean {
   return state.suspended !== null;
 }
+
+/**
+ * Whether a zone should render as focused.
+ *
+ * An open overlay suspends every zone: leaving the editor visually focused
+ * would also leave it consuming keys the overlay is supposed to own — Escape
+ * in particular never reaches the router if a focused textarea eats it first.
+ */
+export function isZoneFocused(state: FocusState, zone: FocusZone): boolean {
+  return state.suspended === null && state.zone === zone;
+}

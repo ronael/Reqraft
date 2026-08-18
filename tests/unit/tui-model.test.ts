@@ -21,6 +21,7 @@ import {
 import { routeKey, type RoutingContext } from "@/apps/cli/tui/model/keymap.js";
 import { resolveLayout, resolveLayoutMode } from "@/apps/cli/tui/model/layout.js";
 import { isBusy, partialText } from "@/apps/cli/tui/model/result-state.js";
+import { toKeyPress } from "@/apps/cli/tui/app/keyboard.js";
 
 const IDLE: CommandContext = {
   hasOverlay: false,
@@ -226,5 +227,34 @@ describe("result state", () => {
     expect(isBusy({ kind: "streaming", partial: "" })).toBe(true);
     expect(isBusy({ kind: "empty" })).toBe(false);
     expect(isBusy({ kind: "error", title: "t", message: "m" })).toBe(false);
+  });
+});
+
+describe("terminal key adapter", () => {
+  it("names shift+tab so the ring can walk backwards", () => {
+    expect(toKeyPress({ name: "tab", ctrl: false, shift: true })).toEqual({
+      ctrl: false,
+      name: "shift+tab",
+    });
+  });
+
+  it("passes ordinary keys and control chords through unchanged", () => {
+    expect(toKeyPress({ name: "tab", ctrl: false, shift: false })).toEqual({
+      ctrl: false,
+      name: "tab",
+    });
+    expect(toKeyPress({ name: "g", ctrl: true, shift: false })).toEqual({ ctrl: true, name: "g" });
+    expect(toKeyPress({ name: "escape", ctrl: false, shift: false })).toEqual({
+      ctrl: false,
+      name: "escape",
+    });
+  });
+
+  it("routes an adapted shift+tab to focus-previous", () => {
+    const press = toKeyPress({ name: "tab", ctrl: false, shift: true });
+    expect(routeKey(press, routing({ editorFocused: false }))).toEqual({
+      kind: "command",
+      id: "focus-previous",
+    });
   });
 });

@@ -34,7 +34,19 @@ async function mountEditor(initial = ""): Promise<Harness> {
   }
 
   const setup = await testRender(<Host />, { width: 40, height: 8 });
-  await setup.flush();
+
+  /**
+   * Every render pass has to happen inside `act`, flush included: OpenTUI
+   * commits frames asynchronously, so a bare `flush()` lets the state updates
+   * it triggers escape React's batching — which is exactly what the "not
+   * wrapped in act" warning reports.
+   */
+  const settle = async (): Promise<void> => {
+    await act(async () => {
+      await setup.flush();
+    });
+  };
+  await settle();
 
   return {
     frame: () => setup.captureCharFrame(),
@@ -42,7 +54,7 @@ async function mountEditor(initial = ""): Promise<Harness> {
       await act(async () => {
         await setup.mockInput.typeText(text);
       });
-      await setup.flush();
+      await settle();
     },
     setValue: (value: string) => {
       act(() => {
@@ -50,7 +62,7 @@ async function mountEditor(initial = ""): Promise<Harness> {
       });
     },
     value: () => latest,
-    flush: () => setup.flush(),
+    flush: settle,
   };
 }
 
@@ -83,6 +95,29 @@ describe("TextEditor", () => {
     await editor.flush();
 
     expect(editor.frame()).not.toContain("session text");
+  });
+
+  test("handles accents and CJK, which a hand-rolled editor gets wrong", async () => {
+    // The precise class of bug the previous editor could introduce: it drew a
+    // cursor by appending a block character to a JavaScript string, so any
+    // multi-byte grapheme desynchronised the display from the buffer.
+    const editor = await mountEditor();
+    await editor.type("eea");
+    expect(editor.value()).toBe("eea");
+
+    editor.setValue("éèà你好");
+    await editor.flush();
+    expect(editor.value()).toBe("éèà你好");
+    expect(editor.frame()).toContain("你好");
+  });
+
+  test("keeps multiline content intact across an external replacement", async () => {
+    const editor = await mountEditor("first line");
+    editor.setValue("first line\nsecond line");
+    await editor.flush();
+
+    expect(editor.value()).toBe("first line\nsecond line");
+    expect(editor.frame()).toContain("second line");
   });
 
   test("does not fight the cursor while typing", async () => {

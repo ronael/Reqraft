@@ -36,7 +36,7 @@
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "benchmark:auto-profile": "tsx benchmark/auto-profile-runner.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tui.json",
-    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm build:desktop && pnpm test:coverage",
+    "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm build:desktop && pnpm test:coverage && pnpm test:tui",
     "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",
     "release:check": "pnpm quality && pnpm pack:dry-run",
     "release": "tsx scripts/release.ts",

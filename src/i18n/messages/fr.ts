@@ -409,4 +409,10 @@ export const fr = {
   "tui.command.paste": () => "Coller",
   "tui.result.empty": () => "Rien de généré pour l'instant",
   "tui.result.loading": () => "Génération…",
+  "tui.panel.prompt": () => "Prompt",
+  "tui.panel.result": () => "Résultat",
+  "tui.field.profile": () => "profil",
+  "tui.field.level": () => "niveau",
+  "tui.field.provider": () => "fournisseur",
+  "tui.field.model": () => "modèle",
 } satisfies MessageCatalogue;

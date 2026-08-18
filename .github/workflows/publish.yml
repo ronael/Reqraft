@@ -53,6 +53,10 @@ jobs:
           echo "dist-tag=${dist_tag}" >> "$GITHUB_OUTPUT"
           echo "Publishing ${pkg_version} under dist-tag ${dist_tag}."
 
+      # `pnpm quality` includes the Bun-run TUI interaction tests.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
       - run: pnpm install --frozen-lockfile
       - run: pnpm quality
       - run: npm publish --access public --ignore-scripts --tag "${{ steps.release.outputs.dist-tag }}"

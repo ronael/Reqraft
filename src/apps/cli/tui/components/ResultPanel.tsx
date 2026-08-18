@@ -5,6 +5,7 @@ import { ScrollArea } from "@/apps/cli/tui/primitives/ScrollArea.js";
 import { theme } from "@/apps/cli/tui/theme/index.js";
 import type { ResultState } from "@/apps/cli/tui/model/result-state.js";
 import type { Density, SurfaceTone } from "@/apps/cli/tui/theme/components.js";
+import type { Translator } from "@/i18n/translate.js";
 
 export interface ResultPanelProps {
   state: ResultState;
@@ -13,6 +14,7 @@ export interface ResultPanelProps {
   density?: Density;
   emptyHint: string;
   loadingLabel: string;
+  t: Translator;
 }
 
 /** Tone follows the state, so an error panel is the same component in red. */
@@ -34,11 +36,17 @@ export function ResultPanel({
   density,
   emptyHint,
   loadingLabel,
+  t,
 }: Readonly<ResultPanelProps>): React.ReactNode {
   const { color } = theme.tokens;
 
   return (
-    <Surface title="result" tone={toneFor(state)} focused={focused} density={density}>
+    <Surface
+      title={t("tui.panel.result")}
+      tone={toneFor(state)}
+      focused={focused}
+      density={density}
+    >
       {state.kind === "empty" && <text fg={color.textMuted}>{emptyHint}</text>}
 
       {state.kind === "loading" && <text fg={color.accent}>{loadingLabel}</text>}
