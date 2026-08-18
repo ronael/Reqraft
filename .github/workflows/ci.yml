@@ -23,6 +23,16 @@ jobs:
         with:
           node-version: ${{ matrix.node-version }}
           cache: pnpm
+      # The TUI interaction tests drive OpenTUI's renderer, whose native FFI
+      # only loads under Bun. `pnpm quality` runs them, so Bun has to exist on
+      # every runner — it is not preinstalled.
+      - uses: oven-sh/setup-bun@v2
+        with:
+          # Pinned: the interaction tests assert on terminal key parsing, and a
+          # Bun minor bump changing that should fail as a deliberate upgrade
+          # rather than as a surprise on an unrelated PR. Kept in step with the
+          # @types/bun devDependency.
+          bun-version: 1.3.14
       - run: pnpm install --frozen-lockfile
       - run: pnpm quality
       - run: pnpm pack

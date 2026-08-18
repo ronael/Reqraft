@@ -43,9 +43,18 @@ export default tseslint.config(
     rules: { "sonarjs/no-duplicate-string": "off" },
   },
   {
+    // `bun:test` is a runtime builtin namespace, like `node:`, not a package —
+    // there is nothing to add to dependencies. These tests only run under Bun
+    // (see tests/tui and the test:tui script).
+    files: ["tests/tui/**"],
+    rules: { "sonarjs/no-implicit-dependencies": "off" },
+  },
+  {
     languageOptions: {
       parserOptions: {
-        project: "./tsconfig.json",
+        // Two projects: the Bun-run interaction tests live outside the main
+        // tsconfig so Bun's ambient types stay scoped to them.
+        project: ["./tsconfig.json", "./tsconfig.tui.json"],
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -79,7 +88,7 @@ export default tseslint.config(
   {
     // OpenTUI JSX uses terminal primitives (`box`, `text`, `scrollbox`) and
     // renderer props that the DOM-oriented React plugin cannot know about.
-    files: ["src/apps/cli/opentui/**/*.tsx"],
+    files: ["src/apps/cli/opentui/**/*.tsx", "src/apps/cli/tui/**/*.tsx"],
     rules: {
       "react/no-unknown-property": "off",
     },

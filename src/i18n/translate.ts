@@ -3,6 +3,32 @@ import { en } from "./messages/en.js";
 import { fr } from "./messages/fr.js";
 
 export interface MessageParameters {
+  // TUI V2 command registry (apps/cli/tui/model/commands.ts).
+  "tui.panel.prompt": undefined;
+  "tui.panel.result": undefined;
+  "tui.field.profile": undefined;
+  "tui.field.level": undefined;
+  "tui.field.provider": undefined;
+  "tui.field.model": undefined;
+  "tui.result.empty": undefined;
+  "tui.result.loading": undefined;
+  "tui.command.provider": undefined;
+  "tui.command.paste": undefined;
+  "tui.command.generate": undefined;
+  "tui.command.cancel": undefined;
+  "tui.command.exit": undefined;
+  "tui.command.copy": undefined;
+  "tui.command.reset": undefined;
+  "tui.command.toggleDiff": undefined;
+  "tui.command.explain": undefined;
+  "tui.command.profile": undefined;
+  "tui.command.level": undefined;
+  "tui.command.model": undefined;
+  "tui.command.palette": undefined;
+  "tui.command.help": undefined;
+  "tui.command.focusNext": undefined;
+  "tui.command.focusPrevious": undefined;
+  "tui.command.close": undefined;
   "common.error": undefined;
   "common.version": undefined;
   "cli.help": undefined;
