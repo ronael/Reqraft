@@ -79,7 +79,7 @@ export default tseslint.config(
   {
     // OpenTUI JSX uses terminal primitives (`box`, `text`, `scrollbox`) and
     // renderer props that the DOM-oriented React plugin cannot know about.
-    files: ["src/apps/cli/opentui/**/*.tsx"],
+    files: ["src/apps/cli/opentui/**/*.tsx", "src/apps/cli/tui/**/*.tsx"],
     rules: {
       "react/no-unknown-property": "off",
     },

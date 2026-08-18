@@ -1,4 +1,14 @@
 import { RESERVED_CTRL_KEYS } from "@/apps/cli/ui/shortcuts.js";
+import type { MessageParameters } from "@/i18n/translate.js";
+
+/**
+ * Message keys that take no parameters. Command labels are plain strings, and
+ * typing them this way lets a caller write `t(command.labelKey)` without the
+ * translator demanding an argument object.
+ */
+export type CommandLabelKey = {
+  [Key in keyof MessageParameters]: MessageParameters[Key] extends undefined ? Key : never;
+}[keyof MessageParameters];
 
 /**
  * The single registry of what the TUI can do.
@@ -54,7 +64,7 @@ export interface CommandDefinition {
   id: CommandId;
   chords: KeyChord[];
   /** i18n key; the label is never stored in English here. */
-  labelKey: string;
+  labelKey: CommandLabelKey;
   scope: CommandScope;
   isAvailable: (context: CommandContext) => boolean;
 }

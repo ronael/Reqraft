@@ -15,6 +15,7 @@
   ],
   "scripts": {
     "dev": "tsx src/apps/cli/cli.tsx",
+    "tui:lab": "bun src/apps/cli/tui/lab/main.tsx",
     "build": "tsup",
     "build:desktop": "pnpm build:desktop:main && pnpm build:desktop:renderer",
     "build:desktop:main": "tsup --config tsup.desktop.config.ts",
