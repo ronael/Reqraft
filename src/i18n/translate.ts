@@ -4,6 +4,10 @@ import { fr } from "./messages/fr.js";
 
 export interface MessageParameters {
   // TUI V2 command registry (apps/cli/tui/model/commands.ts).
+  "tui.result.empty": undefined;
+  "tui.result.loading": undefined;
+  "tui.command.provider": undefined;
+  "tui.command.paste": undefined;
   "tui.command.generate": undefined;
   "tui.command.cancel": undefined;
   "tui.command.exit": undefined;

@@ -396,4 +396,8 @@ export const en = {
   "tui.command.focusNext": () => "Next panel",
   "tui.command.focusPrevious": () => "Previous panel",
   "tui.command.close": () => "Close",
+  "tui.command.provider": () => "Provider",
+  "tui.command.paste": () => "Paste",
+  "tui.result.empty": () => "Nothing generated yet",
+  "tui.result.loading": () => "Generating…",
 } satisfies MessageCatalogue;

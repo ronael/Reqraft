@@ -19,6 +19,8 @@ import {
   suspendFocus,
 } from "@/apps/cli/tui/model/focus.js";
 import { routeKey, type RoutingContext } from "@/apps/cli/tui/model/keymap.js";
+import { resolveLayout, resolveLayoutMode } from "@/apps/cli/tui/model/layout.js";
+import { isBusy, partialText } from "@/apps/cli/tui/model/result-state.js";
 
 const IDLE: CommandContext = {
   hasOverlay: false,
@@ -164,5 +166,65 @@ describe("focus model", () => {
 
   it("covers every zone of the ring", () => {
     expect(FOCUS_RING).toEqual(["editor", "result", "toolbar"]);
+  });
+});
+
+describe("responsive layout", () => {
+  it("splits columns only when the terminal is genuinely wide", () => {
+    expect(resolveLayout(120, 40).mode).toBe("wide");
+    expect(resolveLayout(120, 40).splitColumns).toBe(true);
+    expect(resolveLayout(100, 30).splitColumns).toBe(false);
+  });
+
+  it("drops metadata before anything structural on a short terminal", () => {
+    const compact = resolveLayout(100, 24);
+    expect(compact.mode).toBe("compact");
+    expect(compact.showMetadata).toBe(false);
+    expect(compact.showStatusBar).toBe(true);
+  });
+
+  it("classifies the reference terminal sizes", () => {
+    expect(resolveLayoutMode(120, 40)).toBe("wide");
+    expect(resolveLayoutMode(100, 30)).toBe("normal");
+    expect(resolveLayoutMode(80, 24)).toBe("compact");
+    expect(resolveLayoutMode(60, 16)).toBe("compact");
+    expect(resolveLayoutMode(40, 10)).toBe("too-small");
+  });
+
+  it("always leaves the editor at least one row, however small the terminal", () => {
+    for (const [width, height] of [
+      [120, 40],
+      [100, 30],
+      [80, 24],
+      [60, 16],
+      [20, 4],
+      [1, 1],
+    ] as const) {
+      const layout = resolveLayout(width, height);
+      expect(layout.editorRows).toBeGreaterThanOrEqual(1);
+      expect(Number.isInteger(layout.editorRows)).toBe(true);
+    }
+  });
+
+  it("stops rendering optional rows below the minimum rather than overflowing", () => {
+    const tiny = resolveLayout(30, 8);
+    expect(tiny.mode).toBe("too-small");
+    expect(tiny.showStatusBar).toBe(false);
+    expect(tiny.splitColumns).toBe(false);
+  });
+});
+
+describe("result state", () => {
+  it("keeps partial text when a stream is interrupted", () => {
+    expect(partialText({ kind: "streaming", partial: "half" })).toBe("half");
+    expect(partialText({ kind: "streaming", partial: "" })).toBeNull();
+    expect(partialText({ kind: "empty" })).toBeNull();
+  });
+
+  it("treats loading and streaming as busy, nothing else", () => {
+    expect(isBusy({ kind: "loading" })).toBe(true);
+    expect(isBusy({ kind: "streaming", partial: "" })).toBe(true);
+    expect(isBusy({ kind: "empty" })).toBe(false);
+    expect(isBusy({ kind: "error", title: "t", message: "m" })).toBe(false);
   });
 });

@@ -31,6 +31,8 @@ export type CommandId =
   | "open-profile"
   | "open-level"
   | "open-model"
+  | "open-provider"
+  | "paste"
   | "open-palette"
   | "open-help"
   | "focus-next"
@@ -156,6 +158,36 @@ export const COMMANDS: readonly CommandDefinition[] = [
     id: "open-model",
     chords: [ctrl("o")],
     labelKey: "tui.command.model",
+    scope: "global",
+    isAvailable: always,
+  },
+  {
+    /*
+     * No chord, deliberately. Provider selection is reachable today only
+     * through the command palette, and inventing a global shortcut here would
+     * be a behaviour change rather than a migration. The command exists so the
+     * palette and help read it from the same registry as everything else.
+     */
+    id: "open-provider",
+    chords: [],
+    labelKey: "tui.command.provider",
+    scope: "global",
+    isAvailable: always,
+  },
+  {
+    /*
+     * Explicit clipboard paste, kept from the current TUI.
+     *
+     * This does not duplicate the terminal's own paste: OpenTUI's textarea
+     * consumes bracketed paste natively and inserts it exactly once, while
+     * Ctrl+V reaches no textarea binding at all (verified in
+     * tests/tui/text-editor.test.tsx). The two paths never both fire, so the
+     * content cannot land twice. Ctrl+V still matters where the terminal does
+     * not forward a paste, which is the case the existing command covers.
+     */
+    id: "paste",
+    chords: [ctrl("v")],
+    labelKey: "tui.command.paste",
     scope: "global",
     isAvailable: always,
   },

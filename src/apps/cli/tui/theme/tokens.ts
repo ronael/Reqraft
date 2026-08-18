@@ -43,7 +43,11 @@ export interface BorderTokens {
 }
 
 export interface LayoutTokens {
-  /** Below this width the layout stacks instead of splitting columns. */
+  /**
+   * Below this width the layout stacks instead of splitting columns. Set so a
+   * split still leaves each pane readable: at 100 columns the two panes get
+   * about 48 each, which is already cramped for a prompt.
+   */
   splitMinimumWidth: number;
   /** Below this height secondary rows are dropped rather than squeezed. */
   compactMaximumHeight: number;
@@ -98,7 +102,7 @@ const MONOCHROME: ColorTokens = {
 export const SPACING: SpacingTokens = { none: 0, xs: 1, sm: 2, md: 3, lg: 4 };
 
 export const LAYOUT: LayoutTokens = {
-  splitMinimumWidth: 100,
+  splitMinimumWidth: 110,
   compactMaximumHeight: 26,
   minimumWidth: 60,
   minimumHeight: 16,

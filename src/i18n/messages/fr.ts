@@ -405,4 +405,8 @@ export const fr = {
   "tui.command.focusNext": () => "Panneau suivant",
   "tui.command.focusPrevious": () => "Panneau précédent",
   "tui.command.close": () => "Fermer",
+  "tui.command.provider": () => "Fournisseur",
+  "tui.command.paste": () => "Coller",
+  "tui.result.empty": () => "Rien de généré pour l'instant",
+  "tui.result.loading": () => "Génération…",
 } satisfies MessageCatalogue;
