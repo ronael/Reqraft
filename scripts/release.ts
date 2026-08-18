@@ -69,6 +69,9 @@ export function main(): void {
     run("git", ["tag", "--delete", tag]);
     throw error;
   }
+  // A prerelease must not become the latest GitHub Release either, mirroring
+  // the npm dist-tag routing in .github/workflows/publish.yml.
+  const isPrerelease = version.includes("-");
   run("gh", [
     "release",
     "create",
@@ -77,7 +80,7 @@ export function main(): void {
     `Reqraft ${tag}`,
     "--generate-notes",
     "--verify-tag",
-    "--latest",
+    isPrerelease ? "--prerelease" : "--latest",
   ]);
   console.log(`Release ${tag} créée. GitHub Actions prend en charge la publication npm.`);
 }

@@ -5,6 +5,8 @@ on:
     tags:
       - "v*"
 
+# Trusted publishing (OIDC): npm verifies the workflow identity itself, so no
+# NPM_TOKEN secret exists to leak. `id-token: write` is what mints that proof.
 permissions:
   contents: read
   id-token: write
@@ -20,6 +22,37 @@ jobs:
           node-version: 24
           registry-url: "https://registry.npmjs.org"
           cache: pnpm
+
+      # Runs before install so a mistagged release fails in seconds rather
+      # than after a full quality run.
+      - name: Verify tag matches package.json and resolve dist-tag
+        id: release
+        run: |
+          set -euo pipefail
+          tag_version="${GITHUB_REF_NAME#v}"
+          pkg_version="$(node -p "require('./package.json').version")"
+
+          # The tag is the only thing a human types by hand; package.json is
+          # what actually gets published. Disagreement means the wrong version
+          # would ship under the right-looking tag.
+          if [ "$tag_version" != "$pkg_version" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match package.json version ${pkg_version}. Bump package.json and retag."
+            exit 1
+          fi
+
+          # A prerelease must never take the `latest` dist-tag, or every plain
+          # `npm install @reqraft/cli` would serve it. The identifier drives the
+          # tag: 0.3.0-beta.1 -> beta, 0.3.0-rc.2 -> rc.
+          prerelease="${pkg_version#*-}"
+          if [ "$prerelease" = "$pkg_version" ]; then
+            dist_tag=latest
+          else
+            dist_tag="${prerelease%%.*}"
+          fi
+
+          echo "dist-tag=${dist_tag}" >> "$GITHUB_OUTPUT"
+          echo "Publishing ${pkg_version} under dist-tag ${dist_tag}."
+
       - run: pnpm install --frozen-lockfile
       - run: pnpm quality
-      - run: npm publish --access public --ignore-scripts
+      - run: npm publish --access public --ignore-scripts --tag "${{ steps.release.outputs.dist-tag }}"
