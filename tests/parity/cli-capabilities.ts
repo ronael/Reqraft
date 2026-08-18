@@ -1,5 +1,5 @@
 import type { Command } from "commander";
-import { CAPABILITIES } from "./registry.js";
+import { CAPABILITIES } from "@/capabilities/registry.js";
 
 /**
  * Options déclarées à Commander qui ne sont pas des capacités produit :

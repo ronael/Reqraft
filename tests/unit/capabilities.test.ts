@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { CAPABILITIES } from "@/capabilities/registry.js";
-import { listCliCapabilities, listUnregisteredCliOptions } from "@/capabilities/cli.js";
-import { listDesktopCapabilities } from "@/capabilities/desktop.js";
-import { listTuiCapabilities } from "@/capabilities/tui.js";
+import { listCliCapabilities, listUnregisteredCliOptions } from "../parity/cli-capabilities.js";
+import { listDesktopCapabilities } from "../parity/desktop-capabilities.js";
+import { listTuiCapabilities } from "../parity/tui-capabilities.js";
 import { createCliProgram } from "@/cli-program.js";
 import { createTranslator } from "@/i18n/translate.js";
 

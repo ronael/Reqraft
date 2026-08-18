@@ -43,7 +43,7 @@ import {
   type AppState,
   type ModalType,
 } from "@/ui/app-state.js";
-import { describeUiError, type UiError } from "@/ui/errors.js";
+import { describeUiError, type UiError } from "@/shared/errors.js";
 import { describeQualitySignal, visibleQualitySignals } from "@/ui/quality.js";
 import {
   beginGeneration,

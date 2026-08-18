@@ -7,7 +7,7 @@ import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loa
 import { getPresetModels } from "@/models/presets.js";
 import { createProvider } from "@/providers/registry.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
-import { formatUiError } from "@/ui/errors.js";
+import { formatUiError } from "@/shared/errors.js";
 import type { AnsiStyleOptions } from "@/ui/ansi.js";
 import { detectCapabilities } from "@/ui/theme/capabilities.js";
 import {

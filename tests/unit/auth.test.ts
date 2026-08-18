@@ -7,7 +7,7 @@ import {
   logout,
 } from "@/auth/credentials.js";
 import { ProviderError } from "@/providers/errors.js";
-import { formatUiError } from "@/ui/errors.js";
+import { formatUiError } from "@/shared/errors.js";
 import type { CredentialProvider } from "@/providers/catalog.js";
 
 describe("secure credentials", () => {

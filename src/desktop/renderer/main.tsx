@@ -1,5 +1,5 @@
 import { createRoot } from "react-dom/client";
-import { PALETTE_VALUES } from "@/ui/theme/palette-values.js";
+import { PALETTE_VALUES } from "@/shared/palette-values.js";
 import { App as CapsuleApp } from "./capsule/App.js";
 import { PopoverApp } from "./popover/PopoverApp.js";
 import { SettingsApp } from "./settings/SettingsApp.js";

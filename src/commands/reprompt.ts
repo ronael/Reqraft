@@ -17,7 +17,7 @@ import { describeQualitySignal, visibleQualitySignals } from "@/ui/quality.js";
 import { serializeJsonError, serializeJsonSuccess } from "@/presentation/json-contract.js";
 import { normalizeReqraftError, ReqraftError } from "@/core/errors.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
-import { formatUiError } from "@/ui/errors.js";
+import { formatUiError } from "@/shared/errors.js";
 
 export interface RepromptCliOptions {
   text?: string;

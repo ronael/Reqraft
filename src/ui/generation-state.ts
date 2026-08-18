@@ -1,4 +1,4 @@
-import type { UiError } from "./errors.js";
+import type { UiError } from "@/shared/errors.js";
 
 export interface GenerationState<Result> {
   error: UiError | null;

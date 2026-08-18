@@ -38,7 +38,7 @@ import {
   failCopy,
   failGeneration,
 } from "@/ui/generation-state.js";
-import type { UiError } from "@/ui/errors.js";
+import type { UiError } from "@/shared/errors.js";
 
 const OLD_ERROR: UiError = { title: "Erreur", message: "ancienne erreur" };
 const NEW_ERROR: UiError = { title: "Erreur", message: "nouvelle erreur" };

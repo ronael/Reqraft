@@ -2,7 +2,7 @@ import { loadConfig, saveConfig, configPath } from "@/config/loader.js";
 import { ConfigSchema, configKeys, parseConfigValue, type ConfigKey } from "@/config/schema.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
-import { formatUiError } from "@/ui/errors.js";
+import { formatUiError } from "@/shared/errors.js";
 
 interface ConfigOutput {
   log(message: string): void;

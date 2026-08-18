@@ -2,7 +2,7 @@ import { z } from "zod";
 import { RepromptLevelSchema } from "@/core/levels.js";
 import { ConfigSchema, type Config, type ConfigKey } from "@/config/schema.js";
 import type { RepromptResult } from "@/core/types.js";
-import type { UiError } from "@/ui/errors.js";
+import type { UiError } from "@/shared/errors.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 
 /**

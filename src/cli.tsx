@@ -4,7 +4,7 @@ import { createCliProgram } from "./cli-program.js";
 import { loadConfig } from "./config/loader.js";
 import { findUiLocalePreference, resolveUiLocale, systemLocaleCandidates } from "./i18n/locale.js";
 import { createTranslator } from "./i18n/translate.js";
-import { formatUiError } from "./ui/errors.js";
+import { formatUiError } from "@/shared/errors.js";
 
 const cliLocalePreference = findUiLocalePreference(process.argv);
 let configuredLocale: string | undefined;

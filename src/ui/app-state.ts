@@ -1,7 +1,7 @@
 import type { Config } from "@/config/schema.js";
 import type { RepromptLevel, RepromptResult } from "@/core/types.js";
 import type { ResultViewMode } from "./result-view.js";
-import type { UiError } from "./errors.js";
+import type { UiError } from "@/shared/errors.js";
 
 export type ViewMode = ResultViewMode;
 export type ModalType = "profile" | "level" | "provider" | "model" | "commands" | "help" | null;

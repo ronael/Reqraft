@@ -1,5 +1,5 @@
 import type { ThemeColors } from "./types.js";
-import { PALETTE_VALUES } from "./palette-values.js";
+import { PALETTE_VALUES } from "@/shared/palette-values.js";
 
 /**
  * Reqraft palette, taken from `docs/design/reqraft-cli-ui.html`.
