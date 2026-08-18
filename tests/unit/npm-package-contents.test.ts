@@ -30,11 +30,13 @@ interface PackReport {
 }
 
 /**
- * On Windows `npm` is a `.cmd` shim rather than an executable, and
- * `execFileSync` does not resolve those without a shell — hence the explicit
- * extension instead of `shell: true`, which would reintroduce quoting rules.
+ * On Windows `npm` is a `.cmd` shim, and since the CVE-2024-27980 fix Node
+ * refuses to spawn `.cmd`/`.bat` directly — `execFileSync` raises EINVAL
+ * unless it goes through a shell. Every argument below is a fixed literal
+ * with no interpolated input, so the shell adds no injection surface.
  */
-const NPM = process.platform === "win32" ? "npm.cmd" : "npm";
+const IS_WINDOWS = process.platform === "win32";
+const NPM = IS_WINDOWS ? "npm.cmd" : "npm";
 
 /** `--ignore-scripts` keeps this from triggering a full `prepack` rebuild. */
 function packReport(): PackReport {
@@ -44,6 +46,7 @@ function packReport(): PackReport {
   const stdout = execFileSync(NPM, ["pack", "--dry-run", "--json", "--ignore-scripts"], {
     encoding: "utf8",
     maxBuffer: 32 * 1024 * 1024,
+    shell: IS_WINDOWS,
   });
   const [report] = JSON.parse(stdout) as PackReport[];
   if (report === undefined) {
