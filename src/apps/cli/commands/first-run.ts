@@ -8,8 +8,8 @@ import { getPresetModels } from "@/models/presets.js";
 import { createProvider } from "@/providers/registry.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { formatUiError } from "@/shared/errors.js";
-import type { AnsiStyleOptions } from "@/ui/ansi.js";
-import { detectCapabilities } from "@/ui/theme/capabilities.js";
+import type { AnsiStyleOptions } from "@/apps/cli/ui/ansi.js";
+import { detectCapabilities } from "@/apps/cli/ui/theme/capabilities.js";
 import {
   formatInitChoice,
   formatInitCommand,
@@ -19,7 +19,7 @@ import {
   formatInitQuestion,
   formatInitSection,
   formatInitStatus,
-} from "@/ui/init-format.js";
+} from "@/apps/cli/ui/init-format.js";
 import { REPROMPT_LEVELS } from "@/core/levels.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { listProfiles } from "@/profiles/registry.js";
@@ -35,7 +35,7 @@ import {
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@/providers/catalog.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
-import { modelDescription } from "@/presentation/catalog-labels.js";
+import { modelDescription } from "@/apps/cli/presentation/catalog-labels.js";
 import type { UiLocalePreference } from "@/i18n/locale.js";
 
 interface InitProviderChoice {

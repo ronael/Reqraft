@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { describeInput, resolveSubmit } from "@/ui/prompt-input.js";
-import { resolveShortcut } from "@/ui/shortcuts.js";
+import { describeInput, resolveSubmit } from "@/apps/cli/ui/prompt-input.js";
+import { resolveShortcut } from "@/apps/cli/ui/shortcuts.js";
 
 describe("resolveSubmit", () => {
   it("generates on a plain Enter", () => {

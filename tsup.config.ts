@@ -1,7 +1,7 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/cli.tsx", "src/opentui/standalone.tsx"],
+  entry: ["src/apps/cli/cli.tsx", "src/apps/cli/opentui/standalone.tsx"],
   outDir: "dist",
   format: ["esm"],
   target: "es2022",

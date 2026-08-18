@@ -20,12 +20,12 @@ import React, {
 
 import { bootstrapConfiguration, getBootstrapError } from "@/application/bootstrap.js";
 import { executeReprompt } from "@/application/reprompt.js";
-import { readClipboard, writeClipboard } from "@/clipboard/clipboard.js";
+import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import type { QualityAssessment, RepromptLevel } from "@/core/types.js";
 import { parseLevel } from "@/core/levels.js";
-import { createUiRepromptInput } from "@/ui/app-actions.js";
+import { createUiRepromptInput } from "@/apps/cli/ui/app-actions.js";
 import {
   applyLoadedConfig,
   clearCopyToast,
@@ -42,24 +42,24 @@ import {
   updatePromptInput,
   type AppState,
   type ModalType,
-} from "@/ui/app-state.js";
+} from "@/apps/cli/ui/app-state.js";
 import { describeUiError, type UiError } from "@/shared/errors.js";
-import { describeQualitySignal, visibleQualitySignals } from "@/ui/quality.js";
+import { describeQualitySignal, visibleQualitySignals } from "@/apps/cli/ui/quality.js";
 import {
   beginGeneration,
   canStartGeneration,
   completeCopy,
   failCopy,
   failGeneration,
-} from "@/ui/generation-state.js";
+} from "@/apps/cli/ui/generation-state.js";
 import {
   getFallbackModelForProvider,
   getModelOptions,
   getProfileOptions,
   getProviderOptions,
   LEVEL_OPTIONS,
-} from "@/ui/modal-options.js";
-import { resolveSubmit, describeInput } from "@/ui/prompt-input.js";
+} from "@/apps/cli/ui/modal-options.js";
+import { resolveSubmit, describeInput } from "@/apps/cli/ui/prompt-input.js";
 import { createLayout, pickerOptionIndexAt, type Layout } from "./layout.js";
 import {
   appendPastedText,

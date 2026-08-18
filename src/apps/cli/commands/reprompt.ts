@@ -1,7 +1,7 @@
 import process from "node:process";
 import type { FidelityMode, RepromptResult } from "@/core/types.js";
 import { parseLevel } from "@/core/levels.js";
-import { readClipboard, writeClipboard } from "@/clipboard/clipboard.js";
+import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js";
 import { readFileContent, readStdin } from "@/utils/input.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { loadConfig } from "@/config/loader.js";
@@ -10,11 +10,16 @@ import { redactSecrets } from "@/utils/redaction.js";
 import { executeReprompt, type ExecuteRepromptInput } from "@/application/reprompt.js";
 import type { Config } from "@/config/schema.js";
 import { getFallbackModelForProvider } from "@/models/presets.js";
-import { formatCost, formatDuration, formatTokenValue, qualityLabel } from "@/ui/formatters.js";
-import { ansi, ANSI, type AnsiStyleOptions } from "@/ui/ansi.js";
-import { detectCapabilities } from "@/ui/theme/capabilities.js";
-import { describeQualitySignal, visibleQualitySignals } from "@/ui/quality.js";
-import { serializeJsonError, serializeJsonSuccess } from "@/presentation/json-contract.js";
+import {
+  formatCost,
+  formatDuration,
+  formatTokenValue,
+  qualityLabel,
+} from "@/apps/cli/ui/formatters.js";
+import { ansi, ANSI, type AnsiStyleOptions } from "@/apps/cli/ui/ansi.js";
+import { detectCapabilities } from "@/apps/cli/ui/theme/capabilities.js";
+import { describeQualitySignal, visibleQualitySignals } from "@/apps/cli/ui/quality.js";
+import { serializeJsonError, serializeJsonSuccess } from "@/apps/cli/presentation/json-contract.js";
 import { normalizeReqraftError, ReqraftError } from "@/core/errors.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { formatUiError } from "@/shared/errors.js";

@@ -5,7 +5,7 @@ import {
   formatTokenMetric,
   formatTokenValue,
   qualityLabel,
-} from "@/ui/formatters.js";
+} from "@/apps/cli/ui/formatters.js";
 
 describe("presentation formatters", () => {
   it("formats durations consistently across CLI and TUI", () => {

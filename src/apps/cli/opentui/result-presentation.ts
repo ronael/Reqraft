@@ -1,7 +1,7 @@
 import type { RepromptResult } from "@/core/types.js";
-import type { AppState } from "@/ui/app-state.js";
-import { describeResultMeta } from "@/ui/result-meta.js";
-import { formatResultView } from "@/ui/result-view.js";
+import type { AppState } from "@/apps/cli/ui/app-state.js";
+import { describeResultMeta } from "@/apps/cli/ui/result-meta.js";
+import { formatResultView } from "@/apps/cli/ui/result-view.js";
 import { resolveStreamedResultPreview } from "./input.js";
 import type { Translator } from "@/i18n/translate.js";
 

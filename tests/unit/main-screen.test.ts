@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { getHeaderStatus } from "@/ui/header-status.js";
-import { describeResultMeta, getResultPanelTone } from "@/ui/result-meta.js";
-import { getShortcutHints } from "@/ui/shortcut-hints.js";
+import { getHeaderStatus } from "@/apps/cli/ui/header-status.js";
+import { describeResultMeta, getResultPanelTone } from "@/apps/cli/ui/result-meta.js";
+import { getShortcutHints } from "@/apps/cli/ui/shortcut-hints.js";
 import { describeUiError } from "@/shared/errors.js";
 import type { RepromptResult } from "@/core/types.js";
 

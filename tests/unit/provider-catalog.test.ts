@@ -8,7 +8,7 @@ import {
   listCredentialProviders,
   listProviderDefinitions,
 } from "@/providers/catalog.js";
-import { getInitProviderChoices } from "@/commands/first-run.js";
+import { getInitProviderChoices } from "@/apps/cli/commands/first-run.js";
 
 describe("provider catalog", () => {
   it("defines every built-in provider exactly once", () => {
@@ -56,8 +56,8 @@ describe("provider catalog", () => {
 
   it("does not redeclare provider env or label maps in command modules", async () => {
     const commandSources = await Promise.all([
-      readFile("src/commands/first-run.ts", "utf8"),
-      readFile("src/commands/doctor.ts", "utf8"),
+      readFile("src/apps/cli/commands/first-run.ts", "utf8"),
+      readFile("src/apps/cli/commands/doctor.ts", "utf8"),
       readFile("src/auth/credentials.ts", "utf8"),
     ]);
 

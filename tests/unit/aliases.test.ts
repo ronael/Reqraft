@@ -2,8 +2,8 @@ import { describe, expect, it, beforeEach } from "vitest";
 import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { listAliases, removeAlias, setAlias } from "@/aliases/manager.js";
-import { runAlias } from "@/commands/aliases.js";
+import { listAliases, removeAlias, setAlias } from "@/apps/cli/aliases/manager.js";
+import { runAlias } from "@/apps/cli/commands/aliases.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 function captureOutput(): {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runModelsList, runProfilesList, runProvidersList } from "@/commands/list.js";
+import { runModelsList, runProfilesList, runProvidersList } from "@/apps/cli/commands/list.js";
 import { listProviderDefinitions } from "@/providers/catalog.js";
 import { listProfiles } from "@/profiles/registry.js";
 

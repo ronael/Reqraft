@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createCliRepromptInput } from "@/commands/reprompt.js";
+import { createCliRepromptInput } from "@/apps/cli/commands/reprompt.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
-import { createUiRepromptInput } from "@/ui/app-actions.js";
-import { createInitialAppState } from "@/ui/app-state.js";
+import { createUiRepromptInput } from "@/apps/cli/ui/app-actions.js";
+import { createInitialAppState } from "@/apps/cli/ui/app-state.js";
 
 describe("reprompt surface contract", () => {
   it("keeps the quick CLI and TUI aligned for the same configured request", () => {

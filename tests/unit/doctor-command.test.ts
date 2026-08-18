@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { runDoctor } from "@/commands/doctor.js";
+import { runDoctor } from "@/apps/cli/commands/doctor.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { ProviderAdapter, ProviderRequest, ProviderResponse } from "@/core/types.js";
 import type { BuiltinProvider } from "@/providers/catalog.js";

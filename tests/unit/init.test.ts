@@ -11,7 +11,7 @@ import {
   createInitConfig,
   getInitProfileChoices,
   getInitProviderChoices,
-} from "@/commands/first-run.js";
+} from "@/apps/cli/commands/first-run.js";
 import { saveConfig } from "@/config/loader.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { listProfiles } from "@/profiles/registry.js";

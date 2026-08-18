@@ -3,7 +3,7 @@ import { assessFidelity } from "@/core/fidelity.js";
 import { parseResult } from "@/core/result-parser.js";
 import { ReqraftError } from "@/core/errors.js";
 import type { RepromptResult } from "@/core/types.js";
-import { serializeJsonError, serializeJsonSuccess } from "@/presentation/json-contract.js";
+import { serializeJsonError, serializeJsonSuccess } from "@/apps/cli/presentation/json-contract.js";
 
 describe("structured public contracts", () => {
   it("returns stable diagnostic parameters without presentation messages", () => {

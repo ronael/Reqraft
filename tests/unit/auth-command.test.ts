@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAuth } from "@/commands/auth.js";
+import { runAuth } from "@/apps/cli/commands/auth.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 function captureErrors(): { output: { error(message: string): void }; errors: string[] } {

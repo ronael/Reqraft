@@ -1,6 +1,6 @@
 import process from "node:process";
 import { Command, Help } from "commander";
-import { version } from "./version.js";
+import { version } from "@/version.js";
 import { runReprompt } from "./commands/reprompt.js";
 import { runConfig } from "./commands/config.js";
 import { runDoctor } from "./commands/doctor.js";
@@ -8,10 +8,10 @@ import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
 import { runModelsList, runProfilesList, runProvidersList } from "./commands/list.js";
 import { runAuth } from "./commands/auth.js";
-import { listCredentialProviders } from "./providers/catalog.js";
-import type { FidelityMode } from "./core/types.js";
+import { listCredentialProviders } from "@/providers/catalog.js";
+import type { FidelityMode } from "@/core/types.js";
 import { runOpenTuiAppLauncher } from "./opentui/launcher.js";
-import type { Translator } from "./i18n/translate.js";
+import type { Translator } from "@/i18n/translate.js";
 
 interface CliOptions {
   profile?: string;

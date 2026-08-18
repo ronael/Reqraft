@@ -3,7 +3,7 @@ import { CAPABILITIES } from "@/capabilities/registry.js";
 import { listCliCapabilities, listUnregisteredCliOptions } from "../parity/cli-capabilities.js";
 import { listDesktopCapabilities } from "../parity/desktop-capabilities.js";
 import { listTuiCapabilities } from "../parity/tui-capabilities.js";
-import { createCliProgram } from "@/cli-program.js";
+import { createCliProgram } from "@/apps/cli/cli-program.js";
 import { createTranslator } from "@/i18n/translate.js";
 
 // The real Commander declaration, built exactly like the shipped CLI.

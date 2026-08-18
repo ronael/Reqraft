@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { RESERVED_CTRL_KEYS, resolveShortcut, type ShortcutContext } from "@/ui/shortcuts.js";
-import { getShortcutHints } from "@/ui/shortcut-hints.js";
-import { resolveShortcutIntent } from "@/ui/shortcut-intents.js";
+import {
+  RESERVED_CTRL_KEYS,
+  resolveShortcut,
+  type ShortcutContext,
+} from "@/apps/cli/ui/shortcuts.js";
+import { getShortcutHints } from "@/apps/cli/ui/shortcut-hints.js";
+import { resolveShortcutIntent } from "@/apps/cli/ui/shortcut-intents.js";
 
 const idle: ShortcutContext = {
   hasModal: false,
