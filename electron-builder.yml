@@ -81,14 +81,19 @@ win:
 nsis:
   oneClick: false
   allowToChangeInstallationDirectory: true
-  # L'installeur ne prétend pas être signé tant qu'il ne l'est pas.
-  artifactName: ${productName}-${version}-win-${arch}.${ext}
+  # Le suffixe vit dans le nom du fichier, pas seulement dans les notes de
+  # release : c'est le nom qui reste sur le disque une fois la page oubliée.
+  # Il tombera le jour où Windows sera validé à la main
+  # (docs/desktop-platform-support.md).
+  artifactName: ${productName}-${version}-win-${arch}-experimental.${ext}
 
 linux:
   target:
     - target: AppImage
       arch: [x64]
   category: Utility
+  # Même raisonnement que pour Windows.
+  artifactName: ${productName}-${version}-linux-${arch}-experimental.${ext}
   # deb/rpm/snap/flatpak délibérément absents : on les ajoutera si une demande
   # réelle apparaît, pas par anticipation.
 

@@ -4,36 +4,48 @@ What the desktop app is actually supported on — not what it compiles for.
 
 A build that succeeds proves the bundler ran. It does not prove the app opens,
 captures a selection, or reinjects text. Those are different claims, and this
-file keeps them apart: **buildable** is not **validated**, and only validated
-platforms are distributed.
+file keeps them apart: **buildable** is not **validated**.
+
+All three platforms are published, but only the validated one is published
+without a warning. The others carry `-experimental` in their file name and a
+table in the release notes saying what they are worth.
 
 | Platform | Build | Manual validation | Distribution |
 |---|---|---|---|
 | macOS arm64 | yes | yes | GitHub Release (`.dmg`, `.zip`) |
-| Windows x64 | yes | no | Actions artifact only |
-| Linux x64 | yes | no | Actions artifact only |
+| Windows x64 | yes | **no** | GitHub Release, marked `-experimental` |
+| Linux x64 | yes | **no** | GitHub Release, marked `-experimental` |
 
-## Why Windows and Linux are not distributed
+## Why Windows and Linux say `-experimental`
 
-They build, and the installers are downloadable from the workflow run, but
-nobody has run them. The app leans on macOS APIs for the parts that matter —
-selection capture and reinjection go through `osascript`, and permissions
-through the Accessibility and Automation prompts. Those paths have no
-implementation on the other two platforms yet, so an installer that launches
-would still be an app that cannot do its job.
+They build, and they are published so they can be tried — but nobody has run
+them. The app leans on macOS APIs for the parts that matter: selection capture
+and reinjection go through `osascript`, and permissions through the
+Accessibility and Automation prompts. Those paths have no implementation on
+the other two platforms yet, so an installer that launches may still be an app
+that cannot do its job.
 
-Publishing them as release assets would say otherwise.
+Shipping them silently alongside the macOS build would imply parity that does
+not exist, so the marker is carried in two places that survive separately:
+
+- **the file name** — `Reqraft-0.3.0-win-x64-experimental.exe` still says it
+  once the download is sitting in a folder, long after the page is closed;
+- **the release notes** — a table stating what each platform is worth, added
+  automatically by `.github/workflows/desktop.yml`.
+
+Neither is signed either, so SmartScreen and Gatekeeper will object.
 
 ## Promoting a platform
 
-1. Download the installer from the workflow run for the version in question.
+1. Download the installer from the release, or from the workflow run.
 2. Run it on the target OS: install, launch, trigger the capsule, run a
    generation, accept a result.
 3. Update the row above with what you found.
-4. Add the artifact pattern to the `gh release upload` call in
+4. Drop the `-experimental` suffix from that platform's `artifactName` in
+   `electron-builder.yml`, and remove its row from the note in
    `.github/workflows/desktop.yml`.
 
-Step 4 is one line. The gate is step 2, and it is deliberate.
+Step 4 is two edits. The gate is step 2, and it is deliberate.
 
 ## Architectures
 

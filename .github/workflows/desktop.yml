@@ -11,7 +11,7 @@ on:
   workflow_dispatch:
     inputs:
       attach_to_release:
-        description: "Attach the macOS installers to the GitHub Release for this version"
+        description: "Attach the installers to the GitHub Release for this version"
         type: boolean
         default: false
 
@@ -98,23 +98,24 @@ jobs:
           retention-days: 14
           if-no-files-found: error
 
-  # Publication is a separate job from building, so Windows and Linux can be
-  # built and downloaded without being published. Promoting them later means
-  # adding their patterns to the `gh release upload` call below — nothing else.
-  publish-macos:
-    name: Attach macOS installers to the release
+  # Publication stays a separate job from building: a build that fails must not
+  # be half-published, and a release can be re-attached without rebuilding.
+  publish:
+    name: Attach installers to the release
     needs: build
     runs-on: ubuntu-latest
-    # Only macOS is distributed today: it is the only platform validated by
-    # hand (docs/desktop-platform-support.md). Windows and Linux stay as
-    # Actions artifacts until someone has actually run them.
+    # All three platforms are attached, but they are not equal: only macOS has
+    # been run by hand. Windows and Linux carry `-experimental` in their file
+    # name and a warning in the release notes, so someone downloading one knows
+    # what they are getting (docs/desktop-platform-support.md).
     if: startsWith(github.ref, 'refs/tags/v') || inputs.attach_to_release
     steps:
       - uses: actions/checkout@v7
 
       - uses: actions/download-artifact@v4
         with:
-          name: reqraft-desktop-macos-arm64
+          pattern: reqraft-desktop-*
+          merge-multiple: true
           path: installers
 
       - name: Resolve the target tag
@@ -141,4 +142,42 @@ jobs:
             echo "::error::No GitHub Release for ${tag}. Create it first — this job attaches assets, it does not decide what a release is."
             exit 1
           fi
+          ls -la installers/
           gh release upload "$tag" installers/* --clobber
+
+      # The note goes on the release itself, because the file name alone
+      # cannot explain *why* a platform is experimental.
+      - name: Note which platforms are experimental
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.target.outputs.tag }}"
+          marker="## Platform support"
+
+          body=$(gh release view "$tag" --json body --jq .body)
+          if printf '%s' "$body" | grep -qF "$marker"; then
+            echo "Release already carries the platform note."
+            exit 0
+          fi
+
+          note=$(cat <<'NOTE'
+
+## Platform support
+
+| Platform | Status |
+|---|---|
+| macOS arm64 (`.dmg`, `.zip`) | Tested by hand |
+| Windows x64 (`-experimental.exe`) | Builds, never run — expect breakage |
+| Linux x64 (`-experimental.AppImage`) | Builds, never run — expect breakage |
+
+The experimental builds are published so they can be tried, not because they
+are supported. Selection capture and reinjection are implemented for macOS
+only, so on Windows and Linux the app may launch without being able to do its
+job. Neither is signed: SmartScreen and Gatekeeper will object.
+
+See `docs/desktop-platform-support.md`.
+NOTE
+          )
+          printf '%s\n%s' "$body" "$note" | gh release edit "$tag" --notes-file -
