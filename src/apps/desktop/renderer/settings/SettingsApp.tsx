@@ -7,7 +7,7 @@ import {
   type ProviderStatus,
   type SafeConfig,
   type ShortcutStateInfo,
-} from "@/desktop/shared/ipc-contract.js";
+} from "@/apps/desktop/shared/ipc-contract.js";
 
 const TABS = ["Raccourcis", "Providers", "Modèles", "Profils", "Diagnostic"] as const;
 type Tab = (typeof TABS)[number];

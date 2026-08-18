@@ -9,10 +9,17 @@ import {
   sanitizeConfigForRenderer,
   type IpcEventLike,
   type IpcMainLike,
-} from "@/desktop/main/ipc.js";
-import { RepromptService, type RunEventSender } from "@/desktop/main/reprompt-service.js";
-import { IPC_CHANNELS, PUSH_CHANNELS, REQUEST_CHANNELS } from "@/desktop/shared/ipc-channels.js";
-import { REPROMPT_LEVEL_IDS, type RepromptStartResponse } from "@/desktop/shared/ipc-contract.js";
+} from "@/apps/desktop/main/ipc.js";
+import { RepromptService, type RunEventSender } from "@/apps/desktop/main/reprompt-service.js";
+import {
+  IPC_CHANNELS,
+  PUSH_CHANNELS,
+  REQUEST_CHANNELS,
+} from "@/apps/desktop/shared/ipc-channels.js";
+import {
+  REPROMPT_LEVEL_IDS,
+  type RepromptStartResponse,
+} from "@/apps/desktop/shared/ipc-contract.js";
 
 const FAKE_RESULT: RepromptResult = {
   original: "demande brute",

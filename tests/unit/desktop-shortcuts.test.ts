@@ -4,7 +4,7 @@ import {
   registerShortcuts,
   SHORTCUT_CANDIDATES,
   type ShortcutRegistrar,
-} from "@/desktop/main/shortcuts.js";
+} from "@/apps/desktop/main/shortcuts.js";
 
 function registrarTaking(...accepted: string[]): {
   register: ShortcutRegistrar;

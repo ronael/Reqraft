@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { ProviderAdapter } from "@/core/types.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
-import { buildDoctorReport } from "@/desktop/main/doctor.js";
+import { buildDoctorReport } from "@/apps/desktop/main/doctor.js";
 
 function healthyProvider(): ProviderAdapter {
   return {

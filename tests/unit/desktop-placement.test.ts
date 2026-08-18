@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { placeCapsule, placePopover, type WorkArea } from "@/desktop/main/windows/placement.js";
+import {
+  placeCapsule,
+  placePopover,
+  type WorkArea,
+} from "@/apps/desktop/main/windows/placement.js";
 
 const CAPSULE = { width: 560, height: 480 };
 const WORK_AREA: WorkArea = { x: 0, y: 25, width: 1512, height: 955 };

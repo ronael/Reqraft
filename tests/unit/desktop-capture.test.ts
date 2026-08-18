@@ -5,9 +5,9 @@ import {
   replaceSelection,
   type CaptureClipboard,
   type CaptureDependencies,
-} from "@/desktop/main/capture.js";
-import { CaptureService } from "@/desktop/main/capture-service.js";
-import type { MacosBridge } from "@/desktop/main/macos.js";
+} from "@/apps/desktop/main/capture.js";
+import { CaptureService } from "@/apps/desktop/main/capture-service.js";
+import type { MacosBridge } from "@/apps/desktop/main/macos.js";
 
 const SENTINEL = CAPTURE_SENTINEL_FOR_TESTS;
 

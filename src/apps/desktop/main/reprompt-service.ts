@@ -8,8 +8,11 @@ import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { resolveProfile } from "@/profiles/registry.js";
 import { describeUiError, type UiError } from "@/shared/errors.js";
-import { IPC_CHANNELS } from "@/desktop/shared/ipc-channels.js";
-import type { RepromptStartRequest, RepromptStartResponse } from "@/desktop/shared/ipc-contract.js";
+import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
+import type {
+  RepromptStartRequest,
+  RepromptStartResponse,
+} from "@/apps/desktop/shared/ipc-contract.js";
 
 /** Minimal slice of `WebContents`, injected so the service stays testable. */
 export interface RunEventSender {

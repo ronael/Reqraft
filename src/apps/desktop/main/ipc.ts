@@ -8,7 +8,7 @@ import {
   listCredentialProviders,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@/providers/catalog.js";
-import { IPC_CHANNELS } from "@/desktop/shared/ipc-channels.js";
+import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { listProfiles } from "@/profiles/registry.js";
 import {
@@ -21,7 +21,7 @@ import {
   type ProviderStatus,
   type SafeConfig,
   type ShortcutStateInfo,
-} from "@/desktop/shared/ipc-contract.js";
+} from "@/apps/desktop/shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";

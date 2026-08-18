@@ -5,7 +5,7 @@ import type { ProviderAdapter } from "@/core/types.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { createProvider } from "@/providers/registry.js";
 import { listProviderDefinitions, type BuiltinProvider } from "@/providers/catalog.js";
-import type { DoctorCheck, DoctorReport } from "@/desktop/shared/ipc-contract.js";
+import type { DoctorCheck, DoctorReport } from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
  * Structured doctor report for the settings Diagnostic tab (DESKTOP.md

@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
-import { IPC_CHANNELS } from "@/desktop/shared/ipc-channels.js";
+import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
   CapsuleOpenedPayload,
   ReqraftBridge,
@@ -8,7 +8,7 @@ import type {
   RunDonePayload,
   RunErrorPayload,
   Unsubscribe,
-} from "@/desktop/shared/ipc-contract.js";
+} from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
  * Preload: the only bridge between the untrusted renderer and the main

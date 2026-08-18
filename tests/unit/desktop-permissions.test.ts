@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { isWayland, probePermissions, type PermissionsProbe } from "@/desktop/main/permissions.js";
+import {
+  isWayland,
+  probePermissions,
+  type PermissionsProbe,
+} from "@/apps/desktop/main/permissions.js";
 
 function createProbe(overrides: Partial<PermissionsProbe>): PermissionsProbe {
   return {

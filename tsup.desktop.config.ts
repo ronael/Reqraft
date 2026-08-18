@@ -20,7 +20,7 @@ import { defineConfig } from "tsup";
  */
 export default defineConfig([
   {
-    entry: { "main/index": "src/desktop/main/index.ts" },
+    entry: { "main/index": "src/apps/desktop/main/index.ts" },
     outDir: "release/desktop/bundle",
     format: ["esm"],
     target: "es2022",
@@ -34,7 +34,7 @@ export default defineConfig([
     outExtension: () => ({ js: ".mjs" }),
   },
   {
-    entry: { "preload/index": "src/desktop/preload/index.ts" },
+    entry: { "preload/index": "src/apps/desktop/preload/index.ts" },
     outDir: "release/desktop/bundle",
     format: ["cjs"],
     target: "es2022",
