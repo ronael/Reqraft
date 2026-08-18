@@ -9,7 +9,7 @@ import { createProvider } from "@/providers/registry.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { formatUiError } from "@/shared/errors.js";
 import type { AnsiStyleOptions } from "@/apps/cli/ui/ansi.js";
-import { detectCapabilities } from "@/apps/cli/ui/theme/capabilities.js";
+import { detectCapabilities } from "@/shared/terminal/capabilities.js";
 import {
   formatInitChoice,
   formatInitCommand,

@@ -26,10 +26,8 @@ business logic both of them consume.
   `src/shared/` when it is a small contract rather than business logic.
 - The two apps never import each other. ESLint blocks it in both directions —
   if you reach for the other app, the code you want is in the wrong place.
-- Business modules should not import from `src/apps/`. One violation predates
-  the restructure — `src/auth/credentials.ts` pulls `printScreen` from
-  `@/apps/cli/ui/text.js` — and is not a precedent to follow: it needs the
-  helper moved to `src/shared/` before that dependency can be removed.
+- Business modules never import from `src/apps/`; ESLint blocks that too.
+  Terminal output helpers both sides need live in `src/shared/terminal/`.
 
 ## Imports
 

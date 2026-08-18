@@ -1,5 +1,5 @@
 import process from "node:process";
-import { detectCapabilities, type TerminalCapabilities } from "./capabilities.js";
+import { detectCapabilities, type TerminalCapabilities } from "@/shared/terminal/capabilities.js";
 import { getPalette } from "./palette.js";
 import { getSymbols } from "./symbols.js";
 import type { TerminalTheme } from "./types.js";

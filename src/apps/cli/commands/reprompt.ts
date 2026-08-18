@@ -17,7 +17,7 @@ import {
   qualityLabel,
 } from "@/apps/cli/ui/formatters.js";
 import { ansi, ANSI, type AnsiStyleOptions } from "@/apps/cli/ui/ansi.js";
-import { detectCapabilities } from "@/apps/cli/ui/theme/capabilities.js";
+import { detectCapabilities } from "@/shared/terminal/capabilities.js";
 import { describeQualitySignal, visibleQualitySignals } from "@/apps/cli/ui/quality.js";
 import { serializeJsonError, serializeJsonSuccess } from "@/apps/cli/presentation/json-contract.js";
 import { normalizeReqraftError, ReqraftError } from "@/core/errors.js";

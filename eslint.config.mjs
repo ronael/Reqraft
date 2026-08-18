@@ -85,6 +85,27 @@ export default tseslint.config(
     },
   },
   {
+    // Le métier ne dépend jamais d'une application : la dépendance va toujours
+    // de `src/apps/**` vers les modules racine, jamais l'inverse. Ce qu'une
+    // app et le métier partagent vit dans `src/shared/`.
+    files: ["src/**/*.{ts,tsx}"],
+    ignores: ["src/apps/**"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["@/apps", "@/apps/**"],
+              message:
+                "Le code métier ne dépend jamais d'une application : déplacer le morceau partagé dans src/shared/.",
+            },
+          ],
+        },
+      ],
+    },
+  },
+  {
     // Les deux applications finales sont étanches : ni l'une ni l'autre
     // n'importe l'autre. Ce qui est réellement commun vit dans src/shared ou
     // dans un module métier (src/core, src/config…), jamais en travers.

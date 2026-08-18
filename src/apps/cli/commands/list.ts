@@ -6,7 +6,7 @@ import {
   isBuiltinProvider,
   listProviderDefinitions,
 } from "@/providers/catalog.js";
-import { printScreen } from "@/apps/cli/ui/text.js";
+import { printScreen } from "@/shared/terminal/text.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { modelDescription, profileDescription } from "@/apps/cli/presentation/catalog-labels.js";
 

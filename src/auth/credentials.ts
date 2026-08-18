@@ -3,7 +3,7 @@ import readline from "node:readline";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import { createProvider } from "@/providers/registry.js";
-import { printScreen } from "@/apps/cli/ui/text.js";
+import { printScreen } from "@/shared/terminal/text.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import {
   type CredentialProvider,

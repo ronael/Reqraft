@@ -4,7 +4,7 @@ import type { Config } from "@/config/schema.js";
 import type { ProviderAdapter } from "@/core/types.js";
 import { createProvider } from "@/providers/registry.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
-import { printKeyValue, printScreen } from "@/apps/cli/ui/text.js";
+import { printKeyValue, printScreen } from "@/shared/terminal/text.js";
 import {
   getProviderEnvName,
   isCredentialProvider,

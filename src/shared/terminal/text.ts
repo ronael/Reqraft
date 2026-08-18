@@ -1,5 +1,5 @@
 import process from "node:process";
-import { detectColor } from "./theme/capabilities.js";
+import { detectColor } from "./capabilities.js";
 
 interface TextOutput {
   log(message: string): void;
