@@ -19,6 +19,14 @@ import type { TestRendererSetup } from "@opentui/core/testing";
  */
 const mounted: TestRendererSetup[] = [];
 
+/**
+ * React's own flag for "act() is legal here". `testRender` sets it on the way
+ * in and clears it on the way out, one renderer at a time.
+ */
+declare global {
+  var IS_REACT_ACT_ENVIRONMENT: boolean | undefined;
+}
+
 /** Hands the setup back unchanged, after queuing it for teardown. */
 export function trackRenderer(setup: TestRendererSetup): TestRendererSetup {
   mounted.push(setup);
@@ -28,14 +36,22 @@ export function trackRenderer(setup: TestRendererSetup): TestRendererSetup {
 /** Call once at the top of a test file that mounts renderers. */
 export function registerRendererTeardown(): void {
   afterEach(() => {
-    // `destroy()` unmounts the React root through `testRender`'s onDestroy
-    // hook, so the teardown itself is a React update and belongs inside `act`.
-    act(() => {
-      // Reverse order: the most recently mounted renderer owns the terminal.
-      for (const setup of [...mounted].reverse()) {
+    // Reverse order: the most recently mounted renderer owns the terminal.
+    for (const setup of [...mounted].reverse()) {
+      // `testRender`'s onDestroy clears the act environment as its last step,
+      // because it assumes one renderer per test. A test that mounted several
+      // would unmount the rest outside a configured environment, so the flag
+      // is re-armed before each destroy rather than once around the loop.
+      globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+
+      // `destroy()` unmounts the React root, which is a React update and
+      // therefore belongs inside `act`.
+      act(() => {
         setup.renderer.destroy();
-      }
-    });
+      });
+    }
+
+    globalThis.IS_REACT_ACT_ENVIRONMENT = false;
     mounted.length = 0;
   });
 }
