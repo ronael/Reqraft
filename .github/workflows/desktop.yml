@@ -1,0 +1,144 @@
+name: Desktop installers
+
+# Deliberately not on every push: producing three installers takes minutes and
+# proves nothing a normal PR needs. `ci.yml` already builds the desktop bundle
+# on every PR, which is what catches a broken build. This workflow exists to
+# produce downloadable installers — on a release tag, or on demand.
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      attach_to_release:
+        description: "Attach the macOS installers to the GitHub Release for this version"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.label }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      # One platform failing must not hide whether the others build.
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            label: macOS arm64
+            script: dist:desktop:mac
+            artifact: reqraft-desktop-macos-arm64
+          - os: windows-latest
+            label: Windows x64
+            script: dist:desktop:win
+            artifact: reqraft-desktop-windows-x64
+          - os: ubuntu-latest
+            label: Linux x64
+            script: dist:desktop:linux
+            artifact: reqraft-desktop-linux-x64
+
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build installer
+        run: pnpm ${{ matrix.script }}
+        env:
+          # macOS signing and notarisation activate only when these exist.
+          # Absent, electron-builder produces an unsigned build — fine for
+          # testing, refused for an official release by the gate below.
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Windows signing, same principle.
+          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+
+      # A zero-byte or missing installer must fail here rather than upload an
+      # empty artifact that looks fine until someone downloads it.
+      - name: Check the installer exists and is not empty
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          files=(release/desktop/package/Reqraft-*.{dmg,zip,exe,AppImage})
+          if [ ${#files[@]} -eq 0 ]; then
+            echo "::error::No installer produced in release/desktop/package"
+            exit 1
+          fi
+          for file in "${files[@]}"; do
+            size=$(wc -c < "$file")
+            if [ "$size" -lt 1000000 ]; then
+              echo "::error::$file is suspiciously small ($size bytes)"
+              exit 1
+            fi
+            printf '%s  %s bytes\n' "$file" "$size"
+          done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            release/desktop/package/Reqraft-*.dmg
+            release/desktop/package/Reqraft-*.zip
+            release/desktop/package/Reqraft-*.exe
+            release/desktop/package/Reqraft-*.AppImage
+          # Long enough to download and test by hand, short enough not to
+          # accumulate hundreds of megabytes of superseded builds.
+          retention-days: 14
+          if-no-files-found: error
+
+  # Publication is a separate job from building, so Windows and Linux can be
+  # built and downloaded without being published. Promoting them later means
+  # adding their patterns to the `gh release upload` call below — nothing else.
+  publish-macos:
+    name: Attach macOS installers to the release
+    needs: build
+    runs-on: ubuntu-latest
+    # Only macOS is distributed today: it is the only platform validated by
+    # hand (docs/desktop-platform-support.md). Windows and Linux stay as
+    # Actions artifacts until someone has actually run them.
+    if: startsWith(github.ref, 'refs/tags/v') || inputs.attach_to_release
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: reqraft-desktop-macos-arm64
+          path: installers
+
+      - name: Resolve the target tag
+        id: target
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ github.ref_type }}" = "tag" ]; then
+            tag="${{ github.ref_name }}"
+          else
+            tag="v$(node -p "require('./package.json').version")"
+          fi
+          echo "tag=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Target release: ${tag}"
+
+      - name: Upload the installers
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="${{ steps.target.outputs.tag }}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            echo "::error::No GitHub Release for ${tag}. Create it first — this job attaches assets, it does not decide what a release is."
+            exit 1
+          fi
+          gh release upload "$tag" installers/* --clobber
