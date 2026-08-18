@@ -1,6 +1,13 @@
+import { fileURLToPath } from "node:url";
 import { defineConfig } from "vitest/config";
 
 export default defineConfig({
+  // Vitest resolves through Vite, which does not read `tsconfig.paths`. The
+  // alias is declared here so `@/…` means the same thing in tests as it does
+  // under tsc and tsup.
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   test: {
     globals: true,
     environment: "node",

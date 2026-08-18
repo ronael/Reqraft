@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { listCredentialProviders } from "../../src/providers/catalog.js";
-import { createProvider } from "../../src/providers/registry.js";
-import { resolveProviderRuntime } from "../../src/providers/runtime.js";
+import { listCredentialProviders } from "@/providers/catalog.js";
+import { createProvider } from "@/providers/registry.js";
+import { resolveProviderRuntime } from "@/providers/runtime.js";
 
 describe("provider runtime", () => {
   it("creates a provider adapter and resolves the requested model", () => {

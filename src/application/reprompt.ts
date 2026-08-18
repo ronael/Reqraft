@@ -1,14 +1,14 @@
-import type { Config } from "../config/schema.js";
-import { hydrateCredentials } from "../auth/credentials.js";
-import { rewrite, type EngineOptions } from "../core/engine.js";
-import { prepareRewriteOptions } from "../core/rewrite-options.js";
-import type { FidelityMode, RepromptLevel, RepromptResult } from "../core/types.js";
-import { resolveProfile } from "../profiles/registry.js";
+import type { Config } from "@/config/schema.js";
+import { hydrateCredentials } from "@/auth/credentials.js";
+import { rewrite, type EngineOptions } from "@/core/engine.js";
+import { prepareRewriteOptions } from "@/core/rewrite-options.js";
+import type { FidelityMode, RepromptLevel, RepromptResult } from "@/core/types.js";
+import { resolveProfile } from "@/profiles/registry.js";
 import {
   resolveProviderRuntime,
   type ProviderRuntime,
   type ProviderRuntimeInput,
-} from "../providers/runtime.js";
+} from "@/providers/runtime.js";
 
 interface ExecuteRepromptDependencies {
   hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void>;

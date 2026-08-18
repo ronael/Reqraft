@@ -1,10 +1,10 @@
 import { describe, expect, it, beforeEach, afterEach, vi } from "vitest";
-import { AnthropicProvider } from "../../src/providers/anthropic.js";
-import { OpenAIProvider } from "../../src/providers/openai.js";
-import { MistralProvider } from "../../src/providers/mistral.js";
-import { DeepSeekProvider } from "../../src/providers/deepseek.js";
-import { createProvider } from "../../src/providers/registry.js";
-import type { ProviderError } from "../../src/providers/errors.js";
+import { AnthropicProvider } from "@/providers/anthropic.js";
+import { OpenAIProvider } from "@/providers/openai.js";
+import { MistralProvider } from "@/providers/mistral.js";
+import { DeepSeekProvider } from "@/providers/deepseek.js";
+import { createProvider } from "@/providers/registry.js";
+import type { ProviderError } from "@/providers/errors.js";
 
 function mockFetch(response: Response): void {
   globalThis.fetch = vi.fn().mockResolvedValue(response);

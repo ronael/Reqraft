@@ -1,17 +1,17 @@
 import { z } from "zod";
-import { DEFAULT_REPROMPT_LEVEL, RepromptLevelSchema, type RepromptLevel } from "../core/levels.js";
-import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
-import { DEFAULT_FIDELITY_MODE, FIDELITY_MODES } from "../core/types.js";
-import { DEFAULT_MODEL_ID } from "../models/presets.js";
-import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
+import { DEFAULT_REPROMPT_LEVEL, RepromptLevelSchema, type RepromptLevel } from "@/core/levels.js";
+import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
+import { DEFAULT_FIDELITY_MODE, FIDELITY_MODES } from "@/core/types.js";
+import { DEFAULT_MODEL_ID } from "@/models/presets.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import {
   BUILTIN_PROVIDER_IDS,
   DEFAULT_PROVIDER_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
-} from "../providers/catalog.js";
-import { UI_LOCALES } from "../i18n/locale.js";
-import { ReqraftError } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+} from "@/providers/catalog.js";
+import { UI_LOCALES } from "@/i18n/locale.js";
+import { ReqraftError } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 export const DEFAULT_PROFILE_ID = AUTO_PROFILE_ID;
 

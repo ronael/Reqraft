@@ -5,10 +5,10 @@ import {
   credentialStatus,
   login,
   logout,
-} from "../../src/auth/credentials.js";
-import { ProviderError } from "../../src/providers/errors.js";
-import { formatUiError } from "../../src/ui/errors.js";
-import type { CredentialProvider } from "../../src/providers/catalog.js";
+} from "@/auth/credentials.js";
+import { ProviderError } from "@/providers/errors.js";
+import { formatUiError } from "@/ui/errors.js";
+import type { CredentialProvider } from "@/providers/catalog.js";
 
 describe("secure credentials", () => {
   it.each(["ta-clé", "votre-clé", "your-api-key"])(

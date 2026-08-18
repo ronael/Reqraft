@@ -1,4 +1,4 @@
-import type { ProviderRequest } from "../core/types.js";
+import type { ProviderRequest } from "@/core/types.js";
 import { findPreset } from "./presets.js";
 
 type ReasoningEffort = NonNullable<ProviderRequest["reasoningEffort"]>;

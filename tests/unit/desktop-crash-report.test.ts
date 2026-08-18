@@ -3,7 +3,7 @@ import {
   applyCrashReportPolicy,
   CRASH_REPORT_POLICY,
   type CrashReporterLike,
-} from "../../src/desktop/main/crash-report.js";
+} from "@/desktop/main/crash-report.js";
 
 /**
  * DESKTOP.md §5.7: the README promises "no telemetry". These tests fail the

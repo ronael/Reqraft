@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { DEFAULT_REPROMPT_LEVEL, RepromptLevelSchema } from "../core/levels.js";
+import { DEFAULT_REPROMPT_LEVEL, RepromptLevelSchema } from "@/core/levels.js";
 import { BUILTIN_PROFILE_IDS } from "./profile-ids.js";
 import type { PromptProfile } from "./types.js";
 

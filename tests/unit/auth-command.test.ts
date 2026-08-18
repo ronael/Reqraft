@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { runAuth } from "../../src/commands/auth.js";
-import { EXIT_CODES } from "../../src/utils/exit-codes.js";
+import { runAuth } from "@/commands/auth.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 function captureErrors(): { output: { error(message: string): void }; errors: string[] } {
   const errors: string[] = [];

@@ -1,13 +1,13 @@
-import type { ProviderAdapter } from "../core/types.js";
+import type { ProviderAdapter } from "@/core/types.js";
 import { AnthropicProvider } from "./anthropic.js";
 import { DeepSeekProvider } from "./deepseek.js";
 import { MistralProvider } from "./mistral.js";
 import { MockProvider } from "./mock.js";
-import { ReqraftError } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { ReqraftError } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { OpenAIProvider } from "./openai.js";
 import { OpenAICompatibleProvider } from "./openai-compatible.js";
-import type { Config } from "../config/schema.js";
+import type { Config } from "@/config/schema.js";
 import {
   type BuiltinProvider,
   type CredentialProvider,

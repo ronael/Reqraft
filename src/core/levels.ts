@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { ReqraftError } from "./errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 export const REPROMPT_LEVELS = ["minimal", "standard", "complete"] as const;
 export type RepromptLevel = (typeof REPROMPT_LEVELS)[number];

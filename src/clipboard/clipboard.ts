@@ -1,6 +1,6 @@
 import clipboard from "clipboardy";
-import { ReqraftError } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { ReqraftError } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 export async function readClipboard(): Promise<string> {
   try {

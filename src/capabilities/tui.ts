@@ -1,4 +1,4 @@
-import { COMMAND_ACTION_BY_CAPABILITY, getCommandOptions } from "../ui/modal-options.js";
+import { COMMAND_ACTION_BY_CAPABILITY, getCommandOptions } from "@/ui/modal-options.js";
 
 const CAPABILITY_BY_COMMAND_ACTION: Readonly<Record<string, string>> = Object.fromEntries(
   Object.entries(COMMAND_ACTION_BY_CAPABILITY).map(([id, action]) => [action, id]),

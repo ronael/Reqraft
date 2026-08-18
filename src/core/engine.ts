@@ -1,5 +1,5 @@
-import type { PromptProfile } from "../profiles/types.js";
-import { resolveModelCapabilities } from "../models/capabilities.js";
+import type { PromptProfile } from "@/profiles/types.js";
+import { resolveModelCapabilities } from "@/models/capabilities.js";
 import { RequestCancelledError, RequestTimeoutError } from "./errors.js";
 import { assessFidelity, buildQualityAssessment } from "./fidelity.js";
 import { buildAutoDetectPrompt, buildPrompt } from "./prompt-builder.js";

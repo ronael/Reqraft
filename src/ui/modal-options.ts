@@ -1,15 +1,15 @@
-import type { RepromptLevel } from "../core/types.js";
-import { REPROMPT_LEVELS } from "../core/levels.js";
-import { CAPABILITIES } from "../capabilities/registry.js";
+import type { RepromptLevel } from "@/core/types.js";
+import { REPROMPT_LEVELS } from "@/core/levels.js";
+import { CAPABILITIES } from "@/capabilities/registry.js";
 import {
   getPresetModels,
   getFallbackModelForProvider as getPresetFallbackModelForProvider,
-} from "../models/presets.js";
-import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
-import { listProfiles } from "../profiles/registry.js";
-import { listProviderDefinitions } from "../providers/catalog.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
-import { profileDescription } from "../presentation/catalog-labels.js";
+} from "@/models/presets.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
+import { listProfiles } from "@/profiles/registry.js";
+import { listProviderDefinitions } from "@/providers/catalog.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { profileDescription } from "@/presentation/catalog-labels.js";
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 

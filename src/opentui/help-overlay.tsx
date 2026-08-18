@@ -2,7 +2,7 @@
 import { TextAttributes } from "@opentui/core";
 import React from "react";
 
-import type { Translator } from "../i18n/translate.js";
+import type { Translator } from "@/i18n/translate.js";
 import type { Layout } from "./layout.js";
 import { COLOR } from "./theme.js";
 

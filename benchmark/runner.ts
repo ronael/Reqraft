@@ -3,11 +3,11 @@ import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { BENCHMARK_DATASET } from "./cases/dataset.js";
 import { scoreCase } from "./scoring.js";
-import { rewrite } from "../src/core/engine.js";
-import { resolveProfile } from "../src/profiles/registry.js";
-import { createProvider } from "../src/providers/registry.js";
-import { resolveModel } from "../src/models/model-resolver.js";
-import type { RepromptResult } from "../src/core/types.js";
+import { rewrite } from "@/core/engine.js";
+import { resolveProfile } from "@/profiles/registry.js";
+import { createProvider } from "@/providers/registry.js";
+import { resolveModel } from "@/models/model-resolver.js";
+import type { RepromptResult } from "@/core/types.js";
 
 interface BenchmarkRun {
   provider: string;

@@ -6,7 +6,7 @@ import {
 } from "./capture.js";
 import { FocusTracker } from "./focus.js";
 import type { MacosBridge } from "./macos.js";
-import type { CaptureSelectionResponse } from "../shared/ipc-contract.js";
+import type { CaptureSelectionResponse } from "@/desktop/shared/ipc-contract.js";
 
 /**
  * Orchestrates the trigger cycle: global shortcut → record the source app →

@@ -4,8 +4,8 @@ import {
   REPROMPT_LEVEL_IDS,
   type RepromptResult,
   type UiError,
-} from "../../shared/ipc-contract.js";
-import { transition, type CapsuleState } from "../../shared/capsule-machine.js";
+} from "@/desktop/shared/ipc-contract.js";
+import { transition, type CapsuleState } from "@/desktop/shared/capsule-machine.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 

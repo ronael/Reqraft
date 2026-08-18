@@ -1,8 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { executeReprompt } from "../../src/application/reprompt.js";
-import { MockProvider } from "../../src/providers/mock.js";
-import type { EngineOptions } from "../../src/core/engine.js";
-import type { RepromptResult } from "../../src/core/types.js";
+import { executeReprompt } from "@/application/reprompt.js";
+import { MockProvider } from "@/providers/mock.js";
+import type { EngineOptions } from "@/core/engine.js";
+import type { RepromptResult } from "@/core/types.js";
 
 function makeResult(overrides: Partial<RepromptResult> = {}): RepromptResult {
   return {

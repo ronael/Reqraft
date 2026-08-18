@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { BUILTIN_PROFILE_IDS } from "../../src/profiles/profile-ids.js";
-import { getProfile, listProfiles, resolveProfile } from "../../src/profiles/registry.js";
+import { BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
+import { getProfile, listProfiles, resolveProfile } from "@/profiles/registry.js";
 
 describe("profile registry", () => {
   it("lists built-in profiles", () => {

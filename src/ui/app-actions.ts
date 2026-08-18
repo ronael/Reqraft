@@ -1,6 +1,6 @@
-import type { ExecuteRepromptInput } from "../application/reprompt.js";
-import { DEFAULT_CONFIG } from "../config/loader.js";
-import type { Config } from "../config/schema.js";
+import type { ExecuteRepromptInput } from "@/application/reprompt.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
+import type { Config } from "@/config/schema.js";
 import type { AppState } from "./app-state.js";
 
 export function createUiRepromptInput(

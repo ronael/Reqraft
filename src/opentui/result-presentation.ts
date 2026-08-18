@@ -1,9 +1,9 @@
-import type { RepromptResult } from "../core/types.js";
-import type { AppState } from "../ui/app-state.js";
-import { describeResultMeta } from "../ui/result-meta.js";
-import { formatResultView } from "../ui/result-view.js";
+import type { RepromptResult } from "@/core/types.js";
+import type { AppState } from "@/ui/app-state.js";
+import { describeResultMeta } from "@/ui/result-meta.js";
+import { formatResultView } from "@/ui/result-view.js";
 import { resolveStreamedResultPreview } from "./input.js";
-import type { Translator } from "../i18n/translate.js";
+import type { Translator } from "@/i18n/translate.js";
 
 export type TuiStatus = "idle" | "loading" | "streaming" | "success" | "error";
 

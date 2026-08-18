@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import process from "node:process";
-import { normalizeSize, type TerminalSize } from "../layout/responsive.js";
+import { normalizeSize, type TerminalSize } from "@/ui/layout/responsive.js";
 
 function readSize(): TerminalSize {
   return normalizeSize({ columns: process.stdout.columns, rows: process.stdout.rows });

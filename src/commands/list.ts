@@ -1,14 +1,14 @@
-import { getPresetModels } from "../models/presets.js";
-import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
-import { listProfiles } from "../profiles/registry.js";
+import { getPresetModels } from "@/models/presets.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
+import { listProfiles } from "@/profiles/registry.js";
 import {
   getProviderDefinition,
   isBuiltinProvider,
   listProviderDefinitions,
-} from "../providers/catalog.js";
-import { printScreen } from "../ui/text.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
-import { modelDescription, profileDescription } from "../presentation/catalog-labels.js";
+} from "@/providers/catalog.js";
+import { printScreen } from "@/ui/text.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { modelDescription, profileDescription } from "@/presentation/catalog-labels.js";
 
 interface ListOutput {
   log(message: string): void;

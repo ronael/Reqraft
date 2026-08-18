@@ -1,7 +1,7 @@
-import { credentialStatus, login, logout } from "../auth/credentials.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
-import { isCredentialProvider, type CredentialProvider } from "../providers/catalog.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import { credentialStatus, login, logout } from "@/auth/credentials.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
+import { isCredentialProvider, type CredentialProvider } from "@/providers/catalog.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 interface AuthOutput {
   error(message: string): void;

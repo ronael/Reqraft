@@ -2,8 +2,8 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import type { UiLocale } from "../i18n/locale.js";
-import { createTranslator } from "../i18n/translate.js";
+import type { UiLocale } from "@/i18n/locale.js";
+import { createTranslator } from "@/i18n/translate.js";
 
 export function runOpenTuiAppLauncher(uiLocale?: UiLocale): number {
   const t = createTranslator(uiLocale ?? "en");

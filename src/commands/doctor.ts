@@ -1,18 +1,18 @@
 import process from "node:process";
-import { loadConfig, configPath as getConfigPath } from "../config/loader.js";
-import type { Config } from "../config/schema.js";
-import type { ProviderAdapter } from "../core/types.js";
-import { createProvider } from "../providers/registry.js";
-import { hydrateCredentials } from "../auth/credentials.js";
-import { printKeyValue, printScreen } from "../ui/text.js";
+import { loadConfig, configPath as getConfigPath } from "@/config/loader.js";
+import type { Config } from "@/config/schema.js";
+import type { ProviderAdapter } from "@/core/types.js";
+import { createProvider } from "@/providers/registry.js";
+import { hydrateCredentials } from "@/auth/credentials.js";
+import { printKeyValue, printScreen } from "@/ui/text.js";
 import {
   getProviderEnvName,
   isCredentialProvider,
   listCredentialProviders,
   listProviderDefinitions,
   type BuiltinProvider,
-} from "../providers/catalog.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+} from "@/providers/catalog.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 interface DoctorOutput {
   log(message: string): void;

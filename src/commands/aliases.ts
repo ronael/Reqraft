@@ -1,10 +1,10 @@
 import process from "node:process";
 import readline from "node:readline";
-import { detectShell, getShellConfigPath, type ShellType } from "../aliases/detector.js";
-import { listAliases, removeAlias, setAlias } from "../aliases/manager.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
-import { formatUiError } from "../ui/errors.js";
+import { detectShell, getShellConfigPath, type ShellType } from "@/aliases/detector.js";
+import { listAliases, removeAlias, setAlias } from "@/aliases/manager.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { formatUiError } from "@/ui/errors.js";
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 

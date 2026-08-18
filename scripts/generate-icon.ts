@@ -9,7 +9,7 @@
  */
 import { deflateSync } from "node:zlib";
 import { mkdirSync, writeFileSync } from "node:fs";
-import { PALETTE_VALUES } from "../src/ui/theme/palette-values.js";
+import { PALETTE_VALUES } from "@/ui/theme/palette-values.js";
 
 const SIZE = 1024;
 const CORNER_RADIUS = 220;

@@ -1,5 +1,5 @@
-import type { QualityAssessment, QualitySignal, UnsupportedAddition } from "../core/types.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import type { QualityAssessment, QualitySignal, UnsupportedAddition } from "@/core/types.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 const ADDITION_KEYS: Record<UnsupportedAddition, `addition.${UnsupportedAddition}`> = {
   testimonials: "addition.testimonials",

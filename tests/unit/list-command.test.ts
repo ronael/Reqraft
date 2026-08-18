@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { runModelsList, runProfilesList, runProvidersList } from "../../src/commands/list.js";
-import { listProviderDefinitions } from "../../src/providers/catalog.js";
-import { listProfiles } from "../../src/profiles/registry.js";
+import { runModelsList, runProfilesList, runProvidersList } from "@/commands/list.js";
+import { listProviderDefinitions } from "@/providers/catalog.js";
+import { listProfiles } from "@/profiles/registry.js";
 
 function captureOutput(): { output: { log(message: string): void }; logs: string[] } {
   const logs: string[] = [];

@@ -1,5 +1,5 @@
-import type { RepromptResult } from "../core/types.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import type { RepromptResult } from "@/core/types.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 

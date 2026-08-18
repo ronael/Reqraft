@@ -3,7 +3,7 @@ import {
   parseResult,
   resolveDetectedProfileId,
   stripMarkdownFences,
-} from "../../src/core/result-parser.js";
+} from "@/core/result-parser.js";
 
 describe("stripMarkdownFences", () => {
   it("removes json fences", () => {

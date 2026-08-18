@@ -10,8 +10,8 @@ import {
   screen,
   systemPreferences,
 } from "electron";
-import { executeReprompt } from "../../application/reprompt.js";
-import { loadConfig } from "../../config/loader.js";
+import { executeReprompt } from "@/application/reprompt.js";
+import { loadConfig } from "@/config/loader.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
 import { registerIpcHandlers } from "./ipc.js";
@@ -22,7 +22,7 @@ import {
   requestAccessibility,
 } from "./permissions.js";
 import { RepromptService } from "./reprompt-service.js";
-import { IPC_CHANNELS } from "../shared/ipc-channels.js";
+import { IPC_CHANNELS } from "@/desktop/shared/ipc-channels.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createTray } from "./tray.js";

@@ -15,9 +15,9 @@ import {
   showView,
   toggleDiffView,
   updatePromptInput,
-} from "../../src/ui/app-state.js";
-import { createUiRepromptInput, resolveUiStreamPreference } from "../../src/ui/app-actions.js";
-import { resolveCommandIntent } from "../../src/ui/command-intents.js";
+} from "@/ui/app-state.js";
+import { createUiRepromptInput, resolveUiStreamPreference } from "@/ui/app-actions.js";
+import { resolveCommandIntent } from "@/ui/command-intents.js";
 import {
   getCommandOptions,
   getFallbackModelForProvider,
@@ -26,19 +26,19 @@ import {
   getProfileOptions,
   HELP_OPTIONS,
   LEVEL_OPTIONS,
-} from "../../src/ui/modal-options.js";
-import { formatDiff, formatExplain, formatResultView } from "../../src/ui/result-view.js";
-import { getEmptyStateTitle, getModalTitle, getResultTitle } from "../../src/ui/view-labels.js";
-import type { RepromptResult } from "../../src/core/types.js";
-import { qualitySignalViewKey } from "../../src/ui/quality.js";
+} from "@/ui/modal-options.js";
+import { formatDiff, formatExplain, formatResultView } from "@/ui/result-view.js";
+import { getEmptyStateTitle, getModalTitle, getResultTitle } from "@/ui/view-labels.js";
+import type { RepromptResult } from "@/core/types.js";
+import { qualitySignalViewKey } from "@/ui/quality.js";
 import {
   beginGeneration,
   canStartGeneration,
   completeCopy,
   failCopy,
   failGeneration,
-} from "../../src/ui/generation-state.js";
-import type { UiError } from "../../src/ui/errors.js";
+} from "@/ui/generation-state.js";
+import type { UiError } from "@/ui/errors.js";
 
 const OLD_ERROR: UiError = { title: "Erreur", message: "ancienne erreur" };
 const NEW_ERROR: UiError = { title: "Erreur", message: "nouvelle erreur" };

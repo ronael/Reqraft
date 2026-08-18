@@ -1,5 +1,5 @@
-import type { Config } from "../config/schema.js";
-import type { RepromptLevel, RepromptResult } from "../core/types.js";
+import type { Config } from "@/config/schema.js";
+import type { RepromptLevel, RepromptResult } from "@/core/types.js";
 import type { ResultViewMode } from "./result-view.js";
 import type { UiError } from "./errors.js";
 

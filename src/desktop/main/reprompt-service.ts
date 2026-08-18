@@ -1,15 +1,15 @@
 import { randomUUID } from "node:crypto";
-import type { executeReprompt } from "../../application/reprompt.js";
-import type { Config } from "../../config/schema.js";
-import { detectSecrets } from "../../core/secret-detector.js";
-import { previewRewritten } from "../../core/stream-preview.js";
-import type { RepromptResult } from "../../core/types.js";
-import { createTranslator, type Translator } from "../../i18n/translate.js";
-import { AUTO_PROFILE_ID } from "../../profiles/profile-ids.js";
-import { resolveProfile } from "../../profiles/registry.js";
-import { describeUiError, type UiError } from "../../ui/errors.js";
-import { IPC_CHANNELS } from "../shared/ipc-channels.js";
-import type { RepromptStartRequest, RepromptStartResponse } from "../shared/ipc-contract.js";
+import type { executeReprompt } from "@/application/reprompt.js";
+import type { Config } from "@/config/schema.js";
+import { detectSecrets } from "@/core/secret-detector.js";
+import { previewRewritten } from "@/core/stream-preview.js";
+import type { RepromptResult } from "@/core/types.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
+import { resolveProfile } from "@/profiles/registry.js";
+import { describeUiError, type UiError } from "@/ui/errors.js";
+import { IPC_CHANNELS } from "@/desktop/shared/ipc-channels.js";
+import type { RepromptStartRequest, RepromptStartResponse } from "@/desktop/shared/ipc-contract.js";
 
 /** Minimal slice of `WebContents`, injected so the service stays testable. */
 export interface RunEventSender {

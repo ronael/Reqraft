@@ -3,9 +3,9 @@ import { spawnSync } from "node:child_process";
 import { mkdtempSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { listCredentialProviders, listProviderDefinitions } from "../../src/providers/catalog.js";
-import { listProfiles } from "../../src/profiles/registry.js";
-import { EXIT_CODES } from "../../src/utils/exit-codes.js";
+import { listCredentialProviders, listProviderDefinitions } from "@/providers/catalog.js";
+import { listProfiles } from "@/profiles/registry.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 const CLI = path.resolve(process.cwd(), "dist/cli.js");
 const TEST_CONFIG_HOME = mkdtempSync(path.join(os.tmpdir(), "rp-e2e-"));

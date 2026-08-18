@@ -1,6 +1,6 @@
-import { ProviderError } from "../providers/errors.js";
-import { ReqraftError, type ReqraftErrorCode } from "../core/errors.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import { ProviderError } from "@/providers/errors.js";
+import { ReqraftError, type ReqraftErrorCode } from "@/core/errors.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 /**
  * A failure presented to the user.

@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { buildAutoDetectPrompt, buildPrompt } from "../../src/core/prompt-builder.js";
-import { BUILTIN_PROFILE_IDS } from "../../src/profiles/profile-ids.js";
-import { codeProfile } from "../../src/profiles/code.js";
-import { debugProfile } from "../../src/profiles/debug.js";
-import { frontendProfile } from "../../src/profiles/frontend.js";
-import { webDesignProfile } from "../../src/profiles/web-design.js";
+import { buildAutoDetectPrompt, buildPrompt } from "@/core/prompt-builder.js";
+import { BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
+import { codeProfile } from "@/profiles/code.js";
+import { debugProfile } from "@/profiles/debug.js";
+import { frontendProfile } from "@/profiles/frontend.js";
+import { webDesignProfile } from "@/profiles/web-design.js";
 
 describe("prompt builder", () => {
   it("tells standard web-design prompts to be actionable, not just corrected", () => {

@@ -1,6 +1,6 @@
-import { CAPSULE_STATES } from "../desktop/shared/capsule-machine.js";
-import { IPC_CHANNELS } from "../desktop/shared/ipc-channels.js";
-import { RESULT_ACCEPT_MODES } from "../desktop/shared/ipc-contract.js";
+import { CAPSULE_STATES } from "@/desktop/shared/capsule-machine.js";
+import { IPC_CHANNELS } from "@/desktop/shared/ipc-channels.js";
+import { RESULT_ACCEPT_MODES } from "@/desktop/shared/ipc-contract.js";
 
 /**
  * Desktop capability inventory — derived from the REAL desktop declarations

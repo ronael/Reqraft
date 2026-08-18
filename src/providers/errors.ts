@@ -1,6 +1,6 @@
-import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
-import { ReqraftError, type ReqraftErrorCode } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
+import { ReqraftError, type ReqraftErrorCode } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 export class ProviderError extends ReqraftError {
   readonly httpStatus?: number;

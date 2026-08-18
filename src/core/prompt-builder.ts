@@ -1,7 +1,7 @@
 import type { RepromptRequest } from "./types.js";
-import type { PromptProfile } from "../profiles/types.js";
-import { BASE_SYSTEM_PROMPT } from "../profiles/base.js";
-import { BUILTIN_PROFILES } from "../profiles/registry.js";
+import type { PromptProfile } from "@/profiles/types.js";
+import { BASE_SYSTEM_PROMPT } from "@/profiles/base.js";
+import { BUILTIN_PROFILES } from "@/profiles/registry.js";
 import { describeLevel } from "./levels.js";
 
 export interface BuiltPrompt {

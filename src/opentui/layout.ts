@@ -128,4 +128,4 @@ export function pickerOptionIndexAt(
 function shortModel(model: string): string {
   return model.length > 14 ? `${model.slice(0, 11)}…` : model;
 }
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";

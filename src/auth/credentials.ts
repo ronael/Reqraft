@@ -2,17 +2,17 @@ import process from "node:process";
 import readline from "node:readline";
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import { createProvider } from "../providers/registry.js";
-import { printScreen } from "../ui/text.js";
-import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
+import { createProvider } from "@/providers/registry.js";
+import { printScreen } from "@/ui/text.js";
+import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import {
   type CredentialProvider,
   getProviderEnvName,
   listCredentialProviders,
-} from "../providers/catalog.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
-import { ReqraftError } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+} from "@/providers/catalog.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { ReqraftError } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 const execFileAsync = promisify(execFile);
 const DEFAULT_TRANSLATOR = createTranslator("fr");

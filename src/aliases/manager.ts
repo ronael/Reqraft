@@ -5,8 +5,8 @@ import { bashHandler } from "./shells/bash.js";
 import { fishHandler } from "./shells/fish.js";
 import { powershellHandler } from "./shells/powershell.js";
 import { zshHandler } from "./shells/zsh.js";
-import { ReqraftError } from "../core/errors.js";
-import { EXIT_CODES } from "../utils/exit-codes.js";
+import { ReqraftError } from "@/core/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 const HANDLERS: Record<Exclude<ShellType, "unknown">, typeof bashHandler> = {
   bash: bashHandler,

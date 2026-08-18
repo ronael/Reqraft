@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildPrompt } from "../../src/core/prompt-builder.js";
-import { codeProfile } from "../../src/profiles/code.js";
-import { frontendProfile } from "../../src/profiles/frontend.js";
-import { cleanProfile } from "../../src/profiles/clean.js";
-import { BASE_RULES } from "../../src/profiles/base.js";
+import { buildPrompt } from "@/core/prompt-builder.js";
+import { codeProfile } from "@/profiles/code.js";
+import { frontendProfile } from "@/profiles/frontend.js";
+import { cleanProfile } from "@/profiles/clean.js";
+import { BASE_RULES } from "@/profiles/base.js";
 
 describe("profile instructions preservation", () => {
   it("code profile system prompt preserves technical terms instruction", () => {

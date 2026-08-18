@@ -1,9 +1,9 @@
 import { z } from "zod";
-import { RepromptLevelSchema } from "../../core/levels.js";
-import { ConfigSchema, type Config, type ConfigKey } from "../../config/schema.js";
-import type { RepromptResult } from "../../core/types.js";
-import type { UiError } from "../../ui/errors.js";
-import { AUTO_PROFILE_ID } from "../../profiles/profile-ids.js";
+import { RepromptLevelSchema } from "@/core/levels.js";
+import { ConfigSchema, type Config, type ConfigKey } from "@/config/schema.js";
+import type { RepromptResult } from "@/core/types.js";
+import type { UiError } from "@/ui/errors.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 
 /**
  * Re-exported so the renderer can recognise the `auto` sentinel without

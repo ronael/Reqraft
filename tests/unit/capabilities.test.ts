@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { CAPABILITIES } from "../../src/capabilities/registry.js";
-import { listCliCapabilities, listUnregisteredCliOptions } from "../../src/capabilities/cli.js";
-import { listDesktopCapabilities } from "../../src/capabilities/desktop.js";
-import { listTuiCapabilities } from "../../src/capabilities/tui.js";
-import { createCliProgram } from "../../src/cli-program.js";
-import { createTranslator } from "../../src/i18n/translate.js";
+import { CAPABILITIES } from "@/capabilities/registry.js";
+import { listCliCapabilities, listUnregisteredCliOptions } from "@/capabilities/cli.js";
+import { listDesktopCapabilities } from "@/capabilities/desktop.js";
+import { listTuiCapabilities } from "@/capabilities/tui.js";
+import { createCliProgram } from "@/cli-program.js";
+import { createTranslator } from "@/i18n/translate.js";
 
 // The real Commander declaration, built exactly like the shipped CLI.
 const program = createCliProgram(createTranslator("fr"), "fr");

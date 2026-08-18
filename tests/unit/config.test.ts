@@ -1,13 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { DEFAULT_CONFIG } from "../../src/config/loader.js";
-import { ConfigSchema, mergeConfig, parseConfigValue } from "../../src/config/schema.js";
-import { getConfigDir, getConfigPath } from "../../src/config/paths.js";
-import { DEFAULT_REPROMPT_LEVEL, REPROMPT_LEVELS } from "../../src/core/levels.js";
-import { DEFAULT_FIDELITY_MODE, FIDELITY_MODES } from "../../src/core/types.js";
-import { DEFAULT_MODEL_ID, getPresetModels } from "../../src/models/presets.js";
-import { resolveModel } from "../../src/models/model-resolver.js";
-import { DEFAULT_PROVIDER_ID } from "../../src/providers/catalog.js";
-import { AUTO_PROFILE_ID } from "../../src/profiles/profile-ids.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
+import { ConfigSchema, mergeConfig, parseConfigValue } from "@/config/schema.js";
+import { getConfigDir, getConfigPath } from "@/config/paths.js";
+import { DEFAULT_REPROMPT_LEVEL, REPROMPT_LEVELS } from "@/core/levels.js";
+import { DEFAULT_FIDELITY_MODE, FIDELITY_MODES } from "@/core/types.js";
+import { DEFAULT_MODEL_ID, getPresetModels } from "@/models/presets.js";
+import { resolveModel } from "@/models/model-resolver.js";
+import { DEFAULT_PROVIDER_ID } from "@/providers/catalog.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 
 describe("config schema", () => {
   it("parses valid config", () => {

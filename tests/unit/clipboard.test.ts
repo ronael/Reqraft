@@ -7,7 +7,7 @@ const clipboardMock = vi.hoisted(() => ({
 
 vi.mock("clipboardy", () => ({ default: clipboardMock }));
 
-import { writeClipboard } from "../../src/clipboard/clipboard.js";
+import { writeClipboard } from "@/clipboard/clipboard.js";
 
 describe("clipboard writes", () => {
   beforeEach(() => {

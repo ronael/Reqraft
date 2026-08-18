@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveModelCapabilities } from "../../src/models/capabilities.js";
+import { resolveModelCapabilities } from "@/models/capabilities.js";
 
 describe("model capabilities", () => {
   it("resolves GPT-5 family constraints for dated model identifiers", () => {

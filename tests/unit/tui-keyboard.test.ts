@@ -5,10 +5,10 @@ import {
   isCtrlCKey,
   normalizeTypedText,
   resolveStreamedResultPreview,
-} from "../../src/opentui/input.js";
-import { createOpenTuiRendererOptions } from "../../src/opentui/renderer-options.js";
-import { resolveSubmit } from "../../src/ui/prompt-input.js";
-import { RESERVED_CTRL_KEYS, resolveShortcut } from "../../src/ui/shortcuts.js";
+} from "@/opentui/input.js";
+import { createOpenTuiRendererOptions } from "@/opentui/renderer-options.js";
+import { resolveSubmit } from "@/ui/prompt-input.js";
+import { RESERVED_CTRL_KEYS, resolveShortcut } from "@/ui/shortcuts.js";
 
 describe("interactive keyboard contract", () => {
   it("never reserves terminal control keys that collapse to editing keys", () => {

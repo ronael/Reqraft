@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { runConfig } from "../../src/commands/config.js";
-import { EXIT_CODES } from "../../src/utils/exit-codes.js";
+import { runConfig } from "@/commands/config.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 function captureOutput(): {
   output: { log(message: string): void; error(message: string): void };

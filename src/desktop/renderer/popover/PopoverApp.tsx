@@ -3,7 +3,7 @@ import {
   REPROMPT_LEVEL_IDS,
   type ProfileSummary,
   type RepromptResult,
-} from "../../shared/ipc-contract.js";
+} from "@/desktop/shared/ipc-contract.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 

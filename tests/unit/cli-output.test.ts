@@ -1,11 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-  formatDiff,
-  formatExplain,
-  formatQuality,
-  formatStats,
-} from "../../src/commands/reprompt.js";
-import type { RepromptResult } from "../../src/core/types.js";
+import { formatDiff, formatExplain, formatQuality, formatStats } from "@/commands/reprompt.js";
+import type { RepromptResult } from "@/core/types.js";
 
 function makeResult(overrides: Partial<RepromptResult> = {}): RepromptResult {
   return {

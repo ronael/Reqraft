@@ -5,7 +5,7 @@ import {
   getHeightMode,
   getLayoutMode,
   normalizeSize,
-} from "../../src/ui/layout/responsive.js";
+} from "@/ui/layout/responsive.js";
 
 describe("layout mode", () => {
   // The widths the TUI implementation brief sections 16 requires to be exercised.

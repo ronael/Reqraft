@@ -1,4 +1,4 @@
-import type { Translator } from "../i18n/translate.js";
+import type { Translator } from "@/i18n/translate.js";
 
 const PROFILE_DESCRIPTION_KEYS = {
   clean: "profile.clean.description",

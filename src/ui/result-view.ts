@@ -1,6 +1,6 @@
-import type { RepromptResult } from "../core/types.js";
+import type { RepromptResult } from "@/core/types.js";
 import { describeQualitySignal, visibleQualitySignals } from "./quality.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 

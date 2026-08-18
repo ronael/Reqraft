@@ -1,4 +1,4 @@
-import type { Translator } from "../i18n/translate.js";
+import type { Translator } from "@/i18n/translate.js";
 
 export function getShortcuts(t: Translator): string[] {
   return [

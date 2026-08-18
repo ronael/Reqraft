@@ -1,7 +1,7 @@
 import type { KeyEvent } from "@opentui/core";
 import { stripVTControlCharacters } from "node:util";
 
-import { previewRewritten } from "../core/stream-preview.js";
+import { previewRewritten } from "@/core/stream-preview.js";
 
 const BRACKETED_PASTE_START = "\u001B[200~";
 const BRACKETED_PASTE_END = "\u001B[201~";

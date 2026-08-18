@@ -1,5 +1,5 @@
-import type { RepromptResult } from "../core/types.js";
-import type { ReqraftError } from "../core/errors.js";
+import type { RepromptResult } from "@/core/types.js";
+import type { ReqraftError } from "@/core/errors.js";
 
 export const JSON_SCHEMA_VERSION = 1 as const;
 

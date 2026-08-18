@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { getHeaderStatus } from "../../src/ui/header-status.js";
-import { describeResultMeta, getResultPanelTone } from "../../src/ui/result-meta.js";
-import { getShortcutHints } from "../../src/ui/shortcut-hints.js";
-import { describeUiError } from "../../src/ui/errors.js";
-import type { RepromptResult } from "../../src/core/types.js";
+import { getHeaderStatus } from "@/ui/header-status.js";
+import { describeResultMeta, getResultPanelTone } from "@/ui/result-meta.js";
+import { getShortcutHints } from "@/ui/shortcut-hints.js";
+import { describeUiError } from "@/ui/errors.js";
+import type { RepromptResult } from "@/core/types.js";
 
 const result: RepromptResult = {
   original: "test",

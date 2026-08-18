@@ -1,4 +1,4 @@
-import type { ReqraftBridge } from "../shared/ipc-contract.js";
+import type { ReqraftBridge } from "@/desktop/shared/ipc-contract.js";
 
 declare global {
   interface Window {

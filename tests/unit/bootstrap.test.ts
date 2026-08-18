@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import { DEFAULT_CONFIG } from "../../src/config/loader.js";
-import { bootstrapConfiguration, getBootstrapError } from "../../src/application/bootstrap.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
+import { bootstrapConfiguration, getBootstrapError } from "@/application/bootstrap.js";
 
 describe("application bootstrap", () => {
   it("loads credentials and config for the UI startup path", async () => {

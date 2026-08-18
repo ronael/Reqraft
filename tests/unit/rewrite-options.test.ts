@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { prepareRewriteOptions } from "../../src/core/rewrite-options.js";
-import { cleanProfile } from "../../src/profiles/clean.js";
-import { MockProvider } from "../../src/providers/mock.js";
+import { prepareRewriteOptions } from "@/core/rewrite-options.js";
+import { cleanProfile } from "@/profiles/clean.js";
+import { MockProvider } from "@/providers/mock.js";
 
 describe("rewrite options contract", () => {
   it("always asks providers for changes so CLI and TUI share the same prompt contract", () => {

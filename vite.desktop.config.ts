@@ -14,6 +14,11 @@ import { defineConfig } from "vite";
  */
 export default defineConfig({
   root: fileURLToPath(new URL("./src/desktop/renderer", import.meta.url)),
+  // Vite does not read `tsconfig.paths`; `@/…` must resolve here too, and the
+  // renderer root is not the project root, so the alias is spelled absolutely.
+  resolve: {
+    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+  },
   base: "./",
   plugins: [react()],
   build: {

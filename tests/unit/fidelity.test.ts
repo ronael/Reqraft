@@ -1,8 +1,5 @@
 import { describe, expect, it } from "vitest";
-import {
-  detectUnsupportedAdditions,
-  isDisproportionateExpansion,
-} from "../../src/core/fidelity.js";
+import { detectUnsupportedAdditions, isDisproportionateExpansion } from "@/core/fidelity.js";
 
 describe("fidelity checks", () => {
   it("detects common unsupported additions absent from the input", () => {

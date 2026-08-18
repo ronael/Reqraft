@@ -11,7 +11,7 @@ export type SubmitOutcome =
   { type: "newline"; input: string } | { type: "generate"; input: string };
 
 const LINE_CONTINUATION = "\\";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 

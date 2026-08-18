@@ -1,7 +1,7 @@
-import type { RepromptResult } from "../core/types.js";
+import type { RepromptResult } from "@/core/types.js";
 import { formatDuration } from "./formatters.js";
 import type { PanelTone } from "./theme/types.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 

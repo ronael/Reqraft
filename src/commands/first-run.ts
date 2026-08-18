@@ -2,14 +2,14 @@ import process from "node:process";
 import readline from "node:readline";
 import { existsSync } from "node:fs";
 import type { Readable, Writable } from "node:stream";
-import { ConfigSchema, type Config } from "../config/schema.js";
-import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "../config/loader.js";
-import { getPresetModels } from "../models/presets.js";
-import { createProvider } from "../providers/registry.js";
-import { hydrateCredentials } from "../auth/credentials.js";
-import { formatUiError } from "../ui/errors.js";
-import type { AnsiStyleOptions } from "../ui/ansi.js";
-import { detectCapabilities } from "../ui/theme/capabilities.js";
+import { ConfigSchema, type Config } from "@/config/schema.js";
+import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
+import { getPresetModels } from "@/models/presets.js";
+import { createProvider } from "@/providers/registry.js";
+import { hydrateCredentials } from "@/auth/credentials.js";
+import { formatUiError } from "@/ui/errors.js";
+import type { AnsiStyleOptions } from "@/ui/ansi.js";
+import { detectCapabilities } from "@/ui/theme/capabilities.js";
 import {
   formatInitChoice,
   formatInitCommand,
@@ -19,11 +19,11 @@ import {
   formatInitQuestion,
   formatInitSection,
   formatInitStatus,
-} from "../ui/init-format.js";
-import { REPROMPT_LEVELS } from "../core/levels.js";
-import { REPROMPT_POLICY } from "../core/reprompt-policy.js";
-import { listProfiles } from "../profiles/registry.js";
-import { AUTO_PROFILE_ID } from "../profiles/profile-ids.js";
+} from "@/ui/init-format.js";
+import { REPROMPT_LEVELS } from "@/core/levels.js";
+import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
+import { listProfiles } from "@/profiles/registry.js";
+import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import {
   type CredentialProvider,
   type InitProvider,
@@ -33,10 +33,10 @@ import {
   listCredentialProviders,
   listProviderDefinitions,
   OPENAI_COMPATIBLE_PROVIDER_ID,
-} from "../providers/catalog.js";
-import { createTranslator, type Translator } from "../i18n/translate.js";
-import { modelDescription } from "../presentation/catalog-labels.js";
-import type { UiLocalePreference } from "../i18n/locale.js";
+} from "@/providers/catalog.js";
+import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { modelDescription } from "@/presentation/catalog-labels.js";
+import type { UiLocalePreference } from "@/i18n/locale.js";
 
 interface InitProviderChoice {
   label: string;

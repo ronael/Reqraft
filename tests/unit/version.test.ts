@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { version } from "../../src/version.js";
+import { version } from "@/version.js";
 
 describe("version", () => {
   it("should export a semantic version string", () => {

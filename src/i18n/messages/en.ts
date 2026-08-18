@@ -1,4 +1,4 @@
-import type { MessageCatalogue } from "../translate.js";
+import type { MessageCatalogue } from "@/i18n/translate.js";
 
 export const en = {
   "common.error": () => "Error",
