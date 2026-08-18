@@ -68,10 +68,5 @@ without a reason:
   across distributions, Nix and Homebrew, so pinning one would break legitimate
   installs. It would also add no security boundary, since `rp` is itself
   resolved from the same `PATH`. The command name is a fixed literal.
-- `sonarjs/no-os-command-from-path` in
-  `tests/unit/npm-package-contents.test.ts`, on the `npm pack --dry-run`
-  invocation. Same reasoning: `npm` has no stable absolute path across nvm,
-  Volta, Homebrew and CI images. The check runs in tests only, on a fixed
-  command literal with no interpolated input.
 
 Any new suppression belongs in this list, with its reasoning.
