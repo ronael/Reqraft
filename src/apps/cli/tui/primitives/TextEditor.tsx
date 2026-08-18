@@ -1,5 +1,5 @@
 /* @jsxImportSource @opentui/react */
-import React, { useCallback, useRef } from "react";
+import React, { useCallback, useEffect, useRef } from "react";
 import type { TextareaRenderable } from "@opentui/core";
 import { theme } from "@/apps/cli/tui/theme/index.js";
 
@@ -23,9 +23,16 @@ export interface TextEditorProps {
  * right until someone types an accent or pastes a line.
  *
  * The surface exposed here is only what Reqraft needs; the OpenTUI options
- * stay behind it so screens never learn the renderer's vocabulary. In
- * particular `onContentChange` carries no payload, so the current text is read
- * back from the renderable — a detail no caller should have to know.
+ * stay behind it so screens never learn the renderer's vocabulary. Two such
+ * details are handled here rather than by callers:
+ *
+ * - `onContentChange` carries no payload, so the current text is read back
+ *   from the renderable.
+ * - `initialValue` is latched by OpenTUI after the first render, so on its own
+ *   it would make this an uncontrolled component: a session reset or a
+ *   programmatic prompt replacement would leave stale text on screen. The
+ *   effect below closes that gap, which is what lets `value` behave like the
+ *   prop its name promises.
  */
 export function TextEditor({
   value,
@@ -43,6 +50,23 @@ export function TextEditor({
     const current = editor.current?.plainText;
     if (current !== undefined) onChange(current);
   }, [onChange]);
+
+  useEffect(() => {
+    const renderable = editor.current;
+    // Comparing first is what stops a feedback loop: the keystroke the user
+    // just made comes back as `value`, and rewriting the buffer for it would
+    // move the cursor out from under them.
+    if (renderable === null || renderable.plainText === value) return;
+
+    if (value === "") {
+      // A reset is a clean slate — undo must not resurrect the previous
+      // session's prompt.
+      renderable.setText("");
+    } else {
+      // Any other external replacement stays undoable.
+      renderable.replaceText(value);
+    }
+  }, [value]);
 
   return (
     <textarea

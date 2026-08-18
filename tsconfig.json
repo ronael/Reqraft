@@ -25,8 +25,11 @@
     "noFallthroughCasesInSwitch": true,
     "verbatimModuleSyntax": true,
     "isolatedModules": true,
-    "noUncheckedIndexedAccess": true
+    "noUncheckedIndexedAccess": true,
+    // Pinned so Bun's ambient types stay scoped to tsconfig.tui.json: pulling
+    // them in globally redefines fetch and breaks unrelated provider tests.
+    "types": ["node"]
   },
   "include": ["src/**/*", "tests/**/*", "benchmark/**/*", "scripts/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "exclude": ["node_modules", "dist", "tests/tui"]
 }

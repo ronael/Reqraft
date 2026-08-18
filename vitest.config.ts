@@ -12,6 +12,9 @@ export default defineConfig({
     globals: true,
     environment: "node",
     include: ["tests/**/*.{test,spec}.{ts,tsx}"],
+    // `tests/tui` drives the real OpenTUI renderer, whose native FFI only
+    // loads under Bun. Those run through `pnpm test:tui`, not here.
+    exclude: ["tests/tui/**"],
     coverage: {
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
