@@ -4,6 +4,7 @@ import { TextAttributes } from "@opentui/core";
 import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
 import { KeyHint } from "@/apps/cli/tui/primitives/KeyHint.js";
 import { theme } from "@/apps/cli/tui/theme/index.js";
+import { Rail } from "@/apps/cli/tui/primitives/Rail.js";
 import { Spinner } from "@/apps/cli/tui/primitives/Spinner.js";
 import { formatDiff, type ResultViewMode } from "@/apps/cli/ui/result-view.js";
 import type { ResultState } from "@/apps/cli/tui/model/result-state.js";
@@ -203,11 +204,8 @@ export function ResultTurn({
   const markColor = tone === "error" ? color.error : color.accent;
 
   return (
-    <box style={{ flexDirection: "column" }}>
+    <Rail color={markColor}>
       <text fg={color.textMuted}>
-        <span attributes={TextAttributes.BOLD} fg={markColor}>
-          {`▍ `}
-        </span>
         <span attributes={TextAttributes.BOLD} fg={tone === "error" ? color.error : color.text}>
           {t("tui.turn.reqraft")}
         </span>
@@ -219,6 +217,6 @@ export function ResultTurn({
           {renderBody(state, view, context, t, onCommand)}
         </box>
       )}
-    </box>
+    </Rail>
   );
 }

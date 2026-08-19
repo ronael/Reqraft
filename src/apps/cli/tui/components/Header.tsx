@@ -1,11 +1,11 @@
 /* @jsxImportSource @opentui/react */
-import React from "react";
-import { TextAttributes } from "@opentui/core";
+import type { ToolbarValues } from "@/apps/cli/tui/components/Toolbar.js";
+import { COMMANDS_BY_ID, commandKeyLabel, type CommandId } from "@/apps/cli/tui/model/commands.js";
 import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
 import { theme } from "@/apps/cli/tui/theme/index.js";
-import { COMMANDS_BY_ID, commandKeyLabel, type CommandId } from "@/apps/cli/tui/model/commands.js";
-import type { ToolbarValues } from "@/apps/cli/tui/components/Toolbar.js";
 import type { Translator } from "@/i18n/translate.js";
+import { TextAttributes } from "@opentui/core";
+import React from "react";
 
 export interface HeaderProps {
   values: ToolbarValues;
@@ -52,6 +52,10 @@ export function Header({
         alignItems: "center",
         justifyContent: "space-between",
         gap: theme.tokens.spacing.sm,
+        paddingLeft: theme.tokens.spacing.sm,
+        paddingRight: theme.tokens.spacing.sm,
+        paddingBottom: 0,
+        paddingTop: 1,
       }}
     >
       <Stack direction="row" gap="sm">

@@ -1,14 +1,15 @@
 /* @jsxImportSource @opentui/react */
-import React from "react";
-import { TextAttributes } from "@opentui/core";
-import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
-import { ScrollArea } from "@/apps/cli/tui/primitives/ScrollArea.js";
-import { theme } from "@/apps/cli/tui/theme/index.js";
 import { ResultTurn } from "@/apps/cli/tui/components/ResultTurn.js";
-import type { ResultState } from "@/apps/cli/tui/model/result-state.js";
 import type { CommandContext, CommandId } from "@/apps/cli/tui/model/commands.js";
+import type { ResultState } from "@/apps/cli/tui/model/result-state.js";
+import { Rail } from "@/apps/cli/tui/primitives/Rail.js";
+import { ScrollArea } from "@/apps/cli/tui/primitives/ScrollArea.js";
+import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
+import { theme } from "@/apps/cli/tui/theme/index.js";
 import type { ResultViewMode } from "@/apps/cli/ui/result-view.js";
 import type { Translator } from "@/i18n/translate.js";
+import { TextAttributes } from "@opentui/core";
+import React from "react";
 
 export interface TranscriptProps {
   /** Live editor content — the "you" turn only when nothing has been submitted. */
@@ -64,21 +65,20 @@ export function Transcript({
     <ScrollArea height={height} focused={focused} sticky={state.kind === "streaming"}>
       <Stack direction="column" gap="sm">
         {!hasExchange && (
-          <text fg={color.textMuted}>
-            <span attributes={TextAttributes.BOLD} fg={color.text}>
-              {t("tui.turn.reqraft")}
-            </span>
-            <span> </span>
-            <span>{t("tui.transcript.empty")}</span>
-          </text>
+          <Rail color={color.border}>
+            <text fg={color.textMuted}>
+              <span attributes={TextAttributes.BOLD} fg={color.text}>
+                {t("tui.turn.reqraft")}
+              </span>
+              <span> </span>
+              <span>{t("tui.transcript.empty")}</span>
+            </text>
+          </Rail>
         )}
 
         {showYou && (
-          <box style={{ flexDirection: "column" }}>
+          <Rail color={color.border}>
             <text fg={color.textMuted}>
-              <span attributes={TextAttributes.BOLD} fg={color.accent}>
-                {`▍ `}
-              </span>
               <span attributes={TextAttributes.BOLD} fg={color.accent}>
                 {t("tui.turn.you")}
               </span>
@@ -86,7 +86,7 @@ export function Transcript({
               <span>{t("tui.turn.user")}</span>
             </text>
             <text fg={color.text}>{youText}</text>
-          </box>
+          </Rail>
         )}
 
         {state.kind !== "empty" && (
