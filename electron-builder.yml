@@ -1,13 +1,15 @@
-# Packaging macOS (DESKTOP.md lot 6).
+# Packaging desktop (DESKTOP.md lot 6).
 #
 # Durcissement et entitlements posés DÈS la première configuration (§5.10) :
 # les ajouter après obligerait à tout resigner et renotariser.
 #
-# Signature et notarisation : actives dès que les secrets sont présents dans
-# l'environnement (CSC_NAME ou CSC_LINK pour le certificat Developer ID,
-# APPLE_ID / APPLE_APP_SPECIFIC_PASSWORD / APPLE_TEAM_ID pour la notarisation).
-# Sans eux, electron-builder produit un binaire local non signé — utile pour
-# tester le packaging, pas pour la distribution.
+# Chaque plateforme se construit sur son propre runner GitHub Actions
+# (.github/workflows/desktop.yml) : electron-builder sait produire un AppImage
+# depuis macOS, mais pas un installeur Windows signable ni un DMG depuis Linux.
+# Un job par OS reste plus simple à lire qu'une cross-compilation partielle.
+#
+# Ce que chaque cible vaut réellement — buildable n'est pas supporté — est
+# documenté dans docs/desktop-platform-support.md, qui fait foi.
 
 appId: fr.reqraft.desktop
 productName: Reqraft
@@ -39,15 +41,26 @@ files:
 # natif arrive (port Windows/Linux), l'ajouter à asarUnpack (lot 6, §5.3).
 asar: true
 
+# Nom stable et lisible : le nom du fichier téléchargé doit dire la version,
+# l'OS et l'architecture sans avoir à l'ouvrir.
+artifactName: ${productName}-${version}-${os}-${arch}.${ext}
+
 mac:
   category: public.app-category.productivity
   target:
     - target: dmg
-      arch: [arm64, x64]
+      # arm64 seulement : c'est l'architecture réellement testée à la main.
+      # Ajouter x64 ou universal ici suffira le jour où l'un des deux aura été
+      # validé — rien d'autre dans le pipeline n'en dépend.
+      arch: [arm64]
+    - target: zip
+      arch: [arm64]
   hardenedRuntime: true
   entitlements: build/entitlements.mac.plist
   entitlementsInherit: build/entitlements.mac.plist
-  # Notarisation active seulement si les identifiants Apple sont présents.
+  # Notarisation pilotée par le workflow : elle n'a de sens qu'une fois les
+  # identifiants Apple présents, et une release officielle non signée doit
+  # échouer plutôt que passer silencieusement (voir desktop.yml).
   notarize: false
 
 dmg:
@@ -56,5 +69,33 @@ dmg:
     width: 540
     height: 380
 
-# Mise à jour automatique : préparée (point d'extension `publish`) mais
-# désactivée par défaut — aucun canal publish configuré (lot 6).
+win:
+  target:
+    - target: nsis
+      # Pas de 32 bits : aucune machine cible connue n'en a besoin.
+      arch: [x64]
+  # Signature : electron-builder la déclenche dès que WIN_CSC_LINK et
+  # WIN_CSC_KEY_PASSWORD existent dans l'environnement. Aucun certificat ni
+  # mot de passe ne vit dans ce dépôt.
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  # Le suffixe vit dans le nom du fichier, pas seulement dans les notes de
+  # release : c'est le nom qui reste sur le disque une fois la page oubliée.
+  # Il tombera le jour où Windows sera validé à la main
+  # (docs/desktop-platform-support.md).
+  artifactName: ${productName}-${version}-win-${arch}-experimental.${ext}
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+  category: Utility
+  # Même raisonnement que pour Windows.
+  artifactName: ${productName}-${version}-linux-${arch}-experimental.${ext}
+  # deb/rpm/snap/flatpak délibérément absents : on les ajoutera si une demande
+  # réelle apparaît, pas par anticipation.
+
+# Mise à jour automatique : point d'extension `publish` volontairement absent.
+# electron-updater viendra après une distribution fiable, pas avant.
