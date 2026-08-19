@@ -2,6 +2,7 @@
 import React from "react";
 import { TextAttributes } from "@opentui/core";
 import { theme } from "@/apps/cli/tui/theme/index.js";
+import { KeyCap } from "@/apps/cli/tui/primitives/KeyCap.js";
 import { commandKeyLabel, type CommandDefinition } from "@/apps/cli/tui/model/commands.js";
 import type { Translator } from "@/i18n/translate.js";
 
@@ -33,7 +34,7 @@ export function KeyHint({
       attributes={disabled ? TextAttributes.DIM : undefined}
       onMouseDown={disabled || onActivate === undefined ? undefined : onActivate}
     >
-      <span fg={disabled ? color.textMuted : color.accent}>{commandKeyLabel(command)}</span>
+      <KeyCap label={commandKeyLabel(command)} muted={disabled} />
       <span fg={color.textMuted}> </span>
       <span fg={disabled ? color.textMuted : color.textSubtle}>{t(command.labelKey)}</span>
     </text>

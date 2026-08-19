@@ -1,6 +1,7 @@
 /* @jsxImportSource @opentui/react */
 import type { ToolbarValues } from "@/apps/cli/tui/components/Toolbar.js";
 import { COMMANDS_BY_ID, commandKeyLabel, type CommandId } from "@/apps/cli/tui/model/commands.js";
+import { KeyCap } from "@/apps/cli/tui/primitives/KeyCap.js";
 import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
 import { theme } from "@/apps/cli/tui/theme/index.js";
 import type { Translator } from "@/i18n/translate.js";
@@ -67,8 +68,11 @@ export function Header({
           const command = COMMANDS_BY_ID.get(id);
           const chord = command ? commandKeyLabel(command) : "";
           return (
-            <text
+            <box
               key={id}
+              style={{
+                // backgroundColor: onActivate === undefined ? color.accent : color.surface,
+              }}
               onMouseDown={
                 onActivate === undefined
                   ? undefined
@@ -77,16 +81,19 @@ export function Header({
                     }
               }
             >
-              {!compact && chord !== "" && <span fg={color.accent}>{`${chord} `}</span>}
-              {/*
+              <text>
+                {!compact && chord !== "" && <KeyCap label={chord} />}
+                {!compact && chord !== "" && <span>{" "}</span>}
+                {/*
                 Compact keeps the values and drops the labels, not the reverse:
                 "auto" is the information, "profil" is only the word for it. The
                 French labels ("fournisseur", "modèle") pushed the row past 72
                 columns and wrapped it onto a second line.
               */}
-              {!compact && <span fg={color.textMuted}>{`${t(labelKey)} `}</span>}
-              <span fg={color.text}>{values[key]}</span>
-            </text>
+                {!compact && <span fg={color.textMuted}>{`${t(labelKey)} `}</span>}
+                <span fg={color.text}>{values[key]}</span>
+              </text>
+            </box>
           );
         })}
       </Stack>
