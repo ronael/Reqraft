@@ -84,7 +84,13 @@ describe("keyboard routing", () => {
 
   it("never lets an overlay leak keys into the editor", () => {
     const context = routing({ hasOverlay: true });
-    expect(routeKey({ ctrl: false, name: "a" }, context)).toEqual({ kind: "ignored" });
+    // A printable key is claimed by the overlay (the palette query), never by
+    // the editor underneath.
+    expect(routeKey({ ctrl: false, name: "a" }, context)).toEqual({
+      kind: "overlay-type",
+      text: "a",
+    });
+    // A control chord is neither a palette query nor a command: nothing fires.
     expect(routeKey({ ctrl: true, name: "p" }, context)).toEqual({ kind: "ignored" });
   });
 
@@ -171,10 +177,17 @@ describe("focus model", () => {
 });
 
 describe("responsive layout", () => {
-  it("splits columns only when the terminal is genuinely wide", () => {
-    expect(resolveLayout(120, 40).mode).toBe("wide");
-    expect(resolveLayout(120, 40).splitColumns).toBe(true);
-    expect(resolveLayout(100, 30).splitColumns).toBe(false);
+  it("never splits columns — the composition is always the vertical transcript", () => {
+    // The design is a single top-to-bottom flow even on a wide terminal.
+    for (const [width, height] of [
+      [120, 40],
+      [100, 30],
+      [160, 50],
+    ] as const) {
+      const layout = resolveLayout(width, height);
+      expect("splitColumns" in layout).toBe(false);
+      expect(layout.mode).not.toBe("wide");
+    }
   });
 
   it("drops metadata before anything structural on a short terminal", () => {
@@ -185,8 +198,8 @@ describe("responsive layout", () => {
   });
 
   it("classifies the reference terminal sizes", () => {
-    expect(resolveLayoutMode(120, 40)).toBe("wide");
-    expect(resolveLayoutMode(100, 30)).toBe("normal");
+    expect(resolveLayoutMode(120, 40)).toBe("standard");
+    expect(resolveLayoutMode(100, 30)).toBe("standard");
     expect(resolveLayoutMode(80, 24)).toBe("compact");
     expect(resolveLayoutMode(60, 16)).toBe("compact");
     expect(resolveLayoutMode(40, 10)).toBe("too-small");
@@ -207,11 +220,16 @@ describe("responsive layout", () => {
     }
   });
 
+  it("keeps a scrollable transcript while there is room to read", () => {
+    expect(resolveLayout(120, 40).transcriptRows).toBeGreaterThan(0);
+    expect(resolveLayout(80, 24).transcriptRows).toBeGreaterThan(0);
+  });
+
   it("stops rendering optional rows below the minimum rather than overflowing", () => {
     const tiny = resolveLayout(30, 8);
     expect(tiny.mode).toBe("too-small");
     expect(tiny.showStatusBar).toBe(false);
-    expect(tiny.splitColumns).toBe(false);
+    expect(tiny.transcriptRows).toBe(0);
   });
 });
 

@@ -1,4 +1,4 @@
-import { runOpenTuiApp } from "./app.js";
+import { runOpenTuiAppV2 } from "@/apps/cli/tui/app/OpenTuiApp.js";
 import { loadConfig } from "@/config/loader.js";
 import { resolveUiLocale, systemLocaleCandidates } from "@/i18n/locale.js";
 import { createTranslator } from "@/i18n/translate.js";
@@ -15,4 +15,4 @@ const locale = resolveUiLocale({
   systemLocales: systemLocaleCandidates(),
 });
 
-await runOpenTuiApp(createTranslator(locale));
+await runOpenTuiAppV2(createTranslator(locale));

@@ -10,6 +10,8 @@ export interface KeyHintProps {
   t: Translator;
   /** Advertised but inert in the current state. */
   disabled?: boolean;
+  /** A click on the hint raises the command, converging mouse and keyboard. */
+  onActivate?(): void;
 }
 
 /**
@@ -19,10 +21,18 @@ export interface KeyHintProps {
  * key the handler does not implement — the drift this replaces had the label
  * hardcoded in one module and the binding in another.
  */
-export function KeyHint({ command, t, disabled = false }: Readonly<KeyHintProps>): React.ReactNode {
+export function KeyHint({
+  command,
+  t,
+  disabled = false,
+  onActivate,
+}: Readonly<KeyHintProps>): React.ReactNode {
   const { color } = theme.tokens;
   return (
-    <text attributes={disabled ? TextAttributes.DIM : undefined}>
+    <text
+      attributes={disabled ? TextAttributes.DIM : undefined}
+      onMouseDown={disabled || onActivate === undefined ? undefined : onActivate}
+    >
       <span fg={disabled ? color.textMuted : color.accent}>{commandKeyLabel(command)}</span>
       <span fg={color.textMuted}> </span>
       <span fg={disabled ? color.textMuted : color.textSubtle}>{t(command.labelKey)}</span>

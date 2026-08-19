@@ -12,8 +12,18 @@ export type ResultState =
   | { kind: "empty" }
   | { kind: "loading" }
   | { kind: "streaming"; partial: string }
-  | { kind: "success"; text: string; quality?: QualityAssessment }
-  | { kind: "error"; title: string; message: string };
+  | {
+      kind: "success";
+      text: string;
+      quality?: QualityAssessment;
+      /** Original prompt, present when diff/explain views are reachable. */
+      original?: string;
+      changes?: string[];
+      latencyMs?: number;
+      provider?: string;
+      model?: string;
+    }
+  | { kind: "error"; title: string; message: string; nextAction?: string };
 
 export function isBusy(state: ResultState): boolean {
   return state.kind === "loading" || state.kind === "streaming";
