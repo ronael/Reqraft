@@ -56,11 +56,34 @@ function viewLines(state: SuccessState, view: ResultViewMode): string[] {
   return state.text.split("\n");
 }
 
-function resultMeta(state: SuccessState, t: Translator): string[] {
-  const parts: string[] = [];
-  if (state.quality?.status) parts.push(t("tui.result.faithful"));
-  if (state.latencyMs !== undefined) parts.push(`${(state.latencyMs / 1000).toFixed(1)} s`);
-  if (state.provider && state.model) parts.push(`${state.provider}/${state.model}`);
+interface MetaPart {
+  text: string;
+  color?: string;
+}
+
+/** Map a quality status to its real label and colour — never a blind "faithful". */
+function qualityMeta(state: SuccessState, t: Translator): MetaPart | null {
+  const status = state.quality?.status;
+  const { color } = theme.tokens;
+  switch (status) {
+    case "good":
+      return { text: t("quality.statusGood"), color: color.success };
+    case "review":
+      return { text: t("quality.statusReview"), color: color.warning };
+    case "risky":
+      return { text: t("quality.statusRisky"), color: color.error };
+    default:
+      return null;
+  }
+}
+
+function resultMeta(state: SuccessState, t: Translator): MetaPart[] {
+  const parts: MetaPart[] = [];
+  const quality = qualityMeta(state, t);
+  if (quality) parts.push(quality);
+  if (state.latencyMs !== undefined)
+    parts.push({ text: `${(state.latencyMs / 1000).toFixed(1)} s` });
+  if (state.provider && state.model) parts.push({ text: `${state.provider}/${state.model}` });
   return parts;
 }
 
@@ -88,9 +111,9 @@ function successBody(
       {meta.length > 0 && (
         <text fg={color.textMuted}>
           {meta.map((part, index) => (
-            <span key={part}>
+            <span key={part.text}>
               {index > 0 && <span>{` · `}</span>}
-              <span fg={index === 0 ? color.success : undefined}>{part}</span>
+              <span fg={part.color}>{part.text}</span>
             </span>
           ))}
         </text>

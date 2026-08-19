@@ -10,7 +10,7 @@ import { HelpOverlay } from "@/apps/cli/tui/components/HelpOverlay.js";
 import { TooSmall } from "@/apps/cli/tui/components/TooSmall.js";
 import { Toast, type ToastTone } from "@/apps/cli/tui/components/Toast.js";
 import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
-import { theme } from "@/apps/cli/tui/theme/index.js";
+import { theme, editorSurfaceOverhead } from "@/apps/cli/tui/theme/index.js";
 import { resolveLayout } from "@/apps/cli/tui/model/layout.js";
 import { hasResult, isBusy, type ResultState } from "@/apps/cli/tui/model/result-state.js";
 import {
@@ -42,6 +42,8 @@ export interface EditorScreenProps {
   width: number;
   height: number;
   prompt: string;
+  /** Snapshot of the submitted prompt, kept stable across edits after a run. */
+  submittedPrompt: string | null;
   result: ResultState;
   view: ResultViewMode;
   focus: FocusState;
@@ -68,6 +70,7 @@ export function EditorScreen({
   width,
   height,
   prompt,
+  submittedPrompt,
   result,
   view,
   focus,
@@ -80,8 +83,12 @@ export function EditorScreen({
   onCommand,
   onOverlaySelect,
 }: Readonly<EditorScreenProps>): React.ReactNode {
-  const layout = resolveLayout(width, height);
+  const layout = resolveLayout(width, height, undefined, {
+    comfortable: editorSurfaceOverhead(theme.components, "comfortable"),
+    compact: editorSurfaceOverhead(theme.components, "compact"),
+  });
   const { color } = theme.tokens;
+  const density = layout.mode === "compact" ? "compact" : "comfortable";
 
   const context = {
     hasOverlay: isOverlayOpen(overlay),
@@ -111,7 +118,7 @@ export function EditorScreen({
       focused={isZoneFocused(focus, "editor")}
       rows={layout.editorRows}
       disabled={isBusy(result)}
-      density={layout.mode === "compact" ? "compact" : "comfortable"}
+      density={density}
       meta={layout.showMetadata ? settings.model : undefined}
       t={t}
       onChange={onPromptChange}
@@ -129,13 +136,20 @@ export function EditorScreen({
         position: "relative",
       }}
     >
-      {layout.showMetadata && (
-        <Header values={settings} ready={ready} t={t} onActivate={onCommand} />
+      {layout.showHeader && (
+        <Header
+          values={settings}
+          ready={ready}
+          t={t}
+          compact={!layout.showMetadata}
+          onActivate={onCommand}
+        />
       )}
 
       <Stack direction="column" gap="xs" grow>
         <Transcript
-          prompt={prompt}
+          livePrompt={prompt}
+          submittedPrompt={submittedPrompt}
           state={result}
           view={view}
           context={context}

@@ -11,7 +11,14 @@ import type { ResultViewMode } from "@/apps/cli/ui/result-view.js";
 import type { Translator } from "@/i18n/translate.js";
 
 export interface TranscriptProps {
-  prompt: string;
+  /** Live editor content — the "you" turn only when nothing has been submitted. */
+  livePrompt: string;
+  /**
+   * The prompt that was actually submitted, snapshotted when generation
+   * started. Used so editing the editor after a run does not rewrite history.
+   * `result.original` takes precedence once a result exists.
+   */
+  submittedPrompt: string | null;
   state: ResultState;
   view: ResultViewMode;
   context: CommandContext;
@@ -22,17 +29,20 @@ export interface TranscriptProps {
 }
 
 /**
- * The vertical conversation: the current prompt and its result, stacked and
+ * The vertical conversation: the submitted prompt and its result, stacked and
  * scrolled together.
  *
  * Not a chat history — there is exactly one exchange. The prompt stays as the
  * "you" turn even once a result exists, so the screen reads top-to-bottom
- * without losing what was asked. The whole region is a ScrollArea (OpenTUI's
+ * without losing what was asked. The "you" text is the *submitted* prompt, not
+ * the live editor buffer: once a result exists it must not change retroactively
+ * if the user edits the textarea. The whole region is a ScrollArea (OpenTUI's
  * scrollbox), so long content scrolls inside the transcript rather than
  * pushing the editor off screen.
  */
 export function Transcript({
-  prompt,
+  livePrompt,
+  submittedPrompt,
   state,
   view,
   context,
@@ -42,11 +52,17 @@ export function Transcript({
   onCommand,
 }: Readonly<TranscriptProps>): React.ReactNode {
   const { color } = theme.tokens;
-  const hasPrompt = prompt.length > 0;
-  const hasExchange = state.kind !== "empty" || hasPrompt;
+
+  const youText =
+    state.kind === "success" && state.original !== undefined
+      ? state.original
+      : (submittedPrompt ?? livePrompt);
+  const hasSubmitted = submittedPrompt !== null || state.kind !== "empty";
+  const showYou = hasSubmitted || livePrompt.length > 0;
+  const hasExchange = state.kind !== "empty" || hasSubmitted || livePrompt.length > 0;
 
   return (
-    <ScrollArea height={height} focused={focused}>
+    <ScrollArea height={height} focused={focused} sticky={state.kind === "streaming"}>
       <Stack direction="column" gap="sm">
         {!hasExchange && (
           <text fg={color.textMuted}>
@@ -58,7 +74,7 @@ export function Transcript({
           </text>
         )}
 
-        {hasPrompt && (
+        {showYou && (
           <box style={{ flexDirection: "column" }}>
             <text fg={color.textMuted}>
               <span attributes={TextAttributes.BOLD} fg={color.accent}>
@@ -70,7 +86,7 @@ export function Transcript({
               <span> </span>
               <span>{t("tui.turn.user")}</span>
             </text>
-            <text fg={color.text}>{prompt}</text>
+            <text fg={color.text}>{youText}</text>
           </box>
         )}
 

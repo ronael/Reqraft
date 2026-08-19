@@ -54,6 +54,8 @@ export interface LayoutTokens {
   minimumWidth: number;
   minimumHeight: number;
   sidebarWidth: number;
+  /** Cell gap used between stacked rows, so the height budget is exact. */
+  gap: number;
 }
 
 export interface Tokens {
@@ -107,6 +109,7 @@ export const LAYOUT: LayoutTokens = {
   minimumWidth: 60,
   minimumHeight: 16,
   sidebarWidth: 28,
+  gap: 1,
 };
 
 export function createTokens(capabilities: TerminalCapabilities): Tokens {

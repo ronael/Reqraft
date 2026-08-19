@@ -12,18 +12,36 @@ import { LAYOUT, type LayoutTokens } from "@/apps/cli/tui/theme/tokens.js";
  * only reduce how much of it is shown. There is no horizontal split: a prompt
  * and its result read top-to-bottom, even on a very wide terminal, so the
  * editor stays where the eye lands last and the transcript stays scrollable.
+ *
+ * The height budget is exact. `editorHeight` is the FULL height of the prompt
+ * surface — borders, title, padding and the textarea — not just the textarea,
+ * so the invariant below always holds:
+ *
+ *   header + gaps + transcript + editorHeight + statusBar <= terminal height
  */
 
 export type LayoutMode = "standard" | "compact" | "too-small";
 
+/** Rows a titled Surface adds around its editor child, per density. */
+export interface EditorOverhead {
+  comfortable: number;
+  compact: number;
+}
+
+export const DEFAULT_EDITOR_OVERHEAD: EditorOverhead = { comfortable: 5, compact: 3 };
+
 export interface LayoutDecision {
   mode: LayoutMode;
-  /** Secondary metadata (model/provider shortcuts) is dropped. */
+  /** The header row (identity + context) is shown. */
+  showHeader: boolean;
+  /** Per-setting shortcuts/metadata inside the header are shown. */
   showMetadata: boolean;
   /** The shortcut footer is dropped rather than wrapped. */
   showStatusBar: boolean;
-  /** Rows the editor may use; never zero, so the prompt stays usable. */
+  /** Rows the textarea may use; never zero, so the prompt stays usable. */
   editorRows: number;
+  /** Full height the prompt surface consumes, including borders/title/padding. */
+  editorHeight: number;
   /** Rows the transcript may use; never zero, so a result stays reachable. */
   transcriptRows: number;
   headerRows: number;
@@ -41,58 +59,69 @@ export function resolveLayoutMode(
   return height <= layout.compactMaximumHeight ? "compact" : "standard";
 }
 
-/**
- * Degradation order, made explicit: metadata goes first, then the status bar,
- * then everything below the minimum. The editor is never what gets sacrificed
- * — a prompt you cannot see is not a smaller interface, it is a broken one.
- * The transcript is what scrolls, so it simply shrinks as space tightens.
- */
+function editorOverheadFor(mode: LayoutMode, overhead: EditorOverhead): number {
+  return mode === "compact" ? overhead.compact : overhead.comfortable;
+}
+
 export function resolveLayout(
   width: number,
   height: number,
   layout: LayoutTokens = LAYOUT,
+  overhead: EditorOverhead = DEFAULT_EDITOR_OVERHEAD,
 ): LayoutDecision {
   const mode = resolveLayoutMode(width, height, layout);
+  const { gap } = layout;
+
+  if (mode === "too-small") {
+    return {
+      mode,
+      showHeader: false,
+      showMetadata: false,
+      showStatusBar: false,
+      editorRows: 1,
+      editorHeight: 1,
+      transcriptRows: 0,
+      headerRows: 0,
+      footerRows: 0,
+    };
+  }
+
+  const showHeader = true;
+  const showMetadata = mode === "standard";
+  const showStatusBar = true;
   const headerRows = 1;
   const footerRows = 1;
-  const editorRows = Math.max(1, Math.min(8, Math.floor(height / 5)));
+  // Root gaps separate Header/Stack/StatusBar (2), and the Stack adds one more
+  // between transcript and editor (1). Header and StatusBar are always present
+  // outside the too-small branch, so this is fixed.
+  const gapCount = 3;
+  const fixed = headerRows + footerRows + gapCount * gap;
+  const surfaceOverhead = editorOverheadFor(mode, overhead);
 
-  const base = {
+  // The editor is the most important fixed region: size it to the terminal,
+  // then give the transcript whatever is left, shrinking the editor if that
+  // would leave the transcript with nothing to scroll.
+  const desiredEditorRows = Math.max(1, Math.min(8, Math.floor(height / 5)));
+  let editorHeight = desiredEditorRows + surfaceOverhead;
+  let transcriptRows = height - fixed - editorHeight;
+  if (transcriptRows < 1) {
+    editorHeight = Math.max(height - fixed - 1, surfaceOverhead + 1);
+    transcriptRows = height - fixed - editorHeight;
+  }
+
+  // editorHeight is kept at least `surfaceOverhead + 1`, so the textarea keeps
+  // at least one row by construction.
+  const editorRows = editorHeight - surfaceOverhead;
+
+  return {
     mode,
+    showHeader,
+    showMetadata,
+    showStatusBar,
+    editorRows,
+    editorHeight,
+    transcriptRows: Math.max(1, transcriptRows),
     headerRows,
     footerRows,
-    editorRows,
   };
-
-  switch (mode) {
-    case "compact":
-      return {
-        ...base,
-        showMetadata: false,
-        showStatusBar: true,
-        transcriptRows: Math.max(
-          1,
-          height - headerRows - editorRows - footerRows - (footerRows + 1) * 1 - 1,
-        ),
-      };
-    case "standard":
-      return {
-        ...base,
-        showMetadata: true,
-        showStatusBar: true,
-        transcriptRows: Math.max(
-          1,
-          height - headerRows - editorRows - footerRows - (footerRows + 1) * 1 - 1,
-        ),
-      };
-    default:
-      // Below the minimum the interface stops pretending: one editor, one
-      // line of guidance, nothing that could overflow and corrupt the frame.
-      return {
-        ...base,
-        showMetadata: false,
-        showStatusBar: false,
-        transcriptRows: 0,
-      };
-  }
 }

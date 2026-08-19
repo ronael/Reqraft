@@ -36,6 +36,8 @@ export interface ComponentTokens {
   editor: {
     minimumHeight: number;
     paddingX: number;
+    /** Rows a Surface with a title adds around its child (borders + title + paddingY). */
+    overhead: Record<Density, number>;
   };
   statusBar: {
     height: number;
@@ -59,9 +61,25 @@ export function createComponentTokens(tokens: Tokens): ComponentTokens {
       maximumHeightRatio: 0.7,
       paddingX: spacing.sm,
     },
-    editor: { minimumHeight: 3, paddingX: spacing.xs },
+    editor: {
+      minimumHeight: 3,
+      paddingX: spacing.xs,
+      overhead: {
+        comfortable: 2 + 1 + 2 * spacing.xs,
+        compact: 2 + 1 + 2 * spacing.none,
+      },
+    },
     statusBar: { height: 1, gap: spacing.sm },
   };
+}
+
+/**
+ * The rows a titled Surface consumes around its child: top and bottom borders,
+ * the title row, and the vertical padding on each side. Layout uses this so
+ * the editor's total height (not just the textarea) fits the terminal budget.
+ */
+export function editorSurfaceOverhead(components: ComponentTokens, density: Density): number {
+  return components.editor.overhead[density];
 }
 
 /** Maps a semantic tone to the border colour that carries it. */

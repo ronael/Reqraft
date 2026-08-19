@@ -7,6 +7,8 @@ export interface ScrollAreaProps {
   height: number;
   focused?: boolean;
   showScrollbar?: boolean;
+  /** Follow the bottom edge (log/chat) while enabled. */
+  sticky?: boolean;
   children: React.ReactNode;
 }
 
@@ -14,14 +16,15 @@ export interface ScrollAreaProps {
  * Scrollable region.
  *
  * Wraps the existing `ScrollView`, which already delegates to OpenTUI's
- * `scrollbox`: the renderer owns scroll offset, thumb size and culling, so
- * nothing in Reqraft tracks `scrollTop` by hand. This primitive only binds the
- * theme, so callers never pass a colour.
+ * `scrollbox`: the renderer owns scroll offset, thumb size, culling and sticky
+ * follow, so nothing in Reqraft tracks `scrollTop` by hand. This primitive only
+ * binds the theme, so callers never pass a colour.
  */
 export function ScrollArea({
   height,
   focused = false,
   showScrollbar = true,
+  sticky = false,
   children,
 }: Readonly<ScrollAreaProps>): React.ReactNode {
   return (
@@ -29,6 +32,7 @@ export function ScrollArea({
       height={height}
       focused={focused}
       showScrollbar={showScrollbar}
+      sticky={sticky}
       scrollbarColor={theme.tokens.color.border}
       thumbColor={theme.tokens.color.accent}
     >

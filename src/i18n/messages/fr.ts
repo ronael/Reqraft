@@ -431,7 +431,6 @@ export const fr = {
   "tui.tooSmall.title": () => "Terminal trop petit",
   "tui.tooSmall.body": () =>
     "Reqraft a besoin d'un peu plus d'espace pour afficher l'éditeur de manière fiable.",
-  "tui.result.faithful": () => "fidèle",
   "tui.picker.current": () => "actif",
   "tui.palette.title": () => "Commandes",
   "tui.palette.searchPlaceholder": () => "Tapez pour filtrer les commandes…",

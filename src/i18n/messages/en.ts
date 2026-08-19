@@ -421,7 +421,6 @@ export const en = {
   "tui.toast.cancelled": () => "Generation cancelled",
   "tui.tooSmall.title": () => "Terminal too small",
   "tui.tooSmall.body": () => "Reqraft needs a little more space to render the editor reliably.",
-  "tui.result.faithful": () => "faithful",
   "tui.picker.current": () => "current",
   "tui.palette.title": () => "Commands",
   "tui.palette.searchPlaceholder": () => "Type to filter commands…",

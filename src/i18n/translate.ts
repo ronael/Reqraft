@@ -25,7 +25,6 @@ export interface MessageParameters {
   "tui.toast.cancelled": undefined;
   "tui.tooSmall.title": undefined;
   "tui.tooSmall.body": undefined;
-  "tui.result.faithful": undefined;
   "tui.picker.current": undefined;
   "tui.palette.title": undefined;
   "tui.palette.searchPlaceholder": undefined;

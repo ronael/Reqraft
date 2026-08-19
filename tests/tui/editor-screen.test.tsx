@@ -65,6 +65,7 @@ async function mountScreen(options: HostOptions = {}) {
   let currentView: ResultViewMode = "result";
   let externalSetResult: ((value: ResultState) => void) | null = null;
   let externalSetView: ((value: ResultViewMode) => void) | null = null;
+  let externalSetSubmitted: ((value: string | null) => void) | null = null;
 
   function Host(): React.ReactNode {
     // Real renderer dimensions, so a resize actually reaches resolveLayout.
@@ -74,11 +75,13 @@ async function mountScreen(options: HostOptions = {}) {
     const [overlay, setOverlay] = useState<OverlayState>(INITIAL_OVERLAY);
     const [result, setResult] = useState<ResultState>(initialResult);
     const [view, setView] = useState<ResultViewMode>("result");
+    const [submittedPrompt, setSubmittedPrompt] = useState<string | null>(null);
     currentPrompt = prompt;
     currentFocus = focus;
     currentView = view;
     externalSetResult = setResult;
     externalSetView = setView;
+    externalSetSubmitted = setSubmittedPrompt;
 
     const onCommand = useCallback(
       (id: CommandId) => {
@@ -153,6 +156,7 @@ async function mountScreen(options: HostOptions = {}) {
           width={termWidth}
           height={termHeight}
           prompt={prompt}
+          submittedPrompt={submittedPrompt}
           result={result}
           view={view}
           focus={focus}
@@ -195,6 +199,11 @@ async function mountScreen(options: HostOptions = {}) {
     setView: (value: ResultViewMode) => {
       act(() => {
         externalSetView?.(value);
+      });
+    },
+    setSubmittedPrompt: (value: string | null) => {
+      act(() => {
+        externalSetSubmitted?.(value);
       });
     },
     type: async (text: string): Promise<void> => {
@@ -419,6 +428,15 @@ describe("EditorScreen · vertical transcript", () => {
     expect(screen.frame()).toContain("Clarified intent");
   });
 
+  test("maps a risky quality status to its own label, never 'faithful'", async () => {
+    const screen = await mountScreen({
+      result: { kind: "success", text: "out", quality: { status: "risky", signals: [] } },
+    });
+    const frame = screen.frame();
+    expect(frame).toContain(t("quality.statusRisky"));
+    expect(frame).not.toContain("faithful");
+  });
+
   test("scrolls a long result inside the transcript without breaking the editor", async () => {
     const longText = Array.from({ length: 40 }, (_, i) => `line ${String(i + 1)}`).join("\n");
     const screen = await mountScreen({
@@ -469,5 +487,26 @@ describe("EditorScreen · overlays", () => {
     const frame = screen.frame();
     expect(frame).toContain(t("tui.changeProfile"));
     expect(frame).toContain("auto");
+  });
+});
+
+describe("EditorScreen · height budget", () => {
+  const heights = [40, 30, 24, 16] as const;
+
+  test("keeps the editor border, status bar and all content within the terminal", async () => {
+    for (const height of heights) {
+      const screen = await mountScreen({ width: 120, height });
+      const frame = screen.frame();
+
+      // The editor's bottom border is drawn, so the surface did not overflow.
+      expect(frame).toContain("╰");
+      // The status bar is present and therefore inside the viewport.
+      expect(frame).toContain("^G");
+
+      // Nothing is rendered below the last terminal line: the frame has no
+      // more rows than the terminal height.
+      const rows = frame.split("\n").filter((line) => line.trim().length > 0).length;
+      expect(rows).toBeLessThanOrEqual(height);
+    }
   });
 });

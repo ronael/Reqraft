@@ -1,11 +1,19 @@
 /* @jsxImportSource @opentui/react */
-import { createCliRenderer, type KeyEvent } from "@opentui/core";
-import { createRoot, useKeyboard, useRenderer, useTerminalDimensions } from "@opentui/react";
+import { createCliRenderer } from "@opentui/core";
+import { createRoot, useRenderer, useTerminalDimensions } from "@opentui/react";
 import process from "node:process";
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { bootstrapConfiguration, getBootstrapError } from "@/application/bootstrap.js";
-import { executeReprompt } from "@/application/reprompt.js";
+import {
+  bootstrapConfiguration,
+  getBootstrapError,
+  type BootstrapResult,
+} from "@/application/bootstrap.js";
+import {
+  executeReprompt,
+  type ExecuteRepromptInput,
+  type ExecuteRepromptResult,
+} from "@/application/reprompt.js";
 import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
@@ -25,7 +33,7 @@ import {
   updatePromptInput,
   type AppState,
 } from "@/apps/cli/ui/app-state.js";
-import { describeUiError } from "@/shared/errors.js";
+import { describeUiError, type UiError } from "@/shared/errors.js";
 import {
   beginGeneration,
   canStartGeneration,
@@ -49,7 +57,6 @@ import {
   type ToastState,
 } from "@/apps/cli/tui/screens/EditorScreen.js";
 import { useKeyboardRouting } from "@/apps/cli/tui/app/use-keyboard-routing.js";
-import { toKeyPress } from "@/apps/cli/tui/app/keyboard.js";
 import type { OverlayRoute } from "@/apps/cli/tui/model/keymap.js";
 import {
   INITIAL_FOCUS,
@@ -68,7 +75,7 @@ import {
   setQuery,
   type OverlayState,
 } from "@/apps/cli/tui/model/overlay.js";
-import type { ResultState } from "@/apps/cli/tui/model/result-state.js";
+import { toResultState, type AppStatus } from "@/apps/cli/tui/model/app-result.js";
 import {
   availableCommands,
   type CommandContext,
@@ -76,44 +83,51 @@ import {
 } from "@/apps/cli/tui/model/commands.js";
 import type { ToolbarValues } from "@/apps/cli/tui/components/Toolbar.js";
 
-type Status = "idle" | "loading" | "streaming" | "success" | "error";
+type Status = AppStatus;
 
+/**
+ * The minimal set of side-effecting operations the TUI needs. Everything that
+ * touches a network or the system clipboard goes through here so tests can
+ * inject fakes — no real provider, no real clipboard.
+ */
+export interface TuiServices {
+  bootstrap(env: NodeJS.ProcessEnv): Promise<BootstrapResult>;
+  execute(input: ExecuteRepromptInput): Promise<ExecuteRepromptResult>;
+  readClipboard(): Promise<string>;
+  writeClipboard(text: string): Promise<void>;
+  describeError(error: unknown, provider: string, t: Translator): UiError;
+}
+
+const DEFAULT_SERVICES: TuiServices = {
+  bootstrap: bootstrapConfiguration,
+  execute: executeReprompt,
+  readClipboard,
+  writeClipboard,
+  describeError: describeUiError,
+};
 function isPickerOverlay(active: OverlayState["active"]): active is PickerOverlayId {
   return active === "profile" || active === "level" || active === "provider" || active === "model";
 }
 
-function toResultState(app: AppState, status: Status, partialText: string): ResultState {
-  if (status === "error" && !app.result && app.error) {
-    return {
-      kind: "error",
-      title: app.error.title,
-      message: app.error.message,
-      nextAction: app.error.nextAction,
-    };
-  }
-  if (status === "loading") return { kind: "loading" };
-  if (status === "streaming") return { kind: "streaming", partial: partialText };
-  if (app.result) {
-    const { result } = app;
-    return {
-      kind: "success",
-      text: result.rewritten,
-      quality: result.quality,
-      original: result.original,
-      changes: result.changes,
-      latencyMs: result.latencyMs,
-      provider: result.provider,
-      model: result.model,
-    };
-  }
-  return { kind: "empty" };
-}
+/** Commands that, selected from the palette, open another overlay instead of running. */
+const OVERLAY_OPENING_COMMANDS: ReadonlySet<CommandId> = new Set([
+  "open-profile",
+  "open-level",
+  "open-provider",
+  "open-model",
+  "open-palette",
+  "open-help",
+]);
 
-export async function runOpenTuiAppV2(t: Translator = createTranslator("en")): Promise<void> {
+export async function runOpenTuiAppV2(
+  t: Translator = createTranslator("en"),
+  services: TuiServices = DEFAULT_SERVICES,
+): Promise<void> {
   const renderer = await createCliRenderer(createOpenTuiRendererOptions());
   createRoot(renderer).render(
     <OpenTuiApp
       t={t}
+      services={services}
       onExit={() => {
         renderer.stop();
       }}
@@ -123,10 +137,17 @@ export async function runOpenTuiAppV2(t: Translator = createTranslator("en")): P
 
 interface OpenTuiAppProps {
   t: Translator;
+  services: TuiServices;
   onExit(): void;
 }
 
-function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
+const TOAST_MS = 1_500;
+
+/**
+ * Exposed for the interaction tests: the real component, driven through fake
+ * services. The production entry point is `runOpenTuiAppV2`.
+ */
+export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
   const renderer = useRenderer();
   const { width, height } = useTerminalDimensions();
 
@@ -135,15 +156,18 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
   const [configReady, setConfigReady] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
   const [partialText, setPartialText] = useState("");
+  const [submittedPrompt, setSubmittedPrompt] = useState<string | null>(null);
   const [focus, setFocus] = useState<FocusState>(INITIAL_FOCUS);
   const [overlay, setOverlay] = useState<OverlayState>(INITIAL_OVERLAY);
   const [toast, setToast] = useState<ToastState | null>(null);
 
   const abortController = useRef<AbortController | null>(null);
   const generationInFlight = useRef(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
-    void bootstrapConfiguration(process.env)
+    void services
+      .bootstrap(process.env)
       .then((result) => {
         const nextConfig = result.config;
         const bootstrapError = getBootstrapError(result);
@@ -152,7 +176,9 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
           applyLoadedConfig(
             prev,
             nextConfig,
-            bootstrapError ? describeUiError(bootstrapError, nextConfig.defaultProvider, t) : null,
+            bootstrapError
+              ? services.describeError(bootstrapError, nextConfig.defaultProvider, t)
+              : null,
           ),
         );
         if (bootstrapError) setStatus("error");
@@ -160,23 +186,33 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
       .catch((error: unknown) => {
         setApp((prev) => ({
           ...prev,
-          error: describeUiError(error, prev.provider, t),
+          error: services.describeError(error, prev.provider, t),
         }));
         setStatus("error");
       })
       .finally(() => {
         setConfigReady(true);
       });
-  }, [t]);
+  }, [services, t]);
 
-  const showToast = useCallback((message: string, tone: "success" | "neutral") => {
-    setToast({ message, tone, key: Date.now() });
+  /**
+   * The single toast entry point: set the toast, then schedule its expiry.
+   * A newer toast clears any pending timer, so an old timeout can never erase
+   * a toast that replaced it.
+   */
+  const showToast = useCallback((message: string, tone: "success" | "neutral"): void => {
+    const key = Date.now();
+    setToast({ message, tone, key });
+    if (toastTimer.current !== null) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => {
+      setToast((current) => (current !== null && current.key === key ? null : current));
+    }, TOAST_MS);
   }, []);
 
-  const clearToastAfter = useCallback((key: number) => {
-    setTimeout(() => {
-      setToast((current) => (current !== null && current.key === key ? null : current));
-    }, 1_500);
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current !== null) clearTimeout(toastTimer.current);
+    };
   }, []);
 
   const closeOverlayAndRestore = useCallback(() => {
@@ -199,10 +235,11 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
     setStatus("loading");
     setFocus({ zone: "result", suspended: null });
     setPartialText("");
+    setSubmittedPrompt(app.input);
     setApp((prev) => beginGeneration(prev));
 
     try {
-      const { result } = await executeReprompt({
+      const { result } = await services.execute({
         ...createUiRepromptInput(app, config, process.env),
         signal: controller.signal,
         onDelta: (chunk) => {
@@ -214,7 +251,7 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
       setStatus("success");
     } catch (error) {
       if (!controller.signal.aborted) {
-        setApp((prev) => failGeneration(prev, describeUiError(error, app.provider, t)));
+        setApp((prev) => failGeneration(prev, services.describeError(error, app.provider, t)));
         setStatus("error");
       } else {
         setStatus(app.result ? "success" : "idle");
@@ -224,43 +261,42 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
       generationInFlight.current = false;
       setPartialText("");
     }
-  }, [app, config, t]);
+  }, [app, config, services, t]);
 
   const copyResult = useCallback(async (): Promise<void> => {
     if (!app.result) return;
     try {
-      await writeClipboard(app.result.rewritten);
+      await services.writeClipboard(app.result.rewritten);
       setApp((prev) => completeCopy(prev, true));
       showToast(`✓ ${t("tui.toast.copied")}`, "success");
     } catch (error) {
-      setApp((prev) => failCopy(prev, describeUiError(error, app.provider, t)));
+      setApp((prev) => failCopy(prev, services.describeError(error, app.provider, t)));
       setStatus("error");
     }
-  }, [app.result, app.provider, showToast, t]);
+  }, [app.result, app.provider, services, showToast, t]);
 
   const pasteFromClipboard = useCallback(async (): Promise<void> => {
     try {
-      const content = await readClipboard();
+      const content = await services.readClipboard();
       if (!content) return;
       setApp((prev) => updatePromptInput(prev, `${prev.input}${content}`));
       setFocus({ zone: "editor", suspended: null });
     } catch (error) {
-      setApp((prev) => failGeneration(prev, describeUiError(error, prev.provider, t)));
+      setApp((prev) => failGeneration(prev, services.describeError(error, prev.provider, t)));
       setStatus("error");
     }
-  }, [t]);
+  }, [services, t]);
 
   const reset = useCallback((): void => {
     abortController.current?.abort();
     setPartialText("");
     setStatus("idle");
     setApp(resetSession);
+    setSubmittedPrompt(null);
     setFocus({ zone: "editor", suspended: null });
     setOverlay(INITIAL_OVERLAY);
-    const key = Date.now();
-    setToast({ message: `↺ ${t("tui.toast.reset")}`, tone: "neutral", key });
-    clearToastAfter(key);
-  }, [clearToastAfter, t]);
+    showToast(`↺ ${t("tui.toast.reset")}`, "neutral");
+  }, [showToast, t]);
 
   const onCommand = useCallback(
     (id: CommandId): void => {
@@ -337,7 +373,7 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
   );
 
   const onOverlaySelect = useCallback(
-    (overlayId: "profile" | "level" | "provider" | "model", value: string): void => {
+    (overlayId: PickerOverlayId, value: string): void => {
       if (overlayId === "profile") setApp((prev) => selectProfile(prev, value));
       if (overlayId === "level") setApp((prev) => selectLevel(prev, parseLevel(value)));
       if (overlayId === "provider") {
@@ -401,27 +437,34 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
   const onOverlayRoute = useCallback(
     (route: OverlayRoute): void => {
       const active = overlay.active;
-      if (route.kind === "overlay-nav" && active !== null) {
+      if (active === null) return;
+
+      if (route.kind === "overlay-nav") {
         setOverlay((state) =>
           clampSelection(moveSelection(state, route.dir, overlayOptionCount), overlayOptionCount),
         );
+        return;
       }
       if (route.kind === "overlay-backspace" && active === "palette") {
         setOverlay((state) => setQuery(state, state.query.slice(0, -1)));
+        return;
       }
       if (route.kind === "overlay-type" && active === "palette") {
         setOverlay((state) => setQuery(state, state.query + route.text));
+        return;
       }
-      if (route.kind === "overlay-select" && active !== null) {
-        if (active === "palette") {
-          selectPaletteCommand(overlay.query, overlay.index, context, t, onCommand);
-        } else if (isPickerOverlay(active)) {
-          const option = pickerOptions[Math.min(overlay.index, pickerOptions.length - 1)];
-          if (option) onOverlaySelect(active, option.value);
-        } else {
-          // Help has nothing to select.
-        }
-        closeOverlayAndRestore();
+      if (route.kind === "overlay-select") {
+        applyOverlaySelection(
+          active,
+          overlay.query,
+          overlay.index,
+          pickerOptions,
+          context,
+          t,
+          onCommand,
+          onOverlaySelect,
+          closeOverlayAndRestore,
+        );
       }
     },
     [
@@ -440,16 +483,10 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
 
   useKeyboardRouting(context, onCommand, onOverlayRoute);
 
-  useKeyboard((event: KeyEvent) => {
-    // Ctrl+C while generating aborts; otherwise the router already maps it to
-    // exit. Keep the process-level interrupt in sync.
-    const press = toKeyPress(event);
-    if (press.ctrl && press.name === "c" && context.isGenerating) {
-      abortController.current?.abort();
-      showToast(t("tui.toast.cancelled"), "neutral");
-    }
-  });
-
+  // Ctrl+C is routed exactly once, by useKeyboardRouting -> routeKey (cancel or
+  // exit). The process-level SIGINT handler below is only a safety net for
+  // signals that arrive outside the keyboard path; it never duplicates the
+  // toast, which the keyboard route owns.
   useEffect(() => {
     const onSigint = (): void => {
       if (generationInFlight.current) {
@@ -484,6 +521,7 @@ function OpenTuiApp({ t, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
       width={width}
       height={height}
       prompt={app.input}
+      submittedPrompt={submittedPrompt}
       result={toResultState(app, status, partialText)}
       view={app.view}
       focus={focus}
@@ -506,12 +544,44 @@ function selectPaletteCommand(
   index: number,
   context: CommandContext,
   t: Translator,
-  onCommand: (id: CommandId) => void,
-): void {
+): CommandId | null {
   const needle = query.trim().toLowerCase();
   const commands = availableCommands(context).filter(
     (command) => needle === "" || t(command.labelKey).toLowerCase().includes(needle),
   );
   const command = commands[Math.min(index, Math.max(0, commands.length - 1))];
-  if (command) onCommand(command.id);
+  return command ? command.id : null;
+}
+
+function applyOverlaySelection(
+  active: NonNullable<OverlayState["active"]>,
+  query: string,
+  index: number,
+  pickerOptions: { label: string; value: string }[],
+  context: CommandContext,
+  t: Translator,
+  onCommand: (id: CommandId) => void,
+  onOverlaySelect: (overlay: PickerOverlayId, value: string) => void,
+  closeOverlayAndRestore: () => void,
+): void {
+  if (active === "palette") {
+    const commandId = selectPaletteCommand(query, index, context, t);
+    if (commandId === null) return;
+    if (OVERLAY_OPENING_COMMANDS.has(commandId)) {
+      // The chosen command opens the next overlay; it takes over, so the
+      // palette must NOT be closed underneath it.
+      onCommand(commandId);
+    } else {
+      closeOverlayAndRestore();
+      onCommand(commandId);
+    }
+    return;
+  }
+  if (isPickerOverlay(active)) {
+    const option = pickerOptions[Math.min(index, pickerOptions.length - 1)];
+    if (option) {
+      onOverlaySelect(active, option.value);
+    }
+  }
+  // Help has nothing to select.
 }
