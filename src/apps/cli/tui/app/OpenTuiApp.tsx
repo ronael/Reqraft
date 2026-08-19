@@ -129,7 +129,12 @@ export async function runOpenTuiAppV2(
       t={t}
       services={services}
       onExit={() => {
-        renderer.stop();
+        // `destroy()`, not `stop()`. `stop()` only halts the render loop — it
+        // belongs to the start/pause/resume lifecycle and leaves the terminal
+        // in raw mode with stdin still captured, so Ctrl+C stopped the drawing
+        // and then hung with no way out. `destroy()` runs the teardown that
+        // restores the terminal and releases the input handles.
+        renderer.destroy();
       }}
     />,
   );

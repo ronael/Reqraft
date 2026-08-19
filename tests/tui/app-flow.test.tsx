@@ -145,6 +145,36 @@ describe("OpenTuiApp · generation flow", () => {
     expect(frame).toContain(t("tui.turn.you"));
   });
 
+  test("Ctrl+C asks the host to quit when nothing is running", async () => {
+    // The half of the quit path that can regress without anyone noticing:
+    // `onExit` was wired all along, but the host was calling `stop()`, which
+    // only halts the render loop and leaves the terminal captured. Assert the
+    // routing here; the host's teardown is one line at the entry point.
+    const screen = await mountApp(fakeServices());
+    expect(screen.exitCalls).toEqual([]);
+
+    await screen.key("c", { ctrl: true });
+    await screen.settle();
+
+    expect(screen.exitCalls).toEqual(["exit"]);
+  });
+
+  test("Ctrl+C interrupts a running generation instead of quitting", async () => {
+    // A generation that never settles, so the interrupt lands mid-run.
+    const screen = await mountApp(
+      fakeServices({ execute: () => new Promise<never>(() => undefined) }),
+    );
+    await screen.type("hello");
+    await screen.key("g", { ctrl: true });
+    await screen.settle();
+
+    await screen.key("c", { ctrl: true });
+    await screen.settle();
+
+    // Quitting mid-run would lose the generation; the same chord cancels.
+    expect(screen.exitCalls).toEqual([]);
+  });
+
   test("Ctrl+Y copies and shows a transient toast", async () => {
     const screen = await mountApp(fakeServices());
     await screen.type("hello");
