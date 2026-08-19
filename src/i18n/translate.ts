@@ -4,6 +4,10 @@ import { fr } from "./messages/fr.js";
 
 export interface MessageParameters {
   // TUI V2 command registry (apps/cli/tui/model/commands.ts).
+  "tui.help.group.run": undefined;
+  "tui.help.group.settings": undefined;
+  "tui.help.group.result": undefined;
+  "tui.help.group.navigate": undefined;
   "tui.panel.prompt": undefined;
   "tui.panel.result": undefined;
   "tui.field.profile": undefined;

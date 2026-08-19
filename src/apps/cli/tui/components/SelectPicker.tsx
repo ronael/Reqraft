@@ -14,6 +14,7 @@ export interface SelectPickerProps {
   currentValue: string;
   highlighted: number;
   terminalWidth: number;
+  terminalHeight: number;
   t: Translator;
   /** Same command a click would raise, so mouse and keyboard converge. */
   onSelect?(value: string): void;
@@ -34,6 +35,7 @@ export function SelectPicker({
   currentValue,
   highlighted,
   terminalWidth,
+  terminalHeight,
   t,
   onSelect,
 }: Readonly<SelectPickerProps>): React.ReactNode {
@@ -41,8 +43,14 @@ export function SelectPicker({
   const safeIndex = Math.min(highlighted, Math.max(0, options.length - 1));
 
   return (
-    <Dialog title={title} open={open} terminalWidth={terminalWidth}>
-      <Stack direction="column" gap="xs">
+    <Dialog
+      title={title}
+      open={open}
+      terminalWidth={terminalWidth}
+      terminalHeight={terminalHeight}
+      contentRows={options.length}
+    >
+      <Stack direction="column" gap="none">
         {options.map((option, index) => {
           const isCurrent = option.value === currentValue;
           const isHighlighted = index === safeIndex;

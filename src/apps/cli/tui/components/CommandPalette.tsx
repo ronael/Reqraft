@@ -18,6 +18,7 @@ export interface CommandPaletteProps {
   query: string;
   highlighted: number;
   terminalWidth: number;
+  terminalHeight: number;
   t: Translator;
   onSelect?(id: CommandId): void;
 }
@@ -36,6 +37,7 @@ export function CommandPalette({
   query,
   highlighted,
   terminalWidth,
+  terminalHeight,
   t,
   onSelect,
 }: Readonly<CommandPaletteProps>): React.ReactNode {
@@ -47,8 +49,15 @@ export function CommandPalette({
   const safeIndex = Math.min(highlighted, Math.max(0, commands.length - 1));
 
   return (
-    <Dialog title={t("tui.palette.title")} open={open} terminalWidth={terminalWidth}>
-      <Stack direction="column" gap="xs">
+    <Dialog
+      title={t("tui.palette.title")}
+      open={open}
+      terminalWidth={terminalWidth}
+      terminalHeight={terminalHeight}
+      // Query row, the count/empty row, then one row per command.
+      contentRows={2 + Math.max(1, commands.length)}
+    >
+      <Stack direction="column" gap="none">
         <text fg={color.accent}>
           {"> "}
           <span fg={color.text}>{query}</span>

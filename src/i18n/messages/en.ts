@@ -426,4 +426,8 @@ export const en = {
   "tui.palette.searchPlaceholder": () => "Type to filter commands…",
   "tui.palette.noResult": () => "No matching command",
   "tui.palette.available": () => "available",
+  "tui.help.group.run": () => "Run",
+  "tui.help.group.settings": () => "Settings",
+  "tui.help.group.result": () => "Result",
+  "tui.help.group.navigate": () => "Navigate",
 } satisfies MessageCatalogue;

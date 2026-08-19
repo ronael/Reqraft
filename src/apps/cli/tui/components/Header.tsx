@@ -74,7 +74,13 @@ export function Header({
               }
             >
               {!compact && chord !== "" && <span fg={color.accent}>{`${chord} `}</span>}
-              <span fg={color.textMuted}>{`${t(labelKey)} `}</span>
+              {/*
+                Compact keeps the values and drops the labels, not the reverse:
+                "auto" is the information, "profil" is only the word for it. The
+                French labels ("fournisseur", "modèle") pushed the row past 72
+                columns and wrapped it onto a second line.
+              */}
+              {!compact && <span fg={color.textMuted}>{`${t(labelKey)} `}</span>}
               <span fg={color.text}>{values[key]}</span>
             </text>
           );

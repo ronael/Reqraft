@@ -83,10 +83,29 @@ export function EditorScreen({
   onCommand,
   onOverlaySelect,
 }: Readonly<EditorScreenProps>): React.ReactNode {
-  const layout = resolveLayout(width, height, undefined, {
-    comfortable: editorSurfaceOverhead(theme.components, "comfortable"),
-    compact: editorSurfaceOverhead(theme.components, "compact"),
-  });
+  // Rows the prompt actually occupies once wrapped, not logical lines: a long
+  // single-line prompt wraps across several rows, and counting it as one row
+  // squeezed the surface until its title was pushed out of the box.
+  const editorInnerWidth = Math.max(
+    20,
+    width - 2 - 2 * theme.components.surface.paddingX.comfortable,
+  );
+  const promptLines =
+    prompt === ""
+      ? 1
+      : prompt
+          .split("\n")
+          .reduce((rows, line) => rows + Math.max(1, Math.ceil(line.length / editorInnerWidth)), 0);
+  const layout = resolveLayout(
+    width,
+    height,
+    undefined,
+    {
+      comfortable: editorSurfaceOverhead(theme.components, "comfortable"),
+      compact: editorSurfaceOverhead(theme.components, "compact"),
+    },
+    promptLines,
+  );
   const { color } = theme.tokens;
   const density = layout.mode === "compact" ? "compact" : "comfortable";
 
@@ -169,6 +188,7 @@ export function EditorScreen({
           context={context}
           settings={settings}
           width={width}
+          height={height}
           t={t}
           onCommand={onCommand}
           onOverlaySelect={onOverlaySelect}
@@ -182,6 +202,7 @@ export function EditorScreen({
 
 function Overlays({
   overlay,
+  height,
   context,
   settings,
   width,
@@ -190,6 +211,8 @@ function Overlays({
   onOverlaySelect,
 }: Readonly<{
   overlay: OverlayState;
+  /** Viewport height, so a dialog can cap itself instead of running off it. */
+  height: number;
   context: Parameters<typeof StatusBar>[0]["context"];
   settings: ToolbarValues;
   width: number;
@@ -240,6 +263,7 @@ function Overlays({
         currentValue={activePicker.current}
         highlighted={overlay.index}
         terminalWidth={width}
+        terminalHeight={height}
         t={t}
         onSelect={(value) => {
           onOverlaySelect(activePicker.id, value);
@@ -256,6 +280,7 @@ function Overlays({
         query={overlay.query}
         highlighted={overlay.index}
         terminalWidth={width}
+        terminalHeight={height}
         t={t}
         onSelect={onCommand}
       />
@@ -263,7 +288,7 @@ function Overlays({
   }
 
   if (isActive(overlay, "help")) {
-    return <HelpOverlay open terminalWidth={width} t={t} />;
+    return <HelpOverlay open terminalWidth={width} terminalHeight={height} t={t} />;
   }
 
   return null;

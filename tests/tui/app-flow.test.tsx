@@ -74,10 +74,16 @@ async function mountApp(services: TuiServices) {
   const setup = trackRenderer(
     await testRender(<Host />, { width: 120, height: 40, exitOnCtrlC: false }),
   );
-  await setup.flush();
 
+  // The first flush goes through `settle` like every other one: a bare
+  // `flush()` lets the state updates it triggers escape React's batching, which
+  // is what the "not wrapped in act" warning reports.
   const settle = async (): Promise<void> => {
     await act(async () => {
+      // A macrotask, not just a flush: the app's bootstrap resolves on a later
+      // tick and sets state from there, so draining only the render queue left
+      // that update outside act.
+      await new Promise((resolve) => setTimeout(resolve, 0));
       await setup.flush();
     });
   };

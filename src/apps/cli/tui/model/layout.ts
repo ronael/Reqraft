@@ -68,6 +68,13 @@ export function resolveLayout(
   height: number,
   layout: LayoutTokens = LAYOUT,
   overhead: EditorOverhead = DEFAULT_EDITOR_OVERHEAD,
+  /**
+   * Lines the prompt currently occupies. The editor is sized to what it holds
+   * rather than to a fixed slab: at 40 rows the old rule reserved eight rows
+   * whatever the prompt was, so a three-line prompt left half the surface
+   * empty while the transcript went short.
+   */
+  promptLines = 1,
 ): LayoutDecision {
   const mode = resolveLayoutMode(width, height, layout);
   const { gap } = layout;
@@ -101,7 +108,10 @@ export function resolveLayout(
   // The editor is the most important fixed region: size it to the terminal,
   // then give the transcript whatever is left, shrinking the editor if that
   // would leave the transcript with nothing to scroll.
-  const desiredEditorRows = Math.max(1, Math.min(8, Math.floor(height / 5)));
+  // Grow with the content, never past a fifth of the terminal — a long prompt
+  // must not swallow the transcript it is being compared against.
+  const editorCeiling = Math.max(1, Math.min(8, Math.floor(height / 5)));
+  const desiredEditorRows = Math.max(1, Math.min(promptLines, editorCeiling));
   let editorHeight = desiredEditorRows + surfaceOverhead;
   let transcriptRows = height - fixed - editorHeight;
   if (transcriptRows < 1) {

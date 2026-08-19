@@ -14,18 +14,24 @@ import type { Translator } from "@/i18n/translate.js";
 export interface HelpOverlayProps {
   open: boolean;
   terminalWidth: number;
+  terminalHeight: number;
   t: Translator;
 }
 
+/**
+ * Group headings have their own keys rather than borrowing a command's label:
+ * reusing them titled the navigation group "Next panel" and then listed "Next
+ * panel" inside it.
+ */
 const GROUPS: readonly { title: CommandLabelKey; ids: readonly CommandId[] }[] = [
-  { title: "tui.command.palette", ids: ["generate", "cancel", "reset", "paste"] },
+  { title: "tui.help.group.run", ids: ["generate", "cancel", "reset", "paste"] },
   {
-    title: "tui.command.profile",
+    title: "tui.help.group.settings",
     ids: ["open-profile", "open-level", "open-model", "open-palette"],
   },
-  { title: "tui.command.copy", ids: ["copy", "toggle-diff", "show-explain"] },
+  { title: "tui.help.group.result", ids: ["copy", "toggle-diff", "show-explain"] },
   {
-    title: "tui.command.focusNext",
+    title: "tui.help.group.navigate",
     ids: ["focus-next", "focus-previous", "open-help", "close-overlay"],
   },
 ];
@@ -40,15 +46,32 @@ const GROUPS: readonly { title: CommandLabelKey; ids: readonly CommandId[] }[] =
 export function HelpOverlay({
   open,
   terminalWidth,
+  terminalHeight,
   t,
 }: Readonly<HelpOverlayProps>): React.ReactNode {
   const { color } = theme.tokens;
 
+  // A title row plus its commands per group, and one blank row between groups.
+  // Commands sit on consecutive rows: a blank line between every shortcut made
+  // the list twice as tall as the terminal and pushed it off the bottom.
+  const contentRows =
+    GROUPS.reduce(
+      (rows, group) => rows + 1 + COMMANDS.filter((c) => group.ids.includes(c.id)).length,
+      0,
+    ) +
+    (GROUPS.length - 1);
+
   return (
-    <Dialog title={t("tui.help")} open={open} terminalWidth={terminalWidth}>
+    <Dialog
+      title={t("tui.help")}
+      open={open}
+      terminalWidth={terminalWidth}
+      terminalHeight={terminalHeight}
+      contentRows={contentRows}
+    >
       <Stack direction="column" gap="sm">
         {GROUPS.map((group) => (
-          <Stack key={group.title} direction="column" gap="xs">
+          <Stack key={group.title} direction="column" gap="none">
             <text fg={color.textMuted}>{t(group.title)}</text>
             {COMMANDS.filter((command) => group.ids.includes(command.id)).map((command) => (
               <Stack key={command.id} direction="row" gap="sm" justify="space-between">

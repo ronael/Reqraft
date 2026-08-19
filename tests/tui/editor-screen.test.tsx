@@ -499,7 +499,11 @@ describe("EditorScreen · height budget", () => {
       const frame = screen.frame();
 
       // The editor's bottom border is drawn, so the surface did not overflow.
-      expect(frame).toContain("╰");
+      // Matched on either corner glyph: the theme picks a rounded border only
+      // when it detects a unicode-capable terminal, and the test renderer has
+      // no TTY — asserting the rounded glyph tested the environment, not the
+      // layout.
+      expect(frame).toMatch(/[╰└]/);
       // The status bar is present and therefore inside the viewport.
       expect(frame).toContain("^G");
 

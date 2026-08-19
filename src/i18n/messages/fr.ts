@@ -436,4 +436,8 @@ export const fr = {
   "tui.palette.searchPlaceholder": () => "Tapez pour filtrer les commandes…",
   "tui.palette.noResult": () => "Aucune commande correspondante",
   "tui.palette.available": () => "disponibles",
+  "tui.help.group.run": () => "Exécuter",
+  "tui.help.group.settings": () => "Réglages",
+  "tui.help.group.result": () => "Résultat",
+  "tui.help.group.navigate": () => "Naviguer",
 } satisfies MessageCatalogue;
