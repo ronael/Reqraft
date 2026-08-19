@@ -6,6 +6,8 @@ import { EditorScreen } from "@/apps/cli/tui/screens/EditorScreen.js";
 import { INITIAL_FOCUS } from "@/apps/cli/tui/model/focus.js";
 import { INITIAL_OVERLAY, type OverlayState } from "@/apps/cli/tui/model/overlay.js";
 import { createTranslator } from "@/i18n/translate.js";
+import { theme } from "@/apps/cli/tui/theme/index.js";
+import { BorderChars } from "@opentui/core";
 
 registerRendererTeardown();
 
@@ -57,9 +59,34 @@ async function frameOf(
   return setup.captureCharFrame().split("\n");
 }
 
+/**
+ * Corner glyphs the theme can actually draw. They are read from the resolved
+ * style rather than written out: a UTF-8 locale resolves a focused surface to
+ * `rounded`, whose corners are `╭╰`, so a test that spelled `┌└` passed
+ * locally — where the locale is unset — and failed in CI.
+ */
+const CORNERS = [theme.tokens.border.default, theme.tokens.border.focused].map(
+  (style) => BorderChars[style],
+);
+const TOP_LEFT = CORNERS.map((chars) => chars.topLeft);
+const BOTTOM_LEFT = CORNERS.map((chars) => chars.bottomLeft);
+const EDGE = CORNERS.flatMap((chars) => [
+  chars.topLeft,
+  chars.topRight,
+  chars.bottomLeft,
+  chars.bottomRight,
+  chars.vertical,
+  chars.horizontal,
+  chars.leftT,
+  chars.rightT,
+]);
+
+const hasAny = (row: string, glyphs: string[]): boolean =>
+  glyphs.some((glyph) => row.includes(glyph));
+
 /** Rows that carry a box edge, i.e. the dialog and the editor surface. */
 const boxRows = (rows: string[]): number[] =>
-  rows.flatMap((row, index) => (/[┌┐└┘│├┤─]/.test(row) ? [index] : []));
+  rows.flatMap((row, index) => (hasAny(row, EDGE) ? [index] : []));
 
 const SIZES: readonly (readonly [number, number])[] = [
   [120, 40],
@@ -119,8 +146,8 @@ describe("frame integrity", () => {
 
   test("the editor surface keeps a complete border", async () => {
     const rows = await frameOf(100, 35);
-    const opens = rows.filter((row) => row.includes("┌")).length;
-    const closes = rows.filter((row) => row.includes("└")).length;
+    const opens = rows.filter((row) => hasAny(row, TOP_LEFT)).length;
+    const closes = rows.filter((row) => hasAny(row, BOTTOM_LEFT)).length;
     expect(opens).toBe(closes);
     expect(opens).toBeGreaterThan(0);
   }, 60_000);
