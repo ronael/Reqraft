@@ -145,8 +145,10 @@ jobs:
           ls -la installers/
           gh release upload "$tag" installers/* --clobber
 
-      # The note goes on the release itself, because the file name alone
-      # cannot explain *why* a platform is experimental.
+      # The note lives in .github/desktop-release-note.md rather than inline:
+      # a bash heredoc needs its terminator in column 0, which would break out
+      # of this YAML block scalar. Keeping it in a file also means editing the
+      # wording never touches the workflow.
       - name: Note which platforms are experimental
         env:
           GH_TOKEN: ${{ github.token }}
@@ -154,6 +156,7 @@ jobs:
         run: |
           set -euo pipefail
           tag="${{ steps.target.outputs.tag }}"
+          note_file=.github/desktop-release-note.md
           marker="## Platform support"
 
           body=$(gh release view "$tag" --json body --jq .body)
@@ -162,22 +165,4 @@ jobs:
             exit 0
           fi
 
-          note=$(cat <<'NOTE'
-
-## Platform support
-
-| Platform | Status |
-|---|---|
-| macOS arm64 (`.dmg`, `.zip`) | Tested by hand |
-| Windows x64 (`-experimental.exe`) | Builds, never run — expect breakage |
-| Linux x64 (`-experimental.AppImage`) | Builds, never run — expect breakage |
-
-The experimental builds are published so they can be tried, not because they
-are supported. Selection capture and reinjection are implemented for macOS
-only, so on Windows and Linux the app may launch without being able to do its
-job. Neither is signed: SmartScreen and Gatekeeper will object.
-
-See `docs/desktop-platform-support.md`.
-NOTE
-          )
-          printf '%s\n%s' "$body" "$note" | gh release edit "$tag" --notes-file -
+          { printf '%s\n\n' "$body"; cat "$note_file"; } | gh release edit "$tag" --notes-file -
