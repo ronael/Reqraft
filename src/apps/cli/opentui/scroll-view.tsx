@@ -8,6 +8,11 @@ export interface ScrollViewProps {
   showScrollbar?: boolean;
   scrollbarColor?: string;
   thumbColor?: string;
+  /**
+   * Stay glued to the bottom edge (a log/chat follow). OpenTUI suspends this
+   * automatically as soon as the user scrolls up, so it never yanks the view.
+   */
+  sticky?: boolean;
 }
 
 export function ScrollView({
@@ -17,6 +22,7 @@ export function ScrollView({
   showScrollbar = true,
   scrollbarColor = "#3f3f46",
   thumbColor = "#a78bfa",
+  sticky = false,
 }: Readonly<ScrollViewProps>): React.ReactNode {
   const fixedHeight = Math.max(1, height);
 
@@ -34,6 +40,8 @@ export function ScrollView({
       scrollY
       scrollX={false}
       viewportCulling
+      stickyScroll={sticky}
+      stickyStart={sticky ? "bottom" : undefined}
       rootOptions={{
         height: fixedHeight,
         minHeight: fixedHeight,

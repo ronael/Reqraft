@@ -1,9 +1,9 @@
 /* @jsxImportSource @opentui/react */
-import React from "react";
-import { TextAttributes } from "@opentui/core";
-import { theme } from "@/apps/cli/tui/theme/index.js";
-import { toneBorderColor, toneTextColor } from "@/apps/cli/tui/theme/components.js";
 import type { Density, SurfaceTone } from "@/apps/cli/tui/theme/components.js";
+import { toneBorderColor, toneTextColor } from "@/apps/cli/tui/theme/components.js";
+import { theme } from "@/apps/cli/tui/theme/index.js";
+import { TextAttributes } from "@opentui/core";
+import React from "react";
 
 export interface SurfaceProps {
   title?: string;

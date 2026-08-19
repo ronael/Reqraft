@@ -5,7 +5,7 @@ import { createTokens, type Tokens } from "./tokens.js";
 
 export type { ColorTokens, SpacingTokens, BorderTokens, LayoutTokens, Tokens } from "./tokens.js";
 export type { ComponentTokens, SurfaceTone, Density } from "./components.js";
-export { toneBorderColor, toneTextColor } from "./components.js";
+export { toneBorderColor, toneTextColor, editorSurfaceOverhead } from "./components.js";
 export { createTokens } from "./tokens.js";
 
 export interface Theme {

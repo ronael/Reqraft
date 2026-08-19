@@ -30,10 +30,23 @@ export interface RoutingContext extends CommandContext {
   editorFocused: boolean;
 }
 
+export type OverlayRoute =
+  | { kind: "overlay-nav"; dir: 1 | -1 }
+  | { kind: "overlay-select" }
+  | { kind: "overlay-backspace" }
+  | { kind: "overlay-type"; text: string };
+
 export type KeyRoute =
   | { kind: "command"; id: CommandId }
   /** The key belongs to the focused editor as literal input. */
   | { kind: "insert" }
+  /** Move the overlay highlight (up/down). */
+  | { kind: "overlay-nav"; dir: 1 | -1 }
+  /** Confirm the highlighted overlay row. */
+  | { kind: "overlay-select" }
+  /** Edit the palette query (backspace or a printable character). */
+  | { kind: "overlay-backspace" }
+  | { kind: "overlay-type"; text: string }
   /** Nothing claims the key. */
   | { kind: "ignored" };
 
@@ -54,6 +67,29 @@ function find(
   );
 }
 
+function routeOverlayKey(key: KeyPress, context: RoutingContext): KeyRoute {
+  const command = find(key, context, ["overlay"]);
+  if (command) return { kind: "command", id: command.id };
+
+  // List navigation belongs to the open overlay. The app applies it to
+  // whichever overlay is active, so routing does not need to know whether
+  // the overlay is a picker or the palette.
+  if (!key.ctrl && key.name === "up") return { kind: "overlay-nav", dir: -1 };
+  if (!key.ctrl && key.name === "down") return { kind: "overlay-nav", dir: 1 };
+  if (!key.ctrl && key.name === "return") return { kind: "overlay-select" };
+  if (!key.ctrl && key.name === "backspace") return { kind: "overlay-backspace" };
+  if (!key.ctrl && key.name.length === 1) return { kind: "overlay-type", text: key.name };
+
+  // An overlay captures everything else: keys must not leak to the editor.
+  return { kind: "ignored" };
+}
+
+function routeEditorKey(key: KeyPress, context: RoutingContext): KeyRoute {
+  const editorCommand = find(key, context, ["editor"]);
+  if (editorCommand) return { kind: "command", id: editorCommand.id };
+  return context.editorFocused ? { kind: "insert" } : { kind: "ignored" };
+}
+
 export function routeKey(key: KeyPress, context: RoutingContext): KeyRoute {
   // Ctrl+C is the escape hatch and outranks every layer, overlays included.
   if (key.ctrl && key.name === "c") {
@@ -61,22 +97,11 @@ export function routeKey(key: KeyPress, context: RoutingContext): KeyRoute {
   }
 
   if (context.hasOverlay) {
-    const command = find(key, context, ["overlay"]);
-    // An overlay captures everything else: keys must not leak to the editor.
-    return command ? { kind: "command", id: command.id } : { kind: "ignored" };
+    return routeOverlayKey(key, context);
   }
 
   const global = find(key, context, ["global"]);
   if (global) return { kind: "command", id: global.id };
 
-  if (context.editorFocused) {
-    // Editor-scope commands are the few plain keys the editor gives up, and
-    // only while their availability rule holds (`?` on an empty prompt).
-    const editorCommand = find(key, context, ["editor"]);
-    if (editorCommand) return { kind: "command", id: editorCommand.id };
-    return { kind: "insert" };
-  }
-
-  const editorCommand = find(key, context, ["editor"]);
-  return editorCommand ? { kind: "command", id: editorCommand.id } : { kind: "ignored" };
+  return routeEditorKey(key, context);
 }

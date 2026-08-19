@@ -4,12 +4,37 @@ import { fr } from "./messages/fr.js";
 
 export interface MessageParameters {
   // TUI V2 command registry (apps/cli/tui/model/commands.ts).
+  "tui.result.streaming": undefined;
+  "tui.help.group.run": undefined;
+  "tui.help.group.settings": undefined;
+  "tui.help.group.result": undefined;
+  "tui.help.group.navigate": undefined;
   "tui.panel.prompt": undefined;
   "tui.panel.result": undefined;
   "tui.field.profile": undefined;
   "tui.field.level": undefined;
   "tui.field.provider": undefined;
   "tui.field.model": undefined;
+  "tui.turn.you": undefined;
+  "tui.turn.reqraft": undefined;
+  "tui.turn.user": undefined;
+  "tui.turn.result": undefined;
+  "tui.turn.diff": undefined;
+  "tui.turn.explain": undefined;
+  "tui.turn.error": undefined;
+  "tui.header.ready": undefined;
+  "tui.header.preparing": undefined;
+  "tui.transcript.empty": undefined;
+  "tui.toast.copied": undefined;
+  "tui.toast.reset": undefined;
+  "tui.toast.cancelled": undefined;
+  "tui.tooSmall.title": undefined;
+  "tui.tooSmall.body": undefined;
+  "tui.picker.current": undefined;
+  "tui.palette.title": undefined;
+  "tui.palette.searchPlaceholder": undefined;
+  "tui.palette.noResult": undefined;
+  "tui.palette.available": undefined;
   "tui.result.empty": undefined;
   "tui.result.loading": undefined;
   "tui.command.provider": undefined;

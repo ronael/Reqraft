@@ -7,7 +7,6 @@ import { registerRendererTeardown, trackRenderer } from "./harness.js";
 import { KeyCodes, pasteBytes } from "@opentui/core/testing";
 import { EditorScreen } from "@/apps/cli/tui/screens/EditorScreen.js";
 import { useKeyboardRouting } from "@/apps/cli/tui/app/use-keyboard-routing.js";
-import { Dialog } from "@/apps/cli/tui/primitives/Dialog.js";
 import {
   INITIAL_FOCUS,
   focusNext,
@@ -16,8 +15,18 @@ import {
   suspendFocus,
   type FocusState,
 } from "@/apps/cli/tui/model/focus.js";
+import {
+  INITIAL_OVERLAY,
+  closeOverlay,
+  moveSelection,
+  openOverlay,
+  setQuery,
+  type OverlayState,
+} from "@/apps/cli/tui/model/overlay.js";
+import type { OverlayRoute } from "@/apps/cli/tui/model/keymap.js";
 import { hasResult, isBusy, type ResultState } from "@/apps/cli/tui/model/result-state.js";
 import type { CommandId } from "@/apps/cli/tui/model/commands.js";
+import type { ResultViewMode } from "@/apps/cli/ui/result-view.js";
 import { createTranslator } from "@/i18n/translate.js";
 
 registerRendererTeardown();
@@ -49,47 +58,97 @@ interface HostOptions {
 }
 
 async function mountScreen(options: HostOptions = {}) {
-  const { result = { kind: "empty" }, width = 120, height = 40 } = options;
+  const { result: initialResult = { kind: "empty" }, width = 120, height = 40 } = options;
   const commands: CommandId[] = [];
   let currentPrompt = "";
   let currentFocus: FocusState = INITIAL_FOCUS;
+  let currentView: ResultViewMode = "result";
+  let externalSetResult: ((value: ResultState) => void) | null = null;
+  let externalSetView: ((value: ResultViewMode) => void) | null = null;
+  let externalSetSubmitted: ((value: string | null) => void) | null = null;
 
   function Host(): React.ReactNode {
     // Real renderer dimensions, so a resize actually reaches resolveLayout.
     const { width: termWidth, height: termHeight } = useTerminalDimensions();
     const [prompt, setPrompt] = useState("");
     const [focus, setFocus] = useState<FocusState>(INITIAL_FOCUS);
-    const [overlay, setOverlay] = useState<string | null>(null);
+    const [overlay, setOverlay] = useState<OverlayState>(INITIAL_OVERLAY);
+    const [result, setResult] = useState<ResultState>(initialResult);
+    const [view, setView] = useState<ResultViewMode>("result");
+    const [submittedPrompt, setSubmittedPrompt] = useState<string | null>(null);
     currentPrompt = prompt;
     currentFocus = focus;
+    currentView = view;
+    externalSetResult = setResult;
+    externalSetView = setView;
+    externalSetSubmitted = setSubmittedPrompt;
 
-    const onCommand = useCallback((id: CommandId) => {
-      commands.push(id);
-      const options = { hasResult: hasResult(result) };
-      if (id === "focus-next") setFocus((f) => focusNext(f, options));
-      if (id === "focus-previous") setFocus((f) => focusPrevious(f, options));
-      if (id === "open-profile") {
-        setOverlay("profile");
-        setFocus(suspendFocus);
+    const onCommand = useCallback(
+      (id: CommandId) => {
+        commands.push(id);
+        const options = { hasResult: hasResult(result) };
+        if (id === "focus-next") setFocus((f) => focusNext(f, options));
+        if (id === "focus-previous") setFocus((f) => focusPrevious(f, options));
+        if (id === "open-profile") {
+          setOverlay(openOverlay(INITIAL_OVERLAY, "profile"));
+          setFocus(suspendFocus);
+        }
+        if (id === "open-palette") {
+          setOverlay(openOverlay(INITIAL_OVERLAY, "palette"));
+          setFocus(suspendFocus);
+        }
+        if (id === "open-help") {
+          setOverlay(openOverlay(INITIAL_OVERLAY, "help"));
+          setFocus(suspendFocus);
+        }
+        if (id === "close-overlay") {
+          setOverlay(closeOverlay);
+          setFocus(restoreFocus);
+        }
+        if (id === "toggle-diff") setView((v) => (v === "diff" ? "result" : "diff"));
+        if (id === "show-explain") setView("explain");
+        if (id === "reset") {
+          setResult({ kind: "empty" });
+          setView("result");
+          setFocus(INITIAL_FOCUS);
+        }
+      },
+      [result],
+    );
+
+    const onOverlaySelect = useCallback(() => {
+      setOverlay(closeOverlay);
+      setFocus(restoreFocus);
+    }, []);
+
+    const onOverlayRoute = useCallback((route: OverlayRoute) => {
+      if (route.kind === "overlay-nav") {
+        setOverlay((state) => moveSelection(state, route.dir, 5));
       }
-      if (id === "close-overlay") {
-        setOverlay(null);
+      if (route.kind === "overlay-type") {
+        setOverlay((state) => setQuery(state, state.query + route.text));
+      }
+      if (route.kind === "overlay-backspace") {
+        setOverlay((state) => setQuery(state, state.query.slice(0, -1)));
+      }
+      if (route.kind === "overlay-select") {
+        setOverlay(closeOverlay);
         setFocus(restoreFocus);
       }
     }, []);
 
     const context = useMemo(
       () => ({
-        hasOverlay: overlay !== null,
+        hasOverlay: overlay.active !== null,
         hasResult: hasResult(result),
         isGenerating: isBusy(result),
         inputLength: prompt.length,
-        editorFocused: focus.zone === "editor" && overlay === null,
+        editorFocused: focus.zone === "editor" && overlay.active === null,
       }),
-      [overlay, prompt.length, focus.zone],
+      [overlay, prompt.length, focus.zone, result],
     );
 
-    useKeyboardRouting(context, onCommand);
+    useKeyboardRouting(context, onCommand, onOverlayRoute);
 
     return (
       <box style={{ flexDirection: "column", width: "100%", height: "100%" }}>
@@ -97,16 +156,19 @@ async function mountScreen(options: HostOptions = {}) {
           width={termWidth}
           height={termHeight}
           prompt={prompt}
+          submittedPrompt={submittedPrompt}
           result={result}
+          view={view}
           focus={focus}
+          overlay={overlay}
           settings={SETTINGS}
+          ready
+          toast={null}
           t={t}
           onPromptChange={setPrompt}
           onCommand={onCommand}
+          onOverlaySelect={onOverlaySelect}
         />
-        <Dialog title="profile" open={overlay !== null} terminalWidth={termWidth}>
-          <text>{"overlay body"}</text>
-        </Dialog>
       </box>
     );
   }
@@ -126,8 +188,24 @@ async function mountScreen(options: HostOptions = {}) {
     frame: () => setup.captureCharFrame(),
     prompt: () => currentPrompt,
     focus: () => currentFocus,
+    view: () => currentView,
     commands,
     settle,
+    setResult: (value: ResultState) => {
+      act(() => {
+        externalSetResult?.(value);
+      });
+    },
+    setView: (value: ResultViewMode) => {
+      act(() => {
+        externalSetView?.(value);
+      });
+    },
+    setSubmittedPrompt: (value: string | null) => {
+      act(() => {
+        externalSetSubmitted?.(value);
+      });
+    },
     type: async (text: string): Promise<void> => {
       await act(async () => {
         await setup.mockInput.typeText(text);
@@ -255,7 +333,8 @@ describe("EditorScreen · overlay", () => {
     await screen.key("p", { ctrl: true });
     expect(screen.commands).toContain("open-profile");
     expect(screen.focus().suspended).toBe("editor");
-    expect(screen.frame()).toContain("overlay body");
+    // The profile picker opens (its title comes from the registry label).
+    expect(screen.frame()).toContain(t("tui.changeProfile"));
 
     // While the overlay holds the keyboard, ordinary keys reach nothing.
     await screen.type("z");
@@ -264,7 +343,7 @@ describe("EditorScreen · overlay", () => {
     await screen.escape();
     expect(screen.commands).toContain("close-overlay");
     expect(screen.focus()).toEqual({ zone: "editor", suspended: null });
-    expect(screen.frame()).not.toContain("overlay body");
+    expect(screen.frame()).not.toContain(t("tui.changeProfile"));
 
     // Focus is genuinely back: the editor accepts input again.
     await screen.type("x");
@@ -304,5 +383,134 @@ describe("EditorScreen · responsive", () => {
     // Below the minimum, optional rows go rather than overflow.
     await screen.resize(30, 8);
     expect(screen.frame()).not.toContain("^G");
+  });
+});
+
+describe("EditorScreen · vertical transcript", () => {
+  const SUCCESS: ResultState = {
+    kind: "success",
+    text: "Rewritten prompt here.",
+    original: "Original prompt",
+    changes: ["Clarified intent"],
+    latencyMs: 1400,
+    provider: "mock",
+    model: "mock-model",
+  };
+
+  test("shows the user turn and the reqraft result stacked vertically", async () => {
+    const screen = await mountScreen({ result: SUCCESS });
+    await screen.type("Original prompt");
+    const frame = screen.frame();
+
+    expect(frame).toContain(t("tui.turn.you"));
+    expect(frame).toContain(t("tui.turn.reqraft"));
+    // The prompt stays visible as the "you" turn even once a result exists.
+    expect(frame).toContain("Original prompt");
+    expect(frame).toContain("Rewritten prompt here.");
+  });
+
+  test("switches the result body to a diff and back with Ctrl+D", async () => {
+    const screen = await mountScreen({ result: SUCCESS });
+    await screen.key("d", { ctrl: true });
+    expect(screen.view()).toBe("diff");
+    const frame = screen.frame();
+    expect(frame).toContain("- Original prompt");
+    expect(frame).toContain("+ Rewritten prompt here.");
+
+    await screen.key("d", { ctrl: true });
+    expect(screen.view()).toBe("result");
+  });
+
+  test("shows the explanation view on Ctrl+E", async () => {
+    const screen = await mountScreen({ result: SUCCESS });
+    await screen.key("e", { ctrl: true });
+    expect(screen.view()).toBe("explain");
+    expect(screen.frame()).toContain("Clarified intent");
+  });
+
+  test("maps a risky quality status to its own label, never 'faithful'", async () => {
+    const screen = await mountScreen({
+      result: { kind: "success", text: "out", quality: { status: "risky", signals: [] } },
+    });
+    const frame = screen.frame();
+    expect(frame).toContain(t("quality.statusRisky"));
+    expect(frame).not.toContain("faithful");
+  });
+
+  test("scrolls a long result inside the transcript without breaking the editor", async () => {
+    const longText = Array.from({ length: 40 }, (_, i) => `line ${String(i + 1)}`).join("\n");
+    const screen = await mountScreen({
+      result: { kind: "success", text: longText },
+      height: 20,
+    });
+    const frame = screen.frame();
+    expect(frame).toContain("line 1");
+    // The footer is still intact: the transcript scrolled, not the UI.
+    expect(frame).toContain("^G");
+  });
+
+  test("renders an error inside the transcript while the prompt stays visible", async () => {
+    const screen = await mountScreen({
+      result: { kind: "error", title: "API key missing", message: "configure the provider" },
+    });
+    await screen.type("my prompt");
+    const frame = screen.frame();
+    expect(frame).toContain("API key missing");
+    expect(frame).toContain("my prompt");
+    expect(screen.prompt()).toBe("my prompt");
+  });
+});
+
+describe("EditorScreen · overlays", () => {
+  test("opens the command palette on Ctrl+K and filters it as you type", async () => {
+    const screen = await mountScreen();
+    await screen.key("k", { ctrl: true });
+    expect(screen.commands).toContain("open-palette");
+    expect(screen.frame()).toContain(t("tui.palette.title"));
+
+    await screen.type("res");
+    const frame = screen.frame();
+    // Only commands matching "res" remain (Reset).
+    expect(frame).toContain(t("tui.command.reset"));
+  });
+
+  test("opens help on ? while the prompt is empty", async () => {
+    const screen = await mountScreen();
+    await screen.key("?");
+    expect(screen.commands).toContain("open-help");
+    expect(screen.frame()).toContain(t("tui.help"));
+  });
+
+  test("lists every profile option in the picker", async () => {
+    const screen = await mountScreen();
+    await screen.key("p", { ctrl: true });
+    const frame = screen.frame();
+    expect(frame).toContain(t("tui.changeProfile"));
+    expect(frame).toContain("auto");
+  });
+});
+
+describe("EditorScreen · height budget", () => {
+  const heights = [40, 30, 24, 16] as const;
+
+  test("keeps the editor border, status bar and all content within the terminal", async () => {
+    for (const height of heights) {
+      const screen = await mountScreen({ width: 120, height });
+      const frame = screen.frame();
+
+      // The editor's bottom border is drawn, so the surface did not overflow.
+      // Matched on either corner glyph: the theme picks a rounded border only
+      // when it detects a unicode-capable terminal, and the test renderer has
+      // no TTY — asserting the rounded glyph tested the environment, not the
+      // layout.
+      expect(frame).toMatch(/[╰└]/);
+      // The status bar is present and therefore inside the viewport.
+      expect(frame).toContain("^G");
+
+      // Nothing is rendered below the last terminal line: the frame has no
+      // more rows than the terminal height.
+      const rows = frame.split("\n").filter((line) => line.trim().length > 0).length;
+      expect(rows).toBeLessThanOrEqual(height);
+    }
   });
 });

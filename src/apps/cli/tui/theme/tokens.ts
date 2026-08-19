@@ -38,6 +38,14 @@ export interface SpacingTokens {
 
 /** OpenTUI border styles, kept as a token so ASCII fallback is one decision. */
 export interface BorderTokens {
+  /**
+   * Vertical glyph for a turn's left rail. A terminal border is always one
+   * cell wide, so weight is the only dimension available: the block elements
+   * fill more of that cell than a box-drawing line. Terminals without block
+   * support fall back to the same line every other frame uses, not to ASCII —
+   * the frames stay box-drawing there, so a bare pipe would be the odd one out.
+   */
+  rail: string;
   default: "single" | "rounded" | "double" | "heavy";
   focused: "single" | "rounded" | "double" | "heavy";
 }
@@ -54,6 +62,13 @@ export interface LayoutTokens {
   minimumWidth: number;
   minimumHeight: number;
   sidebarWidth: number;
+  /** Cell gap used between stacked rows, so the height budget is exact. */
+  gap: number;
+}
+
+export interface MotionTokens {
+  /** Frame interval of the waiting indicator, in milliseconds. */
+  spinnerIntervalMs: number;
 }
 
 export interface Tokens {
@@ -61,6 +76,7 @@ export interface Tokens {
   spacing: SpacingTokens;
   border: BorderTokens;
   layout: LayoutTokens;
+  motion: MotionTokens;
 }
 
 const COLOR: ColorTokens = {
@@ -101,12 +117,15 @@ const MONOCHROME: ColorTokens = {
 /** Terminal rows and columns are integers: spacing is a cell count, not a scale. */
 export const SPACING: SpacingTokens = { none: 0, xs: 1, sm: 2, md: 3, lg: 4 };
 
+export const MOTION: MotionTokens = { spinnerIntervalMs: 90 };
+
 export const LAYOUT: LayoutTokens = {
   splitMinimumWidth: 110,
   compactMaximumHeight: 26,
   minimumWidth: 60,
   minimumHeight: 16,
   sidebarWidth: 28,
+  gap: 1,
 };
 
 export function createTokens(capabilities: TerminalCapabilities): Tokens {
@@ -114,8 +133,9 @@ export function createTokens(capabilities: TerminalCapabilities): Tokens {
     color: capabilities.color ? COLOR : MONOCHROME,
     spacing: SPACING,
     border: capabilities.unicode
-      ? { default: "single", focused: "rounded" }
-      : { default: "single", focused: "single" },
+      ? { default: "single", focused: "rounded", rail: "▍" }
+      : { default: "single", focused: "single", rail: "│" },
     layout: LAYOUT,
+    motion: MOTION,
   };
 }

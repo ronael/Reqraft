@@ -83,9 +83,12 @@ describe("interactive keyboard contract", () => {
     expect(resolveStreamedResultPreview('{"warnings":[')).toBe("");
   });
 
-  it("keeps OpenTUI native Ctrl+C shutdown enabled", () => {
+  it("keeps Ctrl+C owned by the app, not by OpenTUI's native shutdown", () => {
+    // Ctrl+C is routed by the application (cancel while generating, exit
+    // otherwise). If the renderer also exited on the key, a mid-run cancel
+    // would be impossible and the path would be duplicated.
     expect(createOpenTuiRendererOptions()).toMatchObject({
-      exitOnCtrlC: true,
+      exitOnCtrlC: false,
       useMouse: true,
     });
   });
