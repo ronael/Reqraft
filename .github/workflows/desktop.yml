@@ -49,20 +49,51 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
 
+      # An absent secret evaluates to an empty string, and an empty `CSC_LINK`
+      # is not the same as no `CSC_LINK`: electron-builder treats it as "a
+      # certificate was configured", then fails resolving it as a path. So the
+      # signing variables are only exported when they actually hold something.
+      - name: Configure code signing
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD_SECRET: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+          WIN_CSC_LINK_SECRET: ${{ secrets.WIN_CSC_LINK }}
+          WIN_CSC_KEY_PASSWORD_SECRET: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          signed=no
+
+          if [ -n "${MAC_CSC_LINK}" ]; then
+            {
+              echo "CSC_LINK=${MAC_CSC_LINK}"
+              echo "CSC_KEY_PASSWORD=${MAC_CSC_KEY_PASSWORD}"
+              echo "APPLE_ID=${APPLE_ID_SECRET}"
+              echo "APPLE_APP_SPECIFIC_PASSWORD=${APPLE_APP_SPECIFIC_PASSWORD_SECRET}"
+              echo "APPLE_TEAM_ID=${APPLE_TEAM_ID_SECRET}"
+            } >> "$GITHUB_ENV"
+            signed=yes
+          else
+            # Stops electron-builder from picking up a keychain identity that
+            # happens to be on the runner.
+            echo "CSC_IDENTITY_AUTO_DISCOVERY=false" >> "$GITHUB_ENV"
+          fi
+
+          if [ -n "${WIN_CSC_LINK_SECRET}" ]; then
+            {
+              echo "WIN_CSC_LINK=${WIN_CSC_LINK_SECRET}"
+              echo "WIN_CSC_KEY_PASSWORD=${WIN_CSC_KEY_PASSWORD_SECRET}"
+            } >> "$GITHUB_ENV"
+            signed=yes
+          fi
+
+          echo "Code signing configured: ${signed}"
+
       - name: Build installer
         run: pnpm ${{ matrix.script }}
-        env:
-          # macOS signing and notarisation activate only when these exist.
-          # Absent, electron-builder produces an unsigned build — fine for
-          # testing, refused for an official release by the gate below.
-          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
-          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
-          APPLE_ID: ${{ secrets.APPLE_ID }}
-          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
-          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-          # Windows signing, same principle.
-          WIN_CSC_LINK: ${{ secrets.WIN_CSC_LINK }}
-          WIN_CSC_KEY_PASSWORD: ${{ secrets.WIN_CSC_KEY_PASSWORD }}
 
       # A zero-byte or missing installer must fail here rather than upload an
       # empty artifact that looks fine until someone downloads it.

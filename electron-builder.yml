@@ -88,6 +88,10 @@ nsis:
   artifactName: ${productName}-${version}-win-${arch}-experimental.${ext}
 
 linux:
+  # Sans cela, electron-builder derive le nom de l'executable du champ `name`
+  # de package.json — "@reqraft/cli" devient "@reqraftcli", que le format
+  # AppImage refuse comme nom de fichier.
+  executableName: reqraft
   target:
     - target: AppImage
       arch: [x64]

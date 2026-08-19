@@ -54,6 +54,9 @@ macOS ships **arm64** only, because that is what has been run. `x64` and
 nothing else in the pipeline assumes a single architecture.
 
 Windows and Linux are **x64**. No 32-bit target: no known machine needs one.
+The Linux artefact is named `x86_64` rather than `x64` — that is the name the
+AppImage ecosystem uses, and renaming it would only surprise the people who
+download it.
 
 Linux ships **AppImage** only. `deb`, `rpm`, `snap` and `flatpak` will be added
 if a real request appears, not in anticipation of one.
