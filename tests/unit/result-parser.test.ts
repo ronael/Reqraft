@@ -88,3 +88,39 @@ describe("resolveDetectedProfileId", () => {
     expect(resolveDetectedProfileId("marketing")).toEqual({ profileId: "clean", fellBack: true });
   });
 });
+
+describe("parseResult on degenerate output", () => {
+  it("keeps the answer when the model keeps talking after its JSON", () => {
+    // Reproduces a real gpt-5-mini run: a valid envelope, then the model
+    // looping on filler. Parsing all-or-nothing threw the answer away and
+    // surfaced the whole transcript as the result.
+    const chatter = " continuous.".repeat(400);
+    const result = parseResult(
+      `{"rewritten":"Avant de commencer, dis-moi si tu es capable.","profile":"clean","changes":[],"warnings":[]}` +
+        ` PMID: N/A?> I see an extra trailing text—Oops.${chatter} STOP.`,
+    );
+
+    expect(result.format).toBe("structured");
+    expect(result.rewritten).toBe("Avant de commencer, dis-moi si tu es capable.");
+    expect(result.rewritten).not.toContain("continuous");
+    expect(result.profile).toBe("clean");
+  });
+
+  it("does not end the object on a brace inside the rewritten text", () => {
+    const result = parseResult('{"rewritten":"Utilise {{ handlebars }} ici","warnings":[]}');
+    expect(result.rewritten).toBe("Utilise {{ handlebars }} ici");
+    expect(result.format).toBe("structured");
+  });
+
+  it("does not end the object on an escaped quote", () => {
+    const result = parseResult('{"rewritten":"Il a dit \\"oui\\" hier","warnings":[]}  trailing');
+    expect(result.rewritten).toBe('Il a dit "oui" hier');
+    expect(result.format).toBe("structured");
+  });
+
+  it("still falls back to raw when there is no object at all", () => {
+    const result = parseResult("juste du texte, aucun JSON");
+    expect(result.format).toBe("raw");
+    expect(result.rewritten).toBe("juste du texte, aucun JSON");
+  });
+});

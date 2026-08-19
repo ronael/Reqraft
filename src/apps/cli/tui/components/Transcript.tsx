@@ -12,7 +12,6 @@ import type { Translator } from "@/i18n/translate.js";
 
 export interface TranscriptProps {
   /** Live editor content — the "you" turn only when nothing has been submitted. */
-  livePrompt: string;
   /**
    * The prompt that was actually submitted, snapshotted when generation
    * started. Used so editing the editor after a run does not rewrite history.
@@ -41,7 +40,6 @@ export interface TranscriptProps {
  * pushing the editor off screen.
  */
 export function Transcript({
-  livePrompt,
   submittedPrompt,
   state,
   view,
@@ -53,13 +51,14 @@ export function Transcript({
 }: Readonly<TranscriptProps>): React.ReactNode {
   const { color } = theme.tokens;
 
+  // The "you" turn is a record of what was SENT, never a mirror of what is
+  // being typed. Falling back to the live prompt drew the editor's contents a
+  // second time in the transcript, so the same paragraph appeared twice and
+  // looked like a generation had already started.
   const youText =
-    state.kind === "success" && state.original !== undefined
-      ? state.original
-      : (submittedPrompt ?? livePrompt);
-  const hasSubmitted = submittedPrompt !== null || state.kind !== "empty";
-  const showYou = hasSubmitted || livePrompt.length > 0;
-  const hasExchange = state.kind !== "empty" || hasSubmitted || livePrompt.length > 0;
+    state.kind === "success" && state.original !== undefined ? state.original : submittedPrompt;
+  const showYou = youText !== null && youText !== "";
+  const hasExchange = state.kind !== "empty" || showYou;
 
   return (
     <ScrollArea height={height} focused={focused} sticky={state.kind === "streaming"}>

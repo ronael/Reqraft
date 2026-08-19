@@ -167,7 +167,6 @@ export function EditorScreen({
 
       <Stack direction="column" gap="xs" grow>
         <Transcript
-          livePrompt={prompt}
           submittedPrompt={submittedPrompt}
           state={result}
           view={view}

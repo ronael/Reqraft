@@ -58,11 +58,17 @@ export interface LayoutTokens {
   gap: number;
 }
 
+export interface MotionTokens {
+  /** Frame interval of the waiting indicator, in milliseconds. */
+  spinnerIntervalMs: number;
+}
+
 export interface Tokens {
   color: ColorTokens;
   spacing: SpacingTokens;
   border: BorderTokens;
   layout: LayoutTokens;
+  motion: MotionTokens;
 }
 
 const COLOR: ColorTokens = {
@@ -103,6 +109,8 @@ const MONOCHROME: ColorTokens = {
 /** Terminal rows and columns are integers: spacing is a cell count, not a scale. */
 export const SPACING: SpacingTokens = { none: 0, xs: 1, sm: 2, md: 3, lg: 4 };
 
+export const MOTION: MotionTokens = { spinnerIntervalMs: 90 };
+
 export const LAYOUT: LayoutTokens = {
   splitMinimumWidth: 110,
   compactMaximumHeight: 26,
@@ -120,5 +128,6 @@ export function createTokens(capabilities: TerminalCapabilities): Tokens {
       ? { default: "single", focused: "rounded" }
       : { default: "single", focused: "single" },
     layout: LAYOUT,
+    motion: MOTION,
   };
 }

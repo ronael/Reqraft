@@ -440,4 +440,5 @@ export const fr = {
   "tui.help.group.settings": () => "Réglages",
   "tui.help.group.result": () => "Résultat",
   "tui.help.group.navigate": () => "Naviguer",
+  "tui.result.streaming": () => "Génération…",
 } satisfies MessageCatalogue;

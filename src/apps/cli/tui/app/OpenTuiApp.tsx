@@ -18,6 +18,7 @@ import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import { parseLevel } from "@/core/levels.js";
+import { previewRewritten } from "@/core/stream-preview.js";
 import { createUiRepromptInput } from "@/apps/cli/ui/app-actions.js";
 import {
   applyLoadedConfig,
@@ -169,6 +170,8 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
   const abortController = useRef<AbortController | null>(null);
   const generationInFlight = useRef(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Raw provider stream, kept apart from the decoded prose shown on screen. */
+  const rawStream = useRef("");
 
   useEffect(() => {
     void services
@@ -239,6 +242,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
     abortController.current = controller;
     setStatus("loading");
     setFocus({ zone: "result", suspended: null });
+    rawStream.current = "";
     setPartialText("");
     setSubmittedPrompt(app.input);
     setApp((prev) => beginGeneration(prev));
@@ -249,7 +253,16 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
         signal: controller.signal,
         onDelta: (chunk) => {
           setStatus("streaming");
-          setPartialText((previous) => previous + chunk);
+          // Accumulate the raw stream, but show only the prose. Providers
+          // stream the whole JSON envelope, so pushing chunks straight to the
+          // screen displayed `{"rewritten":"Avant de…` while the user waited.
+          // `previewRewritten` is the decoder the desktop surface already uses;
+          // it also holds back an escape cut in half by a chunk boundary.
+          rawStream.current += chunk;
+          const preview = previewRewritten(rawStream.current);
+          if (preview.kind !== "pending") {
+            setPartialText(preview.text);
+          }
         },
       });
       setApp((prev) => completeGeneration(prev, result));
@@ -264,6 +277,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
     } finally {
       abortController.current = null;
       generationInFlight.current = false;
+      rawStream.current = "";
       setPartialText("");
     }
   }, [app, config, services, t]);
@@ -294,6 +308,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
 
   const reset = useCallback((): void => {
     abortController.current?.abort();
+    rawStream.current = "";
     setPartialText("");
     setStatus("idle");
     setApp(resetSession);

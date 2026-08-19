@@ -45,11 +45,62 @@ export function stripMarkdownFences(text: string): string {
   return content === "" ? trimmed : content;
 }
 
+/**
+ * The first complete JSON object in the text, or null.
+ *
+ * A model that finishes its envelope and then keeps talking produces valid
+ * JSON followed by prose. `JSON.parse` is all-or-nothing on that, so the good
+ * answer was thrown away and the whole degenerate transcript surfaced as the
+ * result — hundreds of repeated words where a clean rewrite already sat in the
+ * first two hundred characters.
+ *
+ * Scans for the balanced closing brace, skipping braces inside strings and
+ * honouring escapes, so a `{` in the rewritten text cannot end the object
+ * early.
+ */
+function firstJsonObject(text: string): string | null {
+  const start = text.indexOf("{");
+  if (start === -1) return null;
+
+  let depth = 0;
+  let index = start;
+
+  while (index < text.length) {
+    if (text[index] === '"') {
+      // Skip the whole literal: a brace inside it is text, not structure.
+      index = endOfJsonString(text, index);
+      continue;
+    }
+    if (text[index] === "{") depth += 1;
+    if (text[index] === "}") {
+      depth -= 1;
+      if (depth === 0) return text.slice(start, index + 1);
+    }
+    index += 1;
+  }
+  return null;
+}
+
+/** Index just past the closing quote of the string literal opening at `open`. */
+function endOfJsonString(text: string, open: number): number {
+  for (let index = open + 1; index < text.length; index += 1) {
+    if (text[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (text[index] === '"') return index + 1;
+  }
+  return text.length;
+}
+
 export function parseResult(text: string): ParsedResult {
   const cleaned = stripMarkdownFences(text);
+  // Prefer the whole text; fall back to its first object so trailing chatter
+  // does not cost the answer.
+  const candidate = firstJsonObject(cleaned) ?? cleaned;
 
   try {
-    const parsed = JSON.parse(cleaned) as unknown;
+    const parsed = JSON.parse(candidate) as unknown;
     const validated = ResultSchema.parse(parsed);
     return {
       rewritten: validated.rewritten,

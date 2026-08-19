@@ -4,6 +4,7 @@ import { TextAttributes } from "@opentui/core";
 import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
 import { KeyHint } from "@/apps/cli/tui/primitives/KeyHint.js";
 import { theme } from "@/apps/cli/tui/theme/index.js";
+import { Spinner } from "@/apps/cli/tui/primitives/Spinner.js";
 import { formatDiff, type ResultViewMode } from "@/apps/cli/ui/result-view.js";
 import type { ResultState } from "@/apps/cli/tui/model/result-state.js";
 import { COMMANDS, type CommandContext, type CommandId } from "@/apps/cli/tui/model/commands.js";
@@ -162,10 +163,17 @@ function renderBody(
     return null;
   }
   if (state.kind === "loading") {
-    return <text fg={color.accent}>{t("tui.result.loading")}</text>;
+    return <Spinner label={t("tui.result.loading")} />;
   }
   if (state.kind === "streaming") {
-    return <text fg={color.text}>{state.partial}</text>;
+    // The spinner stays above the text while it arrives: the stream can pause
+    // for seconds between chunks, and a still screen reads as a hang.
+    return (
+      <Stack direction="column" gap="xs">
+        <Spinner label={t("tui.result.streaming")} />
+        <text fg={color.text}>{state.partial}</text>
+      </Stack>
+    );
   }
   if (state.kind === "error") {
     return (
