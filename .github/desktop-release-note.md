@@ -4,7 +4,7 @@
 |---|---|
 | macOS arm64 (`.dmg`, `.zip`) | Tested by hand |
 | Windows x64 (`-experimental.exe`) | Builds, never run — expect breakage |
-| Linux x64 (`-experimental.AppImage`) | Builds, never run — expect breakage |
+| Linux x86_64 (`-experimental.AppImage`) | Builds, never run — expect breakage |
 
 The experimental builds are published so they can be tried, not because they
 are supported. Selection capture and reinjection are implemented for macOS
