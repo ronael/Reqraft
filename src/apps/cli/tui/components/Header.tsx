@@ -70,9 +70,11 @@ export function Header({
           return (
             <box
               key={id}
-              style={{
-                // backgroundColor: onActivate === undefined ? color.accent : color.surface,
-              }}
+              style={
+                {
+                  // backgroundColor: onActivate === undefined ? color.accent : color.surface,
+                }
+              }
               onMouseDown={
                 onActivate === undefined
                   ? undefined
@@ -83,7 +85,7 @@ export function Header({
             >
               <text>
                 {!compact && chord !== "" && <KeyCap label={chord} />}
-                {!compact && chord !== "" && <span>{" "}</span>}
+                {!compact && chord !== "" && <span> </span>}
                 {/*
                 Compact keeps the values and drops the labels, not the reverse:
                 "auto" is the information, "profil" is only the word for it. The

@@ -71,9 +71,17 @@ async function mountApp(services: TuiServices) {
     return <OpenTuiApp t={t} services={services} onExit={handleExit} />;
   }
 
-  const setup = trackRenderer(
-    await testRender(<Host />, { width: 120, height: 40, exitOnCtrlC: false }),
-  );
+  // The mount itself has to sit inside `act`: bootstrap resolves on the first
+  // microtask after `testRender` returns, so its `setConfig`/`setApp` landed in
+  // the gap before the first `settle()` and warned. `act` needs the environment
+  // flag already set, which `testRender` normally does on the way in — so it is
+  // armed here first.
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+  let mounted!: Awaited<ReturnType<typeof testRender>>;
+  await act(async () => {
+    mounted = await testRender(<Host />, { width: 120, height: 40, exitOnCtrlC: false });
+  });
+  const setup = trackRenderer(mounted);
 
   // The first flush goes through `settle` like every other one: a bare
   // `flush()` lets the state updates it triggers escape React's batching, which

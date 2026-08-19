@@ -132,8 +132,13 @@ describe("frame integrity", () => {
       provider: "openai-compatible",
       model: "claude-sonnet-4-20250514",
     });
-    // The header is row 0; row 1 must not be a wrapped continuation of it.
-    expect(rows[1]?.trim()).toBe("");
+    // The header no longer sits on row 0 — it carries a row of padding above it
+    // — so the assertion locates it rather than assuming its index. What must
+    // hold is that it occupies one row: the row after it stays empty instead of
+    // carrying a wrapped continuation.
+    const header = rows.findIndex((row) => row.includes("rq"));
+    expect(header).toBeGreaterThanOrEqual(0);
+    expect(rows[header + 1]?.trim()).toBe("");
   }, 60_000);
 
   test("the footer fits both locales down to 64 columns", async () => {
