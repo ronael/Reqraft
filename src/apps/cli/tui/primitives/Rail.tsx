@@ -1,5 +1,6 @@
 /* @jsxImportSource @opentui/react */
 import React from "react";
+import { BorderChars } from "@opentui/core";
 import { theme } from "@/apps/cli/tui/theme/index.js";
 
 export interface RailProps {
@@ -31,6 +32,11 @@ export function Rail({ color, children }: Readonly<RailProps>): React.ReactNode 
         border: ["left"],
         borderStyle: tokens.border.default,
         borderColor: color ?? tokens.color.accent,
+        // A border is one cell wide whatever the style, so weight is the only
+        // way to make the rail heavier. Only `vertical` is ever painted here;
+        // the rest of the set comes from the current style so a box that did
+        // draw its other sides would still look like every other frame.
+        customBorderChars: { ...BorderChars[tokens.border.default], vertical: tokens.border.rail },
         // The glyph carried its own trailing space; the border does not.
         paddingLeft: tokens.spacing.xs,
         flexDirection: "column",
