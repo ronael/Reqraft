@@ -38,6 +38,8 @@ au départ, pour éviter qu'une faute de frappe soit silencieusement ignorée.
 - `rp profiles add` ouvre un assistant demandant l'identifiant, le nom, la
   description, le niveau par défaut et les instructions.
 - Il crée un fichier JSON de façon atomique.
+- `rp profiles remove <id>` supprime un profil local après confirmation ; il
+  refuse toujours `auto` et les profils intégrés.
 - `rp profiles` liste les profils intégrés et les profils locaux.
 - `rp --profile <id>` et le sélecteur de profils du TUI reconnaissent le
   nouveau profil grâce au registre partagé.
@@ -54,8 +56,9 @@ sans créer de mécanisme de synchronisation automatique.
 
 ### Limites assumées de la V1
 
-- Création, importation et lecture seulement ; l'édition et la suppression
-  viendront dans une étape séparée.
+- L'édition peut attendre une étape séparée ; `remove` est inclus dès la V1
+  pour qu'une erreur de création ne force pas une manipulation manuelle des
+  fichiers.
 - Les profils restent locaux à la machine. Le fichier JSON reste exportable et
   importable manuellement.
 - `extends` ne peut viser qu'un profil intégré. Autoriser un profil local à en
@@ -113,8 +116,8 @@ l'IPC lorsque la liste n'a besoin que de l'identité et de la description.
 
 - Tests unitaires du schéma, des migrations futures, des collisions, du
   chargement et de l'écriture atomique.
-- Tests CLI : ajout interactif, import `--file`, catalogue et utilisation avec
-  `--profile`.
+- Tests CLI : ajout interactif, import `--file`, suppression confirmée,
+  catalogue et utilisation avec `--profile`.
 - Tests TUI : le nouveau profil est présent dans le sélecteur et utilisable.
 - Lors du lot desktop : tests IPC, formulaire de création, rafraîchissement du
   catalogue et utilisation dans une génération.
@@ -123,5 +126,6 @@ l'IPC lorsque la liste n'a besoin que de l'identité et de la description.
 
 Un profil est accepté lorsqu'il peut être créé depuis le CLI, reste présent
 après redémarrage, apparaît dans `rp profiles` et dans le TUI, puis est utilisé
-par une génération avec `rp --profile <id>`. Un profil invalide ou en conflit
-est refusé avec un message exploitable.
+par une génération avec `rp --profile <id>`. Il peut être supprimé par la
+commande dédiée sans toucher au système de fichiers. Un profil invalide ou en
+conflit est refusé avec un message exploitable.
