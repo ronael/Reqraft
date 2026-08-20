@@ -168,7 +168,9 @@ async function mountScreen(options: HostOptions = {}) {
           toast={null}
           t={t}
           onPromptChange={setPrompt}
-          onFocusEditor={() => setFocus({ zone: "editor", suspended: null })}
+          onFocusEditor={() => {
+            setFocus({ zone: "editor", suspended: null });
+          }}
           onCommand={onCommand}
           onOverlaySelect={onOverlaySelect}
         />
