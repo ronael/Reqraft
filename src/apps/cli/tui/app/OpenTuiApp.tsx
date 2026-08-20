@@ -233,6 +233,12 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
     setFocus(suspendFocus);
   }, []);
 
+  const focusEditorFromMouse = useCallback(() => {
+    setFocus((current) =>
+      current.suspended === null ? { zone: "editor", suspended: null } : current,
+    );
+  }, []);
+
   const generate = useCallback(async (): Promise<void> => {
     if (generationInFlight.current) return;
     if (!canStartGeneration(app.input, false)) return;
@@ -553,6 +559,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       onPromptChange={(value) => {
         setApp((prev) => updatePromptInput(prev, value));
       }}
+      onFocusEditor={focusEditorFromMouse}
       onCommand={onCommand}
       onOverlaySelect={onOverlaySelect}
     />

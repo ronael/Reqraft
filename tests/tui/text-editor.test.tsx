@@ -78,6 +78,15 @@ describe("TextEditor", () => {
     expect(editor.frame()).toContain("hello");
   });
 
+  test("leaves horizontal padding to its enclosing surface", async () => {
+    const editor = await mountEditor();
+    await editor.type("x");
+
+    // PromptEditor already owns the panel padding. A local inset here would
+    // create the detached, narrower input box this primitive is meant to avoid.
+    expect(editor.frame().split("\n")[0]).toStartWith("x");
+  });
+
   test("follows an external value change, so a reset actually clears", async () => {
     // The regression this locks: `initialValue` is latched by OpenTUI after
     // the first render, so without an explicit sync the editor would keep
