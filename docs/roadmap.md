@@ -25,3 +25,11 @@ Cette roadmap rassemble les intentions de produit. Les éléments marqués
   paramétrage est porté par `rp init` côté CLI ; l'objectif est que le desktop
   puisse guider la configuration initiale et modifier les paramètres ensuite,
   via une configuration partagée plutôt qu'en dépendant du CLI.
+- Étendre l'intégration générique des fournisseurs compatibles OpenAI. Permettre
+  l'usage de clés et d'URL configurables pour des acteurs tels qu'OpenRouter,
+  DeepInfra et leurs équivalents, sans développement spécifique par acteur
+  lorsqu'ils respectent le contrat commun. Vérifier les particularités utiles
+  (en-têtes, streaming, formats de réponse) et n'ajouter une adaptation dédiée
+  qu'en cas d'incompatibilité réelle. Ne pas modifier le catalogue de modèles
+  existant : ces accès doivent d'abord fonctionner par configuration locale
+  explicite.
