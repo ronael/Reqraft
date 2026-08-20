@@ -48,6 +48,13 @@ describe("tui theme", () => {
     );
   });
 
+  it("uses a backdrop only when the terminal can render a useful dimmed layer", () => {
+    expect(
+      createTheme({ color: true, unicode: true }).components.dialog.backdropOpacity,
+    ).toBeGreaterThan(0);
+    expect(createTheme({ color: false, unicode: true }).components.dialog.backdropOpacity).toBe(0);
+  });
+
   it("keeps spacing in whole terminal cells", () => {
     const { spacing } = createTokens({ color: true, unicode: true });
     for (const value of Object.values(spacing)) {
