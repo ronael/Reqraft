@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.3.1 (2026-08-20)
+
+- Fixed the desktop application failing to start. The main process left `zod`
+  as a bare import while the packaged app ships no `node_modules`, so every
+  0.3.0 installer died on launch with `ERR_MODULE_NOT_FOUND`. All three
+  platforms were affected. Dependencies are now bundled into the main process,
+  and a test asserts on the built artifact so the two configurations cannot
+  disagree again.
+- Dimmed the background behind dialogs and let the prompt surface move focus to
+  the editor.
+
 ## 0.3.0 (2026-08-19)
 
 ### New OpenTUI interface (UI V2)

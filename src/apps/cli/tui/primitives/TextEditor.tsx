@@ -1,7 +1,7 @@
 /* @jsxImportSource @opentui/react */
-import React, { useCallback, useEffect, useRef } from "react";
-import type { TextareaRenderable } from "@opentui/core";
 import { theme } from "@/apps/cli/tui/theme/index.js";
+import type { TextareaRenderable } from "@opentui/core";
+import React, { useCallback, useEffect, useRef } from "react";
 
 export interface TextEditorProps {
   value: string;
@@ -10,6 +10,8 @@ export interface TextEditorProps {
   disabled?: boolean;
   height?: number;
   onChange(value: string): void;
+  /** Lets the enclosing interactive surface focus the native editor. */
+  editorRef?: React.RefObject<TextareaRenderable | null>;
   onSubmit?(): void;
 }
 
@@ -41,10 +43,12 @@ export function TextEditor({
   disabled = false,
   height,
   onChange,
+  editorRef,
   onSubmit,
 }: Readonly<TextEditorProps>): React.ReactNode {
   const { tokens, components } = theme;
-  const editor = useRef<TextareaRenderable | null>(null);
+  const localEditor = useRef<TextareaRenderable | null>(null);
+  const editor = editorRef ?? localEditor;
 
   const handleContentChange = useCallback(() => {
     const current = editor.current?.plainText;
@@ -70,6 +74,7 @@ export function TextEditor({
 
   return (
     <textarea
+      id="prompt-text-editor"
       ref={editor}
       focused={focused && !disabled}
       initialValue={value}
@@ -83,8 +88,7 @@ export function TextEditor({
       onSubmit={onSubmit}
       style={{
         minHeight: height ?? components.editor.minimumHeight,
-        paddingLeft: components.editor.paddingX,
-        paddingRight: components.editor.paddingX,
+        width: "100%",
       }}
     />
   );

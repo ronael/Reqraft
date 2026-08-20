@@ -6,11 +6,16 @@ import { TextAttributes } from "@opentui/core";
 import React from "react";
 
 export interface SurfaceProps {
+  id?: string;
   title?: string;
   meta?: string;
   tone?: SurfaceTone;
   density?: Density;
   focused?: boolean;
+  /** Fixed panel height when a child needs an exact terminal-row budget. */
+  height?: number;
+  /** Handles clicks anywhere in the panel, including its title and padding. */
+  onMouseDown?(): void;
   /** Drops the border for dense areas that are already inside a surface. */
   bare?: boolean;
   children?: React.ReactNode;
@@ -26,11 +31,14 @@ export interface SurfaceProps {
  * a literal.
  */
 export function Surface({
+  id,
   title,
   meta,
   tone = "default",
   density = "comfortable",
   focused = false,
+  height,
+  onMouseDown,
   bare = false,
   children,
 }: Readonly<SurfaceProps>): React.ReactNode {
@@ -39,6 +47,8 @@ export function Surface({
 
   return (
     <box
+      id={id}
+      onMouseDown={onMouseDown}
       style={{
         border: !bare,
         borderStyle: focused ? tokens.border.focused : tokens.border.default,
@@ -50,6 +60,9 @@ export function Surface({
         paddingBottom: components.surface.paddingY[density],
         flexDirection: "column",
         flexGrow: 0,
+        ...(height === undefined
+          ? {}
+          : { height, minHeight: height, maxHeight: height, flexShrink: 0 }),
       }}
     >
       {title !== undefined && (

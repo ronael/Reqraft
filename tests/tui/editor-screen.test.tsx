@@ -63,6 +63,7 @@ async function mountScreen(options: HostOptions = {}) {
   let currentPrompt = "";
   let currentFocus: FocusState = INITIAL_FOCUS;
   let currentView: ResultViewMode = "result";
+  let externalSetFocus: ((value: FocusState) => void) | null = null;
   let externalSetResult: ((value: ResultState) => void) | null = null;
   let externalSetView: ((value: ResultViewMode) => void) | null = null;
   let externalSetSubmitted: ((value: string | null) => void) | null = null;
@@ -79,6 +80,7 @@ async function mountScreen(options: HostOptions = {}) {
     currentPrompt = prompt;
     currentFocus = focus;
     currentView = view;
+    externalSetFocus = setFocus;
     externalSetResult = setResult;
     externalSetView = setView;
     externalSetSubmitted = setSubmittedPrompt;
@@ -166,6 +168,9 @@ async function mountScreen(options: HostOptions = {}) {
           toast={null}
           t={t}
           onPromptChange={setPrompt}
+          onFocusEditor={() => {
+            setFocus({ zone: "editor", suspended: null });
+          }}
           onCommand={onCommand}
           onOverlaySelect={onOverlaySelect}
         />
@@ -188,6 +193,11 @@ async function mountScreen(options: HostOptions = {}) {
     frame: () => setup.captureCharFrame(),
     prompt: () => currentPrompt,
     focus: () => currentFocus,
+    setFocus: (value: FocusState) => {
+      act(() => {
+        externalSetFocus?.(value);
+      });
+    },
     view: () => currentView,
     commands,
     settle,
@@ -215,6 +225,17 @@ async function mountScreen(options: HostOptions = {}) {
     key: async (name: string, modifiers: { ctrl?: boolean; shift?: boolean } = {}) => {
       await act(async () => {
         setup.mockInput.pressKey(name, modifiers);
+        await setup.flush();
+      });
+      await settle();
+    },
+    clickPromptSurface: async (): Promise<void> => {
+      const surface = setup.renderer.root.findDescendantById("prompt-editor-surface");
+      if (surface === undefined) throw new Error("Prompt editor surface was not rendered");
+      await act(async () => {
+        // Click the heading rather than the textarea: the entire Surface must
+        // activate the editor, not merely its content rows.
+        await setup.mockMouse.click(surface.x + 1, surface.y + 1);
         await setup.flush();
       });
       await settle();
@@ -254,6 +275,7 @@ describe("EditorScreen · rendering", () => {
     const frame = screen.frame();
 
     expect(frame).toContain("mock-model");
+    expect(frame).toContain(t("tui.panel.prompt"));
     // Shortcut labels come from the registry, not from literals in the view.
     expect(frame).toContain("^G");
   });
@@ -281,6 +303,18 @@ describe("EditorScreen · real keyboard", () => {
 
     expect(screen.prompt()).toBe("hello");
     expect(screen.frame()).toContain("hello");
+  });
+
+  test("a click anywhere on the prompt surface restores editor focus", async () => {
+    const screen = await mountScreen();
+    screen.setFocus({ zone: "toolbar", suspended: null });
+    expect(screen.focus().zone).toBe("toolbar");
+
+    await screen.clickPromptSurface();
+    expect(screen.focus().zone).toBe("editor");
+
+    await screen.type("x");
+    expect(screen.prompt()).toBe("x");
   });
 
   test("a real Ctrl+G raises generate and leaves the prompt untouched", async () => {

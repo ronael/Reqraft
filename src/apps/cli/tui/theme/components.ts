@@ -32,6 +32,8 @@ export interface ComponentTokens {
     maximumWidth: number;
     maximumHeightRatio: number;
     paddingX: number;
+    /** Darkens the application behind an open modal without hiding it. */
+    backdropOpacity: number;
   };
   editor: {
     minimumHeight: number;
@@ -60,6 +62,9 @@ export function createComponentTokens(tokens: Tokens): ComponentTokens {
       maximumWidth: 72,
       maximumHeightRatio: 0.7,
       paddingX: spacing.sm,
+      // Monochrome terminals need the underlying content to remain legible;
+      // their palette cannot express a useful dimmed layer.
+      backdropOpacity: tokens.color.background === "black" ? 0 : 0.72,
     },
     editor: {
       minimumHeight: 3,

@@ -7,7 +7,14 @@ import { defineConfig } from "tsup";
  * as ESM (`.mjs`) and the sandboxed preload as a single CJS file (`.cjs`),
  * which is the only format a `sandbox: true` preload accepts.
  *
- * `electron` stays external: it is provided by the runtime.
+ * `electron` stays external: it is provided by the runtime. Everything else is
+ * bundled in, and that is not the default: tsup externalises every entry of
+ * `dependencies`, so a bare `import ... from "zod"` survived into the shipped
+ * main process while `files: ["!node_modules/**"]` kept the package out of the
+ * asar — the app died at startup with ERR_MODULE_NOT_FOUND. `noExternal`
+ * inverts that default, so any dependency the main process reaches for is
+ * bundled rather than assumed present. Node builtins stay external on their
+ * own because the platform is `node`.
  *
  * Output lives under `release/`, never under `dist/`: `dist/` is what the npm
  * package publishes (`files: ["dist"]`), and nothing Electron belongs in
@@ -27,6 +34,9 @@ export default defineConfig([
     platform: "node",
     bundle: true,
     external: ["electron"],
+    // Anything but `electron` itself: a bare `/.*/` here outranks `external`
+    // and bundled a CommonJS shim for electron, which the runtime must provide.
+    noExternal: [/^(?!electron$).*/],
     splitting: false,
     sourcemap: true,
     clean: true,
@@ -41,6 +51,9 @@ export default defineConfig([
     platform: "node",
     bundle: true,
     external: ["electron"],
+    // Anything but `electron` itself: a bare `/.*/` here outranks `external`
+    // and bundled a CommonJS shim for electron, which the runtime must provide.
+    noExternal: [/^(?!electron$).*/],
     splitting: false,
     sourcemap: true,
     clean: false,

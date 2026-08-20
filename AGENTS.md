@@ -42,6 +42,14 @@ business logic both of them consume.
 ## UI
 
 - The interactive CLI uses OpenTUI through `src/apps/cli/opentui/`.
+- Before changing a UI component, layout primitive, renderer option, input
+  behaviour or keyboard interaction, identify the UI technology used by that
+  surface (OpenTUI for the interactive CLI, React/Electron for desktop, or
+  another direct dependency). Consult the documentation for the exact
+  component/API involved. Prefer project-local package types and sources
+  first, then its official documentation when further context is needed. Use
+  sound engineering judgement, reuse documented primitives or patterns rather
+  than recreating them, and do not rely on undocumented behaviour.
 - Keep product state, shortcuts, provider/model selection and formatting rules
   in the `src/apps/cli/ui/` modules when possible. Those modules stay free of
   any rendering surface — ESLint blocks `ink` and `@opentui/*` there.

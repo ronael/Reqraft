@@ -47,6 +47,7 @@ export function Dialog({
   if (!open) return null;
 
   const { dialog } = theme.components;
+  const { color } = theme.tokens;
 
   const width = Math.min(
     dialog.maximumWidth,
@@ -73,16 +74,26 @@ export function Dialog({
         // Above the transcript and the editor, below the toast: a toast that
         // confirms an action taken *in* the dialog has to stay readable.
         zIndex: 20,
-        // No backdrop fill. A terminal cannot dim or blur, and painting the
-        // whole viewport opaque would hide the transcript the dialog is about.
-        // The dialog's own surface is opaque, so it covers what it overlaps and
-        // the rest of the screen stays readable behind it.
         flexDirection: "column",
         justifyContent: "center",
         alignItems: "center",
       }}
     >
-      <box style={{ width, flexDirection: "column" }}>
+      {/* OpenTUI boxes can fill and blend an absolute layer. The panel stays
+          above it, while the parent remains below Toast (zIndex 30). */}
+      <box
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 0,
+          backgroundColor: color.background,
+          opacity: dialog.backdropOpacity,
+        }}
+      />
+      <box style={{ width, flexDirection: "column", zIndex: 1 }}>
         <Surface title={title} tone="accent" focused>
           {scrolls ? (
             // The scrollbar draws in the last column of its viewport, so the

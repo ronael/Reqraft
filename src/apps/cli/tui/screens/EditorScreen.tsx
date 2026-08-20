@@ -53,6 +53,8 @@ export interface EditorScreenProps {
   toast: ToastState | null;
   t: Translator;
   onPromptChange(value: string): void;
+  /** Moves the application focus to the editor after a mouse click. */
+  onFocusEditor?(): void;
   onCommand(id: CommandId): void;
   /** Selecting a value in a picker overlay, distinct from a CommandId. */
   onOverlaySelect(overlay: PickerOverlayId, value: string): void;
@@ -80,6 +82,7 @@ export function EditorScreen({
   toast,
   t,
   onPromptChange,
+  onFocusEditor,
   onCommand,
   onOverlaySelect,
 }: Readonly<EditorScreenProps>): React.ReactNode {
@@ -141,6 +144,7 @@ export function EditorScreen({
       meta={layout.showMetadata ? settings.model : undefined}
       t={t}
       onChange={onPromptChange}
+      onFocusRequest={onFocusEditor}
     />
   );
 
