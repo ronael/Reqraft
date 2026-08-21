@@ -26,6 +26,38 @@ const ERROR_PROFILE_UNKNOWN = "profile.unknown" as const;
  */
 export const PROFILE_FILE_EXTENSION = ".reqraft-profile.json";
 
+const JSON_EXTENSION = ".json";
+
+/**
+ * A `.json` in the profiles directory that lacks the profile suffix — reported
+ * only when it really is a profile.
+ *
+ * The distinction matters both ways. A valid profile under the wrong name would
+ * otherwise vanish without a word, which is the failure this module exists to
+ * prevent. But notes, a stray archive or a half-written file are not mistyped
+ * profiles, and warning about them on every start-up would train the user to
+ * ignore the warnings that do matter.
+ */
+async function misnamedEntry(name: string, profilesDir: string): Promise<LocalProfileEntry | null> {
+  const filePath = path.join(profilesDir, name);
+
+  try {
+    parseCustomProfile(await readFile(filePath, "utf8"));
+  } catch {
+    // Not a profile, just a file that happens to end in `.json`.
+    return null;
+  }
+
+  return {
+    id: name.slice(0, -JSON_EXTENSION.length),
+    path: filePath,
+    error: new ReqraftError(ERROR_CONFIG_INVALID, EXIT_CODES.INVALID_CONFIGURATION, {
+      params: { path: filePath },
+      detail: `"${name}" looks like a profile but is ignored: the file must end with "${PROFILE_FILE_EXTENSION}". Rename it to load it.`,
+    }),
+  };
+}
+
 function isErrnoCode(error: unknown, code: string): boolean {
   return (error as NodeJS.ErrnoException | undefined)?.code === code;
 }
@@ -119,32 +151,36 @@ export interface LocalProfileEntry {
  * throws for a single unusable file — the failure is attached to that file's
  * entry.
  */
-export async function loadLocalProfileEntries(
-  profilesDir = getProfilesDir(),
+/** Profiles that are only misnamed, so they are named rather than lost. */
+async function collectMisnamed(
+  visible: readonly Dirent[],
+  profilesDir: string,
 ): Promise<LocalProfileEntry[]> {
-  let entries: Dirent[];
-  try {
-    entries = await readdir(profilesDir, { withFileTypes: true });
-  } catch (error) {
-    if (isErrnoCode(error, "ENOENT")) {
-      return [];
+  const found: LocalProfileEntry[] = [];
+  for (const entry of visible) {
+    if (!entry.name.endsWith(JSON_EXTENSION) || entry.name.endsWith(PROFILE_FILE_EXTENSION)) {
+      continue;
     }
-    throw error;
+    const misnamed = await misnamedEntry(entry.name, profilesDir);
+    if (misnamed !== null) found.push(misnamed);
   }
+  return found;
+}
 
-  const jsonFiles = entries
-    .filter(
-      (entry) =>
-        entry.isFile() &&
-        entry.name.endsWith(PROFILE_FILE_EXTENSION) &&
-        !entry.name.startsWith("."),
-    )
+/** One entry per profile file, carrying either the profile or its failure. */
+async function collectProfiles(
+  visible: readonly Dirent[],
+  profilesDir: string,
+): Promise<LocalProfileEntry[]> {
+  const files = visible
+    .filter((entry) => entry.name.endsWith(PROFILE_FILE_EXTENSION))
     .sort((a, b) => a.name.localeCompare(b.name));
 
   const loaded: LocalProfileEntry[] = [];
-  for (const entry of jsonFiles) {
+  for (const entry of files) {
     const id = entry.name.slice(0, -PROFILE_FILE_EXTENSION.length);
     const filePath = path.join(profilesDir, entry.name);
+
     if (!isValidCustomProfileId(id)) {
       loaded.push({
         id,
@@ -174,8 +210,28 @@ export async function loadLocalProfileEntries(
       });
     }
   }
-
   return loaded;
+}
+
+export async function loadLocalProfileEntries(
+  profilesDir = getProfilesDir(),
+): Promise<LocalProfileEntry[]> {
+  let entries: Dirent[];
+  try {
+    entries = await readdir(profilesDir, { withFileTypes: true });
+  } catch (error) {
+    if (isErrnoCode(error, "ENOENT")) {
+      return [];
+    }
+    throw error;
+  }
+
+  const visible = entries.filter((entry) => entry.isFile() && !entry.name.startsWith("."));
+
+  return [
+    ...(await collectMisnamed(visible, profilesDir)),
+    ...(await collectProfiles(visible, profilesDir)),
+  ];
 }
 
 /**

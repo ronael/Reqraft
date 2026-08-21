@@ -43,6 +43,8 @@ const EXISTING: CustomProfile = {
 let profilesDir: string;
 let exportDir: string;
 let executed: ExecuteRepromptInput[];
+/** Files handed to the system opener, captured instead of really opened. */
+let opened: string[];
 
 function makeResult(input: string): RepromptResult {
   return {
@@ -61,7 +63,15 @@ function makeResult(input: string): RepromptResult {
 function services(): TuiServices {
   return {
     bootstrap: () => Promise.resolve({ config: { ...DEFAULT_CONFIG } }),
-    profiles: createProfileServices({ profilesDir, exportDir }),
+    profiles: {
+      ...createProfileServices({ profilesDir, exportDir }),
+      // Everything else stays the production service; only the launch is
+      // intercepted, or the suite would put windows on the screen.
+      openInEditor: (id) => {
+        opened.push(id);
+        return Promise.resolve(`${profilesDir}/${id}.reqraft-profile.json`);
+      },
+    },
     execute: (input) => {
       executed.push(input);
       return Promise.resolve({ result: makeResult(input.input), detectedProfile: false });
@@ -111,6 +121,13 @@ async function mountApp() {
     type: async (text: string): Promise<void> => {
       await act(async () => {
         await setup.mockInput.typeText(text);
+      });
+      await settle();
+    },
+    horizontal: async (seq: string): Promise<void> => {
+      await act(async () => {
+        await setup.mockInput.pressKeys([seq], 30);
+        await setup.flush();
       });
       await settle();
     },
@@ -168,6 +185,28 @@ async function expectNoProfile(id: string): Promise<void> {
   expect(missing).toBe(true);
 }
 
+/**
+ * Walks the highlight down to a row by its label.
+ *
+ * By label rather than by counting keystrokes: adding one action shifted every
+ * index and broke six tests that were really asserting "the fifth row", not
+ * "the row that creates a profile".
+ */
+async function highlightRow(
+  app: Awaited<ReturnType<typeof mountApp>>,
+  label: string,
+): Promise<void> {
+  for (let step = 0; step < 20; step++) {
+    const row = app
+      .frame()
+      .split("\n")
+      .find((line) => line.includes(label));
+    if (row?.includes("›")) return;
+    await app.arrow("down");
+  }
+  throw new Error(`"${label}" jamais surligné`);
+}
+
 /** Opens the picker and walks the highlight down to a named profile. */
 async function openPickerOn(
   app: Awaited<ReturnType<typeof mountApp>>,
@@ -189,6 +228,7 @@ beforeEach(async () => {
   profilesDir = await mkdtemp(path.join(os.tmpdir(), "rp-flow-profiles-"));
   exportDir = await mkdtemp(path.join(os.tmpdir(), "rp-flow-export-"));
   executed = [];
+  opened = [];
   await loadProfileCatalog({ profilesDir });
 });
 
@@ -220,7 +260,7 @@ describe("profile picker and actions", () => {
     expect(app.frame()).toContain("Dupliquer");
 
     // And the fourth row, "Supprimer", is just as inert.
-    for (let step = 0; step < 3; step++) await app.arrow("down");
+    await highlightRow(app, "Supprimer");
     await app.enter();
     expect(app.frame()).not.toContain("Supprimer « clean »");
   }, 120_000);
@@ -243,14 +283,7 @@ describe("creating a profile", () => {
 
     // The row sits last, after the profiles: the list reads as what you can
     // pick, then what you can do.
-    for (let step = 0; step < 20; step++) {
-      const row = app
-        .frame()
-        .split("\n")
-        .find((line) => line.includes("Nouveau profil local"));
-      if (row?.includes("›")) break;
-      await app.arrow("down");
-    }
+    await highlightRow(app, "Nouveau profil local");
     await app.enter();
 
     // The form, not a selected profile named after the row.
@@ -264,8 +297,7 @@ describe("creating a profile", () => {
     await openPickerOn(app, "Clean");
     await app.chord("a");
 
-    // "Nouveau profil local" is the last row.
-    for (let step = 0; step < 4; step++) await app.arrow("down");
+    await highlightRow(app, "Nouveau profil local");
     await app.enter();
     expect(app.frame()).toContain("Nouveau profil local");
 
@@ -297,7 +329,7 @@ describe("creating a profile", () => {
     const app = await mountApp();
     await openPickerOn(app, "Clean");
     await app.chord("a");
-    for (let step = 0; step < 4; step++) await app.arrow("down");
+    await highlightRow(app, "Nouveau profil local");
     await app.enter();
 
     // Nothing typed at all: the save has to be refused, visibly.
@@ -310,7 +342,7 @@ describe("creating a profile", () => {
     const app = await mountApp();
     await openPickerOn(app, "Clean");
     await app.chord("a");
-    for (let step = 0; step < 4; step++) await app.arrow("down");
+    await highlightRow(app, "Nouveau profil local");
     await app.enter();
     await app.type("Jetable");
 
@@ -349,8 +381,7 @@ describe("editing and deleting a local profile", () => {
     const app = await mountApp();
     await openPickerOn(app, "Support client");
     await app.chord("a");
-    // Rows: edit, duplicate, export, delete.
-    for (let step = 0; step < 3; step++) await app.arrow("down");
+    await highlightRow(app, "Supprimer");
     await app.enter();
 
     expect(app.frame()).toContain("Supprimer");
@@ -366,7 +397,7 @@ describe("editing and deleting a local profile", () => {
     const app = await mountApp();
     await openPickerOn(app, "Support client");
     await app.chord("a");
-    for (let step = 0; step < 3; step++) await app.arrow("down");
+    await highlightRow(app, "Supprimer");
     await app.enter();
 
     await app.sequence(KeyCodes.ESCAPE);
@@ -374,15 +405,46 @@ describe("editing and deleting a local profile", () => {
     expect(await readLocalProfile("support-client", profilesDir)).toBeDefined();
   }, 180_000);
 
+  test("opens the file with the system's default application", async () => {
+    const app = await mountApp();
+    await openPickerOn(app, "Support client");
+    await app.chord("a");
+    await highlightRow(app, "Ouvrir dans l'éditeur");
+    await app.enter();
+
+    await app.waitUntil(() => opened.length > 0, "le fichier est ouvert");
+    expect(opened).toEqual(["support-client"]);
+    // The overlay closes: nothing can know when a detached editor saves.
+    expect(app.frame()).not.toContain("Dupliquer");
+  }, 120_000);
+
+  test("does not offer to open a built-in, which has no file", async () => {
+    const app = await mountApp();
+    await openPickerOn(app, "Clean");
+    await app.chord("a");
+    await highlightRow(app, "Ouvrir dans l'éditeur");
+    await app.enter();
+
+    expect(opened).toEqual([]);
+    // Still on the actions list: the row is inert, with its reason beside it.
+    expect(app.frame()).toContain("profil intégré");
+  }, 120_000);
+
   test("exports it to a real file", async () => {
     const app = await mountApp();
     await openPickerOn(app, "Support client");
     await app.chord("a");
-    for (let step = 0; step < 2; step++) await app.arrow("down");
+    await highlightRow(app, "Exporter en JSON");
     await app.enter();
     await app.waitUntil(() => !app.frame().includes("Exporter en JSON"), "l'export se termine");
 
-    const written = await readFile(path.join(exportDir, "support-client.json"), "utf8");
+    // The exported file carries the same suffix as a stored one: it is the file
+    // most likely to be read outside Reqraft, and it can be copied straight back
+    // into the profiles directory.
+    const written = await readFile(
+      path.join(exportDir, "support-client.reqraft-profile.json"),
+      "utf8",
+    );
     expect(JSON.parse(written)).toEqual(EXISTING);
   }, 180_000);
 
@@ -390,9 +452,8 @@ describe("editing and deleting a local profile", () => {
     const app = await mountApp();
     await openPickerOn(app, "Support client");
     await app.chord("a");
-    await app.arrow("down");
+    await highlightRow(app, "Dupliquer");
     await app.enter();
-    expect(app.frame()).toContain("Dupliquer");
 
     // The form opens on the source's name with an empty id, so typing extends
     // the name and the id follows it — a duplicate cannot silently reuse the
@@ -410,12 +471,75 @@ describe("editing and deleting a local profile", () => {
   }, 180_000);
 });
 
+describe("form choice fields", () => {
+  test("left and right change the value, as the hint says", async () => {
+    const app = await mountApp();
+    await app.chord("p");
+    await highlightRow(app, "Nouveau profil local");
+    await app.enter();
+
+    // name -> id -> description -> Base
+    await app.sequence(KeyCodes.TAB);
+    await app.sequence(KeyCodes.TAB);
+    await app.sequence(KeyCodes.TAB);
+    // The row under the "Base" label — the other empty fields say "(vide)" too,
+    // so the assertion has to name which one it means.
+    const baseValue = (): string | undefined => {
+      const rows = app.frame().split("\n");
+      const label = rows.findIndex((row) => row.includes("Base"));
+      return rows[label + 1];
+    };
+
+    expect(baseValue()).toContain("(vide)");
+
+    await app.horizontal(KeyCodes.ARROW_RIGHT);
+    // The advertised key does what it advertises.
+    expect(baseValue()).toContain("clean");
+
+    await app.horizontal(KeyCodes.ARROW_LEFT);
+    expect(baseValue()).toContain("(vide)");
+  }, 120_000);
+});
+
+describe("level and profile", () => {
+  test("selecting a profile adopts the level it declares", async () => {
+    const app = await mountApp();
+    // The header shows the level, so the change is visible rather than silent.
+    expect(app.frame()).toContain("standard");
+
+    await openPickerOn(app, "Clean");
+    await app.enter();
+
+    // `clean` declares "minimal"; before this the field was read by nothing.
+    await app.waitUntil(() => app.frame().includes("minimal"), "le niveau suit le profil");
+    expect(app.frame()).toContain("minimal");
+  }, 120_000);
+
+  test("a level chosen by hand survives a later profile change", async () => {
+    const app = await mountApp();
+
+    await app.chord("l");
+    // The level list is minimal | standard | complete: two steps down reaches
+    // "complete".
+    await app.arrow("down");
+    await app.arrow("down");
+    await app.enter();
+    await app.waitUntil(() => app.frame().includes("complete"), "le niveau est choisi");
+
+    await openPickerOn(app, "Clean");
+    await app.enter();
+
+    // `clean` would have suggested "minimal"; the deliberate choice wins.
+    expect(app.frame()).toContain("complete");
+  }, 120_000);
+});
+
 describe("using a local profile", () => {
   test("generates with the profile created in this session", async () => {
     const app = await mountApp();
     await openPickerOn(app, "Clean");
     await app.chord("a");
-    for (let step = 0; step < 4; step++) await app.arrow("down");
+    await highlightRow(app, "Nouveau profil local");
     await app.enter();
 
     await app.type("Support");

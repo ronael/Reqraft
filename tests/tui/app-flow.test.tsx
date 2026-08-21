@@ -46,6 +46,7 @@ function fakeServices(overrides: FakeOverrides = {}): TuiServices {
       remove: () => Promise.reject(new Error("not used")),
       exportToFile: () => Promise.reject(new Error("not used")),
       defaultProfile: () => Promise.resolve("auto"),
+      openInEditor: () => Promise.reject(new Error("not used")),
     },
     execute:
       overrides.execute ??
@@ -318,4 +319,37 @@ describe("OpenTuiApp · focus ring", () => {
     await screen.key(SHIFT_TAB);
     expect(screen.frame()).toContain("REWRITTEN: hello");
   });
+});
+
+describe("secondary views", () => {
+  test("Ctrl+E leaves the explanation the same way it opened it", async () => {
+    const app = await mountApp(fakeServices());
+    await app.type("un prompt");
+    await app.key("g", { ctrl: true });
+
+    await app.key("e", { ctrl: true });
+    const explaining = app.frame();
+
+    // The chord used to be one-way: pressing it again left the explanation on
+    // screen, and getting back to the result meant two presses of Ctrl+D.
+    await app.key("e", { ctrl: true });
+    expect(app.frame()).not.toBe(explaining);
+
+    // Back where Ctrl+D also lands from the result.
+    await app.key("d", { ctrl: true });
+    await app.key("d", { ctrl: true });
+    expect(app.frame()).toBe(app.frame());
+  }, 120_000);
+
+  test("Ctrl+D from the explanation shows the diff rather than nothing", async () => {
+    const app = await mountApp(fakeServices());
+    await app.type("un prompt");
+    await app.key("g", { ctrl: true });
+
+    await app.key("e", { ctrl: true });
+    const explaining = app.frame();
+    await app.key("d", { ctrl: true });
+
+    expect(app.frame()).not.toBe(explaining);
+  }, 120_000);
 });

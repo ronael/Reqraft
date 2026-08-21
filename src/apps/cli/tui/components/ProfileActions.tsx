@@ -19,7 +19,7 @@ import type { Translator } from "@/i18n/translate.js";
  * this one?".
  */
 
-export type ProfileActionId = "edit" | "duplicate" | "export" | "delete" | "create";
+export type ProfileActionId = "edit" | "open" | "duplicate" | "export" | "delete" | "create";
 
 export interface ProfileActionEntry {
   id: ProfileActionId;
@@ -39,6 +39,8 @@ export function profileActions(isLocal: boolean, t: Translator): ProfileActionEn
   const locked = isLocal ? undefined : t("tui.profileActions.builtinLocked");
   return [
     { id: "edit", label: t("tui.profileActions.edit"), unavailable: locked },
+    // A built-in has no file to open: it is compiled into the binary.
+    { id: "open", label: t("tui.profileActions.open"), unavailable: locked },
     { id: "duplicate", label: t("tui.profileActions.duplicate") },
     { id: "export", label: t("tui.profileActions.export") },
     { id: "delete", label: t("tui.profileActions.delete"), unavailable: locked },

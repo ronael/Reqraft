@@ -3,7 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  PROFILE_FILE_EXTENSION,
   createLocalProfile,
+  loadLocalProfileEntries,
   deleteLocalProfile,
   getCustomProfilePath,
   listLocalProfiles,
@@ -339,5 +341,51 @@ describe("local profile store - deletion", () => {
     for (const builtinId of BUILTIN_PROFILE_IDS) {
       await expect(deleteLocalProfile(builtinId, tempDir)).rejects.toThrow(ReqraftError);
     }
+  });
+});
+
+describe("files that are not profiles", () => {
+  let tempDir: string;
+
+  beforeEach(async () => {
+    tempDir = await mkdtemp(path.join(os.tmpdir(), "rp-test-ignored-"));
+  });
+
+  afterEach(async () => {
+    await rm(tempDir, { recursive: true, force: true });
+  });
+
+  it("reports a real profile that only lacks the suffix", async () => {
+    // A valid profile under the wrong name would otherwise vanish without a
+    // word, which is the failure this module exists to prevent.
+    await writeFile(
+      path.join(tempDir, "sans-suffixe.json"),
+      JSON.stringify(SAMPLE_PROFILE),
+      "utf8",
+    );
+
+    const entries = await loadLocalProfileEntries(tempDir);
+    const reported = entries.find((entry) => entry.path.endsWith("sans-suffixe.json"));
+
+    expect(reported).toBeDefined();
+    expect(reported?.profile).toBeUndefined();
+    expect(reported?.error?.detail).toContain(PROFILE_FILE_EXTENSION);
+  });
+
+  it("stays quiet about files that were never meant to be profiles", async () => {
+    // Notes, an archive or a half-written file are not mistyped profiles, and
+    // warning about them on every start-up would train the user to ignore the
+    // warnings that do matter.
+    await writeFile(path.join(tempDir, "notes.txt"), "rien", "utf8");
+    await writeFile(path.join(tempDir, "sauvegarde.bak"), "rien", "utf8");
+    await writeFile(path.join(tempDir, "brouillon.json"), "{ pas du json", "utf8");
+    await writeFile(path.join(tempDir, "autre.json"), '{"quelque":"chose"}', "utf8");
+
+    expect(await loadLocalProfileEntries(tempDir)).toEqual([]);
+  });
+
+  it("still ignores hidden files without reporting them", async () => {
+    await writeFile(path.join(tempDir, ".DS_Store"), "rien", "utf8");
+    expect(await loadLocalProfileEntries(tempDir)).toEqual([]);
   });
 });

@@ -29,8 +29,7 @@ import {
   selectProfile,
   selectProvider,
   resetSession,
-  showView,
-  toggleDiffView,
+  toggleView,
   updatePromptInput,
   type AppState,
 } from "@/apps/cli/ui/app-state.js";
@@ -76,6 +75,7 @@ import { profileFormProblemMessage } from "@/apps/cli/tui/components/ProfileForm
 import type { ProfileActionId } from "@/apps/cli/tui/components/ProfileActions.js";
 import { profileActions } from "@/apps/cli/tui/components/ProfileActions.js";
 import { getProfileOrigin } from "@/profiles/catalog.js";
+import { getProfile } from "@/profiles/registry.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { getBuiltinProfile, getBuiltinProfileByAlias } from "@/profiles/builtins.js";
 import { CUSTOM_PROFILE_SCHEMA_VERSION, type CustomProfile } from "@/profiles/custom.js";
@@ -454,6 +454,15 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
             if (source !== null) openProfileForm(duplicateProfileForm(source));
             return;
           }
+          case "open": {
+            if (!isLocal) return;
+            const path = await services.profiles.openInEditor(target);
+            // No reload here: the editor is detached, so nothing can know when
+            // the file is saved. The next mutation refreshes the catalogue.
+            closeOverlayAndRestore();
+            showToast(t("tui.profile.opened", { path }), "success");
+            return;
+          }
           case "export": {
             const path = await services.profiles.exportToFile(target);
             await finishProfileMutation(t("tui.profile.exported", { path }));
@@ -471,10 +480,12 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       actionTarget,
       failProfileMutation,
       finishProfileMutation,
+      closeOverlayAndRestore,
       openProfileForm,
       readProfileSource,
       requestProfileDelete,
       services,
+      showToast,
       t,
     ],
   );
@@ -517,7 +528,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       }
       // Selecting it is what makes "immediately usable" true rather than
       // merely listed: the next generation runs with it.
-      setApp((prev) => selectProfile(prev, profile.id));
+      setApp((prev) => selectProfile(prev, profile.id, profile.defaultLevel));
       await finishProfileMutation(t("tui.profile.saved", { id: profile.id }));
     } catch (error) {
       failProfileMutation(error);
@@ -542,10 +553,10 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
           reset();
           break;
         case "toggle-diff":
-          setApp((prev) => toggleDiffView(prev, prev.input));
+          setApp((prev) => toggleView(prev, "diff"));
           break;
         case "show-explain":
-          setApp((prev) => showView(prev, "explain"));
+          setApp((prev) => toggleView(prev, "explain"));
           break;
         case "open-profile":
         case "open-level":
@@ -619,7 +630,10 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
         openProfileForm(createProfileForm());
         return;
       }
-      if (overlayId === "profile") setApp((prev) => selectProfile(prev, value));
+      if (overlayId === "profile") {
+        // The profile's own level comes along, unless the user pinned one.
+        setApp((prev) => selectProfile(prev, value, getProfile(value)?.defaultLevel));
+      }
       if (overlayId === "level") setApp((prev) => selectLevel(prev, parseLevel(value)));
       if (overlayId === "provider") {
         setApp((prev) => selectProvider(prev, value, getFallbackModelForProvider(value)));
@@ -754,8 +768,9 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
           );
           return;
         case "overlay-tab":
-          // Only a form has fields to walk; a list overlay has nothing to move
-          // between and lets Tab pass without effect.
+        case "overlay-adjust":
+          // Only a form has fields to walk or values to adjust; a list overlay
+          // has neither and lets these pass without effect.
           return;
       }
     },
@@ -934,7 +949,7 @@ function routeProfileFormKey(
     setForm((state) => (state === null ? state : moveField(state, route.dir)));
     return;
   }
-  if (route.kind === "overlay-nav") {
+  if (route.kind === "overlay-nav" || route.kind === "overlay-adjust") {
     setForm((state) => (state === null ? state : cycleChoice(state, route.dir)));
     return;
   }

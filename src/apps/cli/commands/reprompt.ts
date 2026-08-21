@@ -1,6 +1,7 @@
 import process from "node:process";
 import type { FidelityMode, RepromptResult } from "@/core/types.js";
 import { parseLevel } from "@/core/levels.js";
+import { resolveEffectiveLevel } from "@/profiles/level.js";
 import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js";
 import { readFileContent, readStdin } from "@/utils/input.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
@@ -146,10 +147,17 @@ export function createCliRepromptInput(
   options: RepromptCliOptions,
   env: NodeJS.ProcessEnv,
 ): ExecuteRepromptInput {
+  const profileId = options.profile ?? config.defaultProfile;
   return {
     input,
-    profileId: options.profile ?? config.defaultProfile,
-    level: parseLevel(options.level ?? config.defaultLevel),
+    profileId,
+    // `--level` wins; otherwise the chosen profile's own level applies, and the
+    // configured default is the last word.
+    level: resolveEffectiveLevel({
+      requested: options.level === undefined ? undefined : parseLevel(options.level),
+      profileId,
+      configured: config.defaultLevel,
+    }),
     providerId: options.provider ?? config.defaultProvider,
     requestedModel: resolveRequestedModel(config, options),
     defaultModel: config.defaultModel,

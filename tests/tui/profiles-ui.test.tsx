@@ -135,9 +135,10 @@ describe("profile actions", () => {
     const blocked = entries
       .filter((entry) => entry.unavailable !== undefined)
       .map((entry) => entry.id);
-    // Duplicate and export produce something new, so they stay available;
-    // editing or deleting what ships with the binary never is.
-    expect(blocked).toEqual(["edit", "delete"]);
+    // Duplicate and export produce something new, so they stay available.
+    // Editing, opening and deleting never are: a built-in ships inside the
+    // binary, so there is no file to write to, open, or remove.
+    expect(blocked).toEqual(["edit", "open", "delete"]);
   });
 
   test("states the reason rather than hiding the row", async () => {
@@ -177,7 +178,16 @@ describe("profile form", () => {
       />,
     );
 
-    for (const label of ["Nom", "Identifiant", "Description", "Base", "Niveau", "Instructions"]) {
+    // "Niveau par défaut", not "Niveau": the profile suggests a level, the user
+    // can still override it, and the CLI wizard already said so.
+    for (const label of [
+      "Nom",
+      "Identifiant",
+      "Description",
+      "Base",
+      "Niveau par défaut",
+      "Instructions",
+    ]) {
       expect(frame).toContain(label);
     }
     expect(frame).toContain("support-client");

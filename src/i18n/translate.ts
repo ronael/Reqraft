@@ -174,6 +174,8 @@ export interface MessageParameters {
   "tui.command.profileActions": undefined;
   "tui.profileActions.title": { id: string };
   "tui.profileActions.edit": undefined;
+  "tui.profileActions.open": undefined;
+  "tui.profile.opened": { path: string };
   "tui.profileActions.duplicate": undefined;
   "tui.profileActions.export": undefined;
   "tui.profileActions.delete": undefined;

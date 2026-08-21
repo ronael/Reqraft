@@ -315,3 +315,29 @@ describe("terminal key adapter", () => {
     });
   });
 });
+
+describe("form keys inside an overlay", () => {
+  const overlay = routing({ hasOverlay: true });
+
+  it("routes left and right as a value adjustment", () => {
+    // The form advertises the arrows for its choice fields; routing them by
+    // name is what makes the advertised key the key that works.
+    expect(routeKey({ ctrl: false, name: "left" }, overlay)).toEqual({
+      kind: "overlay-adjust",
+      dir: -1,
+    });
+    expect(routeKey({ ctrl: false, name: "right" }, overlay)).toEqual({
+      kind: "overlay-adjust",
+      dir: 1,
+    });
+  });
+
+  it("keeps up and down as list navigation", () => {
+    // A list has no value to adjust, and the form accepts these too, so a hand
+    // already on the arrows never has to move.
+    expect(routeKey({ ctrl: false, name: "up" }, overlay)).toEqual({
+      kind: "overlay-nav",
+      dir: -1,
+    });
+  });
+});
