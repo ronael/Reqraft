@@ -14,6 +14,9 @@ coverage/
 benchmark-results/
 .scannerwork/*
 /toto.json
+# Local manual profile experiments belong in the user profile directory, not
+# at the repository root. Shared examples can live under docs/ or a project.
+/*.reqraft-profile.json
 docs/design/
 docs/internal/
 docs/reprompt-audit.md
