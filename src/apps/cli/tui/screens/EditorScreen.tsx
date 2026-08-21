@@ -9,6 +9,9 @@ import { CommandPalette } from "@/apps/cli/tui/components/CommandPalette.js";
 import { HelpOverlay } from "@/apps/cli/tui/components/HelpOverlay.js";
 import { TooSmall } from "@/apps/cli/tui/components/TooSmall.js";
 import { Toast, type ToastTone } from "@/apps/cli/tui/components/Toast.js";
+import { ProfileActions } from "@/apps/cli/tui/components/ProfileActions.js";
+import { ProfileForm } from "@/apps/cli/tui/components/ProfileForm.js";
+import type { ProfileFormState } from "@/apps/cli/ui/profile-form.js";
 import { Stack } from "@/apps/cli/tui/primitives/Stack.js";
 import { theme, editorSurfaceOverhead } from "@/apps/cli/tui/theme/index.js";
 import { resolveLayout } from "@/apps/cli/tui/model/layout.js";
@@ -58,6 +61,15 @@ export interface EditorScreenProps {
   onCommand(id: CommandId): void;
   /** Selecting a value in a picker overlay, distinct from a CommandId. */
   onOverlaySelect(overlay: PickerOverlayId, value: string): void;
+  /** Open form, or `null`. Owned by the app: this screen only draws it. */
+  profileForm?: ProfileFormState | null;
+  /** Profile the actions overlay applies to. */
+  profileTarget?: string | null;
+  /** Whether that profile is local, and therefore writable. */
+  profileTargetIsLocal?: boolean;
+  /** Id awaiting a delete confirmation. */
+  pendingDelete?: string | null;
+  onProfileInstructionsChange?(value: string): void;
 }
 
 /**
@@ -85,6 +97,11 @@ export function EditorScreen({
   onFocusEditor,
   onCommand,
   onOverlaySelect,
+  profileForm = null,
+  profileTarget = null,
+  profileTargetIsLocal = false,
+  pendingDelete = null,
+  onProfileInstructionsChange,
 }: Readonly<EditorScreenProps>): React.ReactNode {
   // Rows the prompt actually occupies once wrapped, not logical lines: a long
   // single-line prompt wraps across several rows, and counting it as one row
@@ -195,6 +212,11 @@ export function EditorScreen({
           t={t}
           onCommand={onCommand}
           onOverlaySelect={onOverlaySelect}
+          profileForm={profileForm}
+          profileTarget={profileTarget}
+          profileTargetIsLocal={profileTargetIsLocal}
+          pendingDelete={pendingDelete}
+          onProfileInstructionsChange={onProfileInstructionsChange}
         />
       )}
 
@@ -212,6 +234,11 @@ function Overlays({
   t,
   onCommand,
   onOverlaySelect,
+  profileForm,
+  profileTarget,
+  profileTargetIsLocal,
+  pendingDelete,
+  onProfileInstructionsChange,
 }: Readonly<{
   overlay: OverlayState;
   /** Viewport height, so a dialog can cap itself instead of running off it. */
@@ -222,6 +249,13 @@ function Overlays({
   t: Translator;
   onCommand(id: CommandId): void;
   onOverlaySelect(overlay: PickerOverlayId, value: string): void;
+  // Always supplied by `EditorScreen`, which defaults them: this inner
+  // component is not part of the screen's public surface.
+  profileForm: ProfileFormState | null;
+  profileTarget: string | null;
+  profileTargetIsLocal: boolean;
+  pendingDelete: string | null;
+  onProfileInstructionsChange?(value: string): void;
 }>): React.ReactNode {
   const pickers: {
     id: PickerOverlayId;
@@ -255,6 +289,34 @@ function Overlays({
     },
   ];
 
+  if (isActive(overlay, "profile-form") && profileForm !== null) {
+    return (
+      <ProfileForm
+        open
+        state={profileForm}
+        terminalWidth={width}
+        terminalHeight={height}
+        t={t}
+        onInstructionsChange={onProfileInstructionsChange ?? ((): void => undefined)}
+      />
+    );
+  }
+
+  if (isActive(overlay, "profile-actions") && profileTarget !== null) {
+    return (
+      <ProfileActions
+        open
+        profileId={profileTarget}
+        isLocal={profileTargetIsLocal}
+        highlighted={overlay.index}
+        pendingDelete={pendingDelete}
+        terminalWidth={width}
+        terminalHeight={height}
+        t={t}
+      />
+    );
+  }
+
   const activePicker = pickers.find((picker) => isActive(overlay, picker.id));
 
   if (activePicker) {
@@ -267,6 +329,9 @@ function Overlays({
         highlighted={overlay.index}
         terminalWidth={width}
         terminalHeight={height}
+        // Only the profile picker manages anything; the other three are plain
+        // choices, and an action hint there would advertise a key that is inert.
+        hint={activePicker.id === "profile" ? t("tui.picker.profileHint") : undefined}
         t={t}
         onSelect={(value) => {
           onOverlaySelect(activePicker.id, value);

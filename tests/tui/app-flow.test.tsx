@@ -36,6 +36,17 @@ interface FakeOverrides {
 function fakeServices(overrides: FakeOverrides = {}): TuiServices {
   return {
     bootstrap: () => Promise.resolve({ config: { ...DEFAULT_CONFIG } }),
+    // These flows never touch a profile; the profile suite drives the real
+    // services against a temporary directory.
+    profiles: {
+      reload: () => Promise.resolve(),
+      read: () => Promise.reject(new Error("not used")),
+      create: () => Promise.reject(new Error("not used")),
+      update: () => Promise.reject(new Error("not used")),
+      remove: () => Promise.reject(new Error("not used")),
+      exportToFile: () => Promise.reject(new Error("not used")),
+      defaultProfile: () => Promise.resolve("auto"),
+    },
     execute:
       overrides.execute ??
       ((input) => {

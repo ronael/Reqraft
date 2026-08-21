@@ -16,3 +16,5 @@ export const BUILTIN_PROFILE_IDS = [
   "review",
   "writing",
 ] as const;
+
+export type BuiltinProfileId = (typeof BUILTIN_PROFILE_IDS)[number];

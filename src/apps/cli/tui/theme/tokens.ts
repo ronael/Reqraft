@@ -36,6 +36,18 @@ export interface SpacingTokens {
   lg: number;
 }
 
+/** Glyphs that stand in for things a terminal cannot draw. */
+export interface GlyphTokens {
+  /**
+   * Caret marking the insertion point in a single-line field.
+   *
+   * The multiline field is a real textarea and draws its own; the plain rows
+   * have to say where typing lands, or the form looks unresponsive while it is
+   * in fact recording every keystroke.
+   */
+  cursor: string;
+}
+
 /** OpenTUI border styles, kept as a token so ASCII fallback is one decision. */
 export interface BorderTokens {
   /**
@@ -75,6 +87,7 @@ export interface Tokens {
   color: ColorTokens;
   spacing: SpacingTokens;
   border: BorderTokens;
+  glyph: GlyphTokens;
   layout: LayoutTokens;
   motion: MotionTokens;
 }
@@ -135,6 +148,9 @@ export function createTokens(capabilities: TerminalCapabilities): Tokens {
     border: capabilities.unicode
       ? { default: "single", focused: "rounded", rail: "▍" }
       : { default: "single", focused: "single", rail: "│" },
+    // A full block reads as a caret at a glance; without block support the
+    // underscore is the oldest terminal cursor there is.
+    glyph: { cursor: capabilities.unicode ? "█" : "_" },
     layout: LAYOUT,
     motion: MOTION,
   };

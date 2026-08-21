@@ -24,6 +24,14 @@ export interface KeyPress {
   ctrl: boolean;
   /** Key name: a letter, `escape`, `tab`, `shift+tab`. */
   name: string;
+  /**
+   * The character the key actually produced, when it produced one.
+   *
+   * `name` is the *key*, not its output: shift+s is named "s", and the space
+   * bar is named "space". Routing text by name therefore lower-cased every
+   * capital and dropped every space — invisible in a filter, wrong in a form.
+   */
+  text?: string;
 }
 
 export interface RoutingContext extends CommandContext {
@@ -32,6 +40,7 @@ export interface RoutingContext extends CommandContext {
 
 export type OverlayRoute =
   | { kind: "overlay-nav"; dir: 1 | -1 }
+  | { kind: "overlay-tab"; dir: 1 | -1 }
   | { kind: "overlay-select" }
   | { kind: "overlay-backspace" }
   | { kind: "overlay-type"; text: string };
@@ -42,6 +51,11 @@ export type KeyRoute =
   | { kind: "insert" }
   /** Move the overlay highlight (up/down). */
   | { kind: "overlay-nav"; dir: 1 | -1 }
+  /**
+   * Move between the fields of an overlay that has several (Tab / Shift+Tab).
+   * A list overlay has nothing to move between and ignores it.
+   */
+  | { kind: "overlay-tab"; dir: 1 | -1 }
   /** Confirm the highlighted overlay row. */
   | { kind: "overlay-select" }
   /** Edit the palette query (backspace or a printable character). */
@@ -76,9 +90,18 @@ function routeOverlayKey(key: KeyPress, context: RoutingContext): KeyRoute {
   // the overlay is a picker or the palette.
   if (!key.ctrl && key.name === "up") return { kind: "overlay-nav", dir: -1 };
   if (!key.ctrl && key.name === "down") return { kind: "overlay-nav", dir: 1 };
+  // Tab traverses a form's fields. It is routed here rather than left to the
+  // `editor`-scoped `focus-next`, which must not fire while an overlay owns the
+  // keyboard — and the textarea does not consume Tab, so the form can use it
+  // even from the multiline field.
+  if (!key.ctrl && key.name === "tab") return { kind: "overlay-tab", dir: 1 };
+  if (!key.ctrl && key.name === "shift+tab") return { kind: "overlay-tab", dir: -1 };
   if (!key.ctrl && key.name === "return") return { kind: "overlay-select" };
   if (!key.ctrl && key.name === "backspace") return { kind: "overlay-backspace" };
-  if (!key.ctrl && key.name.length === 1) return { kind: "overlay-type", text: key.name };
+  // The terminal names the space bar rather than reporting it as a character,
+  // so a length check alone drops it — which silently made spaces untypable in
+  // the palette filter and in every overlay text field.
+  if (!key.ctrl && key.text !== undefined) return { kind: "overlay-type", text: key.text };
 
   // An overlay captures everything else: keys must not leak to the editor.
   return { kind: "ignored" };

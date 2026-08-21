@@ -85,10 +85,21 @@ describe("keyboard routing", () => {
   it("never lets an overlay leak keys into the editor", () => {
     const context = routing({ hasOverlay: true });
     // A printable key is claimed by the overlay (the palette query), never by
-    // the editor underneath.
-    expect(routeKey({ ctrl: false, name: "a" }, context)).toEqual({
+    // the editor underneath. The character comes from `text`, not from `name`:
+    // the key named "s" produces "S" when shifted.
+    expect(routeKey({ ctrl: false, name: "a", text: "a" }, context)).toEqual({
       kind: "overlay-type",
       text: "a",
+    });
+    expect(routeKey({ ctrl: false, name: "s", text: "S" }, context)).toEqual({
+      kind: "overlay-type",
+      text: "S",
+    });
+    // The space bar is named rather than reported as a character, which used to
+    // make spaces untypable in every overlay field.
+    expect(routeKey({ ctrl: false, name: "space", text: " " }, context)).toEqual({
+      kind: "overlay-type",
+      text: " ",
     });
     // A control chord is neither a palette query nor a command: nothing fires.
     expect(routeKey({ ctrl: true, name: "p" }, context)).toEqual({ kind: "ignored" });
@@ -260,12 +271,40 @@ describe("terminal key adapter", () => {
     expect(toKeyPress({ name: "tab", ctrl: false, shift: false })).toEqual({
       ctrl: false,
       name: "tab",
+      text: undefined,
     });
-    expect(toKeyPress({ name: "g", ctrl: true, shift: false })).toEqual({ ctrl: true, name: "g" });
+    expect(toKeyPress({ name: "g", ctrl: true, shift: false })).toEqual({
+      ctrl: true,
+      name: "g",
+      text: undefined,
+    });
     expect(toKeyPress({ name: "escape", ctrl: false, shift: false })).toEqual({
       ctrl: false,
       name: "escape",
+      text: undefined,
     });
+  });
+
+  it("carries the character a key produced, not the key's name", () => {
+    // `name` is the key; the sequence is its output. Reading the name instead
+    // lower-cased every capital and dropped every space.
+    expect(toKeyPress({ name: "s", ctrl: false, shift: true, sequence: "S" }).text).toBe("S");
+    expect(toKeyPress({ name: "space", ctrl: false, shift: false, sequence: " " }).text).toBe(" ");
+    expect(toKeyPress({ name: "é", ctrl: false, shift: false, sequence: "é" }).text).toBe("é");
+  });
+
+  it("carries no character for keys that produce none", () => {
+    // A control chord, an escape sequence and a bare control code are not text,
+    // and letting any of them through would type into whatever field is open.
+    expect(
+      toKeyPress({ name: "g", ctrl: true, shift: false, sequence: "\u0007" }).text,
+    ).toBeUndefined();
+    expect(
+      toKeyPress({ name: "up", ctrl: false, shift: false, sequence: "\u001b[A" }).text,
+    ).toBeUndefined();
+    expect(
+      toKeyPress({ name: "escape", ctrl: false, shift: false, sequence: "\u001b" }).text,
+    ).toBeUndefined();
   });
 
   it("routes an adapted shift+tab to focus-previous", () => {
