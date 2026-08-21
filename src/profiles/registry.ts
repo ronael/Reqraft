@@ -1,46 +1,26 @@
 import type { PromptProfile } from "./types.js";
 import { ReqraftError } from "@/core/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
-import { cleanProfile } from "./clean.js";
-import { codeProfile } from "./code.js";
-import { debugProfile } from "./debug.js";
-import { frontendProfile } from "./frontend.js";
-import { reviewProfile } from "./review.js";
-import { webDesignProfile } from "./web-design.js";
-import { writingProfile } from "./writing.js";
-import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "./profile-ids.js";
+import { getBuiltinProfile, getBuiltinProfileByAlias } from "./builtins.js";
+import { getLocalProfile, getProfileCatalog } from "./catalog.js";
+import { AUTO_PROFILE_ID } from "./profile-ids.js";
 
-export const BUILTIN_PROFILES: PromptProfile[] = [
-  cleanProfile,
-  codeProfile,
-  frontendProfile,
-  webDesignProfile,
-  debugProfile,
-  reviewProfile,
-  writingProfile,
-];
+export { BUILTIN_PROFILES } from "./builtins.js";
 
-if (BUILTIN_PROFILES.map((profile) => profile.id).join("\0") !== BUILTIN_PROFILE_IDS.join("\0")) {
-  throw new Error("La registry des profils ne respecte pas l'ordre des ids partagés.");
-}
-
-const PROFILES_BY_ID = new Map<string, PromptProfile>();
-const PROFILES_BY_ALIAS = new Map<string, PromptProfile>();
-
-for (const profile of BUILTIN_PROFILES) {
-  PROFILES_BY_ID.set(profile.id, profile);
-  if (profile.aliases) {
-    for (const alias of profile.aliases) {
-      PROFILES_BY_ALIAS.set(alias, profile);
-    }
-  }
-}
-
+/**
+ * The three functions below stay synchronous on purpose: every surface calls
+ * them mid-render or mid-parse. The local half of the catalogue is loaded once
+ * at start-up by `catalog.ts#loadProfileCatalog`; before that call they answer
+ * with the built-in profiles alone.
+ */
 export function getProfile(id: string): PromptProfile | undefined {
   if (id === AUTO_PROFILE_ID) {
     return undefined;
   }
-  return PROFILES_BY_ID.get(id) ?? PROFILES_BY_ALIAS.get(id);
+  // Built-in ids first, then local ids, then built-in aliases. A local profile
+  // can hold neither a built-in id nor a built-in alias (the catalogue refuses
+  // both), so this order can never hide a shipped profile.
+  return getBuiltinProfile(id) ?? getLocalProfile(id) ?? getBuiltinProfileByAlias(id);
 }
 
 /**
@@ -69,6 +49,8 @@ export function resolveProfile(requested: string): {
   return { profile, detected: false };
 }
 
+/** Built-in profiles first, in registry order, then local ones by file name. */
 export function listProfiles(): PromptProfile[] {
-  return [...BUILTIN_PROFILES];
+  const catalog = getProfileCatalog();
+  return [...catalog.builtin, ...catalog.local];
 }

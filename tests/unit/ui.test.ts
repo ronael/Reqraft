@@ -13,7 +13,7 @@ import {
   selectProfile,
   selectProvider,
   showView,
-  toggleDiffView,
+  toggleView,
   updatePromptInput,
 } from "@/apps/cli/ui/app-state.js";
 import { createUiRepromptInput, resolveUiStreamPreference } from "@/apps/cli/ui/app-actions.js";
@@ -252,7 +252,7 @@ describe("app state transitions", () => {
       modal: "help",
     });
     expect(showView(state, "explain")).toMatchObject({ view: "explain", modal: null });
-    expect(toggleDiffView(state, "courante")).toMatchObject({
+    expect(toggleView(state, "diff", "courante")).toMatchObject({
       input: "courante",
       view: "diff",
     });
@@ -373,5 +373,40 @@ describe("clipboard state", () => {
     const failed = failCopy({ copied: true, error: null, modal: "commands" }, COPY_ERROR);
 
     expect(failed).toEqual({ copied: false, error: COPY_ERROR, modal: "commands" });
+  });
+});
+
+describe("secondary views", () => {
+  const onResult = {
+    ...createInitialAppState({
+      defaultProfile: "auto",
+      defaultLevel: "standard" as const,
+      defaultProvider: "openai",
+      defaultModel: "gpt-4.1-mini",
+    }),
+    view: "result" as const,
+  };
+
+  it("returns to the result when the same view is asked for twice", () => {
+    // Diff already did this; explain only ever switched on, which made Ctrl+E a
+    // one-way door out of the result.
+    for (const view of ["diff", "explain"] as const) {
+      const opened = toggleView(onResult, view);
+      expect(opened.view).toBe(view);
+      expect(toggleView(opened, view).view).toBe("result");
+    }
+  });
+
+  it("switches between secondary views rather than closing", () => {
+    // Asking for the diff while reading the explanation means "show me the
+    // diff", not "show me nothing".
+    const explaining = toggleView(onResult, "explain");
+    expect(toggleView(explaining, "diff").view).toBe("diff");
+  });
+
+  it("leaves the prompt alone unless an input is given", () => {
+    const state = { ...onResult, input: "inchangé" };
+    expect(toggleView(state, "diff").input).toBe("inchangé");
+    expect(toggleView(state, "diff", "remplacé").input).toBe("remplacé");
   });
 });

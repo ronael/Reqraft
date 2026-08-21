@@ -24,6 +24,14 @@ export interface KeyPress {
   ctrl: boolean;
   /** Key name: a letter, `escape`, `tab`, `shift+tab`. */
   name: string;
+  /**
+   * The character the key actually produced, when it produced one.
+   *
+   * `name` is the *key*, not its output: shift+s is named "s", and the space
+   * bar is named "space". Routing text by name therefore lower-cased every
+   * capital and dropped every space — invisible in a filter, wrong in a form.
+   */
+  text?: string;
 }
 
 export interface RoutingContext extends CommandContext {
@@ -32,6 +40,8 @@ export interface RoutingContext extends CommandContext {
 
 export type OverlayRoute =
   | { kind: "overlay-nav"; dir: 1 | -1 }
+  | { kind: "overlay-tab"; dir: 1 | -1 }
+  | { kind: "overlay-adjust"; dir: 1 | -1 }
   | { kind: "overlay-select" }
   | { kind: "overlay-backspace" }
   | { kind: "overlay-type"; text: string };
@@ -42,6 +52,16 @@ export type KeyRoute =
   | { kind: "insert" }
   /** Move the overlay highlight (up/down). */
   | { kind: "overlay-nav"; dir: 1 | -1 }
+  /**
+   * Move between the fields of an overlay that has several (Tab / Shift+Tab).
+   * A list overlay has nothing to move between and ignores it.
+   */
+  | { kind: "overlay-tab"; dir: 1 | -1 }
+  /**
+   * Change the value of the focused field (left / right). A list has no value
+   * to adjust and ignores it; the form uses it for its choice fields.
+   */
+  | { kind: "overlay-adjust"; dir: 1 | -1 }
   /** Confirm the highlighted overlay row. */
   | { kind: "overlay-select" }
   /** Edit the palette query (backspace or a printable character). */
@@ -67,18 +87,40 @@ function find(
   );
 }
 
+/**
+ * Keys an open overlay claims, by name.
+ *
+ * A table rather than a chain of ifs: every entry is one key with one meaning,
+ * and the set is what the overlays advertise. Arrow keys carry two meanings —
+ * up/down walk a list, left/right adjust a value — because a list has nothing
+ * to adjust and a form has nothing to walk, so neither ever sees the other's.
+ *
+ * Tab is here rather than left to the `editor`-scoped `focus-next`, which must
+ * not fire while an overlay owns the keyboard. The textarea does not consume
+ * Tab, so a form can use it even from its multiline field.
+ */
+const OVERLAY_KEY_ROUTES: Readonly<Record<string, KeyRoute>> = {
+  up: { kind: "overlay-nav", dir: -1 },
+  down: { kind: "overlay-nav", dir: 1 },
+  left: { kind: "overlay-adjust", dir: -1 },
+  right: { kind: "overlay-adjust", dir: 1 },
+  tab: { kind: "overlay-tab", dir: 1 },
+  "shift+tab": { kind: "overlay-tab", dir: -1 },
+  return: { kind: "overlay-select" },
+  backspace: { kind: "overlay-backspace" },
+};
+
 function routeOverlayKey(key: KeyPress, context: RoutingContext): KeyRoute {
   const command = find(key, context, ["overlay"]);
   if (command) return { kind: "command", id: command.id };
+  if (key.ctrl) return { kind: "ignored" };
 
-  // List navigation belongs to the open overlay. The app applies it to
-  // whichever overlay is active, so routing does not need to know whether
-  // the overlay is a picker or the palette.
-  if (!key.ctrl && key.name === "up") return { kind: "overlay-nav", dir: -1 };
-  if (!key.ctrl && key.name === "down") return { kind: "overlay-nav", dir: 1 };
-  if (!key.ctrl && key.name === "return") return { kind: "overlay-select" };
-  if (!key.ctrl && key.name === "backspace") return { kind: "overlay-backspace" };
-  if (!key.ctrl && key.name.length === 1) return { kind: "overlay-type", text: key.name };
+  const named = OVERLAY_KEY_ROUTES[key.name];
+  if (named) return named;
+
+  // `text` rather than `name`: the key named "s" produces "S" when shifted, and
+  // the space bar is named rather than reported as a character.
+  if (key.text !== undefined) return { kind: "overlay-type", text: key.text };
 
   // An overlay captures everything else: keys must not leak to the editor.
   return { kind: "ignored" };

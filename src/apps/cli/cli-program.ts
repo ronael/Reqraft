@@ -7,6 +7,13 @@ import { runDoctor } from "./commands/doctor.js";
 import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
 import { runModelsList, runProfilesList, runProvidersList } from "./commands/list.js";
+import {
+  runProfilesAdd,
+  runProfilesDuplicate,
+  runProfilesEdit,
+  runProfilesExport,
+  runProfilesRemove,
+} from "./commands/profiles.js";
 import { runAuth } from "./commands/auth.js";
 import { listCredentialProviders } from "@/providers/catalog.js";
 import type { FidelityMode } from "@/core/types.js";
@@ -66,6 +73,12 @@ export function createCliProgram(t: Translator, uiLocale: "en" | "fr"): Command 
   const program = new Command();
   program.exitOverride();
   program.configureOutput({ writeErr: () => undefined });
+  // An option written after a sub-command belongs to that sub-command. Without
+  // this, `rp profiles add --file x.json` would hand `--file` to the root
+  // command, which declares `-f, --file` for its own input, and the import
+  // would silently receive nothing. Root options keep working before and after
+  // the `[text]` argument.
+  program.enablePositionalOptions();
   const authProviderHint = listCredentialProviders()
     .map((provider) => provider.id)
     .join(", ");
@@ -115,11 +128,55 @@ export function createCliProgram(t: Translator, uiLocale: "en" | "fr"): Command 
       applyExitCode(await runAuth(action, provider, {}, t));
     });
 
-  program
+  const profiles = program
     .command("profiles")
     .description(t("cli.profiles.description"))
     .action(() => {
       runProfilesList(console, t);
+    });
+
+  profiles
+    .command("add")
+    .description(t("cli.profiles.add.description"))
+    .option("--file <path>", t("cli.profiles.add.file"))
+    .action(async (options: { file?: string }) => {
+      applyExitCode(await runProfilesAdd({ file: options.file }, t));
+    });
+
+  profiles
+    .command("edit")
+    .description(t("cli.profiles.edit.description"))
+    .argument("<id>", t("cli.profiles.edit.id"))
+    .action(async (id: string) => {
+      applyExitCode(await runProfilesEdit(id, {}, t));
+    });
+
+  profiles
+    .command("duplicate")
+    .description(t("cli.profiles.duplicate.description"))
+    .argument("<source>", t("cli.profiles.duplicate.source"))
+    .argument("<target>", t("cli.profiles.duplicate.target"))
+    .option("--name <name>", t("cli.profiles.duplicate.name"))
+    .action(async (source: string, target: string, options: { name?: string }) => {
+      applyExitCode(await runProfilesDuplicate(source, target, { name: options.name }, t));
+    });
+
+  profiles
+    .command("export")
+    .description(t("cli.profiles.export.description"))
+    .argument("<id>", t("cli.profiles.export.id"))
+    .option("--output <path>", t("cli.profiles.export.output"))
+    .option("--as <id>", t("cli.profiles.export.as"))
+    .action(async (id: string, options: { output?: string; as?: string }) => {
+      applyExitCode(await runProfilesExport(id, { file: options.output, exportId: options.as }, t));
+    });
+
+  profiles
+    .command("remove")
+    .description(t("cli.profiles.remove.description"))
+    .argument("<id>", t("cli.profiles.remove.id"))
+    .action(async (id: string) => {
+      applyExitCode(await runProfilesRemove(id, {}, t));
     });
 
   program

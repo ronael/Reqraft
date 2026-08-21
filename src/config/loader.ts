@@ -1,11 +1,10 @@
-import { mkdir, readFile, rename, unlink, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { randomUUID } from "node:crypto";
-import path from "node:path";
 import { ConfigSchema, type Config } from "./schema.js";
 import { getConfigPath } from "./paths.js";
 import { ReqraftError } from "@/core/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
+import { writeAtomicFile } from "@/utils/atomic-write.js";
 
 export const DEFAULT_CONFIG: Config = ConfigSchema.parse({});
 
@@ -29,26 +28,10 @@ export async function loadConfig(): Promise<Config> {
 
 export async function saveConfig(config: Config, targetPath = getConfigPath()): Promise<void> {
   const validated = ConfigSchema.parse(config);
-  const configDir = path.dirname(targetPath);
-  await mkdir(configDir, { recursive: true, mode: 0o700 });
-
-  const tempPath = path.join(
-    configDir,
-    // Unpredictable suffix: the temp file is written with the user's config
-    // before being renamed, so its name must not be guessable by another process.
-    `.config.${String(process.pid)}.${String(Date.now())}.${randomUUID()}.tmp`,
-  );
-
-  try {
-    await writeFile(tempPath, JSON.stringify(validated, null, 2) + "\n", {
-      encoding: "utf8",
-      mode: 0o600,
-    });
-    await rename(tempPath, targetPath);
-  } catch (error) {
-    await unlink(tempPath).catch(() => undefined);
-    throw error;
-  }
+  await writeAtomicFile(targetPath, JSON.stringify(validated, null, 2) + "\n", {
+    mode: 0o600,
+    dirMode: 0o700,
+  });
 }
 
 export function configPath(): string {

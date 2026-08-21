@@ -168,18 +168,46 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
  * Shared by `buildPrompt` (one known profile) and `buildAutoDetectPrompt`
  * (once per built-in profile, so whichever one the model picks has its
  * guidance on hand) — a single source for what "apply profile X at level Y"
- * means. Deliberately a short, hand-written line per profile, not
- * `PromptProfile.instructions` (the longer block used by custom profile
- * parsing in `profiles/custom.ts`) — sending every profile's full
- * instructions in `buildAutoDetectPrompt` would multiply the system prompt's
- * size for comparatively little gained precision; this stays compact.
+ * means.
+ *
+ * Built-in profiles get a short, hand-written line rather than their full
+ * `instructions` block: `buildAutoDetectPrompt` sends one per built-in, so the
+ * long form would multiply the system prompt's size for little gained
+ * precision.
+ *
+ * A profile with no such line is one the user wrote, and it sends its
+ * `instructions` verbatim — there is nothing else that carries what it means,
+ * and only one of them is ever in play.
+ *
+ * `minimal` outranks both, as `core/levels.ts` states and the prompt repeats.
  */
+/**
+ * Built-in ids, so a profile with no hand-written line can be told apart from
+ * one the user wrote. `clean` is a built-in that has no line yet, and it must
+ * not start sending its whole block just because of that gap.
+ */
+const BUILTIN_PROFILE_ID_SET: ReadonlySet<string> = new Set(
+  BUILTIN_PROFILES.map((profile) => profile.id),
+);
+
 export function levelAwareProfileGuidance(
   profile: PromptProfile,
   level: RepromptRequest["level"],
 ): string {
   if (level === "minimal") {
-    return `Le niveau minimal est prioritaire sur le profil ${profile.id}. Conserve uniquement l'action et les termes explicitement présents ; ne crée ni rubriques, ni checklist, ni critères supplémentaires.`;
+    const restraint = `Le niveau minimal est prioritaire sur le profil ${profile.id}. Conserve uniquement l'action et les termes explicitement présents ; ne crée ni rubriques, ni checklist, ni critères supplémentaires.`;
+
+    // A built-in keeps the plain override: `minimal` exists to stop `code` or
+    // `web-design` from enriching a request the user only wanted corrected.
+    //
+    // A profile the user wrote is different. "Toujours en majuscules" is a
+    // constraint on the form, not an enrichment of the content, and discarding
+    // it made the profile look broken at this level. Both are sent, with the
+    // relationship spelled out so they cannot read as contradictory: the
+    // profile says how to write, the level says how far to go.
+    return BUILTIN_PROFILE_ID_SET.has(profile.id)
+      ? restraint
+      : `${restraint}\nConsignes du profil, à respecter dans la forme sans développer le contenu : ${profile.instructions}`;
   }
 
   switch (profile.id) {
@@ -196,7 +224,14 @@ export function levelAwareProfileGuidance(
     case "writing":
       return "Profil rédaction : préserve le ton, l'objectif, le public, les contraintes de longueur et les informations à ne pas modifier.";
     default:
-      return `Profil ${profile.id} : applique les consignes du profil sans élargir artificiellement le périmètre.`;
+      // A profile the user wrote says what its author typed. The generic
+      // sentence told the model to "apply the profile's instructions" while
+      // never sending them, so a local profile came down to its name and its
+      // description — two profiles with opposite instructions produced the
+      // same prompt.
+      return BUILTIN_PROFILE_ID_SET.has(profile.id)
+        ? `Profil ${profile.id} : applique les consignes du profil sans élargir artificiellement le périmètre.`
+        : `Profil ${profile.id} : ${profile.instructions}`;
   }
 }
 

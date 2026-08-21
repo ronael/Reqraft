@@ -38,6 +38,8 @@ export type CommandId =
   | "focus-next"
   | "focus-previous"
   | "close-overlay"
+  | "profile-actions"
+  | "profile-save"
   | "exit";
 
 /**
@@ -57,6 +59,10 @@ export interface KeyChord {
 
 export interface CommandContext {
   hasOverlay: boolean;
+  /** The profile picker is the overlay currently open. */
+  isProfilePicker?: boolean;
+  /** The profile form is open, so it can be submitted. */
+  hasProfileForm?: boolean;
   hasResult: boolean;
   isGenerating: boolean;
   inputLength: number;
@@ -220,6 +226,26 @@ export const COMMANDS: readonly CommandDefinition[] = [
     labelKey: "tui.command.focusPrevious",
     scope: "editor",
     isAvailable: always,
+  },
+  {
+    // Opens the actions for the highlighted profile. Overlay-scoped and gated
+    // on the profile picker, so Ctrl+A is inert in every other overlay rather
+    // than a shortcut that appears to do nothing.
+    id: "profile-actions",
+    chords: [ctrl("a")],
+    labelKey: "tui.command.profileActions",
+    scope: "overlay",
+    isAvailable: (context) => context.isProfilePicker === true,
+  },
+  {
+    // Ctrl chords reach the application even while the form's textarea holds
+    // the focus, which is what lets the multiline field be submitted without
+    // leaving it first.
+    id: "profile-save",
+    chords: [ctrl("s")],
+    labelKey: "tui.command.profileSave",
+    scope: "overlay",
+    isAvailable: (context) => context.hasProfileForm === true,
   },
   {
     id: "close-overlay",

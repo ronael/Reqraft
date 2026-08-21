@@ -152,7 +152,7 @@ token-budget and fidelity contracts.
 Use `--profile <name>` to tune the rewriting style:
 
 | Profile      | Use case                                 |
-| ------------ | ----------------------------------------- |
+| ------------ | ---------------------------------------- |
 | `auto`       | The model picks the best-fitting profile |
 | `clean`      | Grammar and light clarification          |
 | `code`       | Developer agents                         |
@@ -161,6 +161,77 @@ Use `--profile <name>` to tune the rewriting style:
 | `debug`      | Bugs and errors                          |
 | `review`     | Code audits and reviews                  |
 | `writing`    | Emails, messages, documents              |
+
+### Local profiles
+
+The table above lists the **built-in** profiles, which ship with Reqraft and are
+never modified. Alongside them you can keep as many **local** profiles as you
+like — one JSON file each, in Reqraft's profile directory. Both kinds work the
+same way with `--profile <id>` and both appear in the TUI picker, grouped by
+origin so you always know which is which.
+
+```bash
+rp profiles                       # list built-in and local profiles
+rp profiles add                   # create one, guided
+rp profiles add --file ./sav.reqraft-profile.json # import one, strictly validated
+rp profiles edit sav              # change a local profile
+rp profiles duplicate clean sav   # copy any profile into a new local one
+rp profiles export sav            # print a portable JSON document
+rp profiles remove sav            # delete a local profile, after confirmation
+```
+
+`add` asks for a name and suggests an id derived from it, which you can accept
+with Enter or replace. It then asks for a description, an optional built-in base
+to inherit from, the default level and the instructions.
+
+Only local profiles can be edited or removed. A built-in profile is not a
+restriction to work around — `duplicate` gives you an editable copy of it:
+
+```bash
+rp profiles duplicate writing ton-maison --name "Ton maison"
+rp profiles edit ton-maison
+rp --profile ton-maison "réécris ce message"
+```
+
+Duplicating a built-in copies its instructions into the new file, so the copy
+stays standalone: it keeps working even if the built-in it came from later
+changes.
+
+`export` writes the document to standard output, so notes and warnings go to
+standard error and a redirect captures JSON and nothing else:
+
+```bash
+rp profiles export ton-maison > ton-maison.reqraft-profile.json
+rp profiles export ton-maison --output ./ton-maison.reqraft-profile.json   # or write it directly
+```
+
+Exporting a **built-in** renames it — `clean` becomes `clean-copy` — because the
+format refuses built-in ids. Without the rename the file would export cleanly
+and fail on import. Pass `--as <id>` to choose the id yourself:
+
+```bash
+rp profiles export clean --as ma-base > ma-base.reqraft-profile.json
+rp profiles add --file ./ma-base.reqraft-profile.json
+```
+
+A local profile may inherit from one built-in profile through `extends`. The
+parent's instructions come first, yours follow, and your default level is kept:
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "sav",
+  "name": "Support client",
+  "description": "Reformule les réponses du support.",
+  "extends": "clean",
+  "defaultLevel": "standard",
+  "instructions": "Réponds avec empathie, précision et une action claire."
+}
+```
+
+Import is strict: an unknown field, a missing one or an id that collides with a
+built-in profile is refused with a message naming the problem, rather than being
+silently ignored.
 
 ## Levels
 

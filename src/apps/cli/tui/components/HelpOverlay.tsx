@@ -29,6 +29,13 @@ const GROUPS: readonly { title: CommandLabelKey; ids: readonly CommandId[] }[] =
     title: "tui.help.group.settings",
     ids: ["open-profile", "open-level", "open-model", "open-palette"],
   },
+  {
+    // Both are overlay-scoped, so they never reach the status bar. Help is the
+    // only place they can be advertised — and an unadvertised shortcut is one
+    // nobody finds.
+    title: "tui.help.group.profiles",
+    ids: ["profile-actions", "profile-save"],
+  },
   { title: "tui.help.group.result", ids: ["copy", "toggle-diff", "show-explain"] },
   {
     title: "tui.help.group.navigate",

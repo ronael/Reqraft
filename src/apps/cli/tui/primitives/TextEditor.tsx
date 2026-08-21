@@ -9,6 +9,12 @@ export interface TextEditorProps {
   placeholder?: string;
   disabled?: boolean;
   height?: number;
+  /**
+   * Renderable id. Distinct per editor: the prompt and the profile form are
+   * mounted at the same time, and two renderables sharing an id is not a
+   * situation OpenTUI's registry is meant to be in.
+   */
+  id?: string;
   onChange(value: string): void;
   /** Lets the enclosing interactive surface focus the native editor. */
   editorRef?: React.RefObject<TextareaRenderable | null>;
@@ -42,6 +48,7 @@ export function TextEditor({
   placeholder,
   disabled = false,
   height,
+  id = "prompt-text-editor",
   onChange,
   editorRef,
   onSubmit,
@@ -74,7 +81,7 @@ export function TextEditor({
 
   return (
     <textarea
-      id="prompt-text-editor"
+      id={id}
       ref={editor}
       focused={focused && !disabled}
       initialValue={value}

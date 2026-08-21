@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { listCredentialProviders, listProviderDefinitions } from "@/providers/catalog.js";
@@ -35,12 +35,13 @@ function testEnv(): NodeJS.ProcessEnv {
   };
 }
 
-function run(args: string): { stdout: string; stderr: string; exitCode: number } {
+function run(args: string, input?: string): { stdout: string; stderr: string; exitCode: number } {
   // process.execPath is absolute and pins the child to the very interpreter
   // running the suite, instead of whatever "node" PATH happens to resolve to.
   const result = spawnSync(process.execPath, [CLI, ...parseArgs(args)], {
     encoding: "utf8",
     env: testEnv(),
+    input,
   });
   return {
     stdout: result.stdout,
@@ -201,6 +202,64 @@ describe("CLI e2e", () => {
       expect(stdout).toContain(profile.id);
       expect(stdout).toContain(profile.name);
     }
+  });
+
+  it("creates, lists, uses and removes a local profile across processes", () => {
+    const profileFile = path.join(TEST_CONFIG_HOME, "support-client.reqraft-profile.json");
+    writeFileSync(
+      profileFile,
+      JSON.stringify({
+        schemaVersion: 1,
+        id: "support-client",
+        name: "Support client",
+        description: "Reformule pour le support.",
+        extends: "clean",
+        defaultLevel: "standard",
+        instructions: "Réponds avec empathie.",
+      }),
+      "utf8",
+    );
+
+    const added = run(`profiles add --file ${profileFile}`);
+    expect(added.exitCode).toBe(0);
+    expect(added.stderr).toBe("");
+    expect(added.stdout).toContain("support-client");
+
+    // A separate process: the profile is read back from disk, not from memory.
+    const listed = run("profiles");
+    expect(listed.exitCode).toBe(0);
+    expect(listed.stdout).toContain("Profils locaux");
+    expect(listed.stdout).toContain("support-client");
+    expect(listed.stdout).toContain("Support client");
+
+    const used = run('"test" --provider mock --profile support-client');
+    expect(used.exitCode).toBe(0);
+    expect(used.stdout).toContain("[mock]");
+
+    // Refusing the confirmation keeps the profile.
+    const declined = run("profiles remove support-client", "n\n");
+    expect(declined.exitCode).toBe(0);
+    expect(run("profiles").stdout).toContain("support-client");
+
+    const removed = run("profiles remove support-client", "y\n");
+    expect(removed.exitCode).toBe(0);
+    expect(removed.stdout).toContain("support-client");
+
+    const afterRemoval = run("profiles");
+    expect(afterRemoval.stdout).not.toContain("Support client");
+    expect(afterRemoval.stdout).toContain("Aucun profil local");
+    expect(run('"test" --provider mock --profile support-client').exitCode).toBe(
+      EXIT_CODES.INVALID_INPUT,
+    );
+
+    rmSync(profileFile, { force: true });
+  });
+
+  it("refuses removing a built-in profile", () => {
+    const { stdout, stderr, exitCode } = run("profiles remove clean");
+    expect(exitCode).toBe(EXIT_CODES.INVALID_INPUT);
+    expect(stdout).toBe("");
+    expect(stderr).toContain("clean");
   });
 
   it("groups models with provider labels from the public catalog", () => {

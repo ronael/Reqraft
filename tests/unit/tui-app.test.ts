@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { toResultState } from "@/apps/cli/tui/model/app-result.js";
 import { statusBarCommands } from "@/apps/cli/tui/model/status-bar.js";
-import type { AppState } from "@/apps/cli/ui/app-state.js";
+import { selectLevel, selectProfile, type AppState } from "@/apps/cli/ui/app-state.js";
 import type { CommandContext } from "@/apps/cli/tui/model/commands.js";
 import type { RepromptResult } from "@/core/types.js";
 
@@ -22,6 +22,7 @@ function state(overrides: Partial<AppState> = {}): AppState {
     input: "",
     profile: "auto",
     level: "standard",
+    levelPinned: false,
     provider: "mock",
     model: "mock-model",
     result: null,
@@ -97,5 +98,23 @@ describe("statusBarCommands · contextual footer", () => {
   it("advertises generate, commands and focus in the idle footer", () => {
     const ids = statusBarCommands(context).map((c) => c.id);
     expect(ids).toEqual(expect.arrayContaining(["generate", "open-palette", "focus-next"]));
+  });
+});
+
+describe("level follows the profile, but never overrules the user", () => {
+  it("adopts the level of the profile being selected", () => {
+    const next = selectProfile(state({ level: "standard" }), "clean", "minimal");
+    expect(next.level).toBe("minimal");
+  });
+
+  it("keeps a level the user set by hand", () => {
+    // Picking a profile after choosing a level must not silently undo that
+    // choice; the header would change under the user with no explanation.
+    const pinned = selectLevel(state(), "complete");
+    expect(selectProfile(pinned, "clean", "minimal").level).toBe("complete");
+  });
+
+  it("leaves the level alone for a profile that declares none", () => {
+    expect(selectProfile(state({ level: "standard" }), "auto").level).toBe("standard");
   });
 });

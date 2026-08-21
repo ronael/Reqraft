@@ -10,7 +10,17 @@
  * keys and filtering can be tested without rendering anything.
  */
 
-export type OverlayId = "profile" | "level" | "provider" | "model" | "palette" | "help";
+export type OverlayId =
+  | "profile"
+  | "level"
+  | "provider"
+  | "model"
+  | "palette"
+  | "help"
+  /** Actions available on the profile highlighted in the picker. */
+  | "profile-actions"
+  /** Create / edit / duplicate form for a local profile. */
+  | "profile-form";
 
 export interface OverlayState {
   active: OverlayId | null;

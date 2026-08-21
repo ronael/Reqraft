@@ -5,6 +5,8 @@ import { loadConfig } from "@/config/loader.js";
 import { findUiLocalePreference, resolveUiLocale, systemLocaleCandidates } from "@/i18n/locale.js";
 import { createTranslator } from "@/i18n/translate.js";
 import { formatUiError } from "@/shared/errors.js";
+import { loadProfileCatalog } from "@/profiles/catalog.js";
+import { reportProfileCatalogProblems } from "./commands/profiles.js";
 
 const cliLocalePreference = findUiLocalePreference(process.argv);
 let configuredLocale: string | undefined;
@@ -26,6 +28,12 @@ try {
   localeBootstrapError = error;
 }
 const t = createTranslator(uiLocale);
+
+// Local profiles are read once, before any command parses input: `--profile`,
+// `rp profiles` and the TUI selector all read the catalogue synchronously
+// afterwards. A file that could not be loaded is named on stderr instead of
+// disappearing from the list.
+reportProfileCatalogProblems(await loadProfileCatalog(), console, t);
 
 const program = createCliProgram(t, uiLocale);
 
