@@ -18,8 +18,7 @@ const QUALITY_LABELS: Record<RepromptResult["quality"]["status"], string> = {
 export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
   const currentIndex = REPROMPT_LEVEL_IDS.indexOf(current);
   const safeIndex = currentIndex === -1 ? REPROMPT_LEVEL_IDS.indexOf("standard") : currentIndex;
-  const nextIndex =
-    (safeIndex + direction + REPROMPT_LEVEL_IDS.length) % REPROMPT_LEVEL_IDS.length;
+  const nextIndex = (safeIndex + direction + REPROMPT_LEVEL_IDS.length) % REPROMPT_LEVEL_IDS.length;
   return REPROMPT_LEVEL_IDS[nextIndex] ?? "standard";
 }
 

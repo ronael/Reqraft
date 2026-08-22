@@ -31,6 +31,7 @@ import { createTray } from "./tray.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow } from "./windows/popover.js";
 import { createSettingsWindow } from "./windows/settings.js";
+import { revealExistingWindow } from "./windows/reveal.js";
 
 /**
  * Desktop bootstrap. Order matters:
@@ -57,10 +58,6 @@ function bootstrap(): void {
     // (LSUIElement), which is lot 6.
     app.dock?.hide();
   }
-
-  app.on("second-instance", () => {
-    // Lot 3: refocus the capsule. There is nothing to focus yet.
-  });
 
   void app.whenReady().then(async () => {
     // Local profiles are files: the catalogue has to be read before anything
@@ -180,6 +177,14 @@ function bootstrap(): void {
     // takes effect on the next launch, which is also when the OS lets us claim
     // a combination another application has since released.
     const configuredShortcuts = (await loadConfig()).desktopShortcuts;
+
+    // Registered here rather than in `bootstrap()`: the answer to a second
+    // launch is a window, and the windows only exist from this point. An
+    // application with no Dock icon gives no other sign that it is running, so
+    // a no-op reads as a failed start.
+    app.on("second-instance", () => {
+      revealExistingWindow([settingsWindow, popover.window, capsule.window], openSettings);
+    });
 
     const resolution = registerShortcuts(
       (accelerator, handler) => globalShortcut.register(accelerator, handler),
