@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
+import { Cpu, SlidersHorizontal, Stethoscope, UserRound, Waypoints } from "lucide-react";
 import {
   REPROMPT_LEVEL_IDS,
   SHORTCUT_PRESETS,
@@ -11,8 +12,43 @@ import {
 
 import { ProfilesTab } from "./ProfilesTab.js";
 
-const TABS = ["Raccourcis", "Providers", "Modèles", "Profils", "Diagnostic"] as const;
+const TABS = ["Profils", "Providers", "Modèles", "Réglages", "Diagnostic"] as const;
 type Tab = (typeof TABS)[number];
+
+const TAB_META: Record<
+  Tab,
+  {
+    icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
+    title: string;
+    detail: string;
+  }
+> = {
+  Profils: {
+    icon: UserRound,
+    title: "Profils",
+    detail: "Style de reformulation et profils locaux.",
+  },
+  Providers: {
+    icon: Waypoints,
+    title: "Providers",
+    detail: "État des connexions, sans jamais afficher les clés.",
+  },
+  Modèles: {
+    icon: Cpu,
+    title: "Modèles",
+    detail: "Provider, modèle et niveau utilisés par défaut.",
+  },
+  Réglages: {
+    icon: SlidersHorizontal,
+    title: "Réglages",
+    detail: "Raccourcis globaux, permissions et préférences desktop.",
+  },
+  Diagnostic: {
+    icon: Stethoscope,
+    title: "Diagnostic",
+    detail: "Vérifications locales et rapport sans secret.",
+  },
+};
 
 /**
  * Settings surface (DESKTOP.md lot 5): five horizontal tabs, no sidebar.
@@ -21,7 +57,7 @@ type Tab = (typeof TABS)[number];
  * configured/absent states (§2.2).
  */
 export function SettingsApp(): React.JSX.Element {
-  const [tab, setTab] = useState<Tab>("Raccourcis");
+  const [tab, setTab] = useState<Tab>("Profils");
   const [config, setConfig] = useState<SafeConfig | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);
@@ -63,6 +99,8 @@ export function SettingsApp(): React.JSX.Element {
     shortcuts?.registered.find((entry) => entry.intent === "input")?.label ?? "—";
   const rejectedShortcuts = shortcuts?.rejected ?? [];
   const hasNoShortcut = shortcuts !== null && shortcuts.registered.length === 0;
+  const configuredProviderCount = providers.filter((provider) => provider.configured).length;
+  const activeTab = TAB_META[tab];
 
   function permissionDetail(): string {
     if (permissions?.reason !== undefined) {
@@ -76,153 +114,316 @@ export function SettingsApp(): React.JSX.Element {
 
   return (
     <main className="settings">
-      <nav className="settings-tabs">
-        {TABS.map((label) => (
-          <button
-            key={label}
-            type="button"
-            className={label === tab ? "settings-tab settings-tab-active" : "settings-tab"}
-            onClick={() => {
-              setTab(label);
-              if (label === "Diagnostic" && doctor === null && !doctorRunning) {
-                runDoctor();
-              }
-            }}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
+      <div className="settings-titlebar">
+        <div className="settings-titlebar-spacer" aria-hidden />
+        <div className="settings-title">Reqraft</div>
+        <span className="settings-ready">prêt</span>
+      </div>
 
-      <section className="settings-panel">
-        {tab === "Raccourcis" && (
-          <RaccourcisTab
-            captureShortcut={captureShortcut}
-            inputShortcut={inputShortcut}
-            rejectedShortcuts={rejectedShortcuts}
-            hasNoShortcut={hasNoShortcut}
-            permissionDetail={permissionDetail()}
-            canReplace={permissions?.canReplace ?? null}
-            onAskPermissions={askPermissions}
-            chosen={config?.desktopShortcuts ?? {}}
-            onChoose={(intent, accelerator) => {
-              patchConfig({
-                desktopShortcuts: {
-                  ...(config?.desktopShortcuts ?? {}),
-                  [intent]: accelerator === "" ? undefined : accelerator,
-                },
-              });
-            }}
-          />
-        )}
-
-        {tab === "Providers" && (
-          <>
-            {providers.map((provider) => (
-              <div key={provider.id} className="settings-row">
-                <div>
-                  <div className="settings-row-title">{provider.id}</div>
-                  <div className="settings-row-detail">
-                    {provider.configured ? `configuré · ${provider.source}` : "non configuré"}
-                  </div>
-                </div>
-                <span className={provider.configured ? "verdict-good" : "muted"}>
-                  {provider.configured ? "✓" : "—"}
-                </span>
-              </div>
-            ))}
-            <p className="muted settings-note">
-              Les clés se configurent par variable d’environnement ou par <code>rp auth</code> en
-              CLI. Elles ne sont jamais affichées ici.
-            </p>
-          </>
-        )}
-
-        {tab === "Modèles" && config !== null && (
-          <>
-            <div className="settings-row">
-              <div className="settings-row-title">Provider par défaut</div>
-              <select
-                className="settings-select"
-                value={config.defaultProvider}
-                onChange={(event) => {
-                  patchConfig({
-                    defaultProvider: event.target.value as SafeConfig["defaultProvider"],
-                  });
-                }}
-              >
-                {providers.map((provider) => (
-                  <option key={provider.id} value={provider.id}>
-                    {provider.id}
-                  </option>
-                ))}
-              </select>
+      <div className="settings-shell">
+        <aside className="settings-sidebar">
+          <div className="settings-brand">
+            <div>
+              <span className="settings-brand-name">reqraft</span>
+              <span className="settings-brand-version">0.4.0</span>
             </div>
-            <div className="settings-row">
-              <div className="settings-row-title">Modèle par défaut</div>
-              <input
-                className="settings-input"
-                defaultValue={config.defaultModel}
-                onBlur={(event) => {
-                  if (event.target.value !== config.defaultModel) {
-                    patchConfig({ defaultModel: event.target.value });
+            <p>Shape the request. Keep the intent.</p>
+          </div>
+
+          <nav className="settings-nav" aria-label="Réglages Reqraft">
+            {TABS.map((label) => (
+              <SettingsNavItem
+                key={label}
+                active={label === tab}
+                label={label}
+                meta={TAB_META[label]}
+                onClick={() => {
+                  setTab(label);
+                  if (label === "Diagnostic" && doctor === null && !doctorRunning) {
+                    runDoctor();
                   }
                 }}
               />
-            </div>
-            <div className="settings-row">
-              <div className="settings-row-title">Niveau par défaut</div>
-              <select
-                className="settings-select"
-                value={config.defaultLevel}
-                onChange={(event) => {
-                  patchConfig({ defaultLevel: event.target.value as SafeConfig["defaultLevel"] });
-                }}
-              >
-                {REPROMPT_LEVEL_IDS.map((level) => (
-                  <option key={level} value={level}>
-                    {level}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-
-        {tab === "Profils" && config !== null && (
-          <ProfilesTab
-            config={config}
-            onSelectDefault={(id) => {
-              patchConfig({ defaultProfile: id });
-            }}
-          />
-        )}
-
-        {tab === "Diagnostic" && (
-          <>
-            {doctorRunning && <p className="muted">Diagnostic en cours…</p>}
-            {doctor?.checks.map((check) => (
-              <div key={check.id} className="settings-row">
-                <div>
-                  <div className="settings-row-title">{check.id}</div>
-                  {check.detail !== undefined && (
-                    <div className="settings-row-detail">{check.detail}</div>
-                  )}
-                </div>
-                <span className={check.ok ? "verdict-good" : "verdict-risky"}>
-                  {check.ok ? "OK" : "×"}
-                </span>
-              </div>
             ))}
-            <div className="settings-actions">
-              <button type="button" className="chip" onClick={runDoctor} disabled={doctorRunning}>
-                Relancer le diagnostic
-              </button>
+          </nav>
+
+          <ContextPanel config={config} configuredProviderCount={configuredProviderCount} />
+        </aside>
+
+        <section className="settings-content">
+          <header className="settings-screen-header">
+            <div>
+              <h1>{activeTab.title}</h1>
+              <p>{activeTab.detail}</p>
             </div>
-          </>
-        )}
-      </section>
+          </header>
+
+          <div className="settings-panel">
+            {tab === "Réglages" && (
+              <RaccourcisTab
+                captureShortcut={captureShortcut}
+                inputShortcut={inputShortcut}
+                rejectedShortcuts={rejectedShortcuts}
+                hasNoShortcut={hasNoShortcut}
+                permissionDetail={permissionDetail()}
+                canReplace={permissions?.canReplace ?? null}
+                onAskPermissions={askPermissions}
+                chosen={config?.desktopShortcuts ?? {}}
+                onChoose={(intent, accelerator) => {
+                  patchConfig({
+                    desktopShortcuts: {
+                      ...(config?.desktopShortcuts ?? {}),
+                      [intent]: accelerator === "" ? undefined : accelerator,
+                    },
+                  });
+                }}
+              />
+            )}
+
+            {tab === "Providers" && <ProvidersTab providers={providers} />}
+
+            {tab === "Modèles" && config !== null && (
+              <ModelsTab config={config} providers={providers} onPatchConfig={patchConfig} />
+            )}
+
+            {tab === "Profils" && config !== null && (
+              <ProfilesTab
+                config={config}
+                onSelectDefault={(id) => {
+                  patchConfig({ defaultProfile: id });
+                }}
+              />
+            )}
+
+            {tab === "Diagnostic" && (
+              <DiagnosticTab doctor={doctor} running={doctorRunning} onRunDoctor={runDoctor} />
+            )}
+          </div>
+        </section>
+      </div>
+
+      <footer className="settings-statusbar">
+        <span>
+          {config === null
+            ? "configuration en lecture"
+            : `${config.defaultProvider} · ${config.defaultModel}`}
+        </span>
+        <span>Local-first · aucun prompt stocké</span>
+      </footer>
     </main>
+  );
+}
+
+interface SettingsNavItemProps {
+  active: boolean;
+  label: Tab;
+  meta: (typeof TAB_META)[Tab];
+  onClick(): void;
+}
+
+function SettingsNavItem({
+  active,
+  label,
+  meta,
+  onClick,
+}: Readonly<SettingsNavItemProps>): React.JSX.Element {
+  const Icon = meta.icon;
+  return (
+    <button
+      type="button"
+      className={active ? "settings-nav-item settings-nav-item-active" : "settings-nav-item"}
+      onClick={onClick}
+    >
+      <Icon size={15} aria-hidden />
+      <span>{label}</span>
+    </button>
+  );
+}
+
+interface ContextPanelProps {
+  config: SafeConfig | null;
+  configuredProviderCount: number;
+}
+
+function ContextPanel({
+  config,
+  configuredProviderCount,
+}: Readonly<ContextPanelProps>): React.JSX.Element {
+  return (
+    <>
+      <div className="settings-context">
+        <div className="settings-context-title">Contexte</div>
+        <dl>
+          <ContextRow label="provider" value={config?.defaultProvider ?? "—"} />
+          <ContextRow label="modèle" value={config?.defaultModel ?? "—"} mono />
+          <ContextRow label="profil" value={config?.defaultProfile ?? "—"} />
+          <ContextRow label="niveau" value={config?.defaultLevel ?? "—"} />
+        </dl>
+      </div>
+      <div className="settings-sidebar-note">
+        {configuredProviderCount} provider configuré
+        {configuredProviderCount > 1 ? "s" : ""} · télémétrie désactivée
+      </div>
+    </>
+  );
+}
+
+interface ContextRowProps {
+  label: string;
+  value: string;
+  mono?: boolean;
+}
+
+function ContextRow({ label, value, mono = false }: Readonly<ContextRowProps>): React.JSX.Element {
+  return (
+    <div>
+      <dt>{label}</dt>
+      <dd className={mono ? "mono" : undefined}>{value}</dd>
+    </div>
+  );
+}
+
+function ProvidersTab({ providers }: Readonly<{ providers: ProviderStatus[] }>): React.JSX.Element {
+  return (
+    <>
+      <div className="provider-table" role="table" aria-label="Providers">
+        <div className="provider-table-head" role="row">
+          <span>Provider</span>
+          <span>Source</span>
+          <span>État</span>
+        </div>
+        {providers.map((provider) => (
+          <div key={provider.id} className="provider-table-row" role="row">
+            <span className="mono">{provider.id}</span>
+            <span>{provider.configured ? provider.source : "—"}</span>
+            <span className={provider.configured ? "verdict-good" : "muted"}>
+              {provider.configured ? "configuré" : "non configuré"}
+            </span>
+          </div>
+        ))}
+      </div>
+      <p className="settings-warning settings-soft-warning">
+        Les clés se configurent par variable d&apos;environnement ou par <code>rp auth</code> en
+        CLI. Elles ne sont jamais affichées ici.
+      </p>
+    </>
+  );
+}
+
+interface ModelsTabProps {
+  config: SafeConfig;
+  providers: ProviderStatus[];
+  onPatchConfig(patch: Parameters<typeof window.reqraft.writeConfig>[0]): void;
+}
+
+function ModelsTab({
+  config,
+  providers,
+  onPatchConfig,
+}: Readonly<ModelsTabProps>): React.JSX.Element {
+  const providerIds = providers.map((provider) => provider.id);
+
+  return (
+    <div className="settings-card-list">
+      <label className="settings-row">
+        <span>
+          <span className="settings-row-title">Provider par défaut</span>
+          <span className="settings-row-detail">Utilisé par la capsule et le popover.</span>
+        </span>
+        <select
+          className="settings-select"
+          value={config.defaultProvider}
+          onChange={(event) => {
+            onPatchConfig({
+              defaultProvider: event.target.value as SafeConfig["defaultProvider"],
+            });
+          }}
+        >
+          {providerIds.map((providerId) => (
+            <option key={providerId} value={providerId}>
+              {providerId}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label className="settings-row">
+        <span>
+          <span className="settings-row-title">Modèle par défaut</span>
+          <span className="settings-row-detail">Identifiant envoyé au provider choisi.</span>
+        </span>
+        <input
+          className="settings-input mono"
+          defaultValue={config.defaultModel}
+          onBlur={(event) => {
+            if (event.target.value !== config.defaultModel) {
+              onPatchConfig({ defaultModel: event.target.value });
+            }
+          }}
+        />
+      </label>
+
+      <label className="settings-row">
+        <span>
+          <span className="settings-row-title">Niveau par défaut</span>
+          <span className="settings-row-detail">
+            S&apos;applique quand le profil ne force aucun niveau.
+          </span>
+        </span>
+        <select
+          className="settings-select"
+          value={config.defaultLevel}
+          onChange={(event) => {
+            onPatchConfig({ defaultLevel: event.target.value as SafeConfig["defaultLevel"] });
+          }}
+        >
+          {REPROMPT_LEVEL_IDS.map((level) => (
+            <option key={level} value={level}>
+              {level}
+            </option>
+          ))}
+        </select>
+      </label>
+    </div>
+  );
+}
+
+interface DiagnosticTabProps {
+  doctor: DoctorReport | null;
+  running: boolean;
+  onRunDoctor(): void;
+}
+
+function DiagnosticTab({
+  doctor,
+  running,
+  onRunDoctor,
+}: Readonly<DiagnosticTabProps>): React.JSX.Element {
+  return (
+    <>
+      {running && <p className="muted">Diagnostic en cours…</p>}
+      <div className="diagnostic-list">
+        {doctor?.checks.map((check) => (
+          <div
+            key={check.id}
+            className={check.ok ? "diagnostic-row" : "diagnostic-row diagnostic-row-risk"}
+          >
+            <span className={check.ok ? "verdict-good" : "verdict-risky"}>
+              {check.ok ? "✓" : "!"}
+            </span>
+            <span className="diagnostic-name">{check.id}</span>
+            {check.detail !== undefined && (
+              <span className="diagnostic-detail">{check.detail}</span>
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="settings-actions">
+        <button type="button" className="button-secondary" onClick={onRunDoctor} disabled={running}>
+          Relancer le diagnostic
+        </button>
+      </div>
+    </>
   );
 }
 

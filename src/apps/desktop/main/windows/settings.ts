@@ -1,13 +1,13 @@
 import { BrowserWindow } from "electron";
 
 /**
- * Settings window (DESKTOP.md §3, §4.3): 560×480, horizontal tabs, opened
- * maybe once a month — a normal framed window, not a panel. Lot 4 ships the
- * shell and the entry points (tray, popover, capsule); the five tabs land in
- * lot 5.
+ * Settings window (DESKTOP.md §3, §4.3): a normal framed window, not a panel.
+ * The renderer follows the full desktop mockup: title bar, sidebar, content
+ * pane and status bar, which needs real width rather than the old compact tab
+ * surface.
  */
-export const SETTINGS_WIDTH = 560;
-export const SETTINGS_HEIGHT = 480;
+export const SETTINGS_WIDTH = 900;
+export const SETTINGS_HEIGHT = 640;
 
 export interface SettingsWindowOptions {
   preloadPath: string;
@@ -20,9 +20,12 @@ export function createSettingsWindow(options: SettingsWindowOptions): Electron.B
   const window = new BrowserWindow({
     width: SETTINGS_WIDTH,
     height: SETTINGS_HEIGHT,
-    resizable: false,
+    minWidth: 760,
+    minHeight: 540,
+    resizable: true,
     show: false,
     title: "Reqraft — Réglages",
+    titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     autoHideMenuBar: true,
     webPreferences: {
       preload: options.preloadPath,

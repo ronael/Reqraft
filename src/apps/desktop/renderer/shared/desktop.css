@@ -441,68 +441,242 @@ kbd {
 /* ── Réglages (coquille lot 4, onglets lot 5) ────────────────────────── */
 
 .settings {
-  padding: 16px;
-  /* The settings window is a normal framed window, not a transparent panel. */
-  background: #131316;
+  display: flex;
+  flex-direction: column;
   min-height: 100vh;
+  overflow: hidden;
+  background: #0b0b10;
+  color: #d4d4d8;
 }
 
-.settings-band {
+.settings-titlebar {
+  display: grid;
+  grid-template-columns: 120px 1fr 120px;
+  align-items: center;
+  height: 44px;
+  padding: 0 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 16, 23, 0.82);
+  -webkit-app-region: drag;
+}
+
+.settings-titlebar-spacer {
+  min-width: 80px;
+}
+
+.settings-title {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: #a1a1aa;
+}
+
+.settings-ready {
+  justify-self: end;
+  padding: 2px 8px;
+  border: 1px solid rgba(52, 211, 153, 0.25);
+  border-radius: 6px;
+  background: rgba(52, 211, 153, 0.1);
+  color: #86efac;
+  font-size: 10px;
+}
+
+.settings-shell {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+}
+
+.settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  width: 228px;
+  flex-shrink: 0;
+  padding: 14px 12px;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(16, 16, 23, 0.42);
+}
+
+.settings-brand {
+  padding: 2px 8px 16px;
+}
+
+.settings-brand-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.settings-brand-version {
+  margin-left: 8px;
+  font-size: 10px;
+  color: #52525b;
+}
+
+.settings-brand p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 16px;
+  color: #52525b;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.settings-nav-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.settings-band h1 {
-  margin: 0;
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.settings-placeholder {
-  font-size: 12px;
-}
-
-/* ── Réglages (lot 5) ────────────────────────────────────────────────── */
-
-.settings-tabs {
-  display: flex;
-  gap: 4px;
-  padding: 8px 12px 0;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
-
-.settings-tab {
-  padding: 6px 10px;
-  border: none;
-  border-radius: 6px 6px 0 0;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid transparent;
+  border-radius: 8px;
   background: transparent;
-  color: #71717a;
-  font-size: 11px;
+  color: #a1a1aa;
+  font-size: 13px;
   font-weight: 500;
-  cursor: pointer;
+  text-align: left;
 }
 
-.settings-tab-active {
-  background: rgba(255, 255, 255, 0.07);
-  color: #e4e4e7;
+.settings-nav-item svg {
+  color: #52525b;
+}
+
+.settings-nav-item:hover {
+  background: rgba(255, 255, 255, 0.035);
+  color: #ffffff;
+}
+
+.settings-nav-item-active {
+  border-color: rgba(167, 139, 250, 0.22);
+  background: rgba(139, 92, 246, 0.14);
+  color: #ddd6fe;
+}
+
+.settings-nav-item-active svg {
+  color: #a78bfa;
+}
+
+.settings-context {
+  margin-top: 24px;
+  padding: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.settings-context-title {
+  margin-bottom: 8px;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #52525b;
+}
+
+.settings-context dl {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  margin: 0;
+}
+
+.settings-context div {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  min-width: 0;
+}
+
+.settings-context dt,
+.settings-context dd {
+  margin: 0;
+  font-size: 11px;
+}
+
+.settings-context dt {
+  color: #52525b;
+}
+
+.settings-context dd {
+  overflow: hidden;
+  color: #d4d4d8;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-sidebar-note {
+  margin-top: auto;
+  padding: 0 8px;
+  font-size: 10px;
+  line-height: 16px;
+  color: #3f3f46;
+}
+
+.settings-content {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.settings-screen-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 24px 24px 16px;
+}
+
+.settings-screen-header h1 {
+  margin: 0;
+  color: #ffffff;
+  font-size: 18px;
+  line-height: 24px;
+}
+
+.settings-screen-header p {
+  margin: 2px 0 0;
+  color: #71717a;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 .settings-panel {
-  padding: 8px 12px;
+  flex: 1;
+  min-height: 0;
+  padding: 0 24px 24px;
   overflow-y: auto;
-  max-height: calc(100vh - 40px);
+}
+
+.settings-statusbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 32px;
+  padding: 0 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.25);
+  color: #52525b;
+  font-size: 11px;
+}
+
+.settings-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .settings-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
-  padding: 8px;
-  border: none;
+  padding: 11px 12px;
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   color: inherit;
@@ -510,31 +684,30 @@ kbd {
   text-align: left;
 }
 
-.settings-row-button {
-  cursor: pointer;
-}
-
-.settings-row-button:hover {
+.settings-row:hover {
   background: rgba(255, 255, 255, 0.02);
 }
 
-.settings-row-active {
-  background: rgba(139, 92, 246, 0.1);
+.settings-row-title,
+.settings-row-detail {
+  display: block;
 }
 
 .settings-row-title {
-  font-size: 12px;
+  font-size: 13px;
   color: #e4e4e7;
 }
 
 .settings-row-detail {
+  margin-top: 2px;
   font-size: 11px;
-  color: #71717a;
+  line-height: 16px;
+  color: #52525b;
 }
 
 .settings-warning {
-  margin: 8px 0;
-  padding: 8px 10px;
+  margin: 10px 0;
+  padding: 10px 12px;
   border: 1px solid rgba(251, 191, 36, 0.2);
   border-radius: 8px;
   background: rgba(251, 191, 36, 0.05);
@@ -543,105 +716,164 @@ kbd {
   color: rgba(253, 230, 138, 0.9);
 }
 
+.settings-soft-warning {
+  color: #c4b5fd;
+  border-color: rgba(167, 139, 250, 0.2);
+  background: rgba(139, 92, 246, 0.06);
+}
+
 .settings-note {
   font-size: 11px;
+  line-height: 16px;
 }
 
 .settings-select,
 .settings-input {
-  padding: 4px 8px;
+  min-height: 30px;
+  padding: 5px 9px;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  background: #1c1c21;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.04);
   color: #e4e4e7;
   font-size: 12px;
 }
 
 .settings-input {
-  width: 220px;
+  width: min(260px, 42vw);
 }
 
 .settings-actions {
   display: flex;
   justify-content: flex-end;
-  padding: 8px 0;
+  padding: 12px 0 0;
 }
 
-/* --- Settings → Profils ----------------------------------------------------
- *
- * Spacing rule, stated once so it can be checked rather than eyeballed:
- *
- *   - a row is one line of content and keeps a constant height, whatever the
- *     length of its description;
- *   - rows touch, separated by a hairline rather than by a gap — a list reads
- *     as one object, and uneven gaps were what made this panel look unsettled;
- *   - a block of a different nature (the action bar, the help text) is set off
- *     by 12px, which is the only vertical space larger than a row's padding.
- *
- * The description is the part that broke it: unclamped, it wrapped to six
- * lines and every row took a different height.
- */
+.button-secondary {
+  border: 1px solid rgba(167, 139, 250, 0.3);
+  background: rgba(139, 92, 246, 0.15);
+  color: #ddd6fe;
+}
+
+.provider-table {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+}
+
+.provider-table-head,
+.provider-table-row {
+  display: grid;
+  grid-template-columns: minmax(140px, 1.1fr) minmax(120px, 1fr) 120px;
+  gap: 12px;
+  align-items: center;
+}
+
+.provider-table-head {
+  padding: 9px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  color: #52525b;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.provider-table-row {
+  padding: 11px 12px;
+  color: #a1a1aa;
+  font-size: 12px;
+}
+
+.provider-table-row + .provider-table-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.diagnostic-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.diagnostic-row {
+  display: grid;
+  grid-template-columns: 18px minmax(160px, 1fr) minmax(120px, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  font-size: 12px;
+}
+
+.diagnostic-row-risk {
+  border-color: rgba(251, 191, 36, 0.22);
+  background: rgba(251, 191, 36, 0.05);
+}
+
+.diagnostic-name {
+  color: #e4e4e7;
+}
+
+.diagnostic-detail {
+  min-width: 0;
+  overflow: hidden;
+  color: #52525b;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .profile-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 0;
+  margin-bottom: 14px;
 }
 
 .profile-intro {
   margin: 0;
-  font-size: 11px;
-  line-height: 16px;
+  max-width: 440px;
+  font-size: 12px;
+  line-height: 18px;
   color: #71717a;
 }
 
 .profile-list {
-  margin-top: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  border-radius: 8px;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
 }
 
 .profile-row {
+  position: relative;
   display: flex;
-  align-items: center;
+  min-height: 118px;
+  flex-direction: column;
   justify-content: space-between;
   gap: 12px;
-  padding: 10px 12px;
-}
-
-/* A hairline between rows, never above the first one. */
-.profile-row + .profile-row {
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
 }
 
 .profile-row-active {
-  background: rgba(139, 92, 246, 0.08);
+  border-color: rgba(167, 139, 250, 0.3);
+  background: rgba(139, 92, 246, 0.1);
 }
 
-/*
- * The identity block takes what is left and is allowed to shrink. Without
- * `min-width: 0` a flex child refuses to go below its content width, which is
- * what squeezed the description into a 170px column beside five buttons.
- */
 .profile-identity {
-  flex: 1;
   min-width: 0;
 }
 
-/* Two lines at most: past that a description is reference material, not a
-   label, and the full text is in the profile itself. */
 .profile-description {
   display: -webkit-box;
+  overflow: hidden;
   -webkit-box-orient: vertical;
   -webkit-line-clamp: 2;
-  overflow: hidden;
 }
 
 .profile-meta {
-  margin-top: 2px;
   color: #52525b;
 }
 
@@ -650,14 +882,14 @@ kbd {
   padding: 1px 6px;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
-  font-size: 10px;
   color: #71717a;
+  font-size: 10px;
   white-space: nowrap;
 }
 
 .profile-actions {
   display: flex;
-  flex-shrink: 0;
+  justify-content: flex-end;
   gap: 2px;
 }
 
@@ -681,9 +913,11 @@ kbd {
   color: #e4e4e7;
 }
 
-/* Focus stays visible: these are the only controls on the row. */
-.icon-button:focus-visible {
-  outline: 2px solid var(--reqraft-accent, #8b5cf6);
+.icon-button:focus-visible,
+.settings-nav-item:focus-visible,
+.settings-select:focus-visible,
+.settings-input:focus-visible {
+  outline: 2px solid var(--rq-accent, #8b5cf6);
   outline-offset: 1px;
 }
 
@@ -693,7 +927,7 @@ kbd {
 }
 
 .icon-button-active {
-  color: var(--reqraft-accent, #8b5cf6);
+  color: var(--rq-accent, #8b5cf6);
 }
 
 .icon-button-danger:hover:not(:disabled) {
@@ -705,36 +939,31 @@ kbd {
 .profile-new {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
   flex-shrink: 0;
+  gap: 6px;
 }
 
 .profile-confirm {
-  margin-top: 4px;
   color: rgba(253, 230, 138, 0.9);
 }
 
-/* The instructions field is the one that needs room: it stacks rather than
-   sitting beside its label, and takes the panel's full width. */
 .profile-instructions {
   flex-direction: column;
   align-items: stretch;
-  gap: 4px;
+  gap: 6px;
 }
 
 .profile-textarea {
   width: 100%;
-  min-height: 96px;
+  min-height: 128px;
   font-family: inherit;
-  line-height: 16px;
+  line-height: 18px;
   resize: vertical;
 }
 
 .profile-form-actions {
   gap: 8px;
 }
-
-/* --- Settings → Raccourcis -------------------------------------------------- */
 
 .shortcut-control {
   display: flex;
@@ -744,6 +973,20 @@ kbd {
 }
 
 .shortcut-overridden {
-  margin-top: 2px;
   color: rgba(253, 230, 138, 0.9);
+}
+
+@media (max-width: 760px) {
+  .settings-sidebar {
+    width: 188px;
+  }
+
+  .profile-list {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-table-head,
+  .provider-table-row {
+    grid-template-columns: minmax(120px, 1fr) minmax(90px, 0.8fr) 90px;
+  }
 }
