@@ -76,4 +76,47 @@ describe("buildDoctorReport (lot 5)", () => {
     const check = report.checks.find((entry) => entry.id === "provider:anthropic");
     expect(check?.ok).toBe(false);
   });
+
+  it("inclut l'état runtime des permissions et raccourcis quand il est fourni", async () => {
+    const report = await buildDoctorReport({
+      loadConfig: () => Promise.resolve(DEFAULT_CONFIG),
+      configPath: () => "/Users/test/.config/reqraft/config.json",
+      hydrateCredentials: () => Promise.resolve(),
+      createProvider: healthyProvider,
+      providerIds: ["mock"],
+      env: { OPENAI_API_KEY: "sk-ne-jamais-afficher" },
+      permissions: {
+        accessibility: true,
+        automation: false,
+        canReplace: false,
+        gap: "automation",
+        message: "Accessibilité accordée, Automatisation refusée.",
+      },
+      shortcuts: {
+        registered: [
+          { accelerator: "Control+Alt+R", label: "⌃⌥R", intent: "capture" },
+          { accelerator: "Control+Shift+R", label: "⌃⇧R", intent: "input" },
+        ],
+        rejected: ["Alt+Space"],
+      },
+    });
+
+    const byId = new Map(report.checks.map((check) => [check.id, check]));
+    expect(byId.get("permissions:accessibility")).toMatchObject({ ok: true });
+    expect(byId.get("permissions:automation")).toMatchObject({
+      ok: false,
+      detail: "Accessibilité accordée, Automatisation refusée.",
+    });
+    expect(byId.get("permissions:replace")).toMatchObject({ ok: false });
+    expect(byId.get("shortcuts:capture")).toMatchObject({
+      ok: true,
+      detail: "⌃⌥R (Control+Alt+R)",
+    });
+    expect(byId.get("shortcuts:input")).toMatchObject({ ok: true });
+    expect(byId.get("shortcuts:rejected")).toMatchObject({
+      ok: false,
+      detail: "refusés par le système : Alt+Space",
+    });
+    expect(JSON.stringify(report)).not.toContain("sk-ne-jamais-afficher");
+  });
 });

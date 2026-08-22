@@ -165,7 +165,11 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     if (dependencies.runDoctorReport) {
       return await dependencies.runDoctorReport();
     }
-    return await buildDoctorReport({ env });
+    const permissions = dependencies.probePermissions
+      ? await dependencies.probePermissions()
+      : undefined;
+    const shortcuts = dependencies.shortcutState?.();
+    return await buildDoctorReport({ env, permissions, shortcuts });
   });
 
   ipcMain.handle(IPC_CHANNELS.permissionsState, async (_event, payload) => {

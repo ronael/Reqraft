@@ -5,7 +5,12 @@ import type { ProviderAdapter } from "@/core/types.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { createProvider } from "@/providers/registry.js";
 import { listProviderDefinitions, type BuiltinProvider } from "@/providers/catalog.js";
-import type { DoctorCheck, DoctorReport } from "@/apps/desktop/shared/ipc-contract.js";
+import type {
+  DoctorCheck,
+  DoctorReport,
+  ShortcutStateInfo,
+} from "@/apps/desktop/shared/ipc-contract.js";
+import type { PermissionsReport } from "./permissions.js";
 
 /**
  * Structured doctor report for the settings Diagnostic tab (DESKTOP.md
@@ -26,6 +31,8 @@ export interface DoctorDependencies {
   ) => ProviderAdapter;
   env?: NodeJS.ProcessEnv;
   providerIds?: readonly BuiltinProvider[];
+  permissions?: PermissionsReport;
+  shortcuts?: ShortcutStateInfo;
 }
 
 export async function buildDoctorReport(
@@ -58,6 +65,14 @@ export async function buildDoctorReport(
     checks.push(await checkProvider(id, env, config, create));
   }
 
+  if (dependencies.permissions) {
+    checks.push(...checkPermissions(dependencies.permissions));
+  }
+
+  if (dependencies.shortcuts) {
+    checks.push(...checkShortcuts(dependencies.shortcuts));
+  }
+
   return { checks };
 }
 
@@ -81,4 +96,54 @@ async function checkProvider(
   } catch {
     return { id: `provider:${id}`, ok: false, detail: "erreur de validation" };
   }
+}
+
+function checkPermissions(report: PermissionsReport): DoctorCheck[] {
+  return [
+    {
+      id: "permissions:accessibility",
+      ok: report.accessibility,
+      detail: report.accessibility ? "accordée" : report.message,
+    },
+    {
+      id: "permissions:automation",
+      ok: report.automation,
+      detail: report.automation ? "accordée" : report.message,
+    },
+    {
+      id: "permissions:replace",
+      ok: report.canReplace,
+      detail: report.message,
+    },
+  ];
+}
+
+function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
+  const checks: DoctorCheck[] = [
+    checkShortcutIntent(state, "capture"),
+    checkShortcutIntent(state, "input"),
+  ];
+
+  checks.push({
+    id: "shortcuts:rejected",
+    ok: state.rejected.length === 0,
+    detail:
+      state.rejected.length === 0
+        ? "aucun refus"
+        : `refusés par le système : ${state.rejected.join(", ")}`,
+  });
+
+  return checks;
+}
+
+function checkShortcutIntent(
+  state: ShortcutStateInfo,
+  intent: ShortcutStateInfo["registered"][number]["intent"],
+): DoctorCheck {
+  const active = state.registered.find((entry) => entry.intent === intent);
+  return {
+    id: `shortcuts:${intent}`,
+    ok: active !== undefined,
+    detail: active ? `${active.label} (${active.accelerator})` : "aucun raccourci actif",
+  };
 }
