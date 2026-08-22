@@ -443,7 +443,8 @@ kbd {
 .settings {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  height: 100vh;
+  min-height: 0;
   overflow: hidden;
   background: #0b0b10;
   color: #d4d4d8;
@@ -649,6 +650,7 @@ kbd {
   min-height: 0;
   padding: 0 24px 24px;
   overflow-y: auto;
+  scrollbar-gutter: stable;
 }
 
 .settings-statusbar {
