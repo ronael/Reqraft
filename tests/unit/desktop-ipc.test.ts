@@ -147,6 +147,12 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       permissionsState: "permissions:state",
       permissionsRequest: "permissions:request",
       profilesList: "profiles:list",
+      profilesCatalog: "profiles:catalog",
+      profileRead: "profiles:read",
+      profileSave: "profiles:save",
+      profileDuplicate: "profiles:duplicate",
+      profileDelete: "profiles:delete",
+      profileExport: "profiles:export",
       windowOpenSettings: "window:open-settings",
       shortcutsState: "shortcuts:state",
       runDelta: "run:delta",
@@ -155,7 +161,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(13);
+    expect(REQUEST_CHANNELS).toHaveLength(19);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 

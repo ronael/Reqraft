@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   REPROMPT_LEVEL_IDS,
+  SHORTCUT_PRESETS,
   type DoctorReport,
   type PermissionsState,
-  type ProfileSummary,
   type ProviderStatus,
   type SafeConfig,
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
+
+import { ProfilesTab } from "./ProfilesTab.js";
 
 const TABS = ["Raccourcis", "Providers", "Modèles", "Profils", "Diagnostic"] as const;
 type Tab = (typeof TABS)[number];
@@ -22,7 +24,6 @@ export function SettingsApp(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>("Raccourcis");
   const [config, setConfig] = useState<SafeConfig | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
-  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);
   const [permissions, setPermissions] = useState<PermissionsState | null>(null);
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
@@ -31,7 +32,6 @@ export function SettingsApp(): React.JSX.Element {
   useEffect(() => {
     void window.reqraft.readConfig().then(setConfig);
     void window.reqraft.providersStatus().then(setProviders);
-    void window.reqraft.listProfiles().then(setProfiles);
     void window.reqraft.shortcutsState().then(setShortcuts);
     void window.reqraft.permissionsState().then(setPermissions);
   }, []);
@@ -104,6 +104,15 @@ export function SettingsApp(): React.JSX.Element {
             permissionDetail={permissionDetail()}
             canReplace={permissions?.canReplace ?? null}
             onAskPermissions={askPermissions}
+            chosen={config?.desktopShortcuts ?? {}}
+            onChoose={(intent, accelerator) => {
+              patchConfig({
+                desktopShortcuts: {
+                  ...(config?.desktopShortcuts ?? {}),
+                  [intent]: accelerator === "" ? undefined : accelerator,
+                },
+              });
+            }}
           />
         )}
 
@@ -181,28 +190,12 @@ export function SettingsApp(): React.JSX.Element {
         )}
 
         {tab === "Profils" && config !== null && (
-          <>
-            {profiles.map((profile) => (
-              <button
-                key={profile.id}
-                type="button"
-                className={
-                  profile.id === config.defaultProfile
-                    ? "settings-row settings-row-button settings-row-active"
-                    : "settings-row settings-row-button"
-                }
-                onClick={() => {
-                  patchConfig({ defaultProfile: profile.id });
-                }}
-              >
-                <div>
-                  <div className="settings-row-title">{profile.name}</div>
-                  <div className="settings-row-detail">{profile.description}</div>
-                </div>
-                {profile.id === config.defaultProfile && <span className="verdict-good">✓</span>}
-              </button>
-            ))}
-          </>
+          <ProfilesTab
+            config={config}
+            onSelectDefault={(id) => {
+              patchConfig({ defaultProfile: id });
+            }}
+          />
         )}
 
         {tab === "Diagnostic" && (
@@ -234,6 +227,8 @@ export function SettingsApp(): React.JSX.Element {
 }
 
 interface RaccourcisTabProps {
+  chosen: { capture?: string; input?: string };
+  onChoose(intent: "capture" | "input", accelerator: string): void;
   captureShortcut: string;
   inputShortcut: string;
   rejectedShortcuts: string[];
@@ -247,20 +242,30 @@ interface RaccourcisTabProps {
 function RaccourcisTab(props: Readonly<RaccourcisTabProps>): React.JSX.Element {
   return (
     <>
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">Reformuler la sélection</div>
-          <div className="settings-row-detail">Capsule ancrée au curseur</div>
-        </div>
-        <kbd>{props.captureShortcut}</kbd>
-      </div>
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">Ouvrir sans sélection</div>
-          <div className="settings-row-detail">Capsule centrée, saisie libre</div>
-        </div>
-        <kbd>{props.inputShortcut}</kbd>
-      </div>
+      <ShortcutRow
+        title="Reformuler la sélection"
+        detail="Capsule ancrée au curseur"
+        active={props.captureShortcut}
+        presets={SHORTCUT_PRESETS.capture}
+        chosen={props.chosen.capture ?? ""}
+        onChoose={(accelerator) => {
+          props.onChoose("capture", accelerator);
+        }}
+      />
+      <ShortcutRow
+        title="Ouvrir sans sélection"
+        detail="Capsule centrée, saisie libre"
+        active={props.inputShortcut}
+        presets={SHORTCUT_PRESETS.input}
+        chosen={props.chosen.input ?? ""}
+        onChoose={(accelerator) => {
+          props.onChoose("input", accelerator);
+        }}
+      />
+      <p className="settings-note muted">
+        Un changement prend effet au prochain démarrage : un raccourci global se réserve auprès du
+        système au lancement.
+      </p>
       {props.rejectedShortcuts.length > 0 && (
         <div className="settings-warning" role="alert">
           ! Raccourcis déjà pris par une autre application : {props.rejectedShortcuts.join(", ")}.
@@ -287,4 +292,74 @@ function RaccourcisTab(props: Readonly<RaccourcisTabProps>): React.JSX.Element {
       </div>
     </>
   );
+}
+
+interface ShortcutRowProps {
+  title: string;
+  detail: string;
+  /** The combination actually in force right now, fallback included. */
+  active: string;
+  presets: readonly string[];
+  chosen: string;
+  onChoose(accelerator: string): void;
+}
+
+/**
+ * One shortcut: what is in force, and what may be chosen instead.
+ *
+ * The two are shown separately on purpose. "Automatique" does not mean "none":
+ * it means the application walks its own list, and the combination that came
+ * out of it is the one displayed beside it. Merging them would hide the case
+ * where a preferred choice was refused and something else is answering.
+ */
+function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
+  const overridden = props.chosen !== "" && prettyLabel(props.chosen) !== props.active;
+
+  return (
+    <div className="settings-row">
+      <div>
+        <div className="settings-row-title">{props.title}</div>
+        <div className="settings-row-detail">{props.detail}</div>
+        {overridden && (
+          <div className="settings-row-detail shortcut-overridden">
+            Choix non disponible : un repli est actif.
+          </div>
+        )}
+      </div>
+      <div className="shortcut-control">
+        <kbd>{props.active}</kbd>
+        <select
+          className="settings-select"
+          value={props.chosen}
+          onChange={(event) => {
+            props.onChoose(event.target.value);
+          }}
+        >
+          <option value="">Automatique</option>
+          {props.presets.map((accelerator) => (
+            <option key={accelerator} value={accelerator}>
+              {prettyLabel(accelerator)}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * macOS symbols for an accelerator.
+ *
+ * Duplicated from `main/shortcuts.ts` rather than imported: the renderer may
+ * not reach into the main process, and this is four replacements over a string
+ * the contract already fixes.
+ */
+function prettyLabel(accelerator: string): string {
+  return accelerator
+    .replace("Command", "⌘")
+    .replace("Control", "⌃")
+    .replace("Alt", "⌥")
+    .replace("Shift", "⇧")
+    .replaceAll("+", "")
+    .replace("Space", "Espace");
 }

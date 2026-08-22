@@ -117,7 +117,12 @@ describe("captureSelection (DESKTOP.md §5.1)", () => {
     const deps = createDeps(clipboard);
     deps.sendKeystroke = () => Promise.reject(new Error("osascript KO"));
 
-    await expect(captureSelection(deps)).rejects.toThrow("osascript KO");
+    // Ne rejette plus : une capture impossible se rend comme une capture vide,
+    // sinon le raccourci global n'ouvrait rien du tout. La raison est portée
+    // par le résultat plutôt que par une exception.
+    const outcome = await captureSelection(deps);
+    expect(outcome).toMatchObject({ empty: true });
+    expect("reason" in outcome ? outcome.reason : "").toContain("osascript KO");
     expect(clipboard.currentText).toBe("contenu original");
   });
 
@@ -225,5 +230,73 @@ describe("CaptureService", () => {
 
     expect(outcome.applied).toBe(true);
     expect(activated).toEqual(["TextEdit"]);
+  });
+});
+
+describe("permission manquante : dégradation, jamais de rejet nu", () => {
+  const PERMISSION_ERROR = new Error(
+    "36:68: execution error: Erreur dans System Events : osascript n’est pas autorisé à envoyer de saisies. (1002)",
+  );
+
+  it("rend une capture vide au lieu de rejeter", async () => {
+    // Sans ce catch, le raccourci global ne faisait rien : la promesse
+    // remontait non gérée et la capsule ne s'ouvrait jamais.
+    const clipboard = new FakeClipboard();
+    clipboard.appCopy("contenu utilisateur");
+
+    const outcome = await captureSelection({
+      clipboard,
+      sendKeystroke: () => Promise.reject(PERMISSION_ERROR),
+      activateApp: () => Promise.resolve(true),
+      wait: () => Promise.resolve(),
+    });
+
+    expect(outcome).toMatchObject({ empty: true });
+  });
+
+  it("nomme l'action à faire, pas le programme qui a échoué", async () => {
+    const clipboard = new FakeClipboard();
+    clipboard.appCopy("contenu utilisateur");
+
+    const outcome = await captureSelection({
+      clipboard,
+      sendKeystroke: () => Promise.reject(PERMISSION_ERROR),
+      activateApp: () => Promise.resolve(true),
+      wait: () => Promise.resolve(),
+    });
+
+    const reason = "reason" in outcome ? outcome.reason : "";
+    // « osascript » ne veut rien dire pour quelqu'un qui n'a jamais lancé ce
+    // programme ; ce qu'il faut, c'est le chemin dans les réglages.
+    expect(reason).toContain("Accessibilité");
+    expect(reason).not.toContain("osascript");
+  });
+
+  it("rend le presse-papiers intact même quand la capture échoue", async () => {
+    const clipboard = new FakeClipboard();
+    clipboard.appCopy("contenu utilisateur");
+
+    await captureSelection({
+      clipboard,
+      sendKeystroke: () => Promise.reject(PERMISSION_ERROR),
+      activateApp: () => Promise.resolve(true),
+      wait: () => Promise.resolve(),
+    });
+
+    expect(clipboard.readText()).toBe("contenu utilisateur");
+  });
+
+  it("rapporte une panne quelconque sans la masquer", async () => {
+    const clipboard = new FakeClipboard();
+
+    const outcome = await captureSelection({
+      clipboard,
+      sendKeystroke: () => Promise.reject(new Error("panne inattendue")),
+      activateApp: () => Promise.resolve(true),
+      wait: () => Promise.resolve(),
+    });
+
+    const reason = "reason" in outcome ? outcome.reason : "";
+    expect(reason).toContain("panne inattendue");
   });
 });

@@ -48,6 +48,19 @@ export const ConfigSchema = z
     uiLocale: z.enum(["auto", ...UI_LOCALES]).default("auto"),
     outputLanguage: z.string().trim().min(1).default("auto"),
     providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
+    /**
+     * Desktop global shortcuts, when the user set them.
+     *
+     * Optional and absent by default: without it the application walks its own
+     * candidate list, and writing the resolved value into the file would turn
+     * a fallback into a decision the user never made.
+     */
+    desktopShortcuts: z
+      .object({
+        capture: z.string().trim().min(1).optional(),
+        input: z.string().trim().min(1).optional(),
+      })
+      .optional(),
   })
   .passthrough();
 

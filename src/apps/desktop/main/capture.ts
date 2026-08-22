@@ -74,10 +74,31 @@ export async function captureSelection(deps: CaptureDependencies): Promise<Captu
       return { empty: true, reason: "aucune sélection" };
     }
     return { text: captured };
+  } catch (error) {
+    // A capture that cannot run is, from the capsule's point of view, the same
+    // as no selection: it opens in free-input mode. Letting this reject instead
+    // left an unhandled rejection on the console and no capsule at all — the
+    // shortcut simply did nothing, which is the failure §5.9 exists to avoid.
+    return { empty: true, reason: describeCaptureFailure(error) };
   } finally {
     // Systematic restoration, including when the capture failed.
     clipboard.writeText(original);
   }
+}
+
+/**
+ * Why the capture could not run, in words the user can act on.
+ *
+ * macOS reports a missing Accessibility grant as osascript error 1002, whose
+ * own wording names `osascript` — a program the user never launched. The
+ * substitution says what to do instead of what failed.
+ */
+function describeCaptureFailure(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  if (message.includes("1002") || message.includes("not allowed to send keystrokes")) {
+    return "accès Accessibilité refusé : autorisez Reqraft dans Réglages Système › Confidentialité et sécurité › Accessibilité";
+  }
+  return `capture impossible : ${message}`;
 }
 
 /**

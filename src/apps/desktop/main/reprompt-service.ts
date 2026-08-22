@@ -7,6 +7,7 @@ import type { RepromptResult } from "@/core/types.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { resolveProfile } from "@/profiles/registry.js";
+import { resolveEffectiveLevel } from "@/profiles/level.js";
 import { describeUiError, type UiError } from "@/shared/errors.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
@@ -127,10 +128,19 @@ export class RepromptService {
       // rewritten — DESKTOP.md lot 3) and pushed as displayable increments.
       let raw = "";
       let sentPreviewLength = 0;
+      const profileId = request.profileId ?? config.defaultProfile;
       const { result } = await this.dependencies.executeReprompt({
         input: request.input,
-        profileId: request.profileId ?? config.defaultProfile,
-        level: request.level ?? config.defaultLevel,
+        profileId,
+        // Same precedence as the CLI (`profiles/level.ts`): what the capsule
+        // asked for wins, then the chosen profile's own level, then the
+        // configured default. Reading `config.defaultLevel` straight made a
+        // profile's declared level inert on this surface alone.
+        level: resolveEffectiveLevel({
+          requested: request.level,
+          profileId,
+          configured: config.defaultLevel,
+        }),
         providerId,
         requestedModel: request.model,
         defaultModel: config.defaultModel,

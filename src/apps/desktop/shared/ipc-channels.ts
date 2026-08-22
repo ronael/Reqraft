@@ -22,6 +22,15 @@ export const IPC_CHANNELS = {
   // and both popover and capsule need to open the settings window. §8.1's
   // table predates those surfaces; channels are still defined ONLY here.
   profilesList: "profiles:list",
+  // Local profile management (settings → Profils). `profiles:list` stays the
+  // lightweight identity feed the popover and the capsule use; these carry the
+  // origin, and — for an explicit edit only — a profile's full contents.
+  profilesCatalog: "profiles:catalog",
+  profileRead: "profiles:read",
+  profileSave: "profiles:save",
+  profileDuplicate: "profiles:duplicate",
+  profileDelete: "profiles:delete",
+  profileExport: "profiles:export",
   windowOpenSettings: "window:open-settings",
   shortcutsState: "shortcuts:state",
   // Main → renderer, pushed (webContents.send).
@@ -49,6 +58,12 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.permissionsState,
   IPC_CHANNELS.permissionsRequest,
   IPC_CHANNELS.profilesList,
+  IPC_CHANNELS.profilesCatalog,
+  IPC_CHANNELS.profileRead,
+  IPC_CHANNELS.profileSave,
+  IPC_CHANNELS.profileDuplicate,
+  IPC_CHANNELS.profileDelete,
+  IPC_CHANNELS.profileExport,
   IPC_CHANNELS.windowOpenSettings,
   IPC_CHANNELS.shortcutsState,
 ] as const;

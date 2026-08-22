@@ -5,6 +5,7 @@ import {
   app,
   clipboard,
   crashReporter,
+  dialog,
   globalShortcut,
   ipcMain,
   screen,
@@ -14,6 +15,7 @@ import { executeReprompt } from "@/application/reprompt.js";
 import { loadConfig } from "@/config/loader.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
+import { loadProfileCatalog } from "@/profiles/catalog.js";
 import { registerIpcHandlers } from "./ipc.js";
 import { createMacosBridge, createOsascriptRunner } from "./macos.js";
 import {
@@ -60,7 +62,17 @@ function bootstrap(): void {
     // Lot 3: refocus the capsule. There is nothing to focus yet.
   });
 
-  void app.whenReady().then(() => {
+  void app.whenReady().then(async () => {
+    // Local profiles are files: the catalogue has to be read before anything
+    // can resolve one. Without this the desktop saw the built-in profiles
+    // alone, and a local profile chosen as the default failed the run with
+    // `profile.unknown`. Failures are reported, never thrown — a broken file
+    // must not stop the application from starting.
+    const catalog = await loadProfileCatalog();
+    for (const problem of catalog.problems) {
+      console.error(`Profil local ignoré (${problem.path}) : ${problem.detail}`);
+    }
+
     const bridge = createMacosBridge(createOsascriptRunner());
     const captureService = new CaptureService({ bridge, clipboard });
     const permissionsProbe = createSystemPermissionsProbe(
@@ -154,7 +166,20 @@ function bootstrap(): void {
       },
       openSettings,
       shortcutState: () => shortcutResolution,
+      showSaveDialog: async (defaultFileName) => {
+        // The renderer never names a path: the user does, through the OS.
+        const result = await dialog.showSaveDialog({
+          defaultPath: defaultFileName,
+          filters: [{ name: "Profil Reqraft", extensions: ["json"] }],
+        });
+        return result.canceled ? undefined : result.filePath;
+      },
     });
+
+    // Read once, here: the candidate chain is walked at start-up and a change
+    // takes effect on the next launch, which is also when the OS lets us claim
+    // a combination another application has since released.
+    const configuredShortcuts = (await loadConfig()).desktopShortcuts;
 
     const resolution = registerShortcuts(
       (accelerator, handler) => globalShortcut.register(accelerator, handler),
@@ -165,10 +190,21 @@ function bootstrap(): void {
           // renderer to start a fresh session — the window persists between
           // triggers, it is hidden, never destroyed.
           const cursor = screen.getCursorScreenPoint();
-          void captureService.trigger().then(() => {
+          // The capsule opens whatever the capture did. `trigger()` already
+          // degrades a failed capture to an empty one, and this catch is the
+          // belt to that braces: a rejection here would leave the user pressing
+          // a shortcut that does nothing but print to a console they never see.
+          const show = (): void => {
             capsule.show({ kind: "cursor", point: cursor });
             capsule.window.webContents.send(IPC_CHANNELS.capsuleOpened, { mode: "capture" });
-          });
+          };
+          void captureService
+            .trigger()
+            .then(show)
+            .catch((error: unknown) => {
+              console.error("Capture impossible :", error);
+              show();
+            });
         },
         onInput: () => {
           captureService.clear();
@@ -177,6 +213,7 @@ function bootstrap(): void {
         },
       },
       process.env.REQRAFT_SHORTCUT,
+      configuredShortcuts,
     );
     shortcutResolution = resolution;
 

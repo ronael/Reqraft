@@ -3,7 +3,12 @@ import { RepromptLevelSchema } from "@/core/levels.js";
 import { ConfigSchema, type Config, type ConfigKey } from "@/config/schema.js";
 import type { RepromptResult } from "@/core/types.js";
 import type { UiError } from "@/shared/errors.js";
-import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
+import {
+  CUSTOM_PROFILE_ID_MAX_LENGTH,
+  CUSTOM_PROFILE_ID_REGEX,
+  isValidCustomProfileId,
+} from "@/profiles/custom.js";
+import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
 
 /**
  * Re-exported so the renderer can recognise the `auto` sentinel without
@@ -96,6 +101,12 @@ export type SafeCustomProviderConfig = Omit<
 >;
 export type SafeConfig = Pick<Config, ConfigKey> & {
   providers?: Record<string, SafeCustomProviderConfig>;
+  /**
+   * Not a `ConfigKey`: those are the scalar settings `rp config` exposes, and
+   * `rp config set desktopShortcuts` would mean nothing. Named here instead,
+   * the way `providers` is.
+   */
+  desktopShortcuts?: { capture?: string; input?: string };
 };
 
 export type ProviderCredentialSource =
@@ -137,6 +148,128 @@ export interface ProfileSummary {
   name: string;
   description: string;
 }
+
+/** Where a profile comes from, and therefore what may be done to it. */
+export const PROFILE_ORIGINS = ["auto", "builtin", "local"] as const;
+export type ProfileOriginId = (typeof PROFILE_ORIGINS)[number];
+
+/**
+ * A catalogue row for the settings Profils tab.
+ *
+ * Still identity and wording only — `instructions` stays out. The renderer
+ * lists profiles far more often than it edits one, and a list is not a reason
+ * to push every prompt across the bridge.
+ */
+export interface ProfileCatalogEntry extends ProfileSummary {
+  origin: ProfileOriginId;
+  /** Shown beside the row, and pre-filled when the profile is duplicated. */
+  defaultLevel?: (typeof REPROMPT_LEVEL_IDS)[number];
+}
+
+/**
+ * A local profile file, whole. Crosses the bridge only when the user opens one
+ * for editing — never as part of a listing.
+ */
+export interface ProfileDetail {
+  id: string;
+  name: string;
+  description: string;
+  /** Built-in id this profile inherits from, or absent. */
+  extends?: string;
+  defaultLevel: (typeof REPROMPT_LEVEL_IDS)[number];
+  instructions: string;
+}
+
+/** A local profile file the catalogue could not load, reported not hidden. */
+export interface ProfileCatalogProblemInfo {
+  id: string;
+  path: string;
+  detail: string;
+}
+
+export interface ProfileCatalogResponse {
+  entries: ProfileCatalogEntry[];
+  problems: ProfileCatalogProblemInfo[];
+}
+
+const PROFILE_ID_ERROR =
+  "L'identifiant du profil doit être normalisé : lettres minuscules, chiffres et tirets uniquement.";
+
+const ProfileIdSchema = z
+  .string()
+  .min(1)
+  .max(CUSTOM_PROFILE_ID_MAX_LENGTH)
+  .regex(CUSTOM_PROFILE_ID_REGEX, PROFILE_ID_ERROR);
+
+const WritableProfileIdSchema = ProfileIdSchema.refine((id) => isValidCustomProfileId(id), {
+  message:
+    "L'identifiant du profil local est réservé, intégré ou non portable. Choisissez un autre identifiant.",
+});
+
+const ExportableProfileIdSchema = ProfileIdSchema.refine((id) => id !== AUTO_PROFILE_ID, {
+  message: "Le profil automatique n'est pas un profil exportable ou duplicable.",
+});
+
+export const ProfileIdRequestSchema = z.object({ id: ProfileIdSchema }).strict();
+export type ProfileIdRequest = z.infer<typeof ProfileIdRequestSchema>;
+
+/**
+ * Create or update, told apart by `mode` rather than guessed from whether the
+ * file exists: `create` must refuse an id already taken, and `update` must
+ * refuse to invent one. Guessing would silently do the other thing.
+ */
+export const ProfileSaveRequestSchema = z
+  .object({
+    mode: z.enum(["create", "update"]),
+    profile: z
+      .object({
+        id: WritableProfileIdSchema,
+        name: z.string().min(1),
+        description: z.string().min(1),
+        extends: z.enum(BUILTIN_PROFILE_IDS).optional(),
+        defaultLevel: RepromptLevelSchema,
+        instructions: z.string().min(1),
+      })
+      .strict(),
+  })
+  .strict();
+export type ProfileSaveRequest = z.infer<typeof ProfileSaveRequestSchema>;
+
+export const ProfileDuplicateRequestSchema = z
+  .object({
+    sourceId: ExportableProfileIdSchema,
+    targetId: WritableProfileIdSchema,
+    name: z.string().min(1).optional(),
+  })
+  .strict();
+export type ProfileDuplicateRequest = z.infer<typeof ProfileDuplicateRequestSchema>;
+
+export const ProfileExportRequestSchema = z.object({ id: ExportableProfileIdSchema }).strict();
+export type ProfileExportRequest = z.infer<typeof ProfileExportRequestSchema>;
+
+/** `path` is absent when the user dismissed the native save dialog. */
+export interface ProfileExportResponse {
+  path?: string;
+}
+
+/** What a mutation gives back: the refreshed catalogue, so nothing goes stale. */
+export interface ProfileMutationResponse {
+  catalog: ProfileCatalogResponse;
+}
+
+/**
+ * Combinations offered in the settings, per intent.
+ *
+ * A fixed list rather than a key recorder: recording a keystroke reliably means
+ * intercepting every key while the field has focus, and getting that wrong
+ * leaves the user unable to leave the field. A short list of combinations that
+ * are known to register — and known not to collide with macOS or the common
+ * launchers — answers the same need without that risk.
+ */
+export const SHORTCUT_PRESETS = {
+  capture: ["Control+Alt+R", "Control+Alt+Command+R", "Command+Alt+R", "Control+Alt+G"],
+  input: ["Control+Shift+R", "Control+Alt+Shift+R", "Command+Alt+Shift+R", "Control+Shift+G"],
+} as const;
 
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
 export interface ShortcutStateInfo {
@@ -221,6 +354,12 @@ export interface ReqraftBridge {
   permissionsState(): Promise<PermissionsState>;
   requestPermissions(): Promise<PermissionsRequestResult>;
   listProfiles(): Promise<ProfileSummary[]>;
+  profileCatalog(): Promise<ProfileCatalogResponse>;
+  readProfile(id: string): Promise<ProfileDetail>;
+  saveProfile(request: ProfileSaveRequest): Promise<ProfileMutationResponse>;
+  duplicateProfile(request: ProfileDuplicateRequest): Promise<ProfileMutationResponse>;
+  deleteProfile(id: string): Promise<ProfileMutationResponse>;
+  exportProfile(id: string): Promise<ProfileExportResponse>;
   openSettings(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;

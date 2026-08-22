@@ -1,4 +1,5 @@
 import process from "node:process";
+import { writeFile } from "node:fs/promises";
 import { executeReprompt } from "@/application/reprompt.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { loadConfig, saveConfig } from "@/config/loader.js";
@@ -11,13 +12,29 @@ import {
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { listProfiles } from "@/profiles/registry.js";
+import { getProfileOrigin, loadProfileCatalog } from "@/profiles/catalog.js";
+import { CUSTOM_PROFILE_SCHEMA_VERSION, type CustomProfile } from "@/profiles/custom.js";
+import {
+  PROFILE_FILE_EXTENSION,
+  createLocalProfile,
+  deleteLocalProfile,
+  readLocalProfile,
+  updateLocalProfile,
+} from "@/profiles/local-store.js";
+import { duplicateProfile, exportProfile } from "@/profiles/transfer.js";
 import {
   ConfigWriteRequestSchema,
   EmptyRequestSchema,
+  ProfileDuplicateRequestSchema,
+  ProfileExportRequestSchema,
+  ProfileIdRequestSchema,
+  ProfileSaveRequestSchema,
   RepromptCancelRequestSchema,
   RepromptStartRequestSchema,
   ResultAcceptRequestSchema,
   type DoctorReport,
+  type ProfileCatalogResponse,
+  type ProfileDetail,
   type ProviderStatus,
   type SafeConfig,
   type ShortcutStateInfo,
@@ -69,6 +86,15 @@ export interface DesktopIpcDependencies {
   runDoctorReport?: () => Promise<DoctorReport>;
   /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
   shortcutState?: () => ShortcutStateInfo;
+  /**
+   * Native save dialog for a profile export. Injected so the contract stays
+   * testable without Electron, and returns `undefined` when dismissed.
+   */
+  showSaveDialog?: (defaultFileName: string) => Promise<string | undefined>;
+  /** Writes the exported document. Injected for the same reason. */
+  writeExport?: (path: string, contents: string) => Promise<void>;
+  /** Overridden by tests so nothing touches the real profiles directory. */
+  profilesDir?: string;
 }
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
@@ -181,6 +207,8 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     ];
   });
 
+  registerProfileIpcHandlers(dependencies, load);
+
   ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     dependencies.openSettings?.();
@@ -190,6 +218,149 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     EmptyRequestSchema.parse(payload);
     // Without a wired source (tests), report the honest empty state.
     return dependencies.shortcutState?.() ?? { registered: [], rejected: [] };
+  });
+}
+
+/**
+ * Settings → Profils.
+ *
+ * Every operation delegates to `src/profiles/`: no validation and no write
+ * rule is restated here, and the renderer never sees a path or a file.
+ */
+function registerProfileIpcHandlers(
+  dependencies: DesktopIpcDependencies,
+  load: () => Promise<Config>,
+): void {
+  const { ipcMain } = dependencies;
+  const profilesDir = dependencies.profilesDir;
+
+  async function readCatalog(): Promise<ProfileCatalogResponse> {
+    const catalog = await loadProfileCatalog({ profilesDir });
+    return {
+      entries: [
+        {
+          id: AUTO_PROFILE_ID,
+          name: "Auto",
+          description: "Reqraft laisse le modèle choisir le profil adapté au texte.",
+          origin: "auto" as const,
+        },
+        ...catalog.builtin.map((profile) => ({
+          id: profile.id,
+          name: profile.name,
+          description: profile.description,
+          origin: "builtin" as const,
+          defaultLevel: profile.defaultLevel,
+        })),
+        ...catalog.local.map((profile) => ({
+          id: profile.id,
+          name: profile.name,
+          description: profile.description,
+          origin: "local" as const,
+          defaultLevel: profile.defaultLevel,
+        })),
+      ],
+      problems: catalog.problems.map((problem) => ({
+        id: problem.id,
+        path: problem.path,
+        detail: problem.detail,
+      })),
+    };
+  }
+
+  /** Refuses anything that is not a local profile, with the reason. */
+  function assertLocal(id: string): void {
+    if (getProfileOrigin(id) === "builtin") {
+      throw new Error(
+        `« ${id} » est un profil intégré : il n'est ni modifiable ni supprimable. Dupliquez-le pour en obtenir une copie.`,
+      );
+    }
+  }
+
+  ipcMain.handle(IPC_CHANNELS.profilesCatalog, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return readCatalog();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.profileRead, async (_event, payload) => {
+    const { id } = ProfileIdRequestSchema.parse(payload);
+    await loadProfileCatalog({ profilesDir });
+    assertLocal(id);
+    const stored = await readLocalProfile(id, profilesDir);
+    // The whole file, this time: an explicit edit is the one case where the
+    // instructions have a reason to cross the bridge.
+    const detail: ProfileDetail = {
+      id: stored.id,
+      name: stored.name,
+      description: stored.description,
+      ...(stored.extends === undefined ? {} : { extends: stored.extends }),
+      defaultLevel: stored.defaultLevel,
+      instructions: stored.instructions,
+    };
+    return detail;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.profileSave, async (_event, payload) => {
+    const request = ProfileSaveRequestSchema.parse(payload);
+    await loadProfileCatalog({ profilesDir });
+
+    const profile = {
+      schemaVersion: CUSTOM_PROFILE_SCHEMA_VERSION,
+      ...request.profile,
+    } as CustomProfile;
+
+    if (request.mode === "update") {
+      assertLocal(profile.id);
+      await updateLocalProfile(profile, { profilesDir });
+    } else {
+      // `createLocalProfile` refuses an id already taken, including against a
+      // concurrent creation; the schema refuses a built-in id outright.
+      await createLocalProfile(profile, { profilesDir });
+    }
+
+    return { catalog: await readCatalog() };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.profileDuplicate, async (_event, payload) => {
+    const request = ProfileDuplicateRequestSchema.parse(payload);
+    await loadProfileCatalog({ profilesDir });
+    await duplicateProfile(request.sourceId, request.targetId, {
+      profilesDir,
+      ...(request.name === undefined ? {} : { name: request.name }),
+    });
+    return { catalog: await readCatalog() };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.profileDelete, async (_event, payload) => {
+    const { id } = ProfileIdRequestSchema.parse(payload);
+    await loadProfileCatalog({ profilesDir });
+    assertLocal(id);
+
+    // A configuration left pointing at a deleted profile turns every later run
+    // into an unknown-profile failure.
+    const config = await load();
+    if (config.defaultProfile === id) {
+      throw new Error(
+        `« ${id} » est le profil par défaut : choisissez-en un autre avant de le supprimer.`,
+      );
+    }
+
+    await deleteLocalProfile(id, profilesDir);
+    return { catalog: await readCatalog() };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.profileExport, async (_event, payload) => {
+    const { id } = ProfileExportRequestSchema.parse(payload);
+    await loadProfileCatalog({ profilesDir });
+    const result = await exportProfile(id, { profilesDir });
+
+    const target = await (dependencies.showSaveDialog ?? (() => Promise.resolve(undefined)))(
+      `${result.exportedId}${PROFILE_FILE_EXTENSION}`,
+    );
+    // Dismissed: not an error, and nothing was written.
+    if (target === undefined) return {};
+
+    await (dependencies.writeExport ?? defaultWriteExport)(target, result.json);
+    return { path: target };
   });
 }
 
@@ -249,4 +420,14 @@ async function listProviderStatuses(
   });
   statuses.push({ id: "mock", configured: true, source: "builtin" });
   return statuses;
+}
+
+/**
+ * Default export writer.
+ *
+ * A plain file write: the path comes from the native save dialog, so it is the
+ * user's own choice rather than anything the renderer could name.
+ */
+async function defaultWriteExport(path: string, contents: string): Promise<void> {
+  await writeFile(path, contents, "utf8");
 }

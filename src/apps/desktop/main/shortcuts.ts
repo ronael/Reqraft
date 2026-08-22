@@ -19,21 +19,53 @@ export interface ShortcutCandidate {
 }
 
 /**
- * Ordered candidates, most to least desirable. ⌥Espace/⌥⇧Espace are the
- * product defaults but are commonly claimed by Alfred/Raycast — the boolean
- * tells us and we fall through. ⌘Espace (Spotlight) and ⌃Espace (input
- * source) are deliberately excluded: macOS swallows them while `register()`
- * claims success.
+ * Combinations no candidate list may contain.
+ *
+ * `register()` returns true for these and the keystroke never arrives: macOS
+ * claims them before any application sees them, so a boolean is not evidence.
+ * ⌥Espace and ⌥⇧Espace are here for a different reason — they register fine,
+ * but they are the default of ChatGPT, Alfred and Raycast, so whichever
+ * application starts last silently loses the shortcut. A combination that
+ * depends on launch order is not a default.
+ */
+export const EXCLUDED_ACCELERATORS: readonly string[] = [
+  "Command+Space",
+  "Control+Space",
+  "Alt+Space",
+  "Alt+Shift+Space",
+];
+
+/**
+ * Ordered candidates, most to least desirable.
+ *
+ * ⌃⌥R and ⌃⇧R lead: two modifiers and a letter, which no common macOS
+ * launcher claims, and `R` for Reqraft. The rest are fallbacks walked only
+ * when `register()` reports a combination as taken.
  */
 export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
-  { accelerator: "Alt+Space", intent: "capture" },
-  { accelerator: "Alt+Shift+Space", intent: "input" },
   { accelerator: "Control+Alt+R", intent: "capture" },
   { accelerator: "Control+Shift+R", intent: "input" },
-  { accelerator: "Control+Alt+Space", intent: "capture" },
+  { accelerator: "Control+Alt+Command+R", intent: "capture" },
+  { accelerator: "Control+Alt+Shift+R", intent: "input" },
   { accelerator: "Command+Alt+R", intent: "capture" },
-  { accelerator: "Control+Alt+Command+R", intent: "input" },
+  { accelerator: "Command+Alt+Shift+R", intent: "input" },
 ];
+
+/**
+ * Whether an accelerator may be offered or accepted at all.
+ *
+ * The check a user-chosen shortcut goes through before anything tries to
+ * register it: a refusal here is explainable, whereas an excluded combination
+ * that "registers" leaves the user pressing a key that does nothing.
+ */
+export function isUsableAccelerator(accelerator: string): boolean {
+  const trimmed = accelerator.trim();
+  if (trimmed === "") return false;
+  if (EXCLUDED_ACCELERATORS.includes(trimmed)) return false;
+  // A bare key with no modifier would swallow that key everywhere on the
+  // system, which is never what someone means by a global shortcut.
+  return trimmed.includes("+");
+}
 
 export type ShortcutRegistrar = (accelerator: string, handler: () => void) => boolean;
 
@@ -67,14 +99,26 @@ export function registerShortcuts(
   register: ShortcutRegistrar,
   handlers: { onCapture: () => void; onInput: () => void },
   forced?: string,
+  preferred?: { capture?: string; input?: string },
 ): ShortcutResolution {
   const registered: ShortcutResolution["registered"] = [];
   const rejected: string[] = [];
   const intents = new Set<"capture" | "input">(["capture", "input"]);
 
+  // A configured choice is tried first, then the built-in chain takes over —
+  // so a shortcut that stops working (a newly installed application took it)
+  // degrades to a working one instead of to nothing.
+  const chosen: ShortcutCandidate[] = [];
+  if (preferred?.capture !== undefined && isUsableAccelerator(preferred.capture)) {
+    chosen.push({ accelerator: preferred.capture, intent: "capture" });
+  }
+  if (preferred?.input !== undefined && isUsableAccelerator(preferred.input)) {
+    chosen.push({ accelerator: preferred.input, intent: "input" });
+  }
+
   const candidates = forced
     ? [{ accelerator: forced, intent: "capture" as const }]
-    : SHORTCUT_CANDIDATES;
+    : [...chosen, ...SHORTCUT_CANDIDATES];
 
   for (const candidate of candidates) {
     if (!intents.has(candidate.intent)) {

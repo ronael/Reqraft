@@ -566,3 +566,184 @@ kbd {
   justify-content: flex-end;
   padding: 8px 0;
 }
+
+/* --- Settings → Profils ----------------------------------------------------
+ *
+ * Spacing rule, stated once so it can be checked rather than eyeballed:
+ *
+ *   - a row is one line of content and keeps a constant height, whatever the
+ *     length of its description;
+ *   - rows touch, separated by a hairline rather than by a gap — a list reads
+ *     as one object, and uneven gaps were what made this panel look unsettled;
+ *   - a block of a different nature (the action bar, the help text) is set off
+ *     by 12px, which is the only vertical space larger than a row's padding.
+ *
+ * The description is the part that broke it: unclamped, it wrapped to six
+ * lines and every row took a different height.
+ */
+
+.profile-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+}
+
+.profile-intro {
+  margin: 0;
+  font-size: 11px;
+  line-height: 16px;
+  color: #71717a;
+}
+
+.profile-list {
+  margin-top: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.profile-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+}
+
+/* A hairline between rows, never above the first one. */
+.profile-row + .profile-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.profile-row-active {
+  background: rgba(139, 92, 246, 0.08);
+}
+
+/*
+ * The identity block takes what is left and is allowed to shrink. Without
+ * `min-width: 0` a flex child refuses to go below its content width, which is
+ * what squeezed the description into a 170px column beside five buttons.
+ */
+.profile-identity {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Two lines at most: past that a description is reference material, not a
+   label, and the full text is in the profile itself. */
+.profile-description {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  overflow: hidden;
+}
+
+.profile-meta {
+  margin-top: 2px;
+  color: #52525b;
+}
+
+.profile-origin {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 10px;
+  color: #71717a;
+  white-space: nowrap;
+}
+
+.profile-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 2px;
+}
+
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #a1a1aa;
+  cursor: pointer;
+}
+
+.icon-button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  color: #e4e4e7;
+}
+
+/* Focus stays visible: these are the only controls on the row. */
+.icon-button:focus-visible {
+  outline: 2px solid var(--reqraft-accent, #8b5cf6);
+  outline-offset: 1px;
+}
+
+.icon-button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.icon-button-active {
+  color: var(--reqraft-accent, #8b5cf6);
+}
+
+.icon-button-danger:hover:not(:disabled) {
+  border-color: rgba(251, 113, 133, 0.3);
+  background: rgba(251, 113, 133, 0.08);
+  color: #fb7185;
+}
+
+.profile-new {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.profile-confirm {
+  margin-top: 4px;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+/* The instructions field is the one that needs room: it stacks rather than
+   sitting beside its label, and takes the panel's full width. */
+.profile-instructions {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+}
+
+.profile-textarea {
+  width: 100%;
+  min-height: 96px;
+  font-family: inherit;
+  line-height: 16px;
+  resize: vertical;
+}
+
+.profile-form-actions {
+  gap: 8px;
+}
+
+/* --- Settings → Raccourcis -------------------------------------------------- */
+
+.shortcut-control {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.shortcut-overridden {
+  margin-top: 2px;
+  color: rgba(253, 230, 138, 0.9);
+}
