@@ -15,6 +15,14 @@ const QUALITY_LABELS: Record<RepromptResult["quality"]["status"], string> = {
   risky: "risqué",
 };
 
+export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
+  const currentIndex = REPROMPT_LEVEL_IDS.indexOf(current);
+  const safeIndex = currentIndex === -1 ? REPROMPT_LEVEL_IDS.indexOf("standard") : currentIndex;
+  const nextIndex =
+    (safeIndex + direction + REPROMPT_LEVEL_IDS.length) % REPROMPT_LEVEL_IDS.length;
+  return REPROMPT_LEVEL_IDS[nextIndex] ?? "standard";
+}
+
 /**
  * The capsule (DESKTOP.md lot 3): the product's main surface. UI states are
  * driven by the §8.2 state machine — any transition the table refuses is a
@@ -225,8 +233,7 @@ export function App(): React.JSX.Element {
       }
       if (event.key === "Tab") {
         event.preventDefault();
-        const nextIndex = (REPROMPT_LEVEL_IDS.indexOf(level) + 1) % REPROMPT_LEVEL_IDS.length;
-        const next = REPROMPT_LEVEL_IDS[nextIndex] ?? "standard";
+        const next = cycleRepromptLevel(level, event.shiftKey ? -1 : 1);
         setLevel(next);
         startRun(input, next);
       }
