@@ -1,0 +1,456 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Reqraft CLI UI V2 — OpenTUI-feasible proposal</title>
+<style>
+:root{
+  color-scheme:dark;
+  --page:#07070a; --page2:#0a0a0f;
+  --term:#09090d; --term2:#0c0c12; --term3:#111118;
+  --line:#262631; --line2:#343440;
+  --text:#e7e7ec; --muted:#9a9aa7; --dim:#666673; --faint:#474753;
+  --violet:#8b5cf6; --violet2:#a78bfa; --violet3:#c4b5fd;
+  --green:#6ee7b7; --amber:#fbbf24; --rose:#fb7185;
+  --shadow:0 24px 80px rgba(0,0,0,.48);
+}
+*{box-sizing:border-box}
+html,body{margin:0;min-height:100%;background:var(--page);color:var(--text)}
+body{
+  font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  background:radial-gradient(900px 500px at 20% -10%,rgba(109,40,217,.16),transparent 68%),#07070a;
+}
+button{font:inherit;color:inherit}
+.app{max-width:1500px;margin:0 auto;padding:22px}
+.head{display:flex;justify-content:space-between;gap:20px;align-items:flex-end;padding:4px 0 18px;border-bottom:1px solid rgba(255,255,255,.065)}
+.eyebrow{font-size:10px;color:#a78bfa;letter-spacing:.15em;text-transform:uppercase}
+h1{font-size:23px;margin:8px 0 5px;letter-spacing:-.035em}
+.desc{font-size:11px;line-height:1.65;color:#737380;max-width:790px}
+.controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.switch{display:flex;gap:4px;padding:4px;border:1px solid rgba(255,255,255,.075);background:rgba(255,255,255,.018)}
+.btn{border:0;background:transparent;color:#6c6c79;padding:7px 10px;cursor:pointer;font-size:10px}
+.btn:hover{color:#aaaab6;background:rgba(255,255,255,.03)}
+.btn.active{color:#ddd6fe;background:rgba(139,92,246,.13)}
+.layout{display:grid;grid-template-columns:230px minmax(0,1fr) 235px;gap:13px;margin-top:15px}
+.side,.inspect{border:1px solid rgba(255,255,255,.065);background:rgba(10,10,15,.76);box-shadow:var(--shadow)}
+.side-head{padding:12px 13px;border-bottom:1px solid rgba(255,255,255,.055)}
+.side-title{font-size:10px;color:#ddd6fe}.side-sub{font-size:8px;color:#4d4d59;margin-top:4px;line-height:1.45}
+.sec{padding:12px 10px 5px;font-size:8px;text-transform:uppercase;letter-spacing:.14em;color:#484854}
+.scene-list{padding:0 6px 8px}
+.scene{display:flex;align-items:center;gap:8px;width:100%;border:0;background:transparent;color:#777784;padding:7px 8px;text-align:left;cursor:pointer;font-size:9px}
+.scene:hover{color:#b1b1bc;background:rgba(255,255,255,.025)}
+.scene.active{color:#ddd6fe;background:rgba(139,92,246,.11);box-shadow:inset 2px 0 #8b5cf6}
+.scene .icon{width:16px;text-align:center;color:#555562}.scene.active .icon{color:#a78bfa}
+.stage-meta{display:flex;align-items:center;justify-content:space-between;margin:0 2px 7px;font-size:9px;color:#555562}
+.stage-meta strong{color:#c4b5fd;font-weight:500}
+.stage{min-height:710px;border:1px solid rgba(255,255,255,.07);background:#050507;display:flex;align-items:center;justify-content:center;padding:24px;box-shadow:var(--shadow);overflow:auto}
+.term{
+  position:relative;width:100%;max-width:930px;min-height:580px;background:var(--term);
+  border:1px solid #282832;box-shadow:0 28px 80px rgba(0,0,0,.58);
+  transition:max-width .2s ease,min-height .2s ease;
+  overflow:hidden;
+}
+.term.compact{max-width:650px;min-height:520px}
+.term.tiny{max-width:455px;min-height:390px}
+.chrome{height:28px;border-bottom:1px solid #1e1e26;display:flex;align-items:center;padding:0 10px;background:#0b0b10;font-size:8px;color:#555562}
+.chrome b{font-weight:500;color:#7c7c89}.chrome span:last-child{margin-left:auto}
+.term-body{min-height:552px;display:flex;flex-direction:column;background:#09090d}
+.inspect .body{padding:11px}
+.note{border:1px solid rgba(255,255,255,.055);padding:10px;margin-bottom:8px;background:rgba(255,255,255,.015)}
+.label{font-size:7px;color:#4b4b58;text-transform:uppercase;letter-spacing:.13em}
+.value{font-size:9px;color:#aaaab5;line-height:1.55;margin-top:5px}
+.value.accent{color:#c4b5fd}
+.flow{margin-top:7px;display:flex;gap:4px;flex-wrap:wrap;align-items:center;font-size:8px;color:#73737f}
+.flow i{font-style:normal;color:#4e3d6d}
+.small{font-size:8px;color:#545460;line-height:1.55;margin-top:6px}
+
+/* TUI elements: deliberately limited to things OpenTUI can render */
+.tui-header{height:36px;display:flex;align-items:center;gap:7px;padding:0 10px;border-bottom:1px solid #22222b;background:#0a0a0f;font-size:8px}
+.logo{font-size:11px;color:#ddd6fe;font-weight:700}
+.sep{color:#393945}
+.setting{border:0;background:transparent;padding:4px 6px;color:#666673;font-size:8px;cursor:pointer}
+.setting b{font-weight:500;color:#aaaab6}
+.setting.focused{background:#171221;color:#d8d0f5}
+.setting.focused b{color:#ede9fe}
+.ready{margin-left:auto;color:#5d5d68}.ready span{color:#6ee7b7}
+.transcript{flex:1;overflow:auto;padding:10px 11px;display:flex;flex-direction:column;gap:9px}
+.turn{border-left:2px solid #30303a;padding-left:9px}
+.turn.user{border-left-color:#5d4a82}
+.turn.reqraft{border-left-color:#3b3b47}
+.turn-head{display:flex;align-items:center;gap:7px;font-size:8px;color:#5b5b68;margin-bottom:5px}
+.turn-head b{font-weight:500;color:#b7b7c1}
+.turn.user .turn-head b{color:#c4b5fd}
+.turn-body{font-size:10px;line-height:1.65;color:#d5d5dd;white-space:pre-wrap}
+.turn-body.dim{color:#6b6b77}
+.result-meta{display:flex;gap:10px;margin-top:7px;font-size:8px;color:#555562;flex-wrap:wrap}
+.result-meta .good{color:#6ee7b7}.result-meta .warn{color:#fbbf24}.result-meta .bad{color:#fb7185}
+.inline-actions{display:flex;gap:11px;margin-top:8px;font-size:8px;color:#6c6c78;flex-wrap:wrap}
+.key{display:inline-block;border:1px solid #333340;background:#111118;color:#aaaab7;padding:0 3px;min-width:18px;text-align:center;margin-right:3px}
+.inline-actions .primary{color:#cfc4f2}
+.input-zone{border-top:1px solid #22222b;padding:8px 10px 7px;background:#0a0a0f}
+.input-label{font-size:8px;color:#686875;margin-bottom:5px;display:flex}.input-label b{font-weight:500;color:#c4b5fd}.input-label span:last-child{margin-left:auto;color:#50505c}
+.textarea{min-height:72px;border:1px solid #343440;background:#0c0c12;padding:8px 9px;font-size:10px;line-height:1.55;color:#d8d8df;white-space:pre-wrap}
+.textarea.focused{border-color:#7056a3}
+.placeholder{color:#4e4e59}
+.caret{display:inline-block;width:6px;height:12px;background:#a78bfa;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+@keyframes blink{50%{opacity:0}}
+.footer{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding-top:6px;font-size:8px;color:#5c5c68}
+.footer .primary{color:#cfc4f2}.footer span:last-child{margin-left:auto}
+.busyline{display:flex;align-items:center;gap:7px;color:#9c8cc4}.spinner{width:9px;height:9px;border:1px solid #4b3a6b;border-top-color:#c4b5fd;border-radius:50%;animation:spin .8s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.streaming{display:inline-block;width:5px;height:11px;background:#a78bfa;vertical-align:-2px;animation:blink 1s steps(2) infinite}
+.notice{border-left:2px solid #fbbf24;padding:6px 8px;background:#100f0a;color:#888894;font-size:8px;line-height:1.5}
+.notice b{color:#fbbf24;font-weight:500}
+.error-turn{border-left-color:#a23e54!important}
+.error-title{color:#fb7185;font-size:9px;margin-bottom:4px}.error-copy{color:#7e7e8a;font-size:8px;line-height:1.55}
+.action-link{color:#c4b5fd}
+.toast{position:absolute;bottom:12px;left:50%;transform:translateX(-50%);z-index:40;border:1px solid #3b3b46;background:#0f0f15;padding:6px 9px;font-size:8px;color:#a8a8b3}
+.toast.good{color:#a7f3d0;border-color:#315948}
+.overlay-bg{position:absolute;inset:28px 0 0;z-index:20;background:rgba(4,4,7,.82);display:flex;align-items:center;justify-content:center;padding:16px}
+.overlay{width:min(500px,92%);max-height:410px;background:#0d0d13;border:1px solid #3b3b46;overflow:hidden}
+.overlay.sm{width:min(410px,92%)}
+.overlay-head{display:flex;align-items:center;padding:9px 10px;border-bottom:1px solid #262630;font-size:9px;color:#d1d1da}
+.overlay-head span:last-child{margin-left:auto;color:#575764;font-size:8px}
+.overlay-sub{padding:7px 10px 4px;font-size:7px;text-transform:uppercase;letter-spacing:.12em;color:#4c4c58}
+.search{margin:8px;border:1px solid #634e8b;background:#111019;padding:6px 7px;font-size:8px;color:#b9b2cb}
+.options{padding:0 6px 7px;max-height:320px;overflow:auto}
+.option{display:flex;gap:8px;align-items:center;padding:7px 8px;font-size:8px;color:#81818d}
+.option.sel{background:#171221;color:#e2dcf4}
+.option .bullet{width:14px;color:#555562}.option.sel .bullet{color:#a78bfa}
+.option-main{flex:1}.option-main b{display:block;color:#bdbdc7;font-weight:500;margin-bottom:2px}.option.sel .option-main b{color:#eee9ff}
+.option small{display:block;color:#575763;font-size:7px}.option .shortcut{font-size:7px;color:#555562}
+.help-grid{display:grid;grid-template-columns:1fr 1fr;gap:0;border-top:0}
+.help-col{padding:9px 10px}.help-col+ .help-col{border-left:1px solid #24242d}
+.help-col h4{margin:0 0 6px;font-size:7px;color:#4f4f5b;text-transform:uppercase;letter-spacing:.12em}
+.help-row{display:flex;justify-content:space-between;gap:12px;padding:3px 0;font-size:8px;color:#83838f}
+.diff{font-size:9px;line-height:1.55}
+.minus{color:#fda4af}.plus{color:#a7f3d0}.ctx{color:#646470}
+.explain-block{margin-top:6px;border-left:2px solid #3f3f4b;padding-left:8px;font-size:8px;color:#7c7c88;line-height:1.55}.explain-block b{color:#bdbdc8;font-weight:500}
+.too-small{flex:1;display:flex;align-items:center;justify-content:center;padding:20px;text-align:center}.too-small b{display:block;color:#ddd6fe;font-size:10px}.too-small p{font-size:8px;color:#5a5a66;line-height:1.6;max-width:290px}
+
+/* Quick CLI mode: plain terminal output, not a pseudo-TUI */
+.shell-output{flex:1;padding:16px 18px;overflow:auto;font-size:10px;line-height:1.7;color:#d7d7de;white-space:pre-wrap}
+.promptline{color:#8b8b97}.promptline .cwd{color:#6ee7b7}.promptline .cmd{color:#e5e5ea}.promptline .arg{color:#c4b5fd}
+.out{margin-top:12px}.stderr{margin-top:10px;color:#8c8c98}.stderr .accent{color:#c4b5fd}.stderr .good{color:#6ee7b7}.stderr .warn{color:#fbbf24}.stderr .bad{color:#fb7185}
+.rule{color:#3f3f4b}.quick-spinner{color:#a78bfa}
+.shell-dim{color:#5e5e6a}
+.json{color:#b4b4bf}.json .k{color:#a78bfa}.json .s{color:#a7f3d0}
+
+@media(max-width:1120px){.layout{grid-template-columns:205px minmax(0,1fr)}.inspect{display:none}}
+@media(max-width:760px){.app{padding:12px}.head{flex-direction:column;align-items:flex-start}.controls{justify-content:flex-start}.layout{grid-template-columns:1fr}.side{order:2}.stage-wrap{order:1}.stage{padding:8px;min-height:600px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="head">
+    <div>
+      <div class="eyebrow">Reqraft · CLI only · OpenTUI realistic</div>
+      <h1>Un seul flux vertical, deux usages réellement différents.</h1>
+      <div class="desc"><b style="color:#c4b5fd;font-weight:500">Classique</b> = <code>rp</code> sans texte ouvre l’interface interactive. <b style="color:#c4b5fd;font-weight:500">Rapide</b> = <code>rp "test"</code> écrit directement le résultat dans le terminal et quitte. Aucun élément à l’intérieur du faux terminal ne dépend d’un rendu web.</div>
+    </div>
+    <div class="controls">
+      <div class="switch" id="modeSwitch">
+        <button class="btn active" data-mode="classic">Interface classique</button>
+        <button class="btn" data-mode="quick">rp "test"</button>
+      </div>
+      <div class="switch" id="sizeSwitch">
+        <button class="btn active" data-size="standard">100×34</button>
+        <button class="btn" data-size="compact">72×28</button>
+        <button class="btn" data-size="tiny">48×18</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="side">
+      <div class="side-head"><div class="side-title">États & scénarios</div><div class="side-sub">Le catalogue sert à vérifier qu’aucun état d’implémentation n’est oublié.</div></div>
+      <div id="rail"></div>
+    </aside>
+
+    <main class="stage-wrap">
+      <div class="stage-meta"><span id="caption"><strong>Classique</strong> · prêt</span><span id="sizeCaption">100 × 34</span></div>
+      <div class="stage">
+        <section class="term" id="term">
+          <div class="chrome"><b>terminal</b><span id="chromeRight">100×34 · rp</span></div>
+          <div class="term-body" id="root"></div>
+        </section>
+      </div>
+    </main>
+
+    <aside class="inspect">
+      <div class="side-head"><div class="side-title">Pourquoi cet état</div><div class="side-sub">Intention UX + faisabilité OpenTUI.</div></div>
+      <div class="body" id="inspector"></div>
+    </aside>
+  </div>
+</div>
+
+<script>
+const groupsClassic=[
+ ["Parcours principal",[
+  ["idle","›","Prêt / vide"],["editing","▌","Édition"],["generating","◌","Génération"],["streaming","≋","Streaming"],["success","✓","Résultat"],["copied","✓","Copié"],["reset","↺","Reset"]
+ ]],
+ ["Résultat",[
+  ["diff","±","Diff"],["explain","i","Explication"],["longResult","↕","Résultat long"],["resultFocus","▣","Focus résultat"]
+ ]],
+ ["Sélecteurs / overlays",[
+  ["profile","P","Profil"],["level","L","Niveau"],["provider","⌘","Provider"],["model","M","Modèle"],["palette","K","Palette"],["paletteEmpty","∅","Palette vide"],["help","?","Aide"]
+ ]],
+ ["Erreurs",[
+  ["apiError","!","Clé API absente"],["networkError","!","Erreur réseau"],["modelError","!","Modèle indisponible"],["emptyResult","∅","Réponse vide"]
+ ]]
+];
+
+const groupsQuick=[
+ ["rp \"test\"",[
+  ["qCommand","$","Commande"],["qGenerating","◌","Traitement"],["qSuccess","✓","Résultat"],["qStats","≡","Avec --stats"],["qCopy","✓","Avec --copy"]
+ ]],
+ ["Options de sortie",[
+  ["qDiff","±","--diff"],["qExplain","i","--explain"],["qJson","{}","--json"]
+ ]],
+ ["Qualité / erreurs",[
+  ["qQuality","!","Qualité à revoir"],["qSecret","!","Secret détecté"],["qApi","!","Erreur provider"],["qMissing","∅","Entrée absente"]
+ ]]
+];
+
+const explain={
+ idle:["La conversation commence vide","Une interface interactive ne doit pas simuler un chat multi-tour inexistant : elle montre seulement l’échange courant prompt → résultat.","textarea + scrollbox + text"],
+ editing:["Le prompt est toujours en bas","Le flux reste vertical. Même sur un terminal large, l’utilisateur lit de haut en bas et retrouve l’éditeur au même endroit.","Textarea native"],
+ generating:["L’échange reste visible","On n’efface ni le prompt ni la structure. La zone résultat annonce le travail et Ctrl+C devient prioritaire.","Text + state"],
+ streaming:["Le résultat se construit sous le prompt","La sortie arrive dans le même flux, avec ScrollBox pour suivre le contenu sans split horizontal.","ScrollBox sticky"],
+ success:["Un seul échange, clairement séparé","Le prompt utilisateur puis le résultat Reqraft sont empilés. Les actions liées au résultat vivent sous ce résultat.","Box column"],
+ copied:["Feedback sans modal","La copie ne change pas de contexte : une ligne/toast temporaire suffit.","Text overlay/absolute"],
+ reset:["Retour prévisible","Le transcript est vidé, le focus revient à la textarea et le feedback confirme l’action.","state + focus"],
+ diff:["Le diff remplace temporairement le corps du résultat","Pas de nouvel écran complet : la position du résultat reste stable et le retour est évident.","Text color"],
+ explain:["Explication dans le même flux","Les changements expliqués restent associés au résultat courant.","Text blocks"],
+ longResult:["Le long contenu scroll, pas l’UI entière","Le transcript est un ScrollBox, l’éditeur et le footer restent accessibles.","ScrollBox"],
+ resultFocus:["Le focus change sans rendre le résultat éditable","Tab déplace la zone active. Une bordure/indicateur violet suffit.","focus state"],
+ profile:["Même patron de picker partout","Box centré, liste, sélection, Enter/Esc. Rien de spécifique au web.","Box + list"],
+ level:["Même patron de picker partout","La variation est le contenu, pas la mécanique d’interaction.","Box + list"],
+ provider:["Provider reste accessible sans raccourci inventé","Le design n’ajoute pas de chord non présent dans le registre actuel.","Box + list"],
+ model:["Le modèle garde le contexte provider","Une sous-ligne suffit pour éviter l’ambiguïté.","Box + list"],
+ palette:["Palette contextuelle","Recherche + commandes disponibles. L’overlay suspend le focus de la textarea.","Input + list"],
+ paletteEmpty:["Empty state de palette","Aucun résultat n’est un état normal, pas un bug visuel.","Text"],
+ help:["Aide réelle, pas décorative","Les raccourcis reflètent le registre et restent lisibles sur deux colonnes seulement si la largeur le permet.","Box layout"],
+ apiError:["Erreur dans le résultat","Le prompt reste intact et récupérable. L’erreur ne remplace pas tout l’écran.","Text + action"],
+ networkError:["Erreur récupérable","Réessayer doit être l’action locale évidente.","Text"],
+ modelError:["Erreur de configuration","Le message renvoie directement au choix du modèle.","Text"],
+ emptyResult:["Réponse vide explicitée","Une réponse vide doit avoir un état dédié pour éviter l’impression de gel.","Text"],
+ qCommand:["Le mode rapide n’est pas une TUI","La commande est affichée comme une vraie ligne shell : `rp \"test\"`. Ensuite Reqraft écrit sur stdout/stderr.","sortie console"],
+ qGenerating:["Pas de pseudo-card","Si du feedback est visible en TTY, il reste une simple ligne de progression. Aucun plein écran.","ANSI + texte"],
+ qSuccess:["stdout reste propre","Le résultat réécrit est le contenu principal. C’est cohérent avec le code actuel et reste pipeable.","stdout"],
+ qStats:["Les stats restent secondaires","Elles arrivent après le prompt, sur stderr, sous forme de lignes terminal.","stderr"],
+ qCopy:["Copie confirmée en stderr","Le résultat reste stdout ; la confirmation est une ligne distincte.","stderr"],
+ qDiff:["Diff = sortie alternative","Le mode rapide imprime directement les lignes - / +, sans ouvrir d’interface.","ANSI"],
+ qExplain:["Explain complète stderr","Le prompt réécrit reste stdout, l’explication vient après.","stdout + stderr"],
+ qJson:["JSON reste machine-friendly","Pas de décoration TUI : structure brute colorée ici uniquement pour la maquette.","stdout JSON"],
+ qQuality:["Signal de qualité visible","L’avertissement suit le résultat sans casser sa pipeabilité.","stderr warning"],
+ qSecret:["La politique secrets intervient avant le provider","L’erreur liste le type détecté et indique les options de récupération.","stderr + exit code"],
+ qApi:["Erreur fatale courte","Le message utilisateur reste actionnable ; pas de stack trace sauf verbose.","stderr"],
+ qMissing:["Pas d’entrée = erreur simple","Le CLI rapide ne doit pas ouvrir l’interface si stdin n’est pas un TTY et qu’il n’y a pas d’entrée exploitable.","stderr"]
+};
+
+let state={mode:"classic",scene:"idle",size:"standard"};
+const promptText=`Je veux améliorer la landing de Reqraft sans inventer de fonctionnalités.`;
+const resultText=`Améliore la landing de Reqraft en conservant son périmètre fonctionnel actuel.
+
+Contraintes :
+• ne pas inventer de fonctionnalités ;
+• conserver l’identité violette existante ;
+• présenter clairement l’usage du CLI ;
+• garantir un rendu responsive et accessible.`;
+
+function header(focus=""){
+ return `<div class="tui-header">
+   <span class="logo">rq</span><span class="sep">/</span>
+   <button class="setting ${focus==="profile"?"focused":""}">profile <b>auto</b></button>
+   <button class="setting ${focus==="level"?"focused":""}">level <b>standard</b></button>
+   <button class="setting ${focus==="provider"?"focused":""}">provider <b>openai</b></button>
+   <button class="setting ${focus==="model"?"focused":""}">model <b>gpt-5-mini</b></button>
+   <span class="ready"><span>●</span> ready</span>
+ </div>`;
+}
+function userTurn(){return `<div class="turn user"><div class="turn-head"><b>you</b><span>prompt</span></div><div class="turn-body">${promptText}</div></div>`;}
+function resultTurn(scene){
+ if(scene==="generating"){
+  return `<div class="turn reqraft"><div class="turn-head"><b>reqraft</b><span class="busyline"><span class="spinner"></span> génération…</span></div><div class="turn-body dim">Préparation du prompt avec profile auto · standard</div></div>`;
+ }
+ if(scene==="streaming"){
+  return `<div class="turn reqraft"><div class="turn-head"><b>reqraft</b><span style="color:#c4b5fd">streaming</span></div><div class="turn-body">Améliore la landing de Reqraft en conservant son périmètre fonctionnel actuel.
+
+Contraintes :
+• ne pas inventer de fonctionnalités ;
+• conserver l’identité violette existante<span class="streaming"></span></div></div>`;
+ }
+ if(scene==="diff"){
+  return `<div class="turn reqraft"><div class="turn-head"><b>reqraft</b><span>diff</span></div><div class="turn-body diff"><span class="minus">- ${promptText}</span>
+<span class="plus">+ Améliore la landing de Reqraft en conservant son périmètre fonctionnel actuel.</span>
+<span class="plus">+ Contraintes : ne pas inventer de fonctionnalités ; conserver la DA violette ; présenter clairement le CLI.</span></div><div class="inline-actions"><span class="primary"><span class="key">Esc</span>retour résultat</span></div></div>`;
+ }
+ if(scene==="explain"){
+  return `<div class="turn reqraft"><div class="turn-head"><b>reqraft</b><span>explication</span></div>
+    <div class="turn-body">${resultText}</div>
+    <div class="explain-block"><b>Intention conservée</b><br>La demande reste centrée sur la landing existante.</div>
+    <div class="explain-block"><b>Contraintes rendues vérifiables</b><br>La DA, l’absence de nouvelles fonctionnalités et le responsive sont explicités.</div>
+    <div class="inline-actions"><span class="primary"><span class="key">Esc</span>retour résultat</span></div>
+  </div>`;
+ }
+ if(["apiError","networkError","modelError","emptyResult"].includes(scene)){
+  const m={
+   apiError:["Clé API absente","Aucune clé OpenAI n’est disponible. Configure le provider puis relance.","ouvrir provider"],
+   networkError:["Connexion impossible","Reqraft n’a pas pu joindre le provider. Ton prompt est conservé.","réessayer"],
+   modelError:["Modèle indisponible","gpt-5-mini n’est pas disponible avec le provider actif.","choisir modèle"],
+   emptyResult:["Réponse vide","Le provider a terminé sans produire de prompt exploitable.","relancer"]
+  }[scene];
+  return `<div class="turn reqraft error-turn"><div class="turn-head"><b>reqraft</b><span style="color:#fb7185">erreur</span></div><div class="error-title">${m[0]}</div><div class="error-copy">${m[1]}</div><div class="inline-actions"><span class="action-link"><span class="key">Enter</span>${m[2]}</span></div></div>`;
+ }
+ let meta=scene==="longResult"?`<div class="notice"><b>scroll</b> · résultat long, 18 lignes masquées sous le viewport</div>`:"";
+ return `<div class="turn reqraft ${scene==="resultFocus"?"focused-result":""}" style="${scene==="resultFocus"?"border-left-color:#8b5cf6":""}">
+   <div class="turn-head"><b>reqraft</b><span>résultat</span></div>
+   <div class="turn-body">${resultText}</div>
+   ${meta}
+   <div class="result-meta"><span class="good">✓ fidèle</span><span>1.4 s</span><span>openai · gpt-5-mini</span></div>
+   <div class="inline-actions"><span class="primary"><span class="key">^Y</span>copier</span><span><span class="key">^D</span>diff</span><span><span class="key">^E</span>expliquer</span></div>
+ </div>`;
+}
+function input(scene){
+ const empty=["idle","reset"].includes(scene);
+ const disabled=["generating","streaming"].includes(scene);
+ const focused=!disabled && scene!=="resultFocus";
+ return `<div class="input-zone">
+   <div class="input-label"><b>prompt</b><span>${disabled?"génération en cours":empty?"0 chars":"67 chars"}</span></div>
+   <div class="textarea ${focused?"focused":""}">${empty?`<span class="placeholder">Écris ta demande brute…</span>${focused?'<span class="caret"></span>':''}`:`${promptText}${focused?'<span class="caret"></span>':''}`}</div>
+   <div class="footer">
+    ${disabled?`<span class="primary"><span class="key">^C</span>annuler</span>`:`<span class="primary"><span class="key">^G</span>générer</span>`}
+    <span><span class="key">^K</span>commandes</span>
+    <span><span class="key">Tab</span>focus</span>
+    <span><span class="key">?</span>aide</span>
+   </div>
+ </div>`;
+}
+function overlay(scene){
+ if(!["profile","level","provider","model","palette","paletteEmpty","help"].includes(scene)) return "";
+ if(scene==="help"){
+  return `<div class="overlay-bg"><div class="overlay">
+   <div class="overlay-head"><span>Aide</span><span><span class="key">Esc</span>fermer</span></div>
+   <div class="help-grid">
+    <div class="help-col"><h4>Génération</h4><div class="help-row"><span>générer</span><span class="key">^G</span></div><div class="help-row"><span>annuler / quitter</span><span class="key">^C</span></div><div class="help-row"><span>reset</span><span class="key">^R</span></div><div class="help-row"><span>coller</span><span class="key">^V</span></div></div>
+    <div class="help-col"><h4>Navigation</h4><div class="help-row"><span>profil</span><span class="key">^P</span></div><div class="help-row"><span>niveau</span><span class="key">^L</span></div><div class="help-row"><span>modèle</span><span class="key">^O</span></div><div class="help-row"><span>commandes</span><span class="key">^K</span></div></div>
+   </div>
+  </div></div>`;
+ }
+ if(scene==="palette"||scene==="paletteEmpty"){
+  return `<div class="overlay-bg"><div class="overlay">
+   <div class="overlay-head"><span>Commandes</span><span><span class="key">Esc</span>fermer</span></div>
+   <div class="search">${scene==="paletteEmpty"?"zzzz":"pro"}<span class="caret"></span></div>
+   ${scene==="paletteEmpty"?`<div style="padding:32px 10px;text-align:center;color:#5a5a66;font-size:8px">Aucune commande correspondante</div>`:
+   `<div class="overlay-sub">disponibles</div><div class="options">
+    <div class="option sel"><span class="bullet">›</span><div class="option-main"><b>Changer de profil</b><small>auto, code, frontend, writing…</small></div><span class="shortcut">^P</span></div>
+    <div class="option"><span class="bullet">·</span><div class="option-main"><b>Changer de provider</b><small>OpenAI, Anthropic, Mistral…</small></div></div>
+    <div class="option"><span class="bullet">·</span><div class="option-main"><b>Changer de modèle</b><small>modèles du provider actif</small></div><span class="shortcut">^O</span></div>
+   </div>`}
+  </div></div>`;
+ }
+ const map={
+  profile:["Profil",["auto","code","frontend","writing"]],
+  level:["Niveau",["minimal","standard","complete"]],
+  provider:["Provider",["openai","anthropic","mistral","deepseek"]],
+  model:["Modèle",["gpt-5-mini","gpt-4.1-mini","gpt-5"]]
+ };
+ const [title,items]=map[scene];
+ return `<div class="overlay-bg"><div class="overlay sm">
+  <div class="overlay-head"><span>${title}</span><span><span class="key">Esc</span>fermer</span></div>
+  <div class="options" style="padding-top:6px">${items.map((x,i)=>`<div class="option ${i===0?"sel":""}"><span class="bullet">${i===0?"›":"·"}</span><div class="option-main"><b>${x}</b><small>${scene==="model"?"openai":scene==="provider"?(i<2?"configuré":"non configuré"):(i===0?"actif":"")}</small></div>${i===0?'<span class="shortcut">actif</span>':''}</div>`).join("")}</div>
+ </div></div>`;
+}
+function classic(scene,size){
+ if(size==="tiny"){
+  return `${header()}<div class="too-small"><div><b>Terminal trop petit</b><p>Reqraft a besoin d’un peu plus d’espace pour afficher l’éditeur de manière fiable.</p><div style="font-size:8px;color:#555562"><span class="key">^C</span>quitter &nbsp; <span class="key">?</span>aide</div></div></div>`;
+ }
+ let transcript="";
+ if(!["idle","reset"].includes(scene)) transcript+=userTurn();
+ if(!["idle","editing","reset","profile","level","provider","model","palette","paletteEmpty","help"].includes(scene)) transcript+=resultTurn(scene);
+ if(["profile","level","provider","model","palette","paletteEmpty","help"].includes(scene)) transcript+=`<div class="turn reqraft"><div class="turn-head"><b>reqraft</b><span>prêt</span></div><div class="turn-body dim">Configure ton contexte puis écris ton prompt.</div></div>`;
+ let out=header(["profile","level","provider","model"].includes(scene)?scene:"");
+ out+=`<div class="transcript">${transcript||`<div class="turn reqraft"><div class="turn-head"><b>reqraft</b><span>prêt</span></div><div class="turn-body dim">Écris une demande puis lance le reprompt.</div></div>`}</div>`;
+ out+=input(scene);
+ if(scene==="copied") out+=`<div class="toast good">✓ Résultat copié</div>`;
+ if(scene==="reset") out+=`<div class="toast">↺ Session réinitialisée</div>`;
+ out+=overlay(scene);
+ return out;
+}
+
+function promptLine(extra=""){return `<span class="promptline"><span class="cwd">~/Reqraft</span> $ <span class="cmd">rp</span> <span class="arg">"test"</span>${extra}</span>`;}
+function quick(scene){
+ let s="";
+ if(scene==="qCommand") s=`${promptLine()}\n<span class="shell-dim">_</span>`;
+ if(scene==="qGenerating") s=`${promptLine()}\n\n<span class="quick-spinner">◌</span> <span class="shell-dim">reprompting…</span>`;
+ if(scene==="qSuccess") s=`${promptLine()}\n\n<span class="out">Transforme « test » en une demande claire, précise et directement exploitable, sans ajouter de contraintes qui ne figurent pas dans l’intention initiale.</span>`;
+ if(scene==="qStats") s=`${promptLine(' <span class="shell-dim">--stats</span>')}\n\n<span class="out">Transforme « test » en une demande claire, précise et directement exploitable.</span>
+
+<span class="stderr"><span class="accent">Statistiques</span>
+durée 1.4 s
+entrée 42 tokens
+sortie visible 31 tokens
+raisonnement 0 tokens
+coût estimé $0.0002
+provider <span class="accent">openai</span> · modèle <span class="accent">gpt-5-mini</span>
+qualité <span class="good">bonne</span></span>`;
+ if(scene==="qCopy") s=`${promptLine(' <span class="shell-dim">--copy</span>')}\n\n<span class="out">Transforme « test » en une demande claire, précise et directement exploitable.</span>
+
+<span class="stderr"><span class="good">✓</span> Résultat copié.</span>`;
+ if(scene==="qDiff") s=`${promptLine(' <span class="shell-dim">--diff</span>')}\n\n<span class="minus">- test</span>
+<span class="plus">+ Transforme « test » en une demande claire, précise et directement exploitable.</span>`;
+ if(scene==="qExplain") s=`${promptLine(' <span class="shell-dim">--explain</span>')}\n\n<span class="out">Transforme « test » en une demande claire, précise et directement exploitable.</span>
+
+<span class="stderr"><span class="accent">Changements :</span>
+<span class="accent">›</span> intention explicitée
+<span class="accent">›</span> formulation rendue actionnable
+<span class="accent">›</span> aucune contrainte métier ajoutée</span>`;
+ if(scene==="qJson") s=`${promptLine(' <span class="shell-dim">--json</span>')}\n\n<span class="json">{\n  <span class="k">"original"</span>: <span class="s">"test"</span>,\n  <span class="k">"rewritten"</span>: <span class="s">"Transforme « test » en une demande claire…"</span>,\n  <span class="k">"profile"</span>: <span class="s">"clean"</span>,\n  <span class="k">"provider"</span>: <span class="s">"openai"</span>\n}</span>`;
+ if(scene==="qQuality") s=`${promptLine()}\n\n<span class="out">Transforme « test » en une spécification complète avec contexte, objectifs, contraintes, critères et livrables.</span>
+
+<span class="stderr"><span class="rule">────────────────────────────────────────</span>
+<span class="warn">À revoir</span>
+<span class="warn">!</span> Le résultat développe sensiblement la demande initiale.</span>`;
+ if(scene==="qSecret") s=`<span class="promptline"><span class="cwd">~/Reqraft</span> $ <span class="cmd">rp</span> <span class="arg">"use sk-proj-••••••"</span></span>\n\n<span class="stderr"><span class="bad">Erreur :</span> un secret potentiel a été détecté.
+  - openai_api_key
+Utilise <span class="accent">--redact-secrets</span> ou <span class="accent">--force</span> si c’est volontaire.</span>`;
+ if(scene==="qApi") s=`${promptLine()}\n\n<span class="stderr"><span class="bad">Erreur :</span> aucune clé API OpenAI disponible.
+Configure le provider puis relance la commande.</span>`;
+ if(scene==="qMissing") s=`<span class="promptline"><span class="cwd">~/Reqraft</span> $ <span class="cmd">printf "" | rp</span></span>\n\n<span class="stderr"><span class="bad">Erreur :</span> aucune entrée à reprompter.</span>`;
+ return `<div class="shell-output">${s}</div>`;
+}
+
+function renderRail(){
+ const groups=state.mode==="classic"?groupsClassic:groupsQuick;
+ document.getElementById("rail").innerHTML=groups.map(([label,items])=>`<div class="sec">${label}</div><div class="scene-list">${items.map(([id,ic,name])=>`<button class="scene ${id===state.scene?"active":""}" data-scene="${id}"><span class="icon">${ic}</span><span>${name}</span></button>`).join("")}</div>`).join("");
+ document.querySelectorAll(".scene").forEach(b=>b.onclick=()=>{state.scene=b.dataset.scene;render();});
+}
+function renderInspector(){
+ const d=explain[state.scene]||["État","Description","OpenTUI"];
+ document.getElementById("inspector").innerHTML=`
+  <div class="note"><div class="label">Intention</div><div class="value accent">${d[0]}</div><div class="small">${d[1]}</div></div>
+  <div class="note"><div class="label">Implémentation plausible</div><div class="value">${d[2]}</div></div>
+  <div class="note"><div class="label">Règle de composition</div><div class="value">${state.mode==="classic"?"Toujours vertical : transcript scrollable → textarea → raccourcis. Aucun split horizontal, même à 100 colonnes.":"Pas de plein écran : une commande, stdout principal, stderr secondaire, puis retour au shell."}</div></div>
+  <div class="note"><div class="label">DA</div><div class="value"><span style="color:#c4b5fd">violet</span> = focus / Reqraft<br><span style="color:#6ee7b7">vert</span> = succès<br><span style="color:#fbbf24">ambre</span> = review<br><span style="color:#fb7185">rose</span> = erreur</div></div>`;
+}
+function render(){
+ const root=document.getElementById("root");
+ root.innerHTML=state.mode==="classic"?classic(state.scene,state.size):quick(state.scene);
+ const term=document.getElementById("term");
+ term.className="term "+(state.size==="compact"?"compact":state.size==="tiny"?"tiny":"");
+ const sizes={standard:"100×34",compact:"72×28",tiny:"48×18"};
+ document.getElementById("chromeRight").textContent=sizes[state.size]+" · "+(state.mode==="classic"?"OpenTUI":"shell");
+ document.getElementById("sizeCaption").textContent=sizes[state.size].replace("×"," × ");
+ const d=explain[state.scene]||["état"];
+ document.getElementById("caption").innerHTML=`<strong>${state.mode==="classic"?"Classique":"rp rapide"}</strong> · ${d[0]}`;
+ document.querySelectorAll("#modeSwitch .btn").forEach(b=>b.classList.toggle("active",b.dataset.mode===state.mode));
+ document.querySelectorAll("#sizeSwitch .btn").forEach(b=>b.classList.toggle("active",b.dataset.size===state.size));
+ renderRail();renderInspector();
+}
+document.querySelectorAll("#modeSwitch .btn").forEach(b=>b.onclick=()=>{state.mode=b.dataset.mode;state.scene=state.mode==="classic"?"idle":"qCommand";render();});
+document.querySelectorAll("#sizeSwitch .btn").forEach(b=>b.onclick=()=>{state.size=b.dataset.size;render();});
+render();
+</script>
+</body>
+</html>

@@ -17,7 +17,13 @@ benchmark-results/
 # Local manual profile experiments belong in the user profile directory, not
 # at the repository root. Shared examples can live under docs/ or a project.
 /*.reqraft-profile.json
-docs/design/
+# Les maquettes actives sont versionnées : elles servent de référence aux
+# itérations UI. Les archives et captures générées restent locales.
+docs/design/legacy/
+docs/design/snapshots/
+docs/design/GUIDE-RELEASE.html
+docs/design/GUIDE-UI-V2.html
+docs/design/cli-v2.md
 docs/internal/
 docs/reprompt-audit.md
 docs/tui-implementation.md
