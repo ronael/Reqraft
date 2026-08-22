@@ -27,13 +27,13 @@ const handlers = { onCapture: () => undefined, onInput: () => undefined };
 
 describe("registerShortcuts (DESKTOP.md §5.5)", () => {
   it("enregistre un raccourci par intention, dans l'ordre des candidats", () => {
-    const { register } = registrarTaking("Control+Alt+R", "Control+Shift+R");
+    const { register } = registrarTaking("Command+Control+R", "Command+Control+N");
 
     const resolution = registerShortcuts(register, handlers);
 
     expect(resolution.registered).toEqual([
-      { accelerator: "Control+Alt+R", label: "⌃⌥R", intent: "capture" },
-      { accelerator: "Control+Shift+R", label: "⌃⇧R", intent: "input" },
+      { accelerator: "Command+Control+R", label: "⌘⌃R", intent: "capture" },
+      { accelerator: "Command+Control+N", label: "⌘⌃N", intent: "input" },
     ]);
     expect(resolution.rejected).toEqual([]);
   });
@@ -41,14 +41,14 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
   it("un raccourci pris est visible et le suivant est essayé", () => {
     // Une autre application détient ⌃⌥R et ⌃⇧R : le booléen le dit, et la
     // liste continue plutôt que de laisser l'intention sans raccourci.
-    const { register } = registrarTaking("Control+Alt+Command+R", "Control+Alt+Shift+R");
+    const { register } = registrarTaking("Command+Control+J", "Command+Control+K");
 
     const resolution = registerShortcuts(register, handlers);
 
-    expect(resolution.rejected).toEqual(["Control+Alt+R", "Control+Shift+R"]);
+    expect(resolution.rejected).toEqual(["Command+Control+R", "Command+Control+N"]);
     expect(resolution.registered.map((entry) => entry.accelerator)).toEqual([
-      "Control+Alt+Command+R",
-      "Control+Alt+Shift+R",
+      "Command+Control+J",
+      "Command+Control+K",
     ]);
   });
 
@@ -86,6 +86,33 @@ describe("prettyAccelerator", () => {
 });
 
 describe("raccourcis contestés et choix de l'utilisateur", () => {
+  it("évite les familles que navigateurs et IDE revendiquent", () => {
+    // Un raccourci global prend la frappe à l'application au premier plan :
+    // ⌃⇧R est le rechargement forcé des navigateurs sous Windows et Linux, et
+    // ⌃⌥R est lié dans plusieurs keymaps d'IDE.
+    const accelerators = SHORTCUT_CANDIDATES.map((candidate) => candidate.accelerator);
+    expect(accelerators).not.toContain("Control+Shift+R");
+    expect(accelerators).not.toContain("Control+Alt+R");
+    // ⌘⌃ est la seule famille à deux modificateurs que les applications ne
+    // lient presque jamais.
+    for (const accelerator of accelerators) {
+      expect(accelerator.startsWith("Command+Control+")).toBe(true);
+    }
+  });
+
+  it("n'utilise pas les lettres que macOS réserve déjà sur ⌘⌃", () => {
+    // ⌘⌃F plein écran, ⌘⌃Q verrouillage, ⌘⌃D dictionnaire, ⌘⌃Espace émojis.
+    for (const reserved of [
+      "Command+Control+F",
+      "Command+Control+Q",
+      "Command+Control+D",
+      "Command+Control+Space",
+    ]) {
+      expect(EXCLUDED_ACCELERATORS).toContain(reserved);
+      expect(isUsableAccelerator(reserved)).toBe(false);
+    }
+  });
+
   it("n'offre plus ⌥Espace ni ⌥⇧Espace par défaut", () => {
     // Ils s'enregistrent sans erreur, mais ChatGPT, Alfred et Raycast les
     // revendiquent : la dernière application lancée gagne, et un raccourci qui
@@ -154,7 +181,7 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
 
     expect(resolution.rejected).toContain("Command+Alt+K");
     expect(resolution.registered.find((e) => e.intent === "capture")?.accelerator).toBe(
-      "Control+Alt+R",
+      "Command+Control+R",
     );
   });
 

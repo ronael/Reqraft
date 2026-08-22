@@ -19,18 +19,28 @@ export interface ShortcutCandidate {
 }
 
 /**
- * Combinations no candidate list may contain.
+ * Combinations no candidate list may contain, and why.
  *
- * `register()` returns true for these and the keystroke never arrives: macOS
- * claims them before any application sees them, so a boolean is not evidence.
- * ⌥Espace and ⌥⇧Espace are here for a different reason — they register fine,
- * but they are the default of ChatGPT, Alfred and Raycast, so whichever
- * application starts last silently loses the shortcut. A combination that
- * depends on launch order is not a default.
+ * Two different reasons, both fatal for a default:
+ *
+ * macOS claims the first group before any application sees the keystroke, and
+ * `register()` still returns true — so the boolean is not evidence and the
+ * shortcut is simply dead.
+ *
+ * The second group registers fine but is the published default of software
+ * people run alongside this one: ⌥Espace belongs to ChatGPT, Alfred and
+ * Raycast. Whichever application starts last loses, silently. A combination
+ * whose owner depends on launch order is not a default.
  */
 export const EXCLUDED_ACCELERATORS: readonly string[] = [
+  // Claimed by macOS itself.
   "Command+Space",
   "Control+Space",
+  "Command+Control+Space",
+  "Command+Control+F",
+  "Command+Control+Q",
+  "Command+Control+D",
+  // Claimed by the launchers people run alongside Reqraft.
   "Alt+Space",
   "Alt+Shift+Space",
 ];
@@ -38,17 +48,25 @@ export const EXCLUDED_ACCELERATORS: readonly string[] = [
 /**
  * Ordered candidates, most to least desirable.
  *
- * ⌃⌥R and ⌃⇧R lead: two modifiers and a letter, which no common macOS
- * launcher claims, and `R` for Reqraft. The rest are fallbacks walked only
- * when `register()` reports a combination as taken.
+ * ⌘⌃ is the family chosen deliberately. A global shortcut takes the keystroke
+ * away from whatever has focus, so the question is not "is it free in macOS"
+ * but "will a browser, an editor or an IDE want it". ⌘⌃ is the one two-modifier
+ * family applications almost never bind: ⌘ and ⌘⇧ carry their menus, ⌃ and ⌃⌥
+ * carry terminal and IDE bindings, and ⌥ is dead-key territory for text input.
+ *
+ * The previous defaults failed exactly there: ⌃⇧R is the browsers' hard reload
+ * on Windows and Linux, and ⌃⌥R is bound in several IDE keymaps.
+ *
+ * The letters avoid what macOS already spends ⌘⌃ on — F, Q, D and Space, all
+ * listed above.
  */
 export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
-  { accelerator: "Control+Alt+R", intent: "capture" },
-  { accelerator: "Control+Shift+R", intent: "input" },
-  { accelerator: "Control+Alt+Command+R", intent: "capture" },
-  { accelerator: "Control+Alt+Shift+R", intent: "input" },
-  { accelerator: "Command+Alt+R", intent: "capture" },
-  { accelerator: "Command+Alt+Shift+R", intent: "input" },
+  { accelerator: "Command+Control+R", intent: "capture" },
+  { accelerator: "Command+Control+N", intent: "input" },
+  { accelerator: "Command+Control+J", intent: "capture" },
+  { accelerator: "Command+Control+K", intent: "input" },
+  { accelerator: "Command+Control+Alt+R", intent: "capture" },
+  { accelerator: "Command+Control+Alt+N", intent: "input" },
 ];
 
 /**

@@ -267,8 +267,8 @@ export interface ProfileMutationResponse {
  * launchers — answers the same need without that risk.
  */
 export const SHORTCUT_PRESETS = {
-  capture: ["Control+Alt+R", "Control+Alt+Command+R", "Command+Alt+R", "Control+Alt+G"],
-  input: ["Control+Shift+R", "Control+Alt+Shift+R", "Command+Alt+Shift+R", "Control+Shift+G"],
+  capture: ["Command+Control+R", "Command+Control+J", "Command+Control+Alt+R", "Command+Control+G"],
+  input: ["Command+Control+N", "Command+Control+K", "Command+Control+Alt+N", "Command+Control+M"],
 } as const;
 
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
