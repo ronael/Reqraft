@@ -226,21 +226,47 @@ tailwind.config = { theme: { extend: {
         </div>
       </div>
 
-      <!-- Menu bar popover -->
-      <div id="popover" class="layer hidden-layer absolute right-3 top-8 z-[60] w-[340px] overflow-hidden rounded-xl bg-ink-850/[.98] shadow-pop backdrop-blur-2xl">
+      <!-- Menu bar popover. Le profil est un choix progressif : jamais une grille de puces qui grandit avec le catalogue. -->
+      <div id="popover" class="layer hidden-layer absolute right-3 top-8 z-[60] w-[340px] overflow-visible rounded-xl bg-ink-850/[.98] shadow-pop backdrop-blur-2xl">
         <div class="border-b border-white/[.06] px-3 py-2.5">
           <div class="mb-1 flex items-center justify-between"><span class="mono text-[10px] font-semibold text-rq-300">reqraft</span><span class="text-[10px] text-zinc-700">prêt</span></div>
           <textarea id="popover-input" class="mono w-full resize-none bg-transparent text-[12px] leading-5 text-zinc-200 outline-none placeholder:text-zinc-600" rows="3" placeholder="Écris un prompt ou colle du texte…"></textarea>
         </div>
-        <div class="flex items-center gap-1 border-b border-white/[.06] px-2.5 py-1.5">
-          <button class="rounded-md bg-rq-500/16 px-2 py-1 text-[10px] text-rq-200">auto</button><button class="rounded-md px-2 py-1 text-[10px] text-zinc-600">code</button><button class="rounded-md px-2 py-1 text-[10px] text-zinc-600">writing</button>
-          <span class="ml-auto mono text-[10px] text-zinc-700">standard</span>
+        <div class="flex items-center gap-1.5 border-b border-white/[.06] px-2.5 py-1.5">
+          <button id="profile-trigger" class="flex min-w-0 flex-1 items-center gap-1.5 rounded-md bg-rq-500/16 px-2 py-1.5 text-left text-[10px] text-rq-200 hover:bg-rq-500/22" aria-expanded="false">
+            <span class="text-rq-300">◈</span><span class="text-zinc-500">profil</span><span id="selected-profile" class="mono truncate text-rq-100">auto</span><span class="ml-auto text-rq-300">⌄</span>
+          </button>
+          <button class="rounded-md px-2 py-1.5 text-[10px] text-zinc-500 hover:bg-white/[.04]"><span class="text-zinc-600">niveau</span> <span class="mono text-zinc-300">standard</span> ⌄</button>
         </div>
         <div class="px-3 py-2.5">
           <div class="text-[9px] uppercase tracking-[.14em] text-zinc-700">Dernier résultat</div>
           <p class="mono mt-1 line-clamp-2 text-[11px] leading-4 text-zinc-500">Ajoute une section « avis clients » au site, responsive, en réutilisant les composants existants.</p>
         </div>
         <div class="flex items-center justify-between border-t border-white/[.06] bg-black/20 px-3 py-2 text-[10px] text-zinc-600"><span><kbd>⌘⏎</kbd> reformuler</span><button id="open-settings" class="hover:text-zinc-300">Réglages…</button></div>
+
+        <!-- Sous-menu : hauteur bornée, recherche locale, groupes par origine. -->
+        <div id="profile-picker" class="hidden absolute left-0 right-0 top-[113px] z-10 overflow-hidden rounded-xl border border-rq-400/25 bg-ink-800 shadow-pop" role="dialog" aria-label="Choisir un profil">
+          <div class="border-b border-white/[.06] p-2.5">
+            <div class="mb-2 flex items-center justify-between"><span class="text-[11px] font-medium text-zinc-200">Profils</span><span class="text-[10px] text-zinc-600">12 disponibles</span></div>
+            <input id="profile-search-menu" class="w-full rounded-md border border-white/[.08] bg-black/20 px-2.5 py-1.5 text-[11px] text-zinc-200 outline-none placeholder:text-zinc-600" placeholder="Rechercher un profil…" />
+          </div>
+          <div id="profile-options-menu" class="scroll-soft max-h-[180px] space-y-2 overflow-y-auto p-2">
+            <div class="profile-option-group" data-origin="builtin">
+              <div class="px-1 pb-1 text-[9px] uppercase tracking-[.14em] text-zinc-700">Intégrés</div>
+              <button data-profile-name="auto" class="profile-option flex w-full items-center gap-2 rounded-md bg-rq-500/14 px-2.5 py-2 text-left text-[11px]"><span class="h-1.5 w-1.5 rounded-full bg-rq-300"></span><span class="mono flex-1 text-rq-100">auto</span><span class="text-[9px] text-rq-300">actif</span></button>
+              <button data-profile-name="clean" class="profile-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[11px] hover:bg-white/[.04]"><span class="h-1.5 w-1.5 rounded-full bg-zinc-700"></span><span class="mono text-zinc-300">clean</span><span class="ml-auto text-[9px] text-zinc-600">clarifier</span></button>
+              <button data-profile-name="code" class="profile-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[11px] hover:bg-white/[.04]"><span class="h-1.5 w-1.5 rounded-full bg-zinc-700"></span><span class="mono text-zinc-300">code</span><span class="ml-auto text-[9px] text-zinc-600">agents</span></button>
+              <button data-profile-name="frontend" class="profile-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[11px] hover:bg-white/[.04]"><span class="h-1.5 w-1.5 rounded-full bg-zinc-700"></span><span class="mono text-zinc-300">frontend</span><span class="ml-auto text-[9px] text-zinc-600">UI</span></button>
+              <button data-profile-name="writing" class="profile-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[11px] hover:bg-white/[.04]"><span class="h-1.5 w-1.5 rounded-full bg-zinc-700"></span><span class="mono text-zinc-300">writing</span><span class="ml-auto text-[9px] text-zinc-600">rédaction</span></button>
+            </div>
+            <div class="profile-option-group" data-origin="local">
+              <div class="px-1 pb-1 text-[9px] uppercase tracking-[.14em] text-zinc-700">Mes profils</div>
+              <button data-profile-name="review-strict" class="profile-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[11px] hover:bg-white/[.04]"><span class="h-1.5 w-1.5 rounded-full bg-emerald-400"></span><span class="mono text-zinc-200">review-strict</span><span class="ml-auto text-[9px] text-emerald-300/80">local</span></button>
+              <button data-profile-name="wordpress" class="profile-option flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-[11px] hover:bg-white/[.04]"><span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span><span class="mono text-zinc-200">wordpress</span><span class="ml-auto text-[9px] text-emerald-300/80">local</span></button>
+            </div>
+          </div>
+          <button id="manage-profiles" class="flex w-full items-center justify-between border-t border-white/[.06] bg-black/20 px-3 py-2 text-left text-[10px] text-zinc-500 hover:text-rq-200"><span>Gérer les profils…</span><span>›</span></button>
+        </div>
       </div>
 
       <!-- Centered no-selection capsule -->
@@ -288,7 +314,11 @@ let currentLevel = 'standard';
 let diffHeld = false;
 
 function show(id,on=true){el(id).classList.toggle('hidden-layer',!on)}
-function hideAll(){['capsule','popover','empty-capsule','settings','toast','menubar-tip'].forEach(x=>show(x,false));}
+function closeProfilePicker(){
+  el('profile-picker').classList.add('hidden');
+  el('profile-trigger').setAttribute('aria-expanded','false');
+}
+function hideAll(){['capsule','popover','empty-capsule','settings','toast','menubar-tip'].forEach(x=>show(x,false));closeProfilePicker();}
 function setNote(html){el('scene-note').innerHTML = html;}
 function setState(name){el('state-pill').textContent='état · '+name;}
 function stopTyping(){if(typingTimer){clearInterval(typingTimer);typingTimer=null;}}
@@ -381,6 +411,29 @@ el('menubar-button').addEventListener('click',()=>{show('menubar-tip',false);run
 el('open-settings').addEventListener('click',()=>run('settings'));
 el('close-settings').addEventListener('click',()=>run('selected'));
 el('error-settings').addEventListener('click',()=>run('settings'));
+el('profile-trigger').addEventListener('click',()=>{
+  const isOpen=!el('profile-picker').classList.contains('hidden');
+  el('profile-picker').classList.toggle('hidden',isOpen);
+  el('profile-trigger').setAttribute('aria-expanded',String(!isOpen));
+  if(!isOpen) el('profile-search-menu').focus();
+});
+el('profile-search-menu').addEventListener('input',event=>{
+  const query=event.target.value.toLowerCase();
+  document.querySelectorAll('.profile-option-group').forEach(group=>{
+    let visible=0;
+    group.querySelectorAll('.profile-option').forEach(option=>{
+      const matches=option.dataset.profileName.includes(query);
+      option.classList.toggle('hidden',!matches);
+      if(matches) visible+=1;
+    });
+    group.classList.toggle('hidden',visible===0);
+  });
+});
+document.querySelectorAll('.profile-option').forEach(option=>option.addEventListener('click',()=>{
+  el('selected-profile').textContent=option.dataset.profileName;
+  closeProfilePicker();
+}));
+el('manage-profiles').addEventListener('click',()=>run('settings'));
 
 document.querySelectorAll('.level-btn').forEach(btn=>btn.addEventListener('click',()=>{
   currentLevel=btn.dataset.level;
