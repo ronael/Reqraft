@@ -90,3 +90,31 @@ describe("le déclencheur de profil partage sa rangée", () => {
     expect(body).not.toMatch(/(^|;|\s)width\s*:\s*100%/);
   });
 });
+
+describe("l'entrée du sélecteur de profil", () => {
+  it("n'anime que des propriétés sans effet sur la mise en page", async () => {
+    // transform et opacity seulement : rien qui provoque un recalcul de layout
+    // dans un panneau dont la hauteur est déjà contrainte par la fenêtre.
+    const css = await readFile(STYLESHEET, "utf8");
+    // Les keyframes sont en fin de fichier, après les règles `.profile-sheet` :
+    // la borne de fin doit donc être cherchée à partir du début de la tranche.
+    const start = css.indexOf("@keyframes rq-sheet-in");
+    const frames = css.slice(start, css.indexOf(".profile-sheet {", start));
+
+    expect(frames).toContain("transform:");
+    expect(frames).toContain("opacity:");
+    for (const forbidden of ["height:", "width:", "margin", "padding", "top:", "left:"]) {
+      expect(frames, `une keyframe ne doit pas animer ${forbidden}`).not.toContain(forbidden);
+    }
+  });
+
+  it("prévoit un repli pour le mouvement réduit", async () => {
+    // Sans lui, quelqu'un qui a désactivé les animations système subit quand
+    // même le déplacement.
+    const css = await readFile(STYLESHEET, "utf8");
+    const block = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+
+    expect(block).toContain(".profile-sheet");
+    expect(block).toContain("animation-duration: 1ms");
+  });
+});

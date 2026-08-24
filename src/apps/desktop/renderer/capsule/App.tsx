@@ -7,6 +7,9 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { transition, type CapsuleState } from "@/apps/desktop/shared/capsule-machine.js";
 
+/** Nommé une fois : l'état apparaît dans trois conditions différentes. */
+const GENERATING = "génération";
+
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
 const QUALITY_LABELS: Record<RepromptResult["quality"]["status"], string> = {
@@ -43,6 +46,24 @@ export function App(): React.JSX.Element {
   const [result, setResult] = useState<RepromptResult | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  /**
+   * Temps écoulé depuis le déclenchement, en millisecondes.
+   *
+   * Une attente sans repère paraît plus longue qu'elle ne l'est, et rien ne
+   * distinguait « le modèle réfléchit » de « c'est bloqué ». La durée finale
+   * existait déjà, mais seulement une fois le résultat arrivé — trop tard pour
+   * rassurer pendant l'attente.
+   */
+  const [elapsedMs, setElapsedMs] = useState(0);
+  /**
+   * Instant du départ, plutôt qu'un simple drapeau « en cours ».
+   *
+   * Ancré sur `running`, le chrono ne repartait pas si un nouveau
+   * déclenchement arrivait pendant qu'un run tournait : il continuait de
+   * compter depuis le précédent et annonçait 17 s pour une capture qui venait
+   * de commencer.
+   */
+  const [startedAt, setStartedAt] = useState<number | null>(null);
   const activeRunId = useRef<string | null>(null);
   const comparing = useRef(false);
   /** Mirror of `streamed` readable from event callbacks. */
@@ -61,6 +82,8 @@ export function App(): React.JSX.Element {
 
   const startRun = useCallback(
     (text: string, chosenLevel: Level) => {
+      setStartedAt(Date.now());
+      setElapsedMs(0);
       setStreamedBoth(() => "");
       setResult(null);
       setError(null);
@@ -113,6 +136,10 @@ export function App(): React.JSX.Element {
           dispatch("capturé");
           startRun(capture.text, "standard");
         } else {
+          // Une capture vide a deux causes très différentes : rien n'était
+          // sélectionné, ou macOS a refusé. Seule la seconde demande une
+          // action, et elle est invisible si on ne la dit pas.
+          if (capture.reason !== undefined) setNotice(capture.reason);
           dispatch("rien-à-capturer");
         }
       })
@@ -126,7 +153,10 @@ export function App(): React.JSX.Element {
       if (payload.mode === "capture") {
         beginCapture();
       } else {
-        resetSession();
+        // Volontairement pas de `resetSession()` : la fenêtre se cache dès
+        // qu'on clique ailleurs, et repartir de zéro à la réouverture jette ce
+        // qui venait d'être écrit. Le brouillon est effacé après un envoi.
+        setNotice(null);
         setState("saisie");
       }
     });
@@ -277,7 +307,22 @@ export function App(): React.JSX.Element {
     };
   }, [state, cancelRun, dispatch, handleReadyKey]);
 
-  const running = state === "génération" || state === "streaming" || state === "analyse";
+  const running = state === GENERATING || state === "streaming" || state === "analyse";
+
+  useEffect(() => {
+    if (!running || startedAt === null) {
+      return undefined;
+    }
+    // 100ms : le dixième de seconde change à l'écran sans faire travailler le
+    // rendu plus que nécessaire.
+    const timer = setInterval(() => {
+      setElapsedMs(Date.now() - startedAt);
+    }, 100);
+    return () => {
+      clearInterval(timer);
+    };
+  }, [running, startedAt]);
+
   const expansion = result?.quality.signals.some(
     (signal) => signal.code === "disproportionate_expansion",
   );
@@ -374,8 +419,14 @@ export function App(): React.JSX.Element {
           </div>
         )}
 
-        {(state === "analyse" || state === "génération") && (
-          <p className="muted">Lecture de la sélection…</p>
+        {state === "analyse" && <p className="muted">Analyse de l&apos;intention…</p>}
+
+        {state === GENERATING && (
+          <p className="muted">
+            {displayedProfile !== null
+              ? `${displayedProfile} détecté · préparation…`
+              : "Préparation…"}
+          </p>
         )}
 
         {state === "streaming" && (
@@ -409,7 +460,12 @@ export function App(): React.JSX.Element {
 
       <footer className="capsule-footer">
         <div className="capsule-verdict">
-          {state === "streaming" && <span className="pulse accent">réception…</span>}
+          {(state === GENERATING || state === "streaming") && (
+            <>
+              <span className="pulse accent">réception…</span>
+              <span className="capsule-elapsed">{(elapsedMs / 1000).toFixed(1)} s</span>
+            </>
+          )}
           {finalResult !== null && (
             <>
               <span className={`verdict-${finalResult.quality.status}`}>{verdictLabel}</span>
@@ -449,9 +505,14 @@ export function App(): React.JSX.Element {
             </>
           )}
           {running && (
-            <span>
-              <kbd>⌘.</kbd> interrompre
-            </span>
+            <>
+              <span>
+                <kbd>⌘.</kbd> interrompre
+              </span>
+              {/* La capsule travaille sans le focus : le dire évite d'attendre
+                  devant elle pour rien. */}
+              <span className="capsule-hint">tu peux changer d&apos;app</span>
+            </>
           )}
           <span className="key-close">
             <kbd>esc</kbd> fermer
