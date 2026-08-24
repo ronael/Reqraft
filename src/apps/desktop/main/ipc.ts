@@ -1,13 +1,22 @@
 import process from "node:process";
+import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { executeReprompt } from "@/application/reprompt.js";
-import { hydrateCredentials } from "@/auth/credentials.js";
-import { loadConfig, saveConfig } from "@/config/loader.js";
+import { hydrateCredentials, login, logout } from "@/auth/credentials.js";
+import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
+import { createInitConfig, evaluateSetupState } from "@/config/setup.js";
+import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
 import { ConfigSchema, type Config } from "@/config/schema.js";
 import {
+  getProviderDefinition,
   getProviderEnvName,
+  isCredentialProvider,
   listCredentialProviders,
+  listProviderDefinitions,
+  DEFAULT_PROVIDER_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
+  type CredentialProvider,
+  type InitProvider,
 } from "@/providers/catalog.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
@@ -24,7 +33,12 @@ import {
 import { duplicateProfile, exportProfile } from "@/profiles/transfer.js";
 import {
   ConfigWriteRequestSchema,
+  CredentialDeleteRequestSchema,
+  CredentialSaveRequestSchema,
   EmptyRequestSchema,
+  OnboardingCompleteRequestSchema,
+  ProviderDeleteRequestSchema,
+  ProviderSaveRequestSchema,
   ProfileDuplicateRequestSchema,
   ProfileExportRequestSchema,
   ProfileIdRequestSchema,
@@ -35,6 +49,8 @@ import {
   type DoctorReport,
   type ProfileCatalogResponse,
   type ProfileDetail,
+  type OnboardingStateResponse,
+  type ProviderModelOption,
   type ProviderStatus,
   type SafeConfig,
   type ShortcutStateInfo,
@@ -95,6 +111,27 @@ export interface DesktopIpcDependencies {
   writeExport?: (path: string, contents: string) => Promise<void>;
   /** Overridden by tests so nothing touches the real profiles directory. */
   profilesDir?: string;
+  /**
+   * Whether the configuration file exists.
+   *
+   * Its own dependency because it is the one fact `loadConfig` cannot report:
+   * every field has a default, so a missing file still parses into a valid
+   * object. Injected so tests can describe a blank machine.
+   */
+  configFileExists?: () => boolean;
+  /**
+   * Stores a provider credential. Defaults to the shared `auth` service, which
+   * validates the key against the provider before writing it to the keychain.
+   */
+  storeCredential?: (
+    provider: CredentialProvider,
+    secret: string,
+    env: NodeJS.ProcessEnv,
+  ) => Promise<void>;
+  /** Called once onboarding leaves the installation in a usable state. */
+  onOnboardingComplete?: () => void;
+  /** Removes a provider credential. Defaults to the shared `auth` service. */
+  removeCredential?: (provider: CredentialProvider) => Promise<void>;
 }
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
@@ -158,6 +195,74 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.providersStatus, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     return listProviderStatuses(env, hydrate, load);
+  });
+
+  const configExists = dependencies.configFileExists ?? (() => existsSync(configPath()));
+  const storeCredential = dependencies.storeCredential ?? defaultStoreCredential;
+  const removeCredential = dependencies.removeCredential ?? defaultRemoveCredential;
+  const onboardingState = (): Promise<OnboardingStateResponse> =>
+    buildOnboardingState(env, hydrate, load, configExists);
+
+  ipcMain.handle(IPC_CHANNELS.onboardingState, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return await onboardingState();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.credentialSave, async (_event, payload) => {
+    const request = CredentialSaveRequestSchema.parse(payload);
+    if (!isCredentialProvider(request.provider)) {
+      throw new Error(
+        `Le fournisseur ${request.provider} ne prend pas de clé enregistrable dans le trousseau.`,
+      );
+    }
+    // The secret stops here. `login` checks it is not a placeholder, calls the
+    // provider to confirm it works, then writes it to the OS keychain — the
+    // same path `rp auth login` takes, not a second implementation of it.
+    await storeCredential(request.provider, request.secret, env);
+    return { providers: await listProviderStatuses(env, hydrate, load) };
+  });
+
+  registerProviderManagementHandlers({
+    ipcMain,
+    env,
+    load,
+    save,
+    hydrate,
+    removeCredential,
+  });
+
+  ipcMain.handle(IPC_CHANNELS.onboardingComplete, async (_event, payload) => {
+    const request = OnboardingCompleteRequestSchema.parse(payload);
+    if (!getProviderDefinition(request.provider).visibleInInit) {
+      throw new Error(
+        `Le fournisseur ${request.provider} ne peut pas être choisi à la configuration.`,
+      );
+    }
+
+    // Built by the shared domain, so the file the desktop writes is the file
+    // `rp init` would have written — one configuration, two front ends.
+    const existing = configExists() ? await load() : undefined;
+    const config = createInitConfig({
+      provider: request.provider as InitProvider,
+      model: request.model,
+      profile: request.profile,
+      level: request.level,
+      copyAfterGeneration: existing?.copyAfterGeneration ?? DEFAULT_CONFIG.copyAfterGeneration,
+      stream: existing?.stream ?? DEFAULT_CONFIG.stream,
+      timeoutMs: existing?.timeoutMs ?? DEFAULT_CONFIG.timeoutMs,
+      compatibleProvider: request.compatibleProvider,
+      existing,
+    });
+    await save(config);
+
+    // Recomputed from what was actually saved: a provider chosen without its
+    // key leaves the installation unusable, and the wizard has to keep the
+    // user rather than close on a success it did not achieve.
+    const state = await onboardingState();
+    if (!state.required) {
+      dependencies.onOnboardingComplete?.();
+    }
+    return { config: sanitizeConfigForRenderer(config), state };
   });
 
   ipcMain.handle(IPC_CHANNELS.doctorRun, async (_event, payload) => {
@@ -406,24 +511,233 @@ async function listProviderStatuses(
 
   const statuses: ProviderStatus[] = listCredentialProviders().map((definition) => {
     const envName = getProviderEnvName(definition.id);
+    const shared = {
+      id: definition.id,
+      label: getProviderDefinition(definition.id).label,
+      models: modelsForProvider(definition.id),
+      requiresApiKey: true,
+      supportsSecureAuth: true,
+      envName,
+    };
     if (env[envName]) {
-      return { id: definition.id, configured: true, source: "environment" };
+      return { ...shared, configured: true, source: "environment" as const };
     }
     if (hydrated[envName]) {
-      return { id: definition.id, configured: true, source: "keychain" };
+      return { ...shared, configured: true, source: "keychain" as const };
     }
-    return { id: definition.id, configured: false, source: "not_configured" };
+    return { ...shared, configured: false, source: "not_configured" as const };
   });
 
   const config = await load();
   const customProviders = config.providers ?? {};
+  const hasCustom = Object.keys(customProviders).length > 0;
   statuses.push({
     id: OPENAI_COMPATIBLE_PROVIDER_ID,
-    configured: Object.keys(customProviders).length > 0,
-    source: Object.keys(customProviders).length > 0 ? "config" : "not_configured",
+    label: getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label,
+    configured: hasCustom,
+    source: hasCustom ? "config" : "not_configured",
+    // A custom endpoint publishes no catalogue: its model is typed in.
+    models: [],
+    requiresApiKey: false,
+    supportsSecureAuth: false,
   });
-  statuses.push({ id: "mock", configured: true, source: "builtin" });
+  statuses.push({
+    id: "mock",
+    label: getProviderDefinition("mock").label,
+    configured: true,
+    source: "builtin",
+    models: modelsForProvider("mock"),
+    requiresApiKey: false,
+    supportsSecureAuth: false,
+  });
   return statuses;
+}
+
+interface ProviderHandlerDependencies {
+  ipcMain: IpcMainLike;
+  env: NodeJS.ProcessEnv;
+  load: () => Promise<Config>;
+  save: (config: Config) => Promise<void>;
+  hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
+  removeCredential: (provider: CredentialProvider) => Promise<void>;
+}
+
+/**
+ * Channels the settings use to manage providers after setup.
+ *
+ * Grouped in their own registration because they form one story — a key, an
+ * endpoint, and what happens to the default when the last one is removed —
+ * and because `registerIpcHandlers` is long enough already.
+ */
+function registerProviderManagementHandlers(dependencies: ProviderHandlerDependencies): void {
+  const { ipcMain, env, load, save, hydrate, removeCredential } = dependencies;
+
+  ipcMain.handle(IPC_CHANNELS.credentialDelete, async (_event, payload) => {
+    const { provider } = CredentialDeleteRequestSchema.parse(payload);
+    if (!isCredentialProvider(provider)) {
+      throw new Error(`Le fournisseur ${provider} n'a pas de clé enregistrée dans le trousseau.`);
+    }
+    await removeCredential(provider);
+    return { providers: await listProviderStatuses(env, hydrate, load) };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.providerSave, async (_event, payload) => {
+    const request = ProviderSaveRequestSchema.parse(payload);
+    const config = await load();
+    const existing = config.providers?.[request.id];
+
+    const next = ConfigSchema.parse({
+      ...config,
+      providers: {
+        ...(config.providers ?? {}),
+        [request.id]: {
+          type: OPENAI_COMPATIBLE_PROVIDER_ID,
+          ...(request.name === undefined ? {} : { name: request.name }),
+          baseUrl: request.baseUrl,
+          ...(request.apiKeyEnv === undefined ? {} : { apiKeyEnv: request.apiKeyEnv }),
+          // Carried over rather than taken from the request: headers may hold
+          // an Authorization token, so they never cross to the renderer, and a
+          // round trip through the settings must not quietly drop them.
+          ...(existing?.customHeaders === undefined
+            ? {}
+            : { customHeaders: existing.customHeaders }),
+        },
+      },
+    });
+    await save(next);
+    return {
+      config: sanitizeConfigForRenderer(next),
+      providers: await listProviderStatuses(env, hydrate, load),
+    };
+  });
+
+  ipcMain.handle(IPC_CHANNELS.providerDelete, async (_event, payload) => {
+    const { id } = ProviderDeleteRequestSchema.parse(payload);
+    const config = await load();
+    if (!config.providers?.[id]) {
+      throw new Error(`Aucun fournisseur personnalisé nommé ${id}.`);
+    }
+
+    const remaining = Object.fromEntries(
+      Object.entries(config.providers).filter(([key]) => key !== id),
+    );
+
+    // Removing the last endpoint while the configuration still points at the
+    // compatible provider would leave nothing to call. The default moves back
+    // to a provider that exists, with the model that goes with it.
+    const orphaned =
+      config.defaultProvider === OPENAI_COMPATIBLE_PROVIDER_ID &&
+      Object.keys(remaining).length === 0;
+
+    const next = ConfigSchema.parse({
+      ...config,
+      ...(orphaned
+        ? {
+            defaultProvider: DEFAULT_PROVIDER_ID,
+            defaultModel: getFallbackModelForProvider(DEFAULT_PROVIDER_ID) ?? config.defaultModel,
+          }
+        : {}),
+      providers: Object.keys(remaining).length > 0 ? remaining : undefined,
+    });
+    await save(next);
+    return {
+      config: sanitizeConfigForRenderer(next),
+      providers: await listProviderStatuses(env, hydrate, load),
+    };
+  });
+}
+
+/** The preset catalogue for one provider, in the shape the renderer reads. */
+function modelsForProvider(providerId: string): ProviderModelOption[] {
+  return getPresetModels()
+    .filter((preset) => preset.provider === providerId)
+    .map((preset) => ({
+      id: preset.id,
+      name: preset.name,
+      description: preset.description,
+      recommended: preset.recommended === true,
+    }));
+}
+
+/**
+ * Everything the onboarding window needs, in one round trip.
+ *
+ * Deliberately one call: the wizard needs the providers, their models, whether
+ * each already has a credential, and whether it should be showing at all. Split
+ * across channels, those answers could disagree with each other between two
+ * renders.
+ */
+export async function buildOnboardingState(
+  env: NodeJS.ProcessEnv,
+  hydrate: (env: NodeJS.ProcessEnv) => Promise<void>,
+  load: () => Promise<Config>,
+  configFileExists: () => boolean,
+): Promise<OnboardingStateResponse> {
+  const statuses = await listProviderStatuses(env, hydrate, load);
+  const statusById = new Map(statuses.map((status) => [status.id, status]));
+  const config = await load();
+
+  const providers = listProviderDefinitions()
+    .filter((definition) => definition.visibleInInit)
+    .map((definition) => {
+      const status = statusById.get(definition.id);
+      return {
+        id: definition.id,
+        label: definition.label,
+        requiresApiKey: definition.requiresApiKey,
+        ...(definition.apiKeyEnvName === undefined ? {} : { envName: definition.apiKeyEnvName }),
+        supportsSecureAuth: definition.supportsSecureAuth,
+        credentialConfigured: status?.configured ?? false,
+        credentialSource: status?.source ?? ("not_configured" as const),
+        models: modelsForProvider(definition.id),
+      };
+    });
+
+  const state = evaluateSetupState({
+    configFileExists: configFileExists(),
+    provider: config.defaultProvider,
+    credentialDetected: statusById.get(config.defaultProvider)?.configured ?? false,
+    hasCustomProviderEntry: Object.keys(config.providers ?? {}).length > 0,
+  });
+
+  return {
+    required: !state.usable,
+    ...(state.blocker === undefined ? {} : { blocker: state.blocker }),
+    providers,
+    suggested: {
+      provider: config.defaultProvider,
+      model: config.defaultModel,
+      profile: config.defaultProfile,
+      level: config.defaultLevel,
+    },
+  };
+}
+
+/** Removes a credential through the shared auth service. */
+async function defaultRemoveCredential(provider: CredentialProvider): Promise<void> {
+  await logout(provider, { output: { log: () => undefined } });
+}
+
+/**
+ * Stores a credential through the shared auth service.
+ *
+ * `login` is the CLI's path too; passing the secret as a dependency rather
+ * than reading stdin is the only difference. Its output is silenced because
+ * there is no terminal here — not because anything is skipped.
+ */
+async function defaultStoreCredential(
+  provider: CredentialProvider,
+  secret: string,
+  env: NodeJS.ProcessEnv,
+): Promise<void> {
+  await login(provider, {
+    env,
+    readSecret: () => Promise.resolve(secret),
+    output: {
+      log: () => undefined,
+      write: () => undefined,
+    },
+  });
 }
 
 /**

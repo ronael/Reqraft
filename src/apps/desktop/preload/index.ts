@@ -47,6 +47,14 @@ const bridge: ReqraftBridge = {
   exportProfile: (id) => ipcRenderer.invoke(IPC_CHANNELS.profileExport, { id }),
   openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
   shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),
+  onboardingState: () => ipcRenderer.invoke(IPC_CHANNELS.onboardingState),
+  // The one call that carries a secret. It goes one way: the main process
+  // stores it and answers with statuses, never with the value.
+  saveCredential: (request) => ipcRenderer.invoke(IPC_CHANNELS.credentialSave, request),
+  deleteCredential: (request) => ipcRenderer.invoke(IPC_CHANNELS.credentialDelete, request),
+  saveProvider: (request) => ipcRenderer.invoke(IPC_CHANNELS.providerSave, request),
+  deleteProvider: (id) => ipcRenderer.invoke(IPC_CHANNELS.providerDelete, { id }),
+  completeOnboarding: (request) => ipcRenderer.invoke(IPC_CHANNELS.onboardingComplete, request),
   onRunDelta: (listener) =>
     subscribe(IPC_CHANNELS.runDelta, (payload) => {
       listener(payload as RunDeltaPayload);

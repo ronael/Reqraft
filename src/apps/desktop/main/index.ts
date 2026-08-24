@@ -1,6 +1,7 @@
 import path from "node:path";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
+import { existsSync } from "node:fs";
 import {
   app,
   clipboard,
@@ -12,11 +13,12 @@ import {
   systemPreferences,
 } from "electron";
 import { executeReprompt } from "@/application/reprompt.js";
-import { loadConfig } from "@/config/loader.js";
+import { configPath, loadConfig } from "@/config/loader.js";
+import { hydrateCredentials } from "@/auth/credentials.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
-import { registerIpcHandlers } from "./ipc.js";
+import { buildOnboardingState, registerIpcHandlers } from "./ipc.js";
 import { createMacosBridge, createOsascriptRunner } from "./macos.js";
 import {
   createSystemPermissionsProbe,
@@ -27,6 +29,7 @@ import { RepromptService } from "./reprompt-service.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
+import { createOnboardingWindow } from "./windows/onboarding.js";
 import { createTray } from "./tray.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow } from "./windows/popover.js";
@@ -82,7 +85,7 @@ function bootstrap(): void {
     const mainDir = path.dirname(fileURLToPath(import.meta.url));
     registerRendererProtocol(path.join(mainDir, "../renderer"));
     const devServerUrl = process.env.REQRAFT_DESKTOP_DEV_SERVER;
-    const withSurface = (surface?: "popover" | "settings"): string | undefined => {
+    const withSurface = (surface?: "popover" | "settings" | "onboarding"): string | undefined => {
       if (devServerUrl === undefined) {
         return undefined;
       }
@@ -125,6 +128,25 @@ function bootstrap(): void {
       }
     };
 
+    // Onboarding window: opened only when the installation cannot be used as
+    // it stands, and closed as soon as it can be.
+    let onboardingWindow: Electron.BrowserWindow | null = null;
+    const openOnboarding = (): void => {
+      if (onboardingWindow === null || onboardingWindow.isDestroyed()) {
+        onboardingWindow = createOnboardingWindow({
+          ...windowDefaults,
+          rendererUrl: rqRendererUrl("onboarding"),
+          devServerUrl: withSurface("onboarding"),
+        });
+        onboardingWindow.on("closed", () => {
+          onboardingWindow = null;
+        });
+      } else {
+        onboardingWindow.show();
+        onboardingWindow.focus();
+      }
+    };
+
     // The menu-bar tray mirrors run lifecycle: busy while a run is in
     // flight, error on failure, back to rest otherwise (lot 4).
     const tray = createTray({
@@ -162,6 +184,12 @@ function bootstrap(): void {
         requestAccessibility(systemPreferences);
       },
       openSettings,
+      // Onboarding hands over to the settings window: the same choices, in the
+      // place the user will come back to when they want to change one.
+      onOnboardingComplete: () => {
+        openSettings();
+        onboardingWindow?.close();
+      },
       shortcutState: () => shortcutResolution,
       showSaveDialog: async (defaultFileName) => {
         // The renderer never names a path: the user does, through the OS.
@@ -172,6 +200,27 @@ function bootstrap(): void {
         return result.canceled ? undefined : result.filePath;
       },
     });
+
+    // Does this installation work at all?
+    //
+    // Someone who downloaded only the application has no configuration file
+    // and no key, and every surface would fail on its first run — a tray icon
+    // whose shortcuts produce errors is worse than no answer. The rule is the
+    // shared one, so the desktop and `rp init` cannot disagree about it.
+    // Reported, never thrown: a failure to answer must not stop the launch.
+    try {
+      const onboarding = await buildOnboardingState(
+        process.env,
+        hydrateCredentials,
+        loadConfig,
+        () => existsSync(configPath()),
+      );
+      if (onboarding.required) {
+        openOnboarding();
+      }
+    } catch (error) {
+      console.error("État de configuration indéterminé :", error);
+    }
 
     // Read once, here: the candidate chain is walked at start-up and a change
     // takes effect on the next launch, which is also when the OS lets us claim

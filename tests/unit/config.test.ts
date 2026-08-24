@@ -99,7 +99,12 @@ describe("model presets", () => {
     expect(openaiPresets.find((preset) => preset.id === "gpt-5-mini")?.reasoningEffort).toBe("low");
     expect(openaiPresets.find((preset) => preset.id === "gpt-5-nano")?.reasoningEffort).toBe("low");
     expect(openaiPresets.find((preset) => preset.id === "gpt-5.1")?.reasoningEffort).toBe("none");
-    expect(openaiPresets.find((preset) => preset.id === "gpt-4.1-mini")?.recommended).toBe(true);
+    // GPT-5.1 is the OpenAI recommendation, and therefore the model chosen for
+    // anyone picking OpenAI without naming one.
+    expect(openaiPresets.find((preset) => preset.id === "gpt-5.1")?.recommended).toBe(true);
+    expect(
+      openaiPresets.find((preset) => preset.id === "gpt-4.1-mini")?.recommended,
+    ).toBeUndefined();
   });
 
   it("resolves dated OpenAI model ids to their preset parameters", () => {

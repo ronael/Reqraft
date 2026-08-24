@@ -3,6 +3,13 @@ import readline from "node:readline";
 import { existsSync } from "node:fs";
 import type { Readable, Writable } from "node:stream";
 import { ConfigSchema, type Config } from "@/config/schema.js";
+import {
+  buildApiKeyStatus,
+  createInitConfig,
+  type ApiKeyStatus,
+  type CompatibleProviderInput,
+  type InitConfigInput,
+} from "@/config/setup.js";
 import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
 import { getPresetModels } from "@/models/presets.js";
 import { createProvider } from "@/providers/registry.js";
@@ -44,34 +51,6 @@ interface InitProviderChoice {
   local?: boolean;
 }
 
-interface ApiKeyStatus {
-  envName?: string;
-  detected: boolean;
-  optional?: boolean;
-}
-
-interface CompatibleProviderInput {
-  id: string;
-  name?: string;
-  baseUrl: string;
-  apiKeyEnv?: string;
-  customHeaders?: Record<string, string>;
-}
-
-interface InitConfigInput {
-  provider: InitProvider;
-  model: string;
-  profile: string;
-  level: Config["defaultLevel"];
-  copyAfterGeneration: boolean;
-  stream: boolean;
-  timeoutMs: number;
-  uiLocale?: Config["uiLocale"];
-  outputLanguage?: Config["outputLanguage"];
-  compatibleProvider?: CompatibleProviderInput;
-  existing?: Config;
-}
-
 interface RunFirstRunOptions {
   reset?: boolean;
   input?: Readable;
@@ -79,6 +58,11 @@ interface RunFirstRunOptions {
   env?: NodeJS.ProcessEnv;
   shell?: string;
 }
+
+// Re-exported: `rp init` is the CLI face of a rule that now lives in the
+// shared configuration module, so the desktop can apply the same one.
+export { buildApiKeyStatus, createInitConfig };
+export type { ApiKeyStatus, CompatibleProviderInput, InitConfigInput };
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 
@@ -102,29 +86,6 @@ export function getInitProviderChoices(t: Translator = DEFAULT_TRANSLATOR): Init
       local: true,
     },
   ];
-}
-
-export function buildApiKeyStatus(
-  provider: InitProvider,
-  env: NodeJS.ProcessEnv,
-  apiKeyEnv?: string,
-): ApiKeyStatus {
-  const definition = getProviderDefinition(provider);
-  const envName = apiKeyEnv ?? definition.apiKeyEnvName;
-  const optional = !definition.requiresApiKey;
-  if (!envName) {
-    return {
-      detected: false,
-      optional,
-    };
-  }
-
-  const detected = Boolean(env[envName]);
-  return {
-    envName,
-    detected,
-    optional,
-  };
 }
 
 function formatApiKeyStatus(status: ApiKeyStatus, t: Translator): string {
@@ -183,37 +144,6 @@ export function buildShellInstructions(
     "",
     restartTerminal,
   ].join("\n");
-}
-
-export function createInitConfig(input: InitConfigInput): Config {
-  const providers = { ...(input.existing?.providers ?? {}) };
-  if (input.compatibleProvider) {
-    providers[input.compatibleProvider.id] = {
-      type: OPENAI_COMPATIBLE_PROVIDER_ID,
-      name: input.compatibleProvider.name,
-      baseUrl: input.compatibleProvider.baseUrl,
-      apiKeyEnv: input.compatibleProvider.apiKeyEnv,
-      customHeaders: input.compatibleProvider.customHeaders,
-    };
-  }
-
-  return ConfigSchema.parse({
-    ...(input.existing ?? {}),
-    defaultProvider: input.provider,
-    defaultModel: input.model,
-    defaultProfile: input.profile,
-    defaultLevel: input.level,
-    copyAfterGeneration: input.copyAfterGeneration,
-    stream: input.stream,
-    timeoutMs: input.timeoutMs,
-    uiLocale: input.uiLocale ?? input.existing?.uiLocale ?? DEFAULT_CONFIG.uiLocale,
-    outputLanguage:
-      input.outputLanguage ?? input.existing?.outputLanguage ?? DEFAULT_CONFIG.outputLanguage,
-    showChanges: input.existing?.showChanges ?? DEFAULT_CONFIG.showChanges,
-    showStats: input.existing?.showStats ?? DEFAULT_CONFIG.showStats,
-    telemetry: false,
-    providers: Object.keys(providers).length > 0 ? providers : undefined,
-  });
 }
 
 export function buildSummary(

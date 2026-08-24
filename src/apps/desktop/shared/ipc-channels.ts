@@ -33,6 +33,21 @@ export const IPC_CHANNELS = {
   profileExport: "profiles:export",
   windowOpenSettings: "window:open-settings",
   shortcutsState: "shortcuts:state",
+  // Desktop onboarding: someone who installed only the application must be
+  // able to configure it without the CLI. `onboarding:state` reports whether
+  // a usable configuration exists and offers the choices; `credential:save`
+  // hands a secret to the main process, which is the only side allowed to
+  // hold one; `onboarding:complete` persists the result through the shared
+  // configuration domain.
+  onboardingState: "onboarding:state",
+  onboardingComplete: "onboarding:complete",
+  credentialSave: "credential:save",
+  // Managing providers after setup. Configuring one only during onboarding
+  // would mean a key can never be replaced and an endpoint never corrected
+  // without the CLI — which is what the desktop is meant to stop requiring.
+  credentialDelete: "credential:delete",
+  providerSave: "providers:save",
+  providerDelete: "providers:delete",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -66,6 +81,12 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.profileExport,
   IPC_CHANNELS.windowOpenSettings,
   IPC_CHANNELS.shortcutsState,
+  IPC_CHANNELS.onboardingState,
+  IPC_CHANNELS.onboardingComplete,
+  IPC_CHANNELS.credentialSave,
+  IPC_CHANNELS.credentialDelete,
+  IPC_CHANNELS.providerSave,
+  IPC_CHANNELS.providerDelete,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

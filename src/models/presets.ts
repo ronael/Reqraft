@@ -37,7 +37,6 @@ export const MODEL_PRESETS: ModelPreset[] = [
     name: "GPT-4.1 mini",
     provider: "openai",
     description: "Rapide et fiable pour le reprompting avec sortie visible immédiate.",
-    recommended: true,
     category: "fast",
   },
   {
@@ -60,7 +59,8 @@ export const MODEL_PRESETS: ModelPreset[] = [
     id: "gpt-5.1",
     name: "GPT-5.1",
     provider: "openai",
-    description: "Modèle avancé pour le code et les tâches agentiques.",
+    description: "Le meilleur choix OpenAI pour le reprompting : plus fidèle à l'intention.",
+    recommended: true,
     category: "quality",
     reasoningEffort: "none",
   },

@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   REPROMPT_LEVEL_IDS,
-  type ProfileSummary,
+  type ProfileCatalogEntry,
   type RepromptResult,
 } from "@/apps/desktop/shared/ipc-contract.js";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ProfileSheet, ProfileTrigger } from "./ProfilePicker.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
@@ -15,8 +16,11 @@ type Level = (typeof REPROMPT_LEVEL_IDS)[number];
  */
 export function PopoverApp(): React.JSX.Element {
   const [input, setInput] = useState("");
-  const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
+  const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([]);
   const [profileId, setProfileId] = useState("auto");
+  // The list replaces the body rather than floating over it: the window is
+  // 320×260 and not resizable, so an overlay would be cut off by its edge.
+  const [picking, setPicking] = useState(false);
   const [level, setLevel] = useState<Level>("standard");
   const [running, setRunning] = useState(false);
   const [streamed, setStreamed] = useState("");
@@ -26,8 +30,10 @@ export function PopoverApp(): React.JSX.Element {
 
   useEffect(() => {
     window.reqraft
-      .listProfiles()
-      .then(setProfiles)
+      .profileCatalog()
+      .then((catalog) => {
+        setProfiles(catalog.entries);
+      })
       .catch(() => {
         setProfiles([]);
       });
@@ -89,6 +95,32 @@ export function PopoverApp(): React.JSX.Element {
     }
   }, []);
 
+  const selectedProfile = profiles.find((entry) => entry.id === profileId);
+
+  if (picking) {
+    return (
+      <main className="popover">
+        <ProfileSheet
+          entries={profiles}
+          selectedId={profileId}
+          onSelect={(id) => {
+            setProfileId(id);
+            setPicking(false);
+          }}
+          onClose={() => {
+            setPicking(false);
+          }}
+          onManage={() => void window.reqraft.openSettings()}
+        />
+        <footer className="popover-footer">
+          <span>
+            <kbd>↑↓</kbd> parcourir · <kbd>⏎</kbd> choisir · <kbd>esc</kbd> retour
+          </span>
+        </footer>
+      </main>
+    );
+  }
+
   return (
     <main className="popover">
       <div className="popover-input-zone">
@@ -110,19 +142,12 @@ export function PopoverApp(): React.JSX.Element {
       </div>
 
       <div className="popover-controls">
-        {profiles.map((profile) => (
-          <button
-            key={profile.id}
-            type="button"
-            className={profile.id === profileId ? "chip chip-active" : "chip"}
-            title={profile.description}
-            onClick={() => {
-              setProfileId(profile.id);
-            }}
-          >
-            {profile.name}
-          </button>
-        ))}
+        <ProfileTrigger
+          label={selectedProfile?.name ?? profileId}
+          onOpen={() => {
+            setPicking(true);
+          }}
+        />
         <button
           type="button"
           className="chip chip-level"

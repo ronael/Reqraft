@@ -3,12 +3,13 @@ import { PALETTE_VALUES } from "@/shared/palette-values.js";
 import { App as CapsuleApp } from "./capsule/App.js";
 import { PopoverApp } from "./popover/PopoverApp.js";
 import { SettingsApp } from "./settings/SettingsApp.js";
+import { OnboardingApp } from "./onboarding/OnboardingApp.js";
 import "./shared/desktop.css";
 
 /**
  * Renderer entry point. One bundle, three surfaces: the main process picks
  * through the `surface` query parameter (capsule by default, popover under
- * the tray icon, settings window). Brand colours come from the single source
+ * the tray icon, settings window, onboarding on a blank installation). Brand colours come from the single source
  * of truth, `ui/theme/palette-values.ts`, injected as CSS custom properties.
  */
 const THEME_VARIABLES: Record<string, string> = {
@@ -36,6 +37,8 @@ function Surface(): React.JSX.Element {
       return <PopoverApp />;
     case "settings":
       return <SettingsApp />;
+    case "onboarding":
+      return <OnboardingApp />;
     default:
       return <CapsuleApp />;
   }

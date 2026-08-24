@@ -9,6 +9,8 @@ import {
   isValidCustomProfileId,
 } from "@/profiles/custom.js";
 import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
+import { BUILTIN_PROVIDER_IDS } from "@/providers/catalog.js";
+import type { SetupBlocker } from "@/config/setup.js";
 
 /**
  * Re-exported so the renderer can recognise the `auto` sentinel without
@@ -112,10 +114,29 @@ export type SafeConfig = Pick<Config, ConfigKey> & {
 export type ProviderCredentialSource =
   "environment" | "keychain" | "config" | "builtin" | "not_configured";
 
+/**
+ * A provider the catalogue knows about.
+ *
+ * Narrowed rather than left as a string: these ids come from the catalogue,
+ * and typing them loosely pushes to runtime what the compiler can settle —
+ * such as whether a provider can be handed to `credential:save` at all.
+ */
+export type CatalogProviderId = (typeof BUILTIN_PROVIDER_IDS)[number];
+
 export interface ProviderStatus {
-  id: string;
+  id: CatalogProviderId;
+  /** Human-readable name, so the settings never print a bare identifier. */
+  label: string;
   configured: boolean;
   source: ProviderCredentialSource;
+  /** Empty for a provider with no catalogue, such as a custom endpoint. */
+  models: ProviderModelOption[];
+  /** Whether this provider is unusable without a key. */
+  requiresApiKey: boolean;
+  /** Whether its key can be stored in the OS keychain from here. */
+  supportsSecureAuth: boolean;
+  /** Environment variable carrying its key, when it has one. */
+  envName?: string;
 }
 
 export interface DoctorCheck {
@@ -278,6 +299,194 @@ export interface ShortcutStateInfo {
   rejected: string[];
 }
 
+/**
+ * A custom OpenAI-compatible endpoint, as declared in the configuration.
+ *
+ * `customHeaders` is deliberately absent: it may carry an Authorization token,
+ * so it never reaches the renderer (§2.2). The main process merges it back on
+ * save — a round trip through this shape must not silently drop it.
+ */
+export const ProviderSaveRequestSchema = z
+  .object({
+    id: z
+      .string()
+      .trim()
+      .min(1)
+      .regex(/^[a-z0-9-]+$/, "L'identifiant du fournisseur doit être en minuscules."),
+    name: z.string().trim().min(1).optional(),
+    baseUrl: z
+      .string()
+      .trim()
+      .refine(
+        (value) => {
+          const parsed = URL.parse(value);
+          return parsed?.protocol === "http:" || parsed?.protocol === "https:";
+        },
+        { message: "L'URL de base doit commencer par http:// ou https://." },
+      ),
+    apiKeyEnv: z.string().trim().min(1).optional(),
+  })
+  .strict();
+export type ProviderSaveRequest = z.infer<typeof ProviderSaveRequestSchema>;
+
+export const ProviderDeleteRequestSchema = z.object({ id: z.string().trim().min(1) }).strict();
+export type ProviderDeleteRequest = z.infer<typeof ProviderDeleteRequestSchema>;
+
+export const CredentialDeleteRequestSchema = z
+  .object({ provider: z.enum(BUILTIN_PROVIDER_IDS) })
+  .strict();
+export type CredentialDeleteRequest = z.infer<typeof CredentialDeleteRequestSchema>;
+
+/**
+ * What every provider mutation gives back: the configuration as saved and the
+ * refreshed statuses. Deleting the endpoint currently selected as the default
+ * changes the default too, so the renderer must never assume its own state
+ * survived the call.
+ */
+export interface ProviderMutationResponse {
+  config: SafeConfig;
+  providers: ProviderStatus[];
+}
+
+// --- Onboarding ----------------------------------------------------------------
+
+/**
+ * Why the desktop opened its onboarding instead of going straight to work.
+ *
+ * Type-only: the rule itself lives in `@/config/setup.ts` and is shared with
+ * `rp init`, so the two interfaces cannot drift into disagreeing about whether
+ * the same machine is configured.
+ */
+export type { SetupBlocker };
+
+/**
+ * A provider the wizard may offer.
+ *
+ * Narrowed to the catalogue rather than left as a string: the renderer picks
+ * one from a list the main process sent, so an id outside that set is a bug,
+ * and typing it as `string` would only push the check to runtime.
+ */
+/**
+ * A model a provider can be asked to run.
+ *
+ * Sent by the main process rather than read from the catalogue: the renderer
+ * cannot import `@/models`, and a settings window that lets someone type any
+ * identifier — with no idea which ones the provider actually supports — is how
+ * a configuration ends up pointing an Anthropic model at OpenAI.
+ */
+export interface ProviderModelOption {
+  id: string;
+  name: string;
+  description: string;
+  recommended: boolean;
+}
+
+/**
+ * A provider as the wizard shows it.
+ *
+ * `credentialConfigured` and `credentialSource` say whether a key is already
+ * reachable — from the environment or the keychain — so someone who exported
+ * one in their shell is told so rather than asked to type it again. The key
+ * itself is never part of this: only whether one exists, and where from.
+ */
+export interface OnboardingProviderOption {
+  id: CatalogProviderId;
+  label: string;
+  requiresApiKey: boolean;
+  /** Environment variable carrying this provider's key, when it has one. */
+  envName?: string;
+  /** Whether this provider's key can be stored in the OS keychain. */
+  supportsSecureAuth: boolean;
+  credentialConfigured: boolean;
+  credentialSource: ProviderCredentialSource;
+  models: ProviderModelOption[];
+}
+
+export interface OnboardingStateResponse {
+  /** True when the application cannot be used as it stands. */
+  required: boolean;
+  blocker?: SetupBlocker;
+  providers: OnboardingProviderOption[];
+  /** What the form starts on: the current configuration, or the defaults. */
+  suggested: {
+    provider: CatalogProviderId;
+    model: string;
+    profile: string;
+    level: (typeof REPROMPT_LEVEL_IDS)[number];
+  };
+}
+
+/**
+ * Provider ids that can hold a credential, for validating a save.
+ *
+ * `mock` and the compatible endpoint are excluded by the main process rather
+ * than here: this is the shape check, not the capability check.
+ */
+export const CredentialSaveRequestSchema = z
+  .object({
+    provider: z.enum(BUILTIN_PROVIDER_IDS),
+    secret: z.string().min(1),
+  })
+  .strict();
+export type CredentialSaveRequest = z.infer<typeof CredentialSaveRequestSchema>;
+
+/**
+ * What a credential save gives back: the refreshed provider statuses.
+ *
+ * Never the secret, and never an echo of what was sent — the renderer has no
+ * use for either, and a response is the easiest place for one to leak.
+ */
+export interface CredentialSaveResponse {
+  providers: ProviderStatus[];
+}
+
+export const OnboardingCompleteRequestSchema = z
+  .object({
+    provider: z.enum(BUILTIN_PROVIDER_IDS),
+    model: z.string().trim().min(1),
+    profile: z.string().trim().min(1),
+    level: RepromptLevelSchema,
+    compatibleProvider: z
+      .object({
+        id: z
+          .string()
+          .trim()
+          .min(1)
+          .regex(/^[a-z0-9-]+$/, "L'identifiant du fournisseur doit être en minuscules."),
+        name: z.string().trim().min(1).optional(),
+        // `.url()` alone is not enough: `localhost:11434` parses, with
+        // `localhost:` as its protocol, and only fails when the first request
+        // is made. The scheme is checked here instead.
+        baseUrl: z
+          .string()
+          .trim()
+          .refine(
+            (value) => {
+              const parsed = URL.parse(value);
+              return parsed?.protocol === "http:" || parsed?.protocol === "https:";
+            },
+            { message: "L'URL de base doit commencer par http:// ou https://." },
+          ),
+        apiKeyEnv: z.string().trim().min(1).optional(),
+      })
+      .strict()
+      .optional(),
+  })
+  .strict();
+export type OnboardingCompleteRequest = z.infer<typeof OnboardingCompleteRequestSchema>;
+
+/**
+ * The saved configuration, plus the state recomputed from it.
+ *
+ * Recomputed rather than assumed: saving a provider whose key never arrived
+ * leaves the installation unusable, and the wizard has to say so instead of
+ * closing on a success it did not achieve.
+ */
+export interface OnboardingCompleteResponse {
+  config: SafeConfig;
+  state: OnboardingStateResponse;
+}
+
 // --- Main → renderer, pushed ----------------------------------------------------
 
 export interface RunDeltaPayload {
@@ -362,6 +571,12 @@ export interface ReqraftBridge {
   exportProfile(id: string): Promise<ProfileExportResponse>;
   openSettings(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
+  onboardingState(): Promise<OnboardingStateResponse>;
+  saveCredential(request: CredentialSaveRequest): Promise<CredentialSaveResponse>;
+  deleteCredential(request: CredentialDeleteRequest): Promise<CredentialSaveResponse>;
+  saveProvider(request: ProviderSaveRequest): Promise<ProviderMutationResponse>;
+  deleteProvider(id: string): Promise<ProviderMutationResponse>;
+  completeOnboarding(request: OnboardingCompleteRequest): Promise<OnboardingCompleteResponse>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;
   onRunError(listener: (payload: RunErrorPayload) => void): Unsubscribe;

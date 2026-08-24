@@ -30,7 +30,7 @@ export function registerSchemePrivileges(): void {
   ]);
 }
 
-export function rqRendererUrl(surface?: "popover" | "settings"): string {
+export function rqRendererUrl(surface?: "popover" | "settings" | "onboarding"): string {
   const base = `${RQ_SCHEME}://${RQ_RENDERER_HOST}/index.html`;
   return surface === undefined ? base : `${base}?surface=${surface}`;
 }

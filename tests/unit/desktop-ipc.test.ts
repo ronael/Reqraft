@@ -155,13 +155,19 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       profileExport: "profiles:export",
       windowOpenSettings: "window:open-settings",
       shortcutsState: "shortcuts:state",
+      onboardingState: "onboarding:state",
+      onboardingComplete: "onboarding:complete",
+      credentialSave: "credential:save",
+      credentialDelete: "credential:delete",
+      providerSave: "providers:save",
+      providerDelete: "providers:delete",
       runDelta: "run:delta",
       runDone: "run:done",
       runError: "run:error",
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(19);
+    expect(REQUEST_CHANNELS).toHaveLength(25);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
@@ -428,21 +434,28 @@ describe("providers:status", () => {
       IPC_CHANNELS.providersStatus,
       undefined,
       harness.sender,
-    )) as { id: string; configured: boolean; source: string }[];
+    )) as { id: string; configured: boolean; source: string; models: { id: string }[] }[];
 
     const byId = new Map(statuses.map((status) => [status.id, status]));
-    expect(byId.get("openai")).toEqual({ id: "openai", configured: true, source: "environment" });
-    expect(byId.get("anthropic")).toEqual({
+    expect(byId.get("openai")).toMatchObject({
+      id: "openai",
+      configured: true,
+      source: "environment",
+    });
+    expect(byId.get("anthropic")).toMatchObject({
       id: "anthropic",
       configured: true,
       source: "keychain",
     });
-    expect(byId.get("deepseek")).toEqual({
+    // The catalogue rides along so the settings can offer real models; it is
+    // identity and wording, never a credential.
+    expect(byId.get("openai")?.models.some((model) => model.id === "gpt-5.1")).toBe(true);
+    expect(byId.get("deepseek")).toMatchObject({
       id: "deepseek",
       configured: false,
       source: "not_configured",
     });
-    expect(byId.get("mock")).toEqual({ id: "mock", configured: true, source: "builtin" });
+    expect(byId.get("mock")).toMatchObject({ id: "mock", configured: true, source: "builtin" });
     expect(JSON.stringify(statuses)).not.toContain("never-leaks");
   });
 });

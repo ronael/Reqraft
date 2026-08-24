@@ -114,7 +114,7 @@ describe("modal options", () => {
   it("builds profile and model choices from registries", () => {
     expect(getProfileOptions()[0]).toEqual({ label: "auto (détection)", value: "auto" });
     expect(getModelOptions("openai").map((option) => option.value)).toContain("gpt-4.1-mini");
-    expect(getFallbackModelForProvider("openai")).toBe("gpt-4.1-mini");
+    expect(getFallbackModelForProvider("openai")).toBe("gpt-5.1");
   });
 
   it("builds provider choices from the central provider catalog", () => {

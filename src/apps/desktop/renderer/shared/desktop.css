@@ -188,12 +188,33 @@ body {
   margin-top: 10px;
 }
 
+/*
+ * One box for every button in the application.
+ *
+ * Two buttons sitting side by side must be the same size — that is not a
+ * preference, it is the first thing anyone notices. It used to depend on which
+ * class each one happened to carry: `.chip` set its own padding and font size,
+ * and `.button-secondary` added a border where `.button-primary` had none,
+ * making the pair two pixels apart. Variants now change colour and weight
+ * only; the geometry lives here, once.
+ *
+ * The transparent border is what makes that work: every variant reserves the
+ * same border box, so adding a visible border never changes the height.
+ */
 button {
-  padding: 6px 14px;
-  border: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid transparent;
   border-radius: 8px;
   font: inherit;
+  font-size: 12px;
   font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
   cursor: pointer;
 }
 
@@ -364,14 +385,10 @@ kbd {
 }
 
 .chip {
-  padding: 4px 8px;
-  border: none;
-  border-radius: 6px;
+  border-color: rgba(255, 255, 255, 0.1);
   background: transparent;
   color: #71717a;
-  font-size: 11px;
   font-weight: 500;
-  cursor: pointer;
 }
 
 .chip:hover {
@@ -379,6 +396,7 @@ kbd {
 }
 
 .chip-active {
+  border-color: rgba(167, 139, 250, 0.3);
   background: rgba(139, 92, 246, 0.2);
   color: var(--rq-accent);
 }
@@ -432,6 +450,9 @@ kbd {
   font-size: 10px;
   cursor: pointer;
   padding: 0;
+  height: auto;
+  min-height: auto;
+  max-height: 16px;
 }
 
 .popover-settings:hover {
@@ -530,6 +551,12 @@ kbd {
 .settings-nav-item {
   display: flex;
   align-items: center;
+  /*
+   * The shared button box centres its content, which is right for an action
+   * button and wrong for a full-width row: the label belongs beside its icon,
+   * at the left edge, as the rest of the sidebar is read.
+   */
+  justify-content: flex-start;
   gap: 10px;
   width: 100%;
   padding: 8px 10px;
@@ -751,7 +778,7 @@ kbd {
 }
 
 .button-secondary {
-  border: 1px solid rgba(167, 139, 250, 0.3);
+  border-color: rgba(167, 139, 250, 0.3);
   background: rgba(139, 92, 246, 0.15);
   color: #ddd6fe;
 }
@@ -901,6 +928,7 @@ kbd {
   justify-content: center;
   width: 28px;
   height: 28px;
+  min-height: 28px;
   padding: 0;
   border: 1px solid transparent;
   border-radius: 6px;
@@ -991,4 +1019,500 @@ kbd {
   .provider-table-row {
     grid-template-columns: minmax(120px, 1fr) minmax(90px, 0.8fr) 90px;
   }
+}
+
+/*
+ * Onboarding.
+ *
+ * Its own layout rather than the settings rows: those are built for a 900px
+ * window with a sidebar carrying the context and labels of two or three words.
+ * Here the window is 680px, there is no sidebar, and every field needs a
+ * sentence of explanation — reused as-is, the labels collapse to a few
+ * characters per line and each control sizes to its own content, which draws a
+ * staircase down the right edge. The tokens stay shared; the geometry does not.
+ */
+.onboarding {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  min-height: 0;
+  overflow: hidden;
+  background: #0b0b10;
+  color: #d4d4d8;
+}
+
+.onboarding-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-gutter: stable;
+  /*
+   * The bottom padding is 16, not 24: the fullest form — a compatible endpoint,
+   * five fields — came to exactly one pixel over the 600px window, which buys a
+   * scrollbar and nothing else.
+   */
+  padding: 12px 28px 16px;
+}
+
+/* One measure for the header, the card and the footer: a single left edge. */
+.onboarding-header,
+.onboarding-card,
+.onboarding-footer-inner {
+  width: 100%;
+  max-width: 560px;
+  margin: 0 auto;
+}
+
+.onboarding-header {
+  margin-bottom: 12px;
+}
+
+.onboarding-heading {
+  margin: 0 0 6px;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: #fafafa;
+}
+
+.onboarding-lede {
+  margin: 0;
+  font-size: 12px;
+  line-height: 18px;
+  color: #71717a;
+}
+
+/* The fields are one object, not a scatter of pairs on a black ground. */
+.onboarding-card {
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  overflow: hidden;
+}
+
+/*
+ * A fixed control column is the whole point: every select and input ends up
+ * the same width, so the right edge is a line instead of a staircase.
+ */
+.onboarding-field {
+  display: grid;
+  grid-template-columns: 1fr 232px;
+  align-items: center;
+  gap: 16px;
+  /*
+   * 11, not 14: with the profile field the common form came 47px past the
+   * 600px window, and the one path everybody walks should not scroll.
+   */
+  padding: 11px 16px;
+}
+
+.onboarding-field + .onboarding-field {
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.onboarding-field .settings-select,
+.onboarding-field .settings-input {
+  width: 100%;
+  min-width: 0;
+}
+
+/*
+ * The key field stacks: its explanation is the longest text in the window and
+ * its control is a field plus a button that must not wrap. Sharing one line,
+ * one of the two always loses.
+ */
+.onboarding-field-stacked {
+  grid-template-columns: 1fr;
+  gap: 10px;
+}
+
+.onboarding-label-title {
+  display: block;
+  font-size: 13px;
+  color: #e4e4e7;
+}
+
+.onboarding-label-detail {
+  display: block;
+  margin-top: 3px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #52525b;
+}
+
+/* Attached to the provider it describes, not floating between two fields. */
+.onboarding-source {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  font-size: 11px;
+  color: #71717a;
+}
+
+.onboarding-source-ok {
+  color: rgba(134, 239, 172, 0.9);
+}
+
+.onboarding-key-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.onboarding-key-control .settings-input {
+  flex: 1 1 auto;
+}
+
+.onboarding-banner {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  width: 100%;
+  max-width: 560px;
+  margin: 12px auto 0;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.onboarding-banner-ok {
+  border: 1px solid rgba(52, 211, 153, 0.2);
+  background: rgba(52, 211, 153, 0.06);
+  color: rgba(134, 239, 172, 0.95);
+}
+
+.onboarding-banner-warn {
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  background: rgba(251, 191, 36, 0.05);
+  color: rgba(253, 230, 138, 0.9);
+}
+
+/* Pinned: the primary action must never be the thing you scroll to find. */
+.onboarding-footer {
+  flex-shrink: 0;
+  padding: 12px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: #0b0b10;
+}
+
+.onboarding-footer-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.onboarding-hint {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 11px;
+  line-height: 15px;
+  color: #52525b;
+}
+
+/*
+ * Neutral, not the settings' green "prêt" chip: this window exists precisely
+ * because the application is not ready yet.
+ */
+.onboarding-badge {
+  justify-self: end;
+  padding: 2px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #a1a1aa;
+  font-size: 10px;
+}
+
+.onboarding-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100vh;
+  padding: 0 28px;
+}
+
+/*
+ * Providers tab: two groups of rows, one per kind of provider.
+ *
+ * Built-in providers can only have their key replaced or removed; compatible
+ * endpoints are created, edited and deleted. Separating them under headings
+ * says which is which without a word of explanation.
+ */
+.settings-subhead {
+  margin: 18px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #52525b;
+}
+
+.settings-panel > .settings-subhead:first-child {
+  margin-top: 4px;
+}
+
+/*
+ * These rows carry two or three lines of explanation, which the settings' own
+ * `0 1 auto` text column shrinks to a few words. The column takes the space
+ * the controls do not need.
+ */
+.settings-card-list .settings-row > span:first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.provider-key-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.provider-key-control .settings-input {
+  width: min(200px, 30vw);
+}
+
+.provider-form {
+  margin-top: 10px;
+  padding: 12px;
+  border: 1px solid rgba(167, 139, 250, 0.18);
+  border-radius: 10px;
+  background: rgba(139, 92, 246, 0.04);
+}
+
+.provider-form-actions {
+  gap: 8px;
+}
+
+/*
+ * A destructive action states what it destroys, before doing it.
+ *
+ * Colour only, like every other button variant: the shared box keeps the
+ * confirmation the same size as the cancel button beside it.
+ */
+.chip-danger {
+  border-color: rgba(248, 113, 113, 0.3);
+  background: rgba(248, 113, 113, 0.12);
+  color: #fca5a5;
+}
+
+.chip-danger:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.18);
+}
+
+.provider-confirm {
+  margin-top: 6px;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+/*
+ * A row being confirmed stacks.
+ *
+ * The warning has to say what will be destroyed, which is the longest text in
+ * the tab, and it shares the line with two buttons that cannot wrap. On one
+ * line the sentence collapses to two words per line — the same failure the
+ * onboarding key field had, and for the same reason.
+ */
+.settings-card-list .settings-row:has(.chip-danger) {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+}
+
+.settings-card-list .settings-row:has(.chip-danger) .provider-key-control {
+  justify-content: flex-end;
+}
+
+/*
+ * Profile picker (menu bar).
+ *
+ * The chips grew with the catalogue: eight profiles already wrapped onto three
+ * lines. The trigger has a fixed size and the list is a view that replaces the
+ * popover body — bounded by the window rather than overflowing it, which an
+ * absolutely positioned panel did: at 320×260, fixed and not resizable,
+ * Electron simply clipped it at the window edge.
+ */
+.profile-trigger {
+  /*
+   * Shares its row with the level chip. `width: 100%` took the whole line and
+   * wrapped the level onto the next one — the collapsed state is what is on
+   * screen at all times, so it is the one that has to be right.
+   */
+  flex: 1 1 auto;
+  min-width: 0;
+  justify-content: flex-start;
+  gap: 6px;
+  border-color: rgba(167, 139, 250, 0.24);
+  background: rgba(139, 92, 246, 0.14);
+  color: #ddd6fe;
+  font-weight: 500;
+  max-width: fit-content;
+}
+
+.profile-trigger-label {
+  color: #71717a;
+  font-size: 11px;
+}
+
+.profile-trigger-value {
+  overflow: hidden;
+  flex: 1 1 auto;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.profile-trigger svg {
+  flex-shrink: 0;
+  color: rgba(196, 181, 253, 0.7);
+}
+
+/* Fills whatever the window leaves: the list is the part that flexes. */
+.profile-sheet {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.profile-sheet-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 0;
+}
+
+.profile-sheet-back {
+  min-height: 22px;
+  padding: 0 4px 0 0;
+  background: transparent;
+  color: #e4e4e7;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.profile-sheet-back:hover {
+  color: #c4b5fd;
+}
+
+.profile-sheet-count {
+  font-size: 10px;
+  color: #52525b;
+}
+
+.profile-sheet-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 10px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 7px;
+  background: rgb(0 0 0 / 20%);
+  color: #52525b;
+}
+
+.profile-sheet-input {
+  width: 100%;
+  min-width: 0;
+  padding: 5px 0;
+  border: none;
+  background: transparent;
+  color: #e4e4e7;
+  font: inherit;
+  font-size: 11px;
+  outline: none;
+}
+
+/* The scrolling region: a hundred profiles cost the same room as three. */
+.profile-sheet-list {
+  flex: 1;
+  min-height: 0;
+  padding: 0 6px 6px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: #3f3f46 transparent;
+}
+
+.profile-sheet-group + .profile-sheet-group {
+  margin-top: 6px;
+}
+
+.profile-sheet-group-label {
+  padding: 4px 6px 2px;
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #52525b;
+}
+
+.profile-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 26px;
+  justify-content: flex-start;
+  border-radius: 6px;
+  background: transparent;
+  color: #d4d4d8;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.profile-option-highlighted {
+  background: rgb(255 255 255 / 6%);
+}
+
+.profile-dot {
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #3f3f46;
+}
+
+.profile-dot-active {
+  background: var(--rq-accent);
+}
+
+.profile-option-name {
+  flex-shrink: 0;
+}
+
+.profile-option-hint {
+  overflow: hidden;
+  flex: 1 1 auto;
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 10px;
+  color: #52525b;
+}
+
+.profile-sheet-empty {
+  margin: 10px 6px;
+  font-size: 11px;
+  color: #52525b;
+}
+
+.profile-sheet-manage {
+  display: flex;
+  width: 100%;
+  min-height: 26px;
+  justify-content: space-between;
+  border-top: 1px solid rgb(255 255 255 / 6%);
+  border-radius: 0;
+  background: rgb(0 0 0 / 20%);
+  color: #71717a;
+  font-size: 10px;
+  font-weight: 500;
+}
+
+.profile-sheet-manage:hover {
+  color: #c4b5fd;
 }
