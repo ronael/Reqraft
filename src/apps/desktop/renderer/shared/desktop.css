@@ -360,6 +360,14 @@ button:disabled {
   color: #3f3f46;
 }
 
+/*
+ * Les raccourcis défilent au lieu d'être coupés.
+ *
+ * À sept commandes la rangée dépasse les 560px de la capsule, et la dernière
+ * — `esc fermer` — se trouvait tranchée par le bord. Une barre de défilement
+ * visible dans un pied de 27px serait pire que le mal : elle est masquée, le
+ * geste reste possible au trackpad.
+ */
 .capsule-keys {
   display: flex;
   align-items: center;
@@ -368,6 +376,17 @@ button:disabled {
   border-top: 1px solid rgba(255, 255, 255, 0.05);
   font-size: 11px;
   color: #71717a;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.capsule-keys::-webkit-scrollbar {
+  display: none;
+}
+
+/* Sinon les commandes se compriment au lieu de défiler. */
+.capsule-keys > * {
+  flex-shrink: 0;
 }
 
 /*
@@ -478,12 +497,6 @@ kbd {
   border-color: rgba(167, 139, 250, 0.3);
   background: rgba(139, 92, 246, 0.2);
   color: var(--rq-accent);
-}
-
-.chip-level {
-  margin-left: auto;
-  font-family: ui-monospace, monospace;
-  font-size: 10px;
 }
 
 .popover-section {
@@ -1406,50 +1419,6 @@ kbd {
   justify-content: flex-end;
 }
 
-/*
- * Profile picker (menu bar).
- *
- * The chips grew with the catalogue: eight profiles already wrapped onto three
- * lines. The trigger has a fixed size and the list is a view that replaces the
- * popover body — bounded by the window rather than overflowing it, which an
- * absolutely positioned panel did: at 320×260, fixed and not resizable,
- * Electron simply clipped it at the window edge.
- */
-.profile-trigger {
-  /*
-   * Shares its row with the level chip. `width: 100%` took the whole line and
-   * wrapped the level onto the next one — the collapsed state is what is on
-   * screen at all times, so it is the one that has to be right.
-   */
-  flex: 1 1 auto;
-  min-width: 0;
-  justify-content: flex-start;
-  gap: 6px;
-  border-color: rgba(167, 139, 250, 0.24);
-  background: rgba(139, 92, 246, 0.14);
-  color: #ddd6fe;
-  font-weight: 500;
-  max-width: fit-content;
-}
-
-.profile-trigger-label {
-  color: #71717a;
-  font-size: 11px;
-}
-
-.profile-trigger-value {
-  overflow: hidden;
-  flex: 1 1 auto;
-  text-align: left;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.profile-trigger svg {
-  flex-shrink: 0;
-  color: rgba(196, 181, 253, 0.7);
-}
-
 /* Fills whatever the window leaves: the list is the part that flexes. */
 .profile-sheet {
   display: flex;
@@ -1691,7 +1660,7 @@ kbd {
   color: #71717a;
 }
 
-.capsule-hint-chip {
+.profile-chip {
   padding: 2px 7px;
   border: 1px solid rgba(167, 139, 250, 0.2);
   border-radius: 6px;
@@ -1720,25 +1689,6 @@ kbd {
  * grandir la bande. Désactivé pendant le travail, il perd son curseur sans
  * changer d'apparence — l'information reste lisible.
  */
-.capsule-profile-pick {
-  min-height: 0;
-  padding: 0;
-  border: none;
-  background: transparent;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-}
-
-.capsule-profile-pick:disabled {
-  opacity: 1;
-  cursor: default;
-}
-
-.capsule-profile-pick:not(:disabled):hover b {
-  color: #ddd6fe;
-}
-
 /*
  * La pastille de profil du pied, en saisie libre.
  *
@@ -1749,17 +1699,46 @@ kbd {
  * `min-height: 0` neutralise les 30px de la règle `button` : la pastille doit
  * garder exactement sa taille.
  */
-.capsule-hint-pick {
+.profile-chip-pick {
   min-height: 0;
   cursor: pointer;
 }
 
-.capsule-hint-pick:disabled {
+.profile-chip-pick:disabled {
   opacity: 1;
   cursor: default;
 }
 
-.capsule-hint-pick:not(:disabled):hover {
+.profile-chip-pick:not(:disabled):hover {
   border-color: rgba(167, 139, 250, 0.45);
   background: rgba(139, 92, 246, 0.18);
+}
+
+/*
+ * Le niveau, à côté du profil dans le pied de la saisie libre.
+ *
+ * Il reste écrit comme avant — même taille, même couleur — mais il se clique,
+ * avec le geste déjà en place dans la barre de menus : un clic passe au niveau
+ * suivant. Trois valeurs ne méritent pas un panneau.
+ */
+/*
+ * Le niveau, à côté du profil.
+ *
+ * Même couple dans la capsule et dans la barre de menus. Il était ici une
+ * puce de 30px contre une pastille de 16 : deux contrôles voisins de tailles
+ * différentes, ce que la règle des boutons interdit.
+ */
+.level-toggle {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.level-toggle:hover {
+  color: #c4b5fd;
 }

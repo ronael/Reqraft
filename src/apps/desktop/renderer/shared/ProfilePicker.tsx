@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, ChevronLeft, Search } from "lucide-react";
+import { ChevronLeft, Search } from "lucide-react";
 import { type ProfileCatalogEntry } from "@/apps/desktop/shared/ipc-contract.js";
 import { filterProfiles, groupProfiles } from "./profiles.js";
 
@@ -16,21 +16,6 @@ import { filterProfiles, groupProfiles } from "./profiles.js";
  * outside those bounds: an overlay panel is simply cut off. Replacing the body
  * is what keeps every row reachable at that size.
  */
-
-export interface ProfileTriggerProps {
-  label: string;
-  onOpen(): void;
-}
-
-export function ProfileTrigger(props: Readonly<ProfileTriggerProps>): React.JSX.Element {
-  return (
-    <button type="button" className="profile-trigger" aria-haspopup="dialog" onClick={props.onOpen}>
-      <span className="profile-trigger-label">profil</span>
-      <span className="profile-trigger-value mono">{props.label}</span>
-      <ChevronDown size={13} aria-hidden />
-    </button>
-  );
-}
 
 export interface ProfileSheetProps {
   entries: ProfileCatalogEntry[];

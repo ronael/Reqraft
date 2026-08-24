@@ -92,9 +92,7 @@ interface CapsuleHeaderProps {
   displayedProfile: string | null;
   autoRequested: boolean;
   detecting: boolean;
-  pickable: boolean;
   closable: boolean;
-  onPick(): void;
   onClose(): void;
 }
 
@@ -106,13 +104,7 @@ function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
       <span className="capsule-origin">
         {props.origin !== null ? `sélection · ${props.origin}` : "nouvelle reformulation"}
       </span>
-      <button
-        type="button"
-        className="capsule-profile capsule-profile-pick"
-        disabled={!props.pickable}
-        title={props.pickable ? "Changer de profil" : undefined}
-        onClick={props.onPick}
-      >
+      <span className="capsule-profile">
         {props.detecting && (
           <>
             profil <b>auto</b>
@@ -127,7 +119,7 @@ function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
             )}
           </>
         )}
-      </button>
+      </span>
       {props.closable && (
         <button type="button" className="capsule-key capsule-escape" onClick={props.onClose}>
           <kbd>esc</kbd>
@@ -149,6 +141,7 @@ interface CapsuleFooterProps {
   pickable: boolean;
   level: Level;
   onPick(): void;
+  onCycleLevel(): void;
   onSubmit(): void;
   onAccept(): void;
   onCompare(): void;
@@ -167,14 +160,21 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
         <div className="capsule-hints">
           <button
             type="button"
-            className="capsule-hint-chip capsule-hint-pick"
+            className="profile-chip profile-chip-pick"
             disabled={!props.pickable}
             title={props.pickable ? "Changer de profil" : undefined}
             onClick={props.onPick}
           >
             {props.profileLabel}
           </button>
-          <span>{props.level}</span>
+          <button
+            type="button"
+            className="level-toggle"
+            title="Niveau de reformulation (cliquer pour changer)"
+            onClick={props.onCycleLevel}
+          >
+            {props.level}
+          </button>
           <CapsuleKey touche="⌘⏎" className="capsule-hint-key" onClick={props.onSubmit}>
             reformuler
           </CapsuleKey>
@@ -206,6 +206,16 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
           <div className="capsule-keys">
             {(props.state === "prêt" || props.state === "comparaison") && (
               <>
+                {/* Le même déclencheur que sur C0, à l'endroit où l'on agit. */}
+                <button
+                  type="button"
+                  className="profile-chip profile-chip-pick"
+                  disabled={!props.pickable}
+                  title={props.pickable ? "Changer de profil" : undefined}
+                  onClick={props.onPick}
+                >
+                  {props.profileLabel}
+                </button>
                 {props.expansion && (
                   <CapsuleKey touche="⇥" className="key-primary" onClick={props.onLevel}>
                     baisser le niveau
@@ -342,6 +352,9 @@ export function App(): React.JSX.Element {
     setError(null);
     setNotice(null);
     setLevel("standard");
+    // Un choix fait dans une capsule ne doit pas modifier la capture suivante.
+    // Sinon « auto » et le profil configuré sont contournés sans l'indiquer.
+    setChosenProfile(null);
   }, [setStreamedBoth]);
 
   const beginCapture = useCallback(() => {
@@ -661,6 +674,9 @@ export function App(): React.JSX.Element {
   const autoRequested = requestedProfile === AUTO_PROFILE_ID;
   const appliedProfile = result?.profile ?? null;
   const displayedProfile = appliedProfile ?? (autoRequested ? null : requestedProfile);
+  // Ce qui s'applique, pas ce qui a été demandé : afficher « auto » pendant
+  // que l'en-tête annonce « clean » donnerait deux vérités côte à côte.
+  const profilAffiche = chosenProfile ?? displayedProfile ?? AUTO_PROFILE_ID;
   const awaitingDetection = autoRequested && appliedProfile === null;
 
   return (
@@ -670,11 +686,7 @@ export function App(): React.JSX.Element {
         displayedProfile={displayedProfile}
         autoRequested={autoRequested}
         detecting={running && awaitingDetection}
-        pickable={profilChoisissable}
         closable={state === "saisie"}
-        onPick={() => {
-          setPicking(true);
-        }}
         onClose={fermer}
       />
       {(running || state === "capture") && <div className="capsule-bar" aria-hidden="true" />}
@@ -777,10 +789,13 @@ export function App(): React.JSX.Element {
         finalResult={finalResult}
         verdictLabel={verdictLabel}
         verdictDetail={verdictDetail}
-        profileLabel={chosenProfile ?? requestedProfile ?? "auto"}
+        profileLabel={profilAffiche}
         pickable={profilChoisissable}
         onPick={() => {
           setPicking(true);
+        }}
+        onCycleLevel={() => {
+          setLevel(cycleRepromptLevel(level, 1));
         }}
         level={level}
         onSubmit={() => {

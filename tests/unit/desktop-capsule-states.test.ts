@@ -48,4 +48,12 @@ describe("rendu de la capsule", () => {
   it("montre la lecture de la sélection", async () => {
     expect(await corpsDeLaCapsule()).toContain('state === "capture"');
   });
+
+  it("n'impose pas le profil choisi dans une capsule à la capture suivante", async () => {
+    const source = await readFile(RENDERER, "utf8");
+    const resetStart = source.indexOf("const resetSession");
+    const resetEnd = source.indexOf("const beginCapture", resetStart);
+
+    expect(source.slice(resetStart, resetEnd)).toContain("setChosenProfile(null)");
+  });
 });

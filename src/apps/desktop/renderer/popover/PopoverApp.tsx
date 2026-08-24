@@ -4,7 +4,7 @@ import {
   type RepromptResult,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ProfileSheet, ProfileTrigger } from "../shared/ProfilePicker.js";
+import { ProfileSheet } from "../shared/ProfilePicker.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
@@ -142,15 +142,21 @@ export function PopoverApp(): React.JSX.Element {
       </div>
 
       <div className="popover-controls">
-        <ProfileTrigger
-          label={selectedProfile?.name ?? profileId}
-          onOpen={() => {
-            setPicking(true);
-          }}
-        />
+        {/* Le même bouton que dans la capsule : un seul contrôle de profil
+            dans toute l'application, pas un par surface. */}
         <button
           type="button"
-          className="chip chip-level"
+          className="profile-chip profile-chip-pick"
+          title="Changer de profil"
+          onClick={() => {
+            setPicking(true);
+          }}
+        >
+          {selectedProfile?.name ?? profileId}
+        </button>
+        <button
+          type="button"
+          className="level-toggle"
           title="Niveau de reformulation (cliquer pour changer)"
           onClick={() => {
             const nextIndex = (REPROMPT_LEVEL_IDS.indexOf(level) + 1) % REPROMPT_LEVEL_IDS.length;
