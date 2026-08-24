@@ -49,6 +49,7 @@ import {
   type DoctorReport,
   type ProfileCatalogResponse,
   type ProfileDetail,
+  type CapsuleOpenedPayload,
   type OnboardingStateResponse,
   type ProviderModelOption,
   type ProviderStatus,
@@ -98,6 +99,8 @@ export interface DesktopIpcDependencies {
   requestAccessibility?: () => void;
   /** Lot 4: opens the settings window (from the popover or the capsule). */
   openSettings?: () => void;
+  /** Pourquoi la capsule est ouverte, pour qu'elle puisse le demander. */
+  capsulePending?: () => CapsuleOpenedPayload | null;
   /** Lot 5: structured doctor report (settings Diagnostic tab). */
   runDoctorReport?: () => Promise<DoctorReport>;
   /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
@@ -330,6 +333,11 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   });
 
   registerProfileIpcHandlers(dependencies, load);
+
+  ipcMain.handle(IPC_CHANNELS.capsulePending, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return dependencies.capsulePending?.() ?? null;
+  });
 
   ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {
     EmptyRequestSchema.parse(payload);

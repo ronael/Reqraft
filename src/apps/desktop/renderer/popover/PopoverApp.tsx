@@ -188,9 +188,11 @@ export function PopoverApp(): React.JSX.Element {
       )}
 
       <footer className="popover-footer">
-        <span>
+        {/* Le popover s'ouvre à la souris : son action principale doit s'y
+            prendre aussi, pas seulement au clavier. */}
+        <button type="button" className="capsule-key" onClick={run}>
           <kbd>⌘⏎</kbd> reformuler
-        </span>
+        </button>
         <button
           type="button"
           className="popover-settings"

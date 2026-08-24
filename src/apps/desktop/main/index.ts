@@ -27,6 +27,7 @@ import {
 } from "./permissions.js";
 import { RepromptService } from "./reprompt-service.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
+import type { CapsuleOpenedPayload } from "@/apps/desktop/shared/ipc-contract.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createOnboardingWindow } from "./windows/onboarding.js";
@@ -53,6 +54,34 @@ if (!app.requestSingleInstanceLock()) {
   app.quit();
 } else {
   bootstrap();
+}
+
+/**
+ * Ce qui a déclenché la capsule, gardé et non seulement poussé.
+ *
+ * `webContents.send` se perd si le renderer n'écoute pas encore — une fenêtre
+ * recréée charge son code au moment même où l'événement part. La capsule
+ * restait alors sur son état de départ, sablier compris, sans jamais savoir
+ * pourquoi elle s'était ouverte. Elle peut donc aussi le demander, et
+ * l'identifiant croissant garantit qu'une double livraison ne relance rien.
+ */
+function createOuvertureTracker(): {
+  annonce: (
+    target: { notify: (channel: string, payload: unknown) => void },
+    mode: "capture" | "input",
+  ) => void;
+  pending: () => CapsuleOpenedPayload | null;
+} {
+  let pending: CapsuleOpenedPayload | null = null;
+  let compte = 0;
+  return {
+    annonce(target, mode) {
+      compte += 1;
+      pending = { id: compte, mode };
+      target.notify(IPC_CHANNELS.capsuleOpened, pending);
+    },
+    pending: () => pending,
+  };
 }
 
 function bootstrap(): void {
@@ -178,6 +207,8 @@ function bootstrap(): void {
 
     // Nommés parce qu'ils servent deux fois : à l'enregistrement initial, et à
     // chaque fois qu'un réglage change une combinaison.
+    const ouvertures = createOuvertureTracker();
+
     const shortcutHandlers = {
       onCapture: () => {
         // Record the source app and capture BEFORE the capsule takes the
@@ -190,8 +221,11 @@ function bootstrap(): void {
         // belt to that braces: a rejection here would leave the user pressing
         // a shortcut that does nothing but print to a console they never see.
         const show = (): void => {
-          capsule.show({ kind: "cursor", point: cursor });
-          capsule.notify(IPC_CHANNELS.capsuleOpened, { mode: "capture" });
+          // `liveCapsule()` comme la branche saisie : la capture aussi doit
+          // survivre à une fenêtre détruite, et c'est le chemin le plus utilisé.
+          const target = liveCapsule();
+          target.show({ kind: "cursor", point: cursor });
+          ouvertures.annonce(target, "capture");
         };
         void captureService
           .trigger()
@@ -205,7 +239,7 @@ function bootstrap(): void {
         captureService.clear();
         const target = liveCapsule();
         target.show({ kind: "centered" });
-        target.notify(IPC_CHANNELS.capsuleOpened, { mode: "input" });
+        ouvertures.annonce(target, "input");
       },
     };
 
@@ -237,6 +271,7 @@ function bootstrap(): void {
         requestAccessibility(systemPreferences);
       },
       openSettings,
+      capsulePending: () => ouvertures.pending(),
       // Applique immédiatement un raccourci changé dans les réglages, au lieu
       // d'attendre le prochain lancement.
       onShortcutsChanged: (shortcuts) => {

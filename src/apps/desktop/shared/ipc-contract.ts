@@ -522,8 +522,20 @@ export interface RunCancelledPayload {
  * free-input trigger, open on the input field.
  */
 export interface CapsuleOpenedPayload {
+  /**
+   * Identifiant du déclenchement.
+   *
+   * La capsule reçoit la même ouverture par deux chemins — poussée, et tirée
+   * au montage — parce qu'aucun des deux n'est fiable seul. L'identifiant lui
+   * permet de n'en traiter qu'un : sans lui, une double livraison relancerait
+   * une capture dont la sélection a déjà été consommée.
+   */
+  id: number;
   mode: "capture" | "input";
 }
+
+/** L'ouverture en attente, ou `null` si la capsule n'a pas été déclenchée. */
+export type CapsulePendingResponse = CapsuleOpenedPayload | null;
 
 // Re-exported so the renderer gets fully typed payloads without ever
 // importing the core, even for types (DESKTOP.md §4.2).
@@ -577,6 +589,7 @@ export interface ReqraftBridge {
   duplicateProfile(request: ProfileDuplicateRequest): Promise<ProfileMutationResponse>;
   deleteProfile(id: string): Promise<ProfileMutationResponse>;
   exportProfile(id: string): Promise<ProfileExportResponse>;
+  capsulePending(): Promise<CapsulePendingResponse>;
   openSettings(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
   onboardingState(): Promise<OnboardingStateResponse>;

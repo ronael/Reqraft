@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   AUTO_PROFILE_ID,
   REPROMPT_LEVEL_IDS,
+  type CapsuleOpenedPayload,
   type RepromptResult,
   type UiError,
 } from "@/apps/desktop/shared/ipc-contract.js";
@@ -36,6 +37,54 @@ export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
  * whereas `auto` is decided by the model during the run and only becomes
  * displayable when the result arrives.
  */
+/**
+ * Écoute les deux voies par lesquelles une ouverture peut arriver.
+ *
+ * La poussée du main se perd si le renderer n'écoute pas encore ; la demande
+ * au montage rattrape ce cas. Le doublon est sans effet : l'appelant ignore un
+ * identifiant déjà traité.
+ */
+function useOuvertureDeCapsule(traiter: (payload: CapsuleOpenedPayload) => void): void {
+  useEffect(() => {
+    void window.reqraft
+      .capsulePending()
+      .then((pending) => {
+        if (pending !== null) traiter(pending);
+      })
+      .catch(() => undefined);
+  }, [traiter]);
+
+  useEffect(() => {
+    return window.reqraft.onCapsuleOpened(traiter);
+  }, [traiter]);
+}
+
+/**
+ * Un raccourci affiché, et cliquable.
+ *
+ * Les indices du pied étaient inertes : la capsule s'ouvre au clavier, mais
+ * rien n'oblige à la terminer au clavier — et un raccourci qu'on lit sans
+ * pouvoir l'actionner est une notice, pas une commande.
+ */
+function CapsuleKey(
+  props: Readonly<{
+    touche: string;
+    children: React.ReactNode;
+    className?: string;
+    onClick(): void;
+  }>,
+): React.JSX.Element {
+  return (
+    <button
+      type="button"
+      className={props.className === undefined ? "capsule-key" : `capsule-key ${props.className}`}
+      onClick={props.onClick}
+    >
+      <kbd>{props.touche}</kbd> {props.children}
+    </button>
+  );
+}
+
 export function App(): React.JSX.Element {
   const [state, setState] = useState<CapsuleState>("capture");
   const [input, setInput] = useState("");
@@ -148,8 +197,21 @@ export function App(): React.JSX.Element {
       });
   }, [dispatch, resetSession, startRun]);
 
-  useEffect(() => {
-    return window.reqraft.onCapsuleOpened((payload) => {
+  /**
+   * Une ouverture n'est traitée qu'une fois, quel que soit le chemin.
+   *
+   * Elle arrive par deux voies parce qu'aucune n'est fiable seule : poussée
+   * par le main, et demandée au montage. Sans cet identifiant, une double
+   * livraison relancerait une capture dont la sélection a déjà été consommée.
+   */
+  const derniereOuverture = useRef<number>(0);
+
+  const traiterOuverture = useCallback(
+    (payload: CapsuleOpenedPayload) => {
+      if (payload.id <= derniereOuverture.current) {
+        return;
+      }
+      derniereOuverture.current = payload.id;
       if (payload.mode === "capture") {
         beginCapture();
       } else {
@@ -159,8 +221,11 @@ export function App(): React.JSX.Element {
         setNotice(null);
         setState("saisie");
       }
-    });
-  }, [beginCapture, resetSession]);
+    },
+    [beginCapture],
+  );
+
+  useOuvertureDeCapsule(traiterOuverture);
 
   // Run events, filtered by runId; every subscription is removed on unmount
   // (§5.6).
@@ -241,6 +306,36 @@ export function App(): React.JSX.Element {
   }, []);
 
   /** Keys handled in prêt/comparaison: ⏎ ⌘C ⌘R ⇥. */
+  const copier = useCallback(() => {
+    const runId = activeRunId.current;
+    if (runId !== null) {
+      void window.reqraft.acceptResult(runId, "copy");
+      setNotice("Résultat copié.");
+    }
+  }, []);
+
+  const relancer = useCallback(() => {
+    startRun(input, level);
+  }, [input, level, startRun]);
+
+  const changerNiveau = useCallback(() => {
+    const next = cycleRepromptLevel(level, 1);
+    setLevel(next);
+    startRun(input, next);
+  }, [input, level, startRun]);
+
+  const fermer = useCallback(() => {
+    cancelRun();
+    setState("fermée");
+    window.close();
+  }, [cancelRun]);
+
+  /** Le clic bascule ce que ⌥ maintient : on ne peut pas « garder » un clic. */
+  const basculerComparaison = useCallback(() => {
+    comparing.current = !comparing.current;
+    dispatch(comparing.current ? "comparer" : "fin-comparaison");
+  }, [dispatch]);
+
   const handleReadyKey = useCallback(
     (event: KeyboardEvent): void => {
       if (event.key === "Enter" && !event.metaKey) {
@@ -248,26 +343,23 @@ export function App(): React.JSX.Element {
         return;
       }
       if (event.key === "c" && event.metaKey) {
-        const runId = activeRunId.current;
-        if (runId !== null) {
-          void window.reqraft.acceptResult(runId, "copy");
-          setNotice("Résultat copié.");
-        }
+        copier();
         return;
       }
       if (event.key === "r" && event.metaKey) {
         event.preventDefault();
-        startRun(input, level);
+        relancer();
         return;
       }
       if (event.key === "Tab") {
         event.preventDefault();
+        // ⇧⇥ descend d'un niveau : le clic n'a pas de modificateur, il monte.
         const next = cycleRepromptLevel(level, event.shiftKey ? -1 : 1);
         setLevel(next);
         startRun(input, next);
       }
     },
-    [accept, input, level, startRun],
+    [accept, copier, relancer, input, level, startRun],
   );
 
   // Keyboard: ⏎ remplacer, ⌥ comparer (maintenu), ⌘C copier, ⌘R relancer,
@@ -280,9 +372,7 @@ export function App(): React.JSX.Element {
         return;
       }
       if (event.key === "Escape") {
-        cancelRun();
-        setState("fermée");
-        window.close();
+        fermer();
         return;
       }
       if (event.key === "." && event.metaKey) {
@@ -305,7 +395,7 @@ export function App(): React.JSX.Element {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [state, cancelRun, dispatch, handleReadyKey]);
+  }, [state, cancelRun, dispatch, fermer, handleReadyKey]);
 
   const running = state === GENERATING || state === "streaming" || state === "analyse";
 
@@ -375,9 +465,9 @@ export function App(): React.JSX.Element {
           )}
         </span>
         {state === "saisie" && (
-          <span className="capsule-escape">
+          <button type="button" className="capsule-key capsule-escape" onClick={fermer}>
             <kbd>esc</kbd>
-          </span>
+          </button>
         )}
       </header>
       {(running || state === "capture") && <div className="capsule-bar" aria-hidden="true" />}
@@ -456,9 +546,17 @@ export function App(): React.JSX.Element {
         <div className="capsule-hints">
           <span className="capsule-hint-chip">{requestedProfile ?? "auto"}</span>
           <span>{level}</span>
-          <span className="capsule-hint-key">
-            <kbd>⌘⏎</kbd> reformuler
-          </span>
+          <CapsuleKey
+            touche="⌘⏎"
+            className="capsule-hint-key"
+            onClick={() => {
+              if (input.trim() === "") return;
+              dispatch("validation");
+              startRun(input, level);
+            }}
+          >
+            reformuler
+          </CapsuleKey>
         </div>
       ) : (
         <footer className="capsule-footer">
@@ -486,40 +584,40 @@ export function App(): React.JSX.Element {
             {(state === "prêt" || state === "comparaison") && (
               <>
                 {expansion === true && (
-                  <span className="key-primary">
-                    <kbd>⇥</kbd> baisser le niveau
-                  </span>
+                  <CapsuleKey touche="⇥" className="key-primary" onClick={changerNiveau}>
+                    baisser le niveau
+                  </CapsuleKey>
                 )}
-                <span className="key-primary">
-                  <kbd>⏎</kbd> remplacer
-                </span>
-                <span>
-                  <kbd>⌥</kbd> comparer
-                </span>
-                <span>
-                  <kbd>⌘C</kbd> copier
-                </span>
-                <span>
-                  <kbd>⌘R</kbd> relancer
-                </span>
-                <span>
-                  <kbd>⇥</kbd> niveau
-                </span>
+                <CapsuleKey touche="⏎" className="key-primary" onClick={accept}>
+                  remplacer
+                </CapsuleKey>
+                <CapsuleKey touche="⌥" onClick={basculerComparaison}>
+                  comparer
+                </CapsuleKey>
+                <CapsuleKey touche="⌘C" onClick={copier}>
+                  copier
+                </CapsuleKey>
+                <CapsuleKey touche="⌘R" onClick={relancer}>
+                  relancer
+                </CapsuleKey>
+                <CapsuleKey touche="⇥" onClick={changerNiveau}>
+                  niveau
+                </CapsuleKey>
               </>
             )}
             {running && (
               <>
-                <span>
-                  <kbd>⌘.</kbd> interrompre
-                </span>
+                <CapsuleKey touche="⌘." onClick={cancelRun}>
+                  interrompre
+                </CapsuleKey>
                 {/* La capsule travaille sans le focus : le dire évite d'attendre
                   devant elle pour rien. */}
                 <span className="capsule-hint">tu peux changer d&apos;app</span>
               </>
             )}
-            <span className="key-close">
-              <kbd>esc</kbd> fermer
-            </span>
+            <CapsuleKey touche="esc" className="key-close" onClick={fermer}>
+              fermer
+            </CapsuleKey>
           </div>
         </footer>
       )}

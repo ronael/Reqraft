@@ -31,6 +31,11 @@ export const IPC_CHANNELS = {
   profileDuplicate: "profiles:duplicate",
   profileDelete: "profiles:delete",
   profileExport: "profiles:export",
+  // Doublon volontaire de `capsule:opened` : un message poussé se perd si le
+  // renderer n'écoute pas encore, et la capsule reste alors sur son état de
+  // départ, sablier compris. Elle peut donc aussi demander pourquoi elle est
+  // ouverte, au montage.
+  capsulePending: "capsule:pending",
   windowOpenSettings: "window:open-settings",
   shortcutsState: "shortcuts:state",
   // Desktop onboarding: someone who installed only the application must be
@@ -79,6 +84,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.profileDuplicate,
   IPC_CHANNELS.profileDelete,
   IPC_CHANNELS.profileExport,
+  IPC_CHANNELS.capsulePending,
   IPC_CHANNELS.windowOpenSettings,
   IPC_CHANNELS.shortcutsState,
   IPC_CHANNELS.onboardingState,
