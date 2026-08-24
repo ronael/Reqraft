@@ -4,7 +4,7 @@ Cette roadmap distingue la stabilisation, les capacités produit planifiées et
 la recherche. Les éléments « Exploration » ne constituent pas un engagement de
 livraison.
 
-## Now — stabiliser 0.3.x
+## Now — stabiliser 0.4.x
 
 - Faire du dogfooding réel du CLI, du TUI et du desktop ; ne corriger que les
   régressions concrètement remontées.
@@ -16,31 +16,44 @@ livraison.
 **Sortie :** les parcours principaux sont utilisables sans régression connue
 sur les surfaces actuellement supportées.
 
-## Next — personnalisation locale
+## Livré — personnalisation locale
 
 - [Ajout de profils locaux](roadmap/ajout-profils.md) : `add`, import par
   fichier, `list` et `remove`, fondés sur un registre partagé intégrés + local.
-- Rendre ces profils immédiatement disponibles dans le CLI et le TUI.
+- Ces profils sont disponibles dans le CLI et le TUI.
 
-**Sortie :** un profil local créé depuis le CLI persiste, est listé, peut être
-supprimé sans manipulation de fichier et peut être utilisé par le CLI et le
-TUI.
+**Sortie atteinte :** un profil local créé depuis le CLI persiste, est listé,
+peut être supprimé sans manipulation de fichier et peut être utilisé par le CLI
+et le TUI.
 
-## Next — desktop autonome
+## Livré — desktop autonome
 
-- Créer un onboarding desktop natif : aucun téléchargement de l'application ne
-  doit imposer l'installation du CLI ou l'exécution de `rp init`.
-- Rendre les paramètres modifiables depuis le desktop : provider, modèle,
-  niveau, profil et préférences associées.
-- Garder la configuration dans un domaine partagé : CLI (`rp init`) et desktop
-  sont deux interfaces du même service, jamais l'un l'automatisation de
-  l'autre.
-- Passer les credentials par le processus principal Electron uniquement ; le
-  renderer ne lit jamais les secrets.
-- Exposer les profils locaux dans l'onboarding et dans les réglages desktop.
+- Onboarding desktop natif : une installation sans configuration ouvre une
+  fenêtre de configuration au démarrage, sans CLI ni `rp init`.
+- Paramètres modifiables depuis le desktop : provider, modèle, niveau et
+  profil, dans l'onboarding comme dans les réglages.
+- Fournisseurs gérables après coup : clé ajoutée, remplacée ou retirée, et
+  endpoints compatibles OpenAI créés, modifiés ou supprimés.
+- Configuration dans un domaine partagé, `src/config/setup.ts` : `rp init` et
+  le desktop construisent le même fichier par le même constructeur.
+- Credentials traités par le processus principal seul, à travers le service
+  `auth` existant ; le renderer ne reçoit jamais de valeur.
 
-**Sortie :** une personne qui ouvre seulement l'application desktop peut la
-configurer, modifier ses choix et générer un résultat sans passer par le CLI.
+**Sortie atteinte :** une personne qui ouvre seulement l'application desktop
+peut la configurer, modifier ses choix et générer un résultat sans passer par
+le CLI.
+
+## Next — passer à l'échelle des profils
+
+- Le sélecteur de profil de la barre de menus est une liste bornée, cherchable
+  et groupée par origine ; vérifier que les autres surfaces tiennent le même
+  contrat quand le catalogue grandit.
+- Étudier un ordre par usage récent plutôt qu'un ordre fixe, une fois qu'un
+  catalogue réel existe.
+
+**Sortie :** un catalogue de plusieurs dizaines de profils reste utilisable sur
+toutes les surfaces, sans que la taille d'une fenêtre dépende du nombre de
+profils.
 
 ## Later — contexte par projet
 
@@ -78,9 +91,11 @@ d'installation, de mise à jour et de diagnostic testé.
 
 - Créer un onboarding « Local » capable de détecter ou de configurer Ollama et
   LM Studio, afin d'obtenir une exécution locale sans embarquer un modèle.
-- Étendre l'intégration générique des fournisseurs compatibles OpenAI : clés et
-  URL configurables pour OpenRouter, DeepInfra et leurs équivalents, sans
-  adaptation dédiée lorsqu'ils respectent le contrat commun.
+- Étendre l'intégration générique des fournisseurs compatibles OpenAI :
+  largement couvert depuis que les réglages desktop déclarent un endpoint
+  (identifiant, URL de base, variable de clé). OpenRouter, DeepInfra et leurs
+  équivalents ne demandent plus de code dédié tant qu'ils respectent le
+  contrat commun ; reste à valider chacun en conditions réelles.
 - Étudier l'inférence locale embarquée, éventuellement autour de Gemma/GEMA,
   uniquement si un besoin d'exécution hors ligne en un clic est confirmé. À
   cadrer : runtime, matériel, RAM, quantisation, licences, stockage,
