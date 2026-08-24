@@ -80,14 +80,29 @@ describe("les boutons qui sortent de la métrique le disent", () => {
   });
 });
 
-describe("le déclencheur de profil partage sa rangée", () => {
-  it("flexe au lieu de prendre toute la largeur", async () => {
-    // `width: 100%` took the whole line and wrapped the level chip below it.
-    // The collapsed popover is what is on screen at all times.
-    const body = await ruleBody(".profile-trigger");
+describe("le couple profil / niveau", () => {
+  it("garde la même métrique dans les deux surfaces", async () => {
+    // Ils sont côte à côte dans la capsule comme dans la barre de menus. La
+    // barre les avait à 30px contre 16 : deux contrôles voisins de tailles
+    // différentes, ce que la règle des boutons interdit.
+    const profil = await ruleBody(".profile-chip");
+    const niveau = await ruleBody(".level-toggle");
 
-    expect(body).toContain("flex: 1 1 auto");
-    expect(body).not.toMatch(/(^|;|\s)width\s*:\s*100%/);
+    expect(profil).toContain("font-size: 10px");
+    expect(niveau).toContain("font-size: 10px");
+    // Sans `min-height`, la règle `button` de base impose 30px et le couple
+    // se désaligne.
+    expect(niveau).toContain("min-height: 0");
+  });
+
+  it("n'a plus de déclencheur propre à une surface", async () => {
+    // `.profile-trigger` était le bandeau de la barre de menus, remplacé par
+    // la pastille commune : le laisser en feuille de style invite à le
+    // rebrancher par erreur.
+    const css = await readFile(STYLESHEET, "utf8");
+
+    expect(css).not.toContain(".profile-trigger");
+    expect(css).not.toContain(".chip-level");
   });
 });
 
