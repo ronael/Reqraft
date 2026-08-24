@@ -53,6 +53,19 @@ business logic both of them consume.
 - Keep product state, shortcuts, provider/model selection and formatting rules
   in the `src/apps/cli/ui/` modules when possible. Those modules stay free of
   any rendering surface — ESLint blocks `ink` and `@opentui/*` there.
+- Controls that sit next to each other must be the same size. Geometry —
+  height, padding, radius, font size, border box — is declared once on the base
+  element; a variant class changes colour and weight only. A variant that sets
+  its own padding or adds a border where its sibling has none produces a pair a
+  few pixels apart, which is the first thing anyone notices. In the desktop
+  renderer that base is the `button` rule in `renderer/shared/desktop.css`, and
+  every variant (`.button-primary`, `.button-secondary`, `.chip`) carries a
+  transparent border so adding a visible one never changes the height.
+- Before reporting a UI change as done, render it and look at it — at the real
+  window size, in the state the user will meet (empty, error, longest text).
+  Measure what should align rather than trusting the code to have aligned it.
+  Overlapping text, mismatched control sizes, ragged edges and an action below
+  the fold are defects the author is expected to catch, not the reader.
 - Do not introduce a component registry without an explicit product decision.
 - Prefer existing OpenTUI wrappers such as `ScrollView` and `TextViewport`
   before adding a custom terminal primitive.
