@@ -108,6 +108,11 @@ body {
   overflow-y: auto;
 }
 
+/* En saisie, le champ occupe la capsule : aucun retrait ne l'en écarte. */
+.capsule-flush {
+  padding: 0;
+}
+
 .capsule-source {
   display: flex;
   align-items: flex-start;
@@ -173,26 +178,28 @@ body {
   }
 }
 
+/*
+ * Sans cadre, à ras bord.
+ *
+ * La maquette ne met aucune bordure autour du champ : la capsule *est* le
+ * champ. Un encadré posé dans un encadré ajoutait une frontière que rien ne
+ * justifiait, et rétrécissait la zone de saisie de sa propre marge.
+ */
 .capsule-input {
   width: 100%;
+  min-height: 132px;
   resize: none;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.04);
-  color: inherit;
-  font: inherit;
+  padding: 16px;
+  border: none;
+  background: transparent;
+  color: #f4f4f5;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 14px;
+  line-height: 24px;
 }
 
 .capsule-input:focus {
   outline: none;
-  border-color: var(--rq-accent);
-}
-
-.capsule-actions {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 10px;
 }
 
 /*
@@ -271,10 +278,27 @@ button:disabled {
   color: #a1a1aa;
 }
 
+/*
+ * Message d'alerte, au motif de la maquette : fond teinté très léger, petit
+ * rayon, texte clair. Elle ne pose jamais de texte coloré nu — un bloc se lit
+ * comme une information, une ligne orange perdue se lit comme un accident.
+ *
+ * La marge horizontale n'existe que sur l'écran de saisie : le corps y est à
+ * `padding: 0` pour que le champ occupe la capsule, ce qui collait le message
+ * contre le bord gauche.
+ */
 .capsule-notice {
   margin: 8px 0 0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  background: rgba(251, 191, 36, 0.075);
   font-size: 11px;
-  color: var(--rq-warning);
+  line-height: 16px;
+  color: rgba(253, 230, 138, 0.9);
+}
+
+.capsule-flush .capsule-notice {
+  margin: 0 14px 10px;
 }
 
 .muted {
@@ -1613,4 +1637,43 @@ kbd {
   .profile-option {
     transition: none;
   }
+}
+
+/*
+ * Pied de la capsule en saisie libre.
+ *
+ * Remplace un bouton plein : la maquette ne pose aucun aplat d'accent — ses
+ * surfaces violettes plafonnent à 16 % d'opacité — et la capsule s'ouvre déjà
+ * curseur dans le champ. Le geste attendu est ⌘⏎, pas un clic.
+ */
+.capsule-hints {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgb(0 0 0 / 20%);
+  font-size: 10px;
+  color: #71717a;
+}
+
+.capsule-hint-chip {
+  padding: 2px 7px;
+  border: 1px solid rgba(167, 139, 250, 0.2);
+  border-radius: 6px;
+  background: rgba(139, 92, 246, 0.1);
+  color: #ddd6fe;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 10px;
+}
+
+.capsule-hint-key {
+  margin-left: auto;
+}
+
+/* `esc` se lit en haut à droite sur l'écran de saisie, comme dans la maquette. */
+.capsule-escape {
+  margin-left: auto;
+  font-size: 10px;
+  color: #52525b;
 }

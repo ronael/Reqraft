@@ -356,7 +356,7 @@ export function App(): React.JSX.Element {
       <header className="capsule-band">
         <span className="capsule-brand">rq</span>
         <span className="capsule-origin">
-          {origin !== null ? `sélection · ${origin}` : "saisie libre"}
+          {origin !== null ? `sélection · ${origin}` : "nouvelle reformulation"}
         </span>
         <span className="capsule-profile">
           {running && awaitingDetection && (
@@ -374,15 +374,20 @@ export function App(): React.JSX.Element {
             </>
           )}
         </span>
+        {state === "saisie" && (
+          <span className="capsule-escape">
+            <kbd>esc</kbd>
+          </span>
+        )}
       </header>
-      {running && <div className="capsule-bar" aria-hidden="true" />}
+      {(running || state === "capture") && <div className="capsule-bar" aria-hidden="true" />}
 
-      <section className="capsule-body">
+      <section className={state === "saisie" ? "capsule-body capsule-flush" : "capsule-body"}>
         {state === "saisie" && (
           <>
             <textarea
               className="capsule-input"
-              placeholder="Colle ou écris une demande à reformuler…"
+              placeholder="Qu'est-ce que tu veux mieux formuler ?"
               value={input}
               rows={4}
               autoFocus
@@ -396,19 +401,6 @@ export function App(): React.JSX.Element {
                 }
               }}
             />
-            <div className="capsule-actions">
-              <button
-                type="button"
-                className="button-primary"
-                disabled={input.trim() === ""}
-                onClick={() => {
-                  dispatch("validation");
-                  startRun(input, level);
-                }}
-              >
-                Reformuler ⌘⏎
-              </button>
-            </div>
           </>
         )}
 
@@ -418,6 +410,8 @@ export function App(): React.JSX.Element {
             <span className="capsule-source-text">{input}</span>
           </div>
         )}
+
+        {state === "capture" && <p className="muted">Lecture de la sélection…</p>}
 
         {state === "analyse" && <p className="muted">Analyse de l&apos;intention…</p>}
 
@@ -458,67 +452,77 @@ export function App(): React.JSX.Element {
         {notice !== null && <p className="capsule-notice">{notice}</p>}
       </section>
 
-      <footer className="capsule-footer">
-        <div className="capsule-verdict">
-          {(state === GENERATING || state === "streaming") && (
-            <>
-              <span className="pulse accent">réception…</span>
-              <span className="capsule-elapsed">{(elapsedMs / 1000).toFixed(1)} s</span>
-            </>
-          )}
-          {finalResult !== null && (
-            <>
-              <span className={`verdict-${finalResult.quality.status}`}>{verdictLabel}</span>
-              <span className="muted">{verdictDetail}</span>
-              <span className="capsule-meta">
-                niveau {finalResult.level} · {finalResult.model}
-                {finalResult.latencyMs !== undefined &&
-                  ` · ${(finalResult.latencyMs / 1000).toFixed(1)} s`}
-              </span>
-            </>
-          )}
-          {state === "erreur" && <span className="muted">esc pour fermer</span>}
-        </div>
-        <div className="capsule-keys">
-          {(state === "prêt" || state === "comparaison") && (
-            <>
-              {expansion === true && (
-                <span className="key-primary">
-                  <kbd>⇥</kbd> baisser le niveau
-                </span>
-              )}
-              <span className="key-primary">
-                <kbd>⏎</kbd> remplacer
-              </span>
-              <span>
-                <kbd>⌥</kbd> comparer
-              </span>
-              <span>
-                <kbd>⌘C</kbd> copier
-              </span>
-              <span>
-                <kbd>⌘R</kbd> relancer
-              </span>
-              <span>
-                <kbd>⇥</kbd> niveau
-              </span>
-            </>
-          )}
-          {running && (
-            <>
-              <span>
-                <kbd>⌘.</kbd> interrompre
-              </span>
-              {/* La capsule travaille sans le focus : le dire évite d'attendre
-                  devant elle pour rien. */}
-              <span className="capsule-hint">tu peux changer d&apos;app</span>
-            </>
-          )}
-          <span className="key-close">
-            <kbd>esc</kbd> fermer
+      {state === "saisie" ? (
+        <div className="capsule-hints">
+          <span className="capsule-hint-chip">{requestedProfile ?? "auto"}</span>
+          <span>{level}</span>
+          <span className="capsule-hint-key">
+            <kbd>⌘⏎</kbd> reformuler
           </span>
         </div>
-      </footer>
+      ) : (
+        <footer className="capsule-footer">
+          <div className="capsule-verdict">
+            {(state === GENERATING || state === "streaming") && (
+              <>
+                <span className="pulse accent">réception…</span>
+                <span className="capsule-elapsed">{(elapsedMs / 1000).toFixed(1)} s</span>
+              </>
+            )}
+            {finalResult !== null && (
+              <>
+                <span className={`verdict-${finalResult.quality.status}`}>{verdictLabel}</span>
+                <span className="muted">{verdictDetail}</span>
+                <span className="capsule-meta">
+                  niveau {finalResult.level} · {finalResult.model}
+                  {finalResult.latencyMs !== undefined &&
+                    ` · ${(finalResult.latencyMs / 1000).toFixed(1)} s`}
+                </span>
+              </>
+            )}
+            {state === "erreur" && <span className="muted">esc pour fermer</span>}
+          </div>
+          <div className="capsule-keys">
+            {(state === "prêt" || state === "comparaison") && (
+              <>
+                {expansion === true && (
+                  <span className="key-primary">
+                    <kbd>⇥</kbd> baisser le niveau
+                  </span>
+                )}
+                <span className="key-primary">
+                  <kbd>⏎</kbd> remplacer
+                </span>
+                <span>
+                  <kbd>⌥</kbd> comparer
+                </span>
+                <span>
+                  <kbd>⌘C</kbd> copier
+                </span>
+                <span>
+                  <kbd>⌘R</kbd> relancer
+                </span>
+                <span>
+                  <kbd>⇥</kbd> niveau
+                </span>
+              </>
+            )}
+            {running && (
+              <>
+                <span>
+                  <kbd>⌘.</kbd> interrompre
+                </span>
+                {/* La capsule travaille sans le focus : le dire évite d'attendre
+                  devant elle pour rien. */}
+                <span className="capsule-hint">tu peux changer d&apos;app</span>
+              </>
+            )}
+            <span className="key-close">
+              <kbd>esc</kbd> fermer
+            </span>
+          </div>
+        </footer>
+      )}
     </main>
   );
 }
