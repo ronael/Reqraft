@@ -82,7 +82,15 @@ export interface RepromptStartResponse {
   requestedProfile: string;
 }
 
-export type CaptureSelectionResponse = { text: string; sourceApp: string } | { empty: true };
+/**
+ * `reason` porte pourquoi la capture n'a rien donné.
+ *
+ * Sans ce champ l'échec était muet par construction : la capsule s'ouvrait en
+ * saisie libre, indiscernable d'un déclenchement volontaire sans sélection, et
+ * une permission macOS refusée ressemblait à une application cassée.
+ */
+export type CaptureSelectionResponse =
+  { text: string; sourceApp: string } | { empty: true; reason?: string };
 
 export interface ResultAcceptResponse {
   applied: boolean;
@@ -288,8 +296,8 @@ export interface ProfileMutationResponse {
  * launchers — answers the same need without that risk.
  */
 export const SHORTCUT_PRESETS = {
-  capture: ["Command+Control+R", "Command+Control+J", "Command+Control+Alt+R", "Command+Control+G"],
-  input: ["Command+Control+N", "Command+Control+K", "Command+Control+Alt+N", "Command+Control+M"],
+  capture: ["Command+Control+R", "Command+Control+J", "Command+Control+G", "Command+Control+B"],
+  input: ["Command+Control+N", "Command+Control+K", "Command+Control+M", "Command+Control+P"],
 } as const;
 
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */

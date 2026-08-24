@@ -65,8 +65,6 @@ export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
   { accelerator: "Command+Control+N", intent: "input" },
   { accelerator: "Command+Control+J", intent: "capture" },
   { accelerator: "Command+Control+K", intent: "input" },
-  { accelerator: "Command+Control+Alt+R", intent: "capture" },
-  { accelerator: "Command+Control+Alt+N", intent: "input" },
 ];
 
 /**

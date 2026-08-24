@@ -103,6 +103,13 @@ export interface DesktopIpcDependencies {
   /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
   shortcutState?: () => ShortcutStateInfo;
   /**
+   * Ré-enregistre les raccourcis globaux après un changement de réglage.
+   *
+   * Injecté : `globalShortcut` appartient au processus principal, et le
+   * contrat doit rester testable sans Electron.
+   */
+  onShortcutsChanged?: (shortcuts: Config["desktopShortcuts"]) => void;
+  /**
    * Native save dialog for a profile export. Injected so the contract stays
    * testable without Electron, and returns `undefined` when dismissed.
    */
@@ -189,6 +196,12 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     // The desktop surface never enables telemetry, whatever the renderer asks.
     const merged: Config = ConfigSchema.parse({ ...current, ...patch, telemetry: false });
     await save(merged);
+    // Un raccourci choisi et jamais appliqué est un réglage qui ment. Les
+    // combinaisons étaient lues une seule fois au démarrage : changer le choix
+    // ne faisait rien, et l'écran continuait d'annoncer l'ancien comme actif.
+    if (patch.desktopShortcuts !== undefined) {
+      dependencies.onShortcutsChanged?.(merged.desktopShortcuts);
+    }
     return sanitizeConfigForRenderer(merged);
   });
 

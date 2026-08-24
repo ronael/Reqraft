@@ -53,3 +53,22 @@ describe("les deux formateurs ne servent plus à comparer", () => {
     expect(prettyAccelerator(accelerator)).not.toBe(formatAccelerator(accelerator));
   });
 });
+
+describe("plus de combinaisons à quatre touches", () => {
+  it("n'offre aucun raccourci avec Option", () => {
+    // Cmd+Ctrl+Option+N demande quatre doigts, et c'est celui qui gagnait
+    // systématiquement comme repli.
+    for (const accelerator of [...SHORTCUT_PRESETS.capture, ...SHORTCUT_PRESETS.input]) {
+      expect(accelerator, `${accelerator} contient Option`).not.toContain("Alt");
+    }
+  });
+
+  it("garde des combinaisons distinctes entre capture et saisie", () => {
+    // Deux intentions ne peuvent pas partager une touche : la seconde
+    // enregistrée gagnerait sans que rien ne le dise.
+    const overlap = SHORTCUT_PRESETS.capture.filter((a) =>
+      (SHORTCUT_PRESETS.input as readonly string[]).includes(a),
+    );
+    expect(overlap).toEqual([]);
+  });
+});

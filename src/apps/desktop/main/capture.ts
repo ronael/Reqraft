@@ -98,6 +98,12 @@ function describeCaptureFailure(error: unknown): string {
   if (message.includes("1002") || message.includes("not allowed to send keystrokes")) {
     return "accès Accessibilité refusé : autorisez Reqraft dans Réglages Système › Confidentialité et sécurité › Accessibilité";
   }
+  // -1743 : « Not authorized to send Apple events to System Events ». C'est
+  // l'Automatisation, pas l'Accessibilité — deux réglages différents, dans deux
+  // panneaux différents, et envoyer quelqu'un dans le mauvais ne mène nulle part.
+  if (message.includes("1743") || message.includes("Apple event")) {
+    return "accès Automatisation refusé : autorisez Reqraft à contrôler « System Events » dans Réglages Système › Confidentialité et sécurité › Automatisation";
+  }
   return `capture impossible : ${message}`;
 }
 

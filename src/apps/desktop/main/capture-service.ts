@@ -43,7 +43,11 @@ export class CaptureService {
     });
 
     this.stashed =
-      "text" in outcome && sourceApp !== null ? { text: outcome.text, sourceApp } : { empty: true };
+      "text" in outcome && sourceApp !== null
+        ? { text: outcome.text, sourceApp }
+        : // La raison remonte telle quelle : c'est la seule chose qui distingue
+          // « rien de sélectionné » de « permission refusée ».
+          { empty: true, ...("reason" in outcome ? { reason: outcome.reason } : {}) };
     return this.stashed;
   }
 

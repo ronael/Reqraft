@@ -95,11 +95,31 @@ function bootstrap(): void {
       preloadPath: path.join(mainDir, "../preload/index.cjs"),
     };
 
-    const capsule = createCapsuleWindow({
+    const capsuleOptions = {
       ...windowDefaults,
       rendererUrl: rqRendererUrl(),
       devServerUrl: withSurface(),
-    });
+    };
+    let capsule = createCapsuleWindow(capsuleOptions);
+
+    /*
+     * Recrée la capsule si elle a été détruite.
+     *
+     * Elle est censée se cacher et non mourir, mais le garde-fou repose sur un
+     * verrou `quitting` à sens unique : une fois `before-quit` déclenché, il ne
+     * redescend jamais — et sur macOS l'application survit sans fenêtre. À
+     * partir de là chaque fermeture détruisait la fenêtre pour de bon, et tous
+     * les déclenchements suivants levaient « Object has been destroyed ».
+     *
+     * Plutôt que de parier sur le verrou, on répare : un raccourci doit ouvrir
+     * une capsule, pas échouer en silence.
+     */
+    const liveCapsule = (): typeof capsule => {
+      if (capsule.window.isDestroyed()) {
+        capsule = createCapsuleWindow(capsuleOptions);
+      }
+      return capsule;
+    };
     const popover = createPopoverWindow({
       ...windowDefaults,
       rendererUrl: rqRendererUrl("popover"),
@@ -156,6 +176,39 @@ function bootstrap(): void {
       onOpenSettings: openSettings,
     });
 
+    // Nommés parce qu'ils servent deux fois : à l'enregistrement initial, et à
+    // chaque fois qu'un réglage change une combinaison.
+    const shortcutHandlers = {
+      onCapture: () => {
+        // Record the source app and capture BEFORE the capsule takes the
+        // focus (§5.2), then show anchored at the cursor (§3) and tell the
+        // renderer to start a fresh session — the window persists between
+        // triggers, it is hidden, never destroyed.
+        const cursor = screen.getCursorScreenPoint();
+        // The capsule opens whatever the capture did. `trigger()` already
+        // degrades a failed capture to an empty one, and this catch is the
+        // belt to that braces: a rejection here would leave the user pressing
+        // a shortcut that does nothing but print to a console they never see.
+        const show = (): void => {
+          capsule.show({ kind: "cursor", point: cursor });
+          capsule.notify(IPC_CHANNELS.capsuleOpened, { mode: "capture" });
+        };
+        void captureService
+          .trigger()
+          .then(show)
+          .catch((error: unknown) => {
+            console.error("Capture impossible :", error);
+            show();
+          });
+      },
+      onInput: () => {
+        captureService.clear();
+        const target = liveCapsule();
+        target.show({ kind: "centered" });
+        target.notify(IPC_CHANNELS.capsuleOpened, { mode: "input" });
+      },
+    };
+
     registerIpcHandlers({
       ipcMain,
       clipboard,
@@ -184,6 +237,17 @@ function bootstrap(): void {
         requestAccessibility(systemPreferences);
       },
       openSettings,
+      // Applique immédiatement un raccourci changé dans les réglages, au lieu
+      // d'attendre le prochain lancement.
+      onShortcutsChanged: (shortcuts) => {
+        globalShortcut.unregisterAll();
+        shortcutResolution = registerShortcuts(
+          (accelerator, handler) => globalShortcut.register(accelerator, handler),
+          shortcutHandlers,
+          process.env.REQRAFT_SHORTCUT,
+          shortcuts,
+        );
+      },
       // Onboarding hands over to the settings window: the same choices, in the
       // place the user will come back to when they want to change one.
       onOnboardingComplete: () => {
@@ -237,35 +301,7 @@ function bootstrap(): void {
 
     const resolution = registerShortcuts(
       (accelerator, handler) => globalShortcut.register(accelerator, handler),
-      {
-        onCapture: () => {
-          // Record the source app and capture BEFORE the capsule takes the
-          // focus (§5.2), then show anchored at the cursor (§3) and tell the
-          // renderer to start a fresh session — the window persists between
-          // triggers, it is hidden, never destroyed.
-          const cursor = screen.getCursorScreenPoint();
-          // The capsule opens whatever the capture did. `trigger()` already
-          // degrades a failed capture to an empty one, and this catch is the
-          // belt to that braces: a rejection here would leave the user pressing
-          // a shortcut that does nothing but print to a console they never see.
-          const show = (): void => {
-            capsule.show({ kind: "cursor", point: cursor });
-            capsule.window.webContents.send(IPC_CHANNELS.capsuleOpened, { mode: "capture" });
-          };
-          void captureService
-            .trigger()
-            .then(show)
-            .catch((error: unknown) => {
-              console.error("Capture impossible :", error);
-              show();
-            });
-        },
-        onInput: () => {
-          captureService.clear();
-          capsule.show({ kind: "centered" });
-          capsule.window.webContents.send(IPC_CHANNELS.capsuleOpened, { mode: "input" });
-        },
-      },
+      shortcutHandlers,
       process.env.REQRAFT_SHORTCUT,
       configuredShortcuts,
     );

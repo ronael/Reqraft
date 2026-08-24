@@ -20,6 +20,16 @@ export interface CapsuleWindowOptions {
 }
 
 export interface CapsuleWindow {
+  /**
+   * Envoie un message au renderer, ou ne fait rien si la fenêtre a disparu.
+   *
+   * `show()` se gardait déjà de la destruction, mais les appelants allaient
+   * ensuite chercher `window.webContents` eux-mêmes : la garde était au mauvais
+   * endroit, et la ligne suivante levait « Object has been destroyed ». Comme
+   * elle était levée depuis un `.catch`, la nouvelle erreur ne pouvait plus
+   * être rattrapée — d'où les rejets non gérés en cascade.
+   */
+  notify(channel: string, payload: unknown): void;
   window: Electron.BrowserWindow;
   /** Places the capsule on its anchor, then shows and focuses it. */
   show(anchor: CapsuleAnchor): void;
@@ -78,6 +88,12 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
 
   return {
     window,
+    notify(channel, payload) {
+      if (window.isDestroyed()) {
+        return;
+      }
+      window.webContents.send(channel, payload);
+    },
     show(anchor) {
       if (window.isDestroyed()) {
         return;

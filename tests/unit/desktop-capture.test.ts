@@ -300,3 +300,37 @@ describe("permission manquante : dégradation, jamais de rejet nu", () => {
     expect(reason).toContain("panne inattendue");
   });
 });
+
+describe("la raison d'un échec remonte jusqu'à la capsule", () => {
+  it("nomme l'Automatisation refusée, distincte de l'Accessibilité", async () => {
+    // -1743 est « Not authorized to send Apple events to System Events ». Ce
+    // sont deux réglages système différents, dans deux panneaux différents :
+    // envoyer quelqu'un dans le mauvais ne mène nulle part.
+    const deps = createDeps(new FakeClipboard());
+    deps.sendKeystroke = () => Promise.reject(new Error("execution error: ... (-1743)"));
+
+    const outcome = await captureSelection(deps);
+
+    const reason = "reason" in outcome ? outcome.reason : "";
+    expect(reason).toContain("Automatisation");
+    expect(reason).not.toContain("Accessibilité");
+  });
+
+  it("le service garde la raison au lieu de la jeter", async () => {
+    // Elle était perdue ici : `{ empty: true }` était reconstruit sans elle, et
+    // la capsule s'ouvrait en saisie libre sans rien pouvoir expliquer.
+    const service = new CaptureService({
+      bridge: {
+        frontmostApp: () => Promise.resolve("Safari"),
+        activateApp: () => Promise.resolve(true),
+        sendKeystroke: () => Promise.reject(new Error("execution error: ... (-1743)")),
+        hasAutomation: () => Promise.resolve(false),
+      },
+      clipboard: new FakeClipboard(),
+    });
+
+    const stashed = await service.trigger();
+
+    expect("reason" in stashed ? stashed.reason : undefined).toContain("Automatisation");
+  });
+});
