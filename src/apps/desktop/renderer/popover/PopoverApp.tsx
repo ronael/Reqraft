@@ -4,7 +4,7 @@ import {
   type RepromptResult,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ProfileSheet, ProfileTrigger } from "./ProfilePicker.js";
+import { ProfileSheet, ProfileTrigger } from "../shared/ProfilePicker.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 

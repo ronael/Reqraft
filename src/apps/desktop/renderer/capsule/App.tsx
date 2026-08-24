@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { ProfileSheet } from "../shared/ProfilePicker.js";
 import {
   AUTO_PROFILE_ID,
+  type ProfileCatalogEntry,
   REPROMPT_LEVEL_IDS,
   type CapsuleOpenedPayload,
   type RepromptResult,
@@ -85,6 +87,167 @@ function CapsuleKey(
   );
 }
 
+interface CapsuleHeaderProps {
+  origin: string | null;
+  displayedProfile: string | null;
+  autoRequested: boolean;
+  detecting: boolean;
+  pickable: boolean;
+  closable: boolean;
+  onPick(): void;
+  onClose(): void;
+}
+
+/** La bande du haut : d'où vient le texte, quel profil, et la sortie. */
+function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
+  return (
+    <header className="capsule-band">
+      <span className="capsule-brand">rq</span>
+      <span className="capsule-origin">
+        {props.origin !== null ? `sélection · ${props.origin}` : "nouvelle reformulation"}
+      </span>
+      <button
+        type="button"
+        className="capsule-profile capsule-profile-pick"
+        disabled={!props.pickable}
+        title={props.pickable ? "Changer de profil" : undefined}
+        onClick={props.onPick}
+      >
+        {props.detecting && (
+          <>
+            profil <b>auto</b>
+            <span className="capsule-profile-note pulse"> · analyse…</span>
+          </>
+        )}
+        {props.displayedProfile !== null && (
+          <>
+            profil <b>{props.displayedProfile}</b>
+            {props.autoRequested && (
+              <span className="capsule-profile-note"> · détecté automatiquement</span>
+            )}
+          </>
+        )}
+      </button>
+      {props.closable && (
+        <button type="button" className="capsule-key capsule-escape" onClick={props.onClose}>
+          <kbd>esc</kbd>
+        </button>
+      )}
+    </header>
+  );
+}
+
+interface CapsuleFooterProps {
+  state: CapsuleState;
+  expansion: boolean;
+  running: boolean;
+  elapsedMs: number;
+  finalResult: RepromptResult | null;
+  verdictLabel: string;
+  verdictDetail: string;
+  profileLabel: string;
+  pickable: boolean;
+  level: Level;
+  onPick(): void;
+  onSubmit(): void;
+  onAccept(): void;
+  onCompare(): void;
+  onCopy(): void;
+  onRerun(): void;
+  onLevel(): void;
+  onCancel(): void;
+  onClose(): void;
+}
+
+/** Le pied : ce qu'on peut faire maintenant, au clavier comme à la souris. */
+function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
+  return (
+    <>
+      {props.state === "saisie" ? (
+        <div className="capsule-hints">
+          <button
+            type="button"
+            className="capsule-hint-chip capsule-hint-pick"
+            disabled={!props.pickable}
+            title={props.pickable ? "Changer de profil" : undefined}
+            onClick={props.onPick}
+          >
+            {props.profileLabel}
+          </button>
+          <span>{props.level}</span>
+          <CapsuleKey touche="⌘⏎" className="capsule-hint-key" onClick={props.onSubmit}>
+            reformuler
+          </CapsuleKey>
+        </div>
+      ) : (
+        <footer className="capsule-footer">
+          <div className="capsule-verdict">
+            {(props.state === "génération" || props.state === "streaming") && (
+              <>
+                <span className="pulse accent">réception…</span>
+                <span className="capsule-elapsed">{(props.elapsedMs / 1000).toFixed(1)} s</span>
+              </>
+            )}
+            {props.finalResult !== null && (
+              <>
+                <span className={`verdict-${props.finalResult.quality.status}`}>
+                  {props.verdictLabel}
+                </span>
+                <span className="muted">{props.verdictDetail}</span>
+                <span className="capsule-meta">
+                  niveau {props.finalResult.level} · {props.finalResult.model}
+                  {props.finalResult.latencyMs !== undefined &&
+                    ` · ${(props.finalResult.latencyMs / 1000).toFixed(1)} s`}
+                </span>
+              </>
+            )}
+            {props.state === "erreur" && <span className="muted">esc pour fermer</span>}
+          </div>
+          <div className="capsule-keys">
+            {(props.state === "prêt" || props.state === "comparaison") && (
+              <>
+                {props.expansion && (
+                  <CapsuleKey touche="⇥" className="key-primary" onClick={props.onLevel}>
+                    baisser le niveau
+                  </CapsuleKey>
+                )}
+                <CapsuleKey touche="⏎" className="key-primary" onClick={props.onAccept}>
+                  remplacer
+                </CapsuleKey>
+                <CapsuleKey touche="⌥" onClick={props.onCompare}>
+                  comparer
+                </CapsuleKey>
+                <CapsuleKey touche="⌘C" onClick={props.onCopy}>
+                  copier
+                </CapsuleKey>
+                <CapsuleKey touche="⌘R" onClick={props.onRerun}>
+                  relancer
+                </CapsuleKey>
+                <CapsuleKey touche="⇥" onClick={props.onLevel}>
+                  niveau
+                </CapsuleKey>
+              </>
+            )}
+            {props.running && (
+              <>
+                <CapsuleKey touche="⌘." onClick={props.onCancel}>
+                  interrompre
+                </CapsuleKey>
+                {/* La capsule travaille sans le focus : le dire évite d'attendre
+                  devant elle pour rien. */}
+                <span className="capsule-hint">tu peux changer d&apos;app</span>
+              </>
+            )}
+            <CapsuleKey touche="esc" className="key-close" onClick={props.onClose}>
+              fermer
+            </CapsuleKey>
+          </div>
+        </footer>
+      )}
+    </>
+  );
+}
+
 export function App(): React.JSX.Element {
   const [state, setState] = useState<CapsuleState>("capture");
   const [input, setInput] = useState("");
@@ -95,6 +258,10 @@ export function App(): React.JSX.Element {
   const [result, setResult] = useState<RepromptResult | null>(null);
   const [error, setError] = useState<UiError | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([]);
+  /** Profil choisi à la main ; `null` laisse le défaut de la configuration. */
+  const [chosenProfile, setChosenProfile] = useState<string | null>(null);
+  const [picking, setPicking] = useState(false);
   /**
    * Temps écoulé depuis le déclenchement, en millisecondes.
    *
@@ -138,7 +305,11 @@ export function App(): React.JSX.Element {
       setError(null);
       setNotice(null);
       window.reqraft
-        .startReprompt({ input: text, level: chosenLevel })
+        .startReprompt({
+          input: text,
+          level: chosenLevel,
+          ...(chosenProfile === null ? {} : { profileId: chosenProfile }),
+        })
         .then((response) => {
           activeRunId.current = response.runId;
           // analyse → profil-détecté → génération (§8.2). The event only means
@@ -155,7 +326,7 @@ export function App(): React.JSX.Element {
           dispatch("échec");
         });
     },
-    [dispatch, setStreamedBoth],
+    [chosenProfile, dispatch, setStreamedBoth],
   );
 
   // Session lifecycle: the window persists between triggers (hidden, never
@@ -226,6 +397,19 @@ export function App(): React.JSX.Element {
   );
 
   useOuvertureDeCapsule(traiterOuverture);
+
+  useEffect(() => {
+    // Des fichiers sur disque : un catalogue illisible ne doit pas empêcher la
+    // capsule de fonctionner, elle se passera simplement du sélecteur.
+    window.reqraft
+      .profileCatalog()
+      .then((catalog) => {
+        setProfiles(catalog.entries);
+      })
+      .catch(() => {
+        setProfiles([]);
+      });
+  }, []);
 
   // Run events, filtered by runId; every subscription is removed on unmount
   // (§5.6).
@@ -306,6 +490,39 @@ export function App(): React.JSX.Element {
   }, []);
 
   /** Keys handled in prêt/comparaison: ⏎ ⌘C ⌘R ⇥. */
+  /**
+   * Relance en imposant un profil.
+   *
+   * `startRun` lit `chosenProfile` dans l'état, qui n'est pas encore à jour
+   * quand on vient de cliquer : le profil arriverait avec un run de retard.
+   */
+  const startRunAvecProfil = useCallback(
+    (text: string, chosenLevel: Level, profileId: string) => {
+      setStartedAt(Date.now());
+      setElapsedMs(0);
+      setStreamedBoth(() => "");
+      setResult(null);
+      setError(null);
+      setNotice(null);
+      dispatch("relancer");
+      window.reqraft
+        .startReprompt({ input: text, level: chosenLevel, profileId })
+        .then((response) => {
+          activeRunId.current = response.runId;
+          setRequestedProfile(response.requestedProfile);
+          dispatch("profil-détecté");
+        })
+        .catch((reason: unknown) => {
+          setError({
+            title: "Erreur",
+            message: reason instanceof Error ? reason.message : String(reason),
+          });
+          dispatch("échec");
+        });
+    },
+    [dispatch, setStreamedBoth],
+  );
+
   const copier = useCallback(() => {
     const runId = activeRunId.current;
     if (runId !== null) {
@@ -397,6 +614,11 @@ export function App(): React.JSX.Element {
     };
   }, [state, cancelRun, dispatch, fermer, handleReadyKey]);
 
+  // Choisir un profil a un sens avant de lancer, et devant un résultat qu'on
+  // peut relancer autrement. Pendant le travail, non.
+  const profilChoisissable =
+    profiles.length > 0 && (state === "saisie" || state === "prêt" || state === "comparaison");
+
   const running = state === GENERATING || state === "streaming" || state === "analyse";
 
   useEffect(() => {
@@ -443,184 +665,137 @@ export function App(): React.JSX.Element {
 
   return (
     <main className="capsule">
-      <header className="capsule-band">
-        <span className="capsule-brand">rq</span>
-        <span className="capsule-origin">
-          {origin !== null ? `sélection · ${origin}` : "nouvelle reformulation"}
-        </span>
-        <span className="capsule-profile">
-          {running && awaitingDetection && (
-            <>
-              profil <b>auto</b>
-              <span className="capsule-profile-note pulse"> · analyse…</span>
-            </>
-          )}
-          {displayedProfile !== null && (
-            <>
-              profil <b>{displayedProfile}</b>
-              {autoRequested && (
-                <span className="capsule-profile-note"> · détecté automatiquement</span>
-              )}
-            </>
-          )}
-        </span>
-        {state === "saisie" && (
-          <button type="button" className="capsule-key capsule-escape" onClick={fermer}>
-            <kbd>esc</kbd>
-          </button>
-        )}
-      </header>
+      <CapsuleHeader
+        origin={origin}
+        displayedProfile={displayedProfile}
+        autoRequested={autoRequested}
+        detecting={running && awaitingDetection}
+        pickable={profilChoisissable}
+        closable={state === "saisie"}
+        onPick={() => {
+          setPicking(true);
+        }}
+        onClose={fermer}
+      />
       {(running || state === "capture") && <div className="capsule-bar" aria-hidden="true" />}
 
-      <section className={state === "saisie" ? "capsule-body capsule-flush" : "capsule-body"}>
-        {state === "saisie" && (
-          <>
-            <textarea
-              className="capsule-input"
-              placeholder="Qu'est-ce que tu veux mieux formuler ?"
-              value={input}
-              rows={4}
-              autoFocus
-              onChange={(event) => {
-                setInput(event.target.value);
-              }}
-              onKeyDown={(event) => {
-                if (event.key === "Enter" && event.metaKey && input.trim() !== "") {
-                  dispatch("validation");
-                  startRun(input, level);
-                }
-              }}
-            />
-          </>
-        )}
-
-        {state !== "saisie" && input !== "" && state !== "comparaison" && (
-          <div className="capsule-source">
-            <span className="capsule-source-label">avant</span>
-            <span className="capsule-source-text">{input}</span>
-          </div>
-        )}
-
-        {state === "capture" && <p className="muted">Lecture de la sélection…</p>}
-
-        {state === "analyse" && <p className="muted">Analyse de l&apos;intention…</p>}
-
-        {state === GENERATING && (
-          <p className="muted">
-            {displayedProfile !== null
-              ? `${displayedProfile} détecté · préparation…`
-              : "Préparation…"}
-          </p>
-        )}
-
-        {state === "streaming" && (
-          <pre className="capsule-stream">
-            {streamed}
-            <span className="caret" aria-hidden="true" />
-          </pre>
-        )}
-
-        {(state === "prêt" || state === "application") && result !== null && (
-          <pre className="capsule-stream">{result.rewritten}</pre>
-        )}
-
-        {state === "comparaison" && result !== null && (
-          <div className="capsule-diff">
-            <div className="diff-before">− {input}</div>
-            <div className="diff-after">+ {result.rewritten}</div>
-          </div>
-        )}
-
-        {state === "erreur" && error !== null && (
-          <div role="alert">
-            <div className="error-title">× {error.title}</div>
-            <p className="error-detail">{error.message}</p>
-            {error.nextAction !== undefined && <p className="muted">{error.nextAction}</p>}
-          </div>
-        )}
-
-        {notice !== null && <p className="capsule-notice">{notice}</p>}
-      </section>
-
-      {state === "saisie" ? (
-        <div className="capsule-hints">
-          <span className="capsule-hint-chip">{requestedProfile ?? "auto"}</span>
-          <span>{level}</span>
-          <CapsuleKey
-            touche="⌘⏎"
-            className="capsule-hint-key"
-            onClick={() => {
-              if (input.trim() === "") return;
-              dispatch("validation");
-              startRun(input, level);
-            }}
-          >
-            reformuler
-          </CapsuleKey>
-        </div>
+      {picking ? (
+        <ProfileSheet
+          entries={profiles}
+          selectedId={chosenProfile ?? displayedProfile ?? AUTO_PROFILE_ID}
+          onSelect={(id) => {
+            setChosenProfile(id);
+            setPicking(false);
+            // Depuis un résultat, le choix se voit tout de suite : le relancer
+            // est ce que « changer de profil » veut dire à ce moment-là.
+            if (state === "prêt" || state === "comparaison") {
+              startRunAvecProfil(input, level, id);
+            }
+          }}
+          onClose={() => {
+            setPicking(false);
+          }}
+          onManage={() => void window.reqraft.openSettings()}
+        />
       ) : (
-        <footer className="capsule-footer">
-          <div className="capsule-verdict">
-            {(state === GENERATING || state === "streaming") && (
-              <>
-                <span className="pulse accent">réception…</span>
-                <span className="capsule-elapsed">{(elapsedMs / 1000).toFixed(1)} s</span>
-              </>
-            )}
-            {finalResult !== null && (
-              <>
-                <span className={`verdict-${finalResult.quality.status}`}>{verdictLabel}</span>
-                <span className="muted">{verdictDetail}</span>
-                <span className="capsule-meta">
-                  niveau {finalResult.level} · {finalResult.model}
-                  {finalResult.latencyMs !== undefined &&
-                    ` · ${(finalResult.latencyMs / 1000).toFixed(1)} s`}
-                </span>
-              </>
-            )}
-            {state === "erreur" && <span className="muted">esc pour fermer</span>}
-          </div>
-          <div className="capsule-keys">
-            {(state === "prêt" || state === "comparaison") && (
-              <>
-                {expansion === true && (
-                  <CapsuleKey touche="⇥" className="key-primary" onClick={changerNiveau}>
-                    baisser le niveau
-                  </CapsuleKey>
-                )}
-                <CapsuleKey touche="⏎" className="key-primary" onClick={accept}>
-                  remplacer
-                </CapsuleKey>
-                <CapsuleKey touche="⌥" onClick={basculerComparaison}>
-                  comparer
-                </CapsuleKey>
-                <CapsuleKey touche="⌘C" onClick={copier}>
-                  copier
-                </CapsuleKey>
-                <CapsuleKey touche="⌘R" onClick={relancer}>
-                  relancer
-                </CapsuleKey>
-                <CapsuleKey touche="⇥" onClick={changerNiveau}>
-                  niveau
-                </CapsuleKey>
-              </>
-            )}
-            {running && (
-              <>
-                <CapsuleKey touche="⌘." onClick={cancelRun}>
-                  interrompre
-                </CapsuleKey>
-                {/* La capsule travaille sans le focus : le dire évite d'attendre
-                  devant elle pour rien. */}
-                <span className="capsule-hint">tu peux changer d&apos;app</span>
-              </>
-            )}
-            <CapsuleKey touche="esc" className="key-close" onClick={fermer}>
-              fermer
-            </CapsuleKey>
-          </div>
-        </footer>
+        <section className={state === "saisie" ? "capsule-body capsule-flush" : "capsule-body"}>
+          {state === "saisie" && (
+            <>
+              <textarea
+                className="capsule-input"
+                placeholder="Qu'est-ce que tu veux mieux formuler ?"
+                value={input}
+                rows={4}
+                autoFocus
+                onChange={(event) => {
+                  setInput(event.target.value);
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" && event.metaKey && input.trim() !== "") {
+                    dispatch("validation");
+                    startRun(input, level);
+                  }
+                }}
+              />
+            </>
+          )}
+
+          {state !== "saisie" && input !== "" && state !== "comparaison" && (
+            <div className="capsule-source">
+              <span className="capsule-source-label">avant</span>
+              <span className="capsule-source-text">{input}</span>
+            </div>
+          )}
+
+          {state === "capture" && <p className="muted">Lecture de la sélection…</p>}
+
+          {state === "analyse" && <p className="muted">Analyse de l&apos;intention…</p>}
+
+          {state === GENERATING && (
+            <p className="muted">
+              {displayedProfile !== null
+                ? `${displayedProfile} détecté · préparation…`
+                : "Préparation…"}
+            </p>
+          )}
+
+          {state === "streaming" && (
+            <pre className="capsule-stream">
+              {streamed}
+              <span className="caret" aria-hidden="true" />
+            </pre>
+          )}
+
+          {(state === "prêt" || state === "application") && result !== null && (
+            <pre className="capsule-stream">{result.rewritten}</pre>
+          )}
+
+          {state === "comparaison" && result !== null && (
+            <div className="capsule-diff">
+              <div className="diff-before">− {input}</div>
+              <div className="diff-after">+ {result.rewritten}</div>
+            </div>
+          )}
+
+          {state === "erreur" && error !== null && (
+            <div role="alert">
+              <div className="error-title">× {error.title}</div>
+              <p className="error-detail">{error.message}</p>
+              {error.nextAction !== undefined && <p className="muted">{error.nextAction}</p>}
+            </div>
+          )}
+
+          {notice !== null && <p className="capsule-notice">{notice}</p>}
+        </section>
       )}
+
+      <CapsuleFooter
+        state={state}
+        expansion={expansion === true}
+        running={running}
+        elapsedMs={elapsedMs}
+        finalResult={finalResult}
+        verdictLabel={verdictLabel}
+        verdictDetail={verdictDetail}
+        profileLabel={chosenProfile ?? requestedProfile ?? "auto"}
+        pickable={profilChoisissable}
+        onPick={() => {
+          setPicking(true);
+        }}
+        level={level}
+        onSubmit={() => {
+          if (input.trim() === "") return;
+          dispatch("validation");
+          startRun(input, level);
+        }}
+        onAccept={accept}
+        onCompare={basculerComparaison}
+        onCopy={copier}
+        onRerun={relancer}
+        onLevel={changerNiveau}
+        onCancel={cancelRun}
+        onClose={fermer}
+      />
     </main>
   );
 }

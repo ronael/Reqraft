@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, ChevronLeft, Search } from "lucide-react";
 import { type ProfileCatalogEntry } from "@/apps/desktop/shared/ipc-contract.js";
-import { filterProfiles, groupProfiles } from "../shared/profiles.js";
+import { filterProfiles, groupProfiles } from "./profiles.js";
 
 /**
  * Choosing a profile when there may be many of them.

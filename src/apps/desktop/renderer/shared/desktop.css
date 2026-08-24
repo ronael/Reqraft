@@ -1711,3 +1711,55 @@ kbd {
   font-size: 10px;
   color: #52525b;
 }
+
+/*
+ * Le profil de la capsule, devenu cliquable.
+ *
+ * Il reste un libellé d'en-tête : pas de fond, pas de bordure, la même taille.
+ * `min-height: 0` neutralise les 30px de la règle `button`, qui feraient
+ * grandir la bande. Désactivé pendant le travail, il perd son curseur sans
+ * changer d'apparence — l'information reste lisible.
+ */
+.capsule-profile-pick {
+  min-height: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+
+.capsule-profile-pick:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.capsule-profile-pick:not(:disabled):hover b {
+  color: #ddd6fe;
+}
+
+/*
+ * La pastille de profil du pied, en saisie libre.
+ *
+ * C'est le seul endroit où la maquette montre le profil sur cet écran : son
+ * en-tête ne porte que `rq`, le libellé et `esc`. Elle sert donc de
+ * déclencheur, plutôt que d'ajouter au bandeau ce qui n'y figure pas.
+ *
+ * `min-height: 0` neutralise les 30px de la règle `button` : la pastille doit
+ * garder exactement sa taille.
+ */
+.capsule-hint-pick {
+  min-height: 0;
+  cursor: pointer;
+}
+
+.capsule-hint-pick:disabled {
+  opacity: 1;
+  cursor: default;
+}
+
+.capsule-hint-pick:not(:disabled):hover {
+  border-color: rgba(167, 139, 250, 0.45);
+  background: rgba(139, 92, 246, 0.18);
+}
