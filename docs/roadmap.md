@@ -8,13 +8,15 @@ livraison.
 
 - Faire du dogfooding réel du CLI, du TUI et du desktop ; ne corriger que les
   régressions concrètement remontées.
-- Valider manuellement les paquets macOS avant chaque release desktop.
+- Valider manuellement les paquets macOS avant chaque release desktop, en
+  déroulant [la checklist de test manuel desktop macOS](desktop-macos-manual-checklist.md).
 - Écrire les premiers tests bout en bout desktop/Electron : démarrage, capsule,
   provider mock, permissions refusées, raccourci indisponible, presse-papiers
   image et seconde instance.
 - Valider manuellement le cycle macOS réel : permissions Accessibilité et
   Automatisation, capture, remplacement, relance après changement de langue,
-  popover et raccourcis configurés.
+  popover et raccourcis configurés — couvert par la
+  [checklist de test manuel desktop macOS](desktop-macos-manual-checklist.md).
 
 **Sortie :** les parcours principaux sont utilisables sans régression connue
 sur les surfaces actuellement supportées.

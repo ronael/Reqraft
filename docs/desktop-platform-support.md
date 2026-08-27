@@ -39,7 +39,8 @@ Neither is signed either, so SmartScreen and Gatekeeper will object.
 
 1. Download the installer from the release, or from the workflow run.
 2. Run it on the target OS: install, launch, trigger the capsule, run a
-   generation, accept a result.
+   generation, accept a result. On macOS, work through
+   [`desktop-macos-manual-checklist.md`](desktop-macos-manual-checklist.md).
 3. Update the row above with what you found.
 4. Drop the `-experimental` suffix from that platform's `artifactName` in
    `electron-builder.yml`, and remove its row from the note in
