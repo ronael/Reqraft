@@ -39,6 +39,9 @@ import { createSettingsWindow } from "./windows/settings.js";
 import { revealExistingWindow } from "./windows/reveal.js";
 import { resolveMainLocale, setMainLocale, t } from "./i18n.js";
 
+const OPEN_SETTINGS_ARG_PREFIX = "--reqraft-open-settings=";
+const SETTINGS_TAB_AFTER_RELAUNCH = "preferences";
+
 /**
  * Desktop bootstrap. Order matters:
  * 1. the crash reporter stays off, before anything can start it (§5.7) ;
@@ -129,16 +132,59 @@ function trayStateFor(event: "start" | "done" | "error" | "cancelled"): TrayStat
  * plusieurs instances. Le délai court permet au `config:write` qui l'a causée
  * de terminer sa réponse avant la fermeture.
  */
-function createRelauncher(): () => void {
+function createRelauncher(argv: readonly string[] = process.argv): () => void {
   let scheduled = false;
   return () => {
     if (scheduled) return;
     scheduled = true;
     setTimeout(() => {
-      app.relaunch();
+      const args = [
+        ...argv.slice(1).filter((arg) => !arg.startsWith(OPEN_SETTINGS_ARG_PREFIX)),
+        `${OPEN_SETTINGS_ARG_PREFIX}${SETTINGS_TAB_AFTER_RELAUNCH}`,
+      ];
+      app.relaunch({ args });
       app.quit();
     }, 120);
   };
+}
+
+function requestedSettingsTab(argv: readonly string[] = process.argv): string | undefined {
+  const match = argv.find((arg) => arg.startsWith(OPEN_SETTINGS_ARG_PREFIX));
+  return match?.slice(OPEN_SETTINGS_ARG_PREFIX.length);
+}
+
+function devServerSurfaceUrl(
+  devServerUrl: string | undefined,
+  surface?: "popover" | "settings" | "onboarding",
+  params: Readonly<Record<string, string>> = {},
+): string | undefined {
+  if (devServerUrl === undefined) {
+    return undefined;
+  }
+  const search = new URLSearchParams(params);
+  if (surface !== undefined) {
+    search.set("surface", surface);
+  }
+  const query = search.toString();
+  return query === "" ? devServerUrl : `${devServerUrl}?${query}`;
+}
+
+async function openStartupWindow(options: {
+  env: NodeJS.ProcessEnv;
+  openOnboarding: () => void;
+  openSettings: (tab?: string) => void;
+}): Promise<void> {
+  const onboarding = await buildOnboardingState(options.env, hydrateCredentials, loadConfig, () =>
+    existsSync(configPath()),
+  );
+  if (onboarding.required) {
+    options.openOnboarding();
+    return;
+  }
+  const tab = requestedSettingsTab();
+  if (tab !== undefined) {
+    options.openSettings(tab);
+  }
 }
 
 function bootstrap(): void {
@@ -166,12 +212,10 @@ function bootstrap(): void {
     const mainDir = path.dirname(fileURLToPath(import.meta.url));
     registerRendererProtocol(path.join(mainDir, "../renderer"));
     const devServerUrl = process.env.REQRAFT_DESKTOP_DEV_SERVER;
-    const withSurface = (surface?: "popover" | "settings" | "onboarding"): string | undefined => {
-      if (devServerUrl === undefined) {
-        return undefined;
-      }
-      return surface === undefined ? devServerUrl : `${devServerUrl}?surface=${surface}`;
-    };
+    const withSurface = (
+      surface?: "popover" | "settings" | "onboarding",
+      params?: Readonly<Record<string, string>>,
+    ): string | undefined => devServerSurfaceUrl(devServerUrl, surface, params);
     const windowDefaults = {
       preloadPath: path.join(mainDir, "../preload/index.cjs"),
     };
@@ -213,12 +257,16 @@ function bootstrap(): void {
 
     // Settings window: created on demand, recreated if the user closed it.
     let settingsWindow: Electron.BrowserWindow | null = null;
-    const openSettings = (): void => {
+    const openSettings = (tab?: string): void => {
+      const params: Record<string, string> = {};
+      if (tab !== undefined) {
+        params.tab = tab;
+      }
       if (settingsWindow === null || settingsWindow.isDestroyed()) {
         settingsWindow = createSettingsWindow({
           ...windowDefaults,
-          rendererUrl: rqRendererUrl("settings"),
-          devServerUrl: withSurface("settings"),
+          rendererUrl: rqRendererUrl("settings", params),
+          devServerUrl: withSurface("settings", params),
         });
         settingsWindow.on("closed", () => {
           settingsWindow = null;
@@ -350,23 +398,8 @@ function bootstrap(): void {
       },
     });
 
-    // Does this installation work at all?
-    //
-    // Someone who downloaded only the application has no configuration file
-    // and no key, and every surface would fail on its first run — a tray icon
-    // whose shortcuts produce errors is worse than no answer. The rule is the
-    // shared one, so the desktop and `rp init` cannot disagree about it.
-    // Reported, never thrown: a failure to answer must not stop the launch.
     try {
-      const onboarding = await buildOnboardingState(
-        process.env,
-        hydrateCredentials,
-        loadConfig,
-        () => existsSync(configPath()),
-      );
-      if (onboarding.required) {
-        openOnboarding();
-      }
+      await openStartupWindow({ env: process.env, openOnboarding, openSettings });
     } catch (error) {
       console.error("Reqraft: could not determine the setup state:", error);
     }

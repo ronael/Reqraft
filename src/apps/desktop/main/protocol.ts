@@ -30,9 +30,17 @@ export function registerSchemePrivileges(): void {
   ]);
 }
 
-export function rqRendererUrl(surface?: "popover" | "settings" | "onboarding"): string {
+export function rqRendererUrl(
+  surface?: "popover" | "settings" | "onboarding",
+  params: Readonly<Record<string, string>> = {},
+): string {
   const base = `${RQ_SCHEME}://${RQ_RENDERER_HOST}/index.html`;
-  return surface === undefined ? base : `${base}?surface=${surface}`;
+  const search = new URLSearchParams(params);
+  if (surface !== undefined) {
+    search.set("surface", surface);
+  }
+  const query = search.toString();
+  return query === "" ? base : `${base}?${query}`;
 }
 
 /**

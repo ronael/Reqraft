@@ -17,6 +17,11 @@ import { version } from "@/version.js";
 const TABS = ["profiles", "providers", "models", "preferences", "diagnostic"] as const;
 type Tab = (typeof TABS)[number];
 
+export function initialSettingsTab(search: string = window.location.search): Tab {
+  const requested = new URLSearchParams(search).get("tab");
+  return TABS.includes(requested as Tab) ? (requested as Tab) : "profiles";
+}
+
 const TAB_META: Record<
   Tab,
   {
@@ -60,7 +65,7 @@ const TAB_META: Record<
  */
 export function SettingsApp(): React.JSX.Element {
   const t = useT();
-  const [tab, setTab] = useState<Tab>("profiles");
+  const [tab, setTab] = useState<Tab>(() => initialSettingsTab());
   const [config, setConfig] = useState<SafeConfig | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);

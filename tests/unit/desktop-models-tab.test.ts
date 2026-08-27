@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { modelForProvider } from "@/apps/desktop/renderer/settings/SettingsApp.js";
+import {
+  initialSettingsTab,
+  modelForProvider,
+} from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import type { ProviderStatus } from "@/apps/desktop/shared/ipc-contract.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
 
@@ -57,6 +60,20 @@ describe("modelForProvider", () => {
     const custom = provider("openai-compatible", []);
     expect(modelForProvider(custom, "mon-modele-local")).toBe("");
     expect(modelForProvider(undefined, "mon-modele-local")).toBe("mon-modele-local");
+  });
+});
+
+describe("initialSettingsTab", () => {
+  it("ouvre les profils par défaut", () => {
+    expect(initialSettingsTab("")).toBe("profiles");
+  });
+
+  it("ouvre l'onglet préférences quand la relance le demande", () => {
+    expect(initialSettingsTab("?surface=settings&tab=preferences")).toBe("preferences");
+  });
+
+  it("ignore un onglet inconnu", () => {
+    expect(initialSettingsTab("?surface=settings&tab=language")).toBe("profiles");
   });
 });
 
