@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reqraft landing mark — isolated</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500&amp;display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg: #07070a;
+        --rq: #a78bfa;
+        --rq-line: rgba(167, 139, 250, 0.28);
+        --rq-dim: rgba(139, 92, 246, 0.12);
+        --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      }
+
+      * { box-sizing: border-box; }
+      html, body { width: 100%; min-height: 100%; margin: 0; }
+      body {
+        display: grid;
+        min-height: 100vh;
+        place-items: center;
+        background: var(--bg);
+      }
+
+      /* Exact visual vocabulary of index.html's .logo .mark, enlarged only. */
+      .rq-mark {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        width: 440px;
+        height: 300px;
+        border: 14px solid var(--rq-line);
+        border-radius: 96px;
+        background: var(--rq-dim);
+        color: var(--rq);
+        font-family: var(--mono);
+        font-size: 180px;
+        font-weight: 500;
+        letter-spacing: -0.13em;
+        line-height: 1;
+        padding-right: 0.13em;
+        padding-bottom: 0.13em;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Conversion target: one mark, no surrounding product UI. -->
+    <div class="rq-mark" role="img" aria-label="Reqraft rq mark">rq</div>
+  </body>
+</html>
