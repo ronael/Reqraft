@@ -4,14 +4,17 @@ Cette roadmap distingue la stabilisation, les capacités produit planifiées et
 la recherche. Les éléments « Exploration » ne constituent pas un engagement de
 livraison.
 
-## Now — stabiliser 0.4.x
+## Now — stabiliser 0.5.x
 
 - Faire du dogfooding réel du CLI, du TUI et du desktop ; ne corriger que les
   régressions concrètement remontées.
 - Valider manuellement les paquets macOS avant chaque release desktop.
-- Garder la roadmap à jour : le bundling des dépendances du processus Electron
-  (`d8f8320`) et le focus de l'éditeur TUI (`e5145cf`) sont terminés, donc ne
-  sont plus des objectifs ouverts.
+- Écrire les premiers tests bout en bout desktop/Electron : démarrage, capsule,
+  provider mock, permissions refusées, raccourci indisponible, presse-papiers
+  image et seconde instance.
+- Valider manuellement le cycle macOS réel : permissions Accessibilité et
+  Automatisation, capture, remplacement, relance après changement de langue,
+  popover et raccourcis configurés.
 
 **Sortie :** les parcours principaux sont utilisables sans régression connue
 sur les surfaces actuellement supportées.
@@ -31,13 +34,19 @@ et le TUI.
 - Onboarding desktop natif : une installation sans configuration ouvre une
   fenêtre de configuration au démarrage, sans CLI ni `rp init`.
 - Paramètres modifiables depuis le desktop : provider, modèle, niveau et
-  profil, dans l'onboarding comme dans les réglages.
+  profil, dans l'onboarding, les réglages, le popover et la capsule.
+- Préférences desktop : raccourcis globaux configurables avec ré-enregistrement
+  à chaud, langue d'interface `fr/en` résolue au démarrage, relance automatique
+  après changement de langue et retour direct aux réglages.
 - Fournisseurs gérables après coup : clé ajoutée, remplacée ou retirée, et
   endpoints compatibles OpenAI créés, modifiés ou supprimés.
 - Configuration dans un domaine partagé, `src/config/setup.ts` : `rp init` et
   le desktop construisent le même fichier par le même constructeur.
 - Credentials traités par le processus principal seul, à travers le service
   `auth` existant ; le renderer ne reçoit jamais de valeur.
+- Robustesse de surface : capsule recréée si détruite, fenêtre persistante
+  cachée plutôt que fermée, seconde instance qui remet une fenêtre existante au
+  premier plan et version affichée depuis `src/version.ts`.
 
 **Sortie atteinte :** une personne qui ouvre seulement l'application desktop
 peut la configurer, modifier ses choix et générer un résultat sans passer par
@@ -45,9 +54,9 @@ le CLI.
 
 ## Next — passer à l'échelle des profils
 
-- Le sélecteur de profil de la barre de menus est une liste bornée, cherchable
-  et groupée par origine ; vérifier que les autres surfaces tiennent le même
-  contrat quand le catalogue grandit.
+- Vérifier que les sélecteurs de profil du desktop, du CLI et du TUI tiennent
+  le même contrat quand le catalogue grandit : liste bornée, recherche et
+  groupement par origine.
 - Étudier un ordre par usage récent plutôt qu'un ordre fixe, une fois qu'un
   catalogue réel existe.
 
