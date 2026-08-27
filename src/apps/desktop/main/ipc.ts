@@ -62,7 +62,7 @@ import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
-import { mainLocale, t } from "./i18n.js";
+import { mainLocale, resolveMainLocale, t } from "./i18n.js";
 
 /**
  * IPC handlers — registration only (DESKTOP.md §8.1). Channel names and
@@ -128,6 +128,11 @@ export interface DesktopIpcDependencies {
    * contrat doit rester testable sans Electron.
    */
   onShortcutsChanged?: (shortcuts: Config["desktopShortcuts"]) => void;
+  /**
+   * Relance l'application quand une préférence ne peut être appliquée
+   * proprement qu'au démarrage, comme la langue du menu et des titres.
+   */
+  relaunchApp?: () => void;
   /**
    * Native save dialog for a profile export. Injected so the contract stays
    * testable without Electron, and returns `undefined` when dismissed.
@@ -229,6 +234,12 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     // ne faisait rien, et l'écran continuait d'annoncer l'ancien comme actif.
     if (patch.desktopShortcuts !== undefined) {
       dependencies.onShortcutsChanged?.(merged.desktopShortcuts);
+    }
+    if (
+      patch.uiLocale !== undefined &&
+      resolveMainLocale(current.uiLocale, env) !== resolveMainLocale(merged.uiLocale, env)
+    ) {
+      dependencies.relaunchApp?.();
     }
     return sanitizeConfigForRenderer(merged);
   });

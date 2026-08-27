@@ -261,7 +261,7 @@ export const DESKTOP_FR = {
     "Aucun raccourci global disponible. Reqraft ne peut pas se déclencher au clavier — libérez-en un, puis relancez l'application.",
   "settings.shortcutUnavailable": "Choix non disponible : {accelerator} est actif à la place.",
   "settings.language": "Langue de l'interface",
-  "settings.languageDetail": "Prend effet au prochain démarrage de Reqraft.",
+  "settings.languageDetail": "Reqraft redémarre automatiquement quand ce choix change.",
   "settings.languageAuto": "Langue du système",
   "settings.languageEn": "English",
   "settings.languageFr": "Français",

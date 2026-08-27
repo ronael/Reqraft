@@ -264,7 +264,7 @@ export const DESKTOP_EN = {
     "No global shortcut available. Reqraft cannot be triggered from the keyboard — free one up, then restart the application.",
   "settings.shortcutUnavailable": "Choice unavailable: {accelerator} is active instead.",
   "settings.language": "Interface language",
-  "settings.languageDetail": "Takes effect the next time Reqraft starts.",
+  "settings.languageDetail": "Reqraft restarts automatically when this changes.",
   "settings.languageAuto": "System language",
   "settings.languageEn": "English",
   "settings.languageFr": "Français",

@@ -93,6 +93,7 @@ interface Harness {
   clipboard: { writeText: ReturnType<typeof vi.fn<(text: string) => void>> };
   execute: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
   saveConfig: ReturnType<typeof vi.fn>;
+  relaunchApp: ReturnType<typeof vi.fn>;
   sender: RunEventSender;
   sent: { channel: string; payload: unknown }[];
   state: { destroyed: boolean };
@@ -108,6 +109,7 @@ function setup(options: {
   const env = options.env ?? {};
   const execute = options.execute ?? streamingExecute();
   const saveConfig = vi.fn((_config: Config) => Promise.resolve());
+  const relaunchApp = vi.fn<() => void>();
   const { sender, sent, state } = createFakeSender();
 
   const service = new RepromptService({
@@ -125,10 +127,11 @@ function setup(options: {
     service,
     loadConfig: () => Promise.resolve(config),
     saveConfig,
+    relaunchApp,
     hydrateCredentials: options.hydrateCredentials ?? (() => Promise.resolve()),
     env,
   });
-  return { ipcMain, clipboard, execute, saveConfig, sender, sent, state };
+  return { ipcMain, clipboard, execute, saveConfig, relaunchApp, sender, sent, state };
 }
 
 function sentChannels(harness: Harness, channel: string): unknown[] {
@@ -457,6 +460,33 @@ describe("config via IPC", () => {
     expect(saved.telemetry).toBe(false);
     expect(response.stream).toBe(false);
     expect(response.telemetry).toBe(false);
+  });
+
+  it("config:write relance quand la langue effective change", async () => {
+    const harness = setup({ config: { ...MOCK_CONFIG, uiLocale: "en" } });
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { uiLocale: "fr" }, harness.sender);
+
+    expect(harness.relaunchApp).toHaveBeenCalledOnce();
+  });
+
+  it("config:write ne relance pas quand la préférence change sans changer la langue effective", async () => {
+    const harness = setup({
+      config: { ...MOCK_CONFIG, uiLocale: "fr" },
+      env: { LANG: "fr_FR.UTF-8" },
+    });
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { uiLocale: "auto" }, harness.sender);
+
+    expect(harness.relaunchApp).not.toHaveBeenCalled();
+  });
+
+  it("config:write ne relance pas pour les autres réglages", async () => {
+    const harness = setup({});
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { stream: false }, harness.sender);
+
+    expect(harness.relaunchApp).not.toHaveBeenCalled();
   });
 
   it("sanitizeConfigForRenderer conserve une config sans providers custom", () => {

@@ -122,6 +122,25 @@ function trayStateFor(event: "start" | "done" | "error" | "cancelled"): TrayStat
   return event === "error" ? "error" : "repos";
 }
 
+/**
+ * Relance unique, après avoir laissé l'IPC répondre au renderer.
+ *
+ * `app.relaunch()` ne quitte pas tout seul, et plusieurs appels planifient
+ * plusieurs instances. Le délai court permet au `config:write` qui l'a causée
+ * de terminer sa réponse avant la fermeture.
+ */
+function createRelauncher(): () => void {
+  let scheduled = false;
+  return () => {
+    if (scheduled) return;
+    scheduled = true;
+    setTimeout(() => {
+      app.relaunch();
+      app.quit();
+    }, 120);
+  };
+}
+
 function bootstrap(): void {
   if (process.platform === "darwin") {
     // Accessory application: the Dock icon only comes back with packaging
@@ -134,6 +153,7 @@ function bootstrap(): void {
 
     await preloadProfileCatalog();
 
+    const relaunchApp = createRelauncher();
     const bridge = createMacosBridge(createOsascriptRunner());
     const captureService = new CaptureService({ bridge, clipboard });
     const permissionsProbe = createSystemPermissionsProbe(
@@ -312,6 +332,7 @@ function bootstrap(): void {
           shortcuts,
         );
       },
+      relaunchApp,
       // Onboarding hands over to the settings window: the same choices, in the
       // place the user will come back to when they want to change one.
       onOnboardingComplete: () => {
