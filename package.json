@@ -32,6 +32,7 @@
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\" \"scripts/**/*.ts\"",
     "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\" \"benchmark/**/*.{ts,tsx}\" \"scripts/**/*.ts\"",
     "test": "vitest run",
+    "test:desktop:e2e": "pnpm build:desktop && vitest run tests/e2e/desktop.test.ts",
     "test:coverage": "vitest run --coverage",
     "test:tui": "bun test tests/tui",
     "test:watch": "vitest",

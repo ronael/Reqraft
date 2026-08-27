@@ -22,6 +22,7 @@ import { buildOnboardingState, registerIpcHandlers } from "./ipc.js";
 import { createMacosBridge, createOsascriptRunner } from "./macos.js";
 import {
   createSystemPermissionsProbe,
+  type PermissionsProbe,
   probePermissions,
   requestAccessibility,
 } from "./permissions.js";
@@ -41,6 +42,8 @@ import { resolveMainLocale, setMainLocale, t } from "./i18n.js";
 
 const OPEN_SETTINGS_ARG_PREFIX = "--reqraft-open-settings=";
 const SETTINGS_TAB_AFTER_RELAUNCH = "preferences";
+const DESKTOP_E2E_PROBE = "REQRAFT_DESKTOP_E2E_PROBE";
+const DESKTOP_E2E_REJECT_SHORTCUTS = "REQRAFT_DESKTOP_E2E_REJECT_SHORTCUTS";
 
 /**
  * Desktop bootstrap. Order matters:
@@ -153,6 +156,53 @@ function requestedSettingsTab(argv: readonly string[] = process.argv): string | 
   return match?.slice(OPEN_SETTINGS_ARG_PREFIX.length);
 }
 
+async function reportDesktopE2eReadiness(options: {
+  capsule: Electron.BrowserWindow;
+  popover: Electron.BrowserWindow;
+  settings: Electron.BrowserWindow | null;
+  onboarding: Electron.BrowserWindow | null;
+  shortcuts: ShortcutResolution;
+  permissionsProbe: PermissionsProbe;
+}): Promise<void> {
+  const windows = [
+    { surface: "capsule", window: options.capsule },
+    { surface: "popover", window: options.popover },
+    { surface: "settings", window: options.settings },
+    { surface: "onboarding", window: options.onboarding },
+  ]
+    .filter(
+      (entry): entry is { surface: string; window: Electron.BrowserWindow } =>
+        entry.window !== null,
+    )
+    .map((entry) => ({
+      surface: entry.surface,
+      destroyed: entry.window.isDestroyed(),
+      visible: entry.window.isVisible(),
+    }));
+
+  const permissions = await probePermissions(options.permissionsProbe);
+  process.stdout.write(
+    `REQRAFT_DESKTOP_E2E_READY ${JSON.stringify({
+      ready: true,
+      platform: process.platform,
+      appName: app.getName(),
+      version: app.getVersion(),
+      windowCount: windows.length,
+      windows,
+      shortcuts: options.shortcuts,
+      permissions,
+    })}\n`,
+  );
+  app.quit();
+}
+
+function createShortcutRegistrar(): (accelerator: string, handler: () => void) => boolean {
+  if (process.env[DESKTOP_E2E_REJECT_SHORTCUTS] === "1") {
+    return () => false;
+  }
+  return (accelerator, handler) => globalShortcut.register(accelerator, handler);
+}
+
 function devServerSurfaceUrl(
   devServerUrl: string | undefined,
   surface?: "popover" | "settings" | "onboarding",
@@ -254,6 +304,7 @@ function bootstrap(): void {
     // Filled by registerShortcuts below; read through IPC by the settings
     // Shortcuts tab (§5.5: a taken shortcut is visible, never silent).
     let shortcutResolution: ShortcutResolution = { registered: [], rejected: [] };
+    const registerGlobalShortcut = createShortcutRegistrar();
 
     // Settings window: created on demand, recreated if the user closed it.
     let settingsWindow: Electron.BrowserWindow | null = null;
@@ -374,7 +425,7 @@ function bootstrap(): void {
       onShortcutsChanged: (shortcuts) => {
         globalShortcut.unregisterAll();
         shortcutResolution = registerShortcuts(
-          (accelerator, handler) => globalShortcut.register(accelerator, handler),
+          registerGlobalShortcut,
           shortcutHandlers,
           process.env.REQRAFT_SHORTCUT,
           shortcuts,
@@ -418,7 +469,7 @@ function bootstrap(): void {
     });
 
     const resolution = registerShortcuts(
-      (accelerator, handler) => globalShortcut.register(accelerator, handler),
+      registerGlobalShortcut,
       shortcutHandlers,
       process.env.REQRAFT_SHORTCUT,
       configuredShortcuts,
@@ -437,6 +488,17 @@ function bootstrap(): void {
       globalShortcut.unregisterAll();
       tray.destroy();
     });
+
+    if (process.env[DESKTOP_E2E_PROBE] === "1") {
+      await reportDesktopE2eReadiness({
+        capsule: capsule.window,
+        popover: popover.window,
+        settings: settingsWindow,
+        onboarding: onboardingWindow,
+        shortcuts: shortcutResolution,
+        permissionsProbe,
+      });
+    }
   });
 
   app.on("window-all-closed", () => {
