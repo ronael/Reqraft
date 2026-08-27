@@ -115,7 +115,7 @@ describe("buildDoctorReport (lot 5)", () => {
     expect(byId.get("shortcuts:input")).toMatchObject({ ok: true });
     expect(byId.get("shortcuts:rejected")).toMatchObject({
       ok: false,
-      detail: "refusés par le système : Alt+Space",
+      detail: "rejected by the system: Alt+Space",
     });
     expect(JSON.stringify(report)).not.toContain("sk-ne-jamais-afficher");
   });

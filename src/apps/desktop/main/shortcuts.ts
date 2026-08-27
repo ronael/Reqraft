@@ -11,6 +11,8 @@
  * Electron-free: the register function is injected.
  */
 
+import { t } from "./i18n.js";
+
 export interface ShortcutCandidate {
   /** Accelerator tried first: ⌥Espace, the product default (§3). */
   accelerator: string;
@@ -100,7 +102,7 @@ export function prettyAccelerator(accelerator: string): string {
     .replace("Alt", "⌥")
     .replace("Shift", "⇧")
     .replaceAll("+", "")
-    .replace("Space", "Espace");
+    .replace("Space", t("shortcut.space"));
 }
 
 /**

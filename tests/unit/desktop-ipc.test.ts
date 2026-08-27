@@ -16,6 +16,8 @@ import {
   PUSH_CHANNELS,
   REQUEST_CHANNELS,
 } from "@/apps/desktop/shared/ipc-channels.js";
+import { mainLocale, setMainLocale } from "@/apps/desktop/main/i18n.js";
+import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
 import {
   REPROMPT_LEVEL_IDS,
   type RepromptStartResponse,
@@ -153,6 +155,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       profileDuplicate: "profiles:duplicate",
       profileDelete: "profiles:delete",
       profileExport: "profiles:export",
+      localeRead: "locale:read",
       capsulePending: "capsule:pending",
       windowOpenSettings: "window:open-settings",
       shortcutsState: "shortcuts:state",
@@ -168,7 +171,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(26);
+    expect(REQUEST_CHANNELS).toHaveLength(27);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
@@ -181,6 +184,44 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
     for (const channel of REQUEST_CHANNELS) {
       expect(harness.ipcMain.registeredChannels()).toContain(channel);
     }
+  });
+});
+
+describe("locale:read", () => {
+  it("rend la langue arrêtée au démarrage, libellés compris", async () => {
+    const harness = setup({});
+    setMainLocale("fr");
+    try {
+      const response = await harness.ipcMain.invoke(
+        IPC_CHANNELS.localeRead,
+        undefined,
+        harness.sender,
+      );
+      expect(response).toEqual({ locale: "fr", messages: DESKTOP_MESSAGES.fr });
+    } finally {
+      setMainLocale("en");
+    }
+  });
+
+  it("rend une autre langue à la demande, sans changer celle en vigueur", async () => {
+    // L'onboarding montre le choix avant de l'enregistrer : le catalogue
+    // demandé voyage, mais le menu de la barre reste dans sa langue.
+    const harness = setup({});
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.localeRead,
+      { locale: "fr" },
+      harness.sender,
+    );
+
+    expect(response).toEqual({ locale: "fr", messages: DESKTOP_MESSAGES.fr });
+    expect(mainLocale()).toBe("en");
+  });
+
+  it("refuse une langue hors contrat", async () => {
+    const harness = setup({});
+    await expect(
+      harness.ipcMain.invoke(IPC_CHANNELS.localeRead, { locale: "es" }, harness.sender),
+    ).rejects.toThrow();
   });
 });
 
@@ -542,37 +583,6 @@ describe("canaux capture et permissions (lot 2)", () => {
     expect(response).toEqual({ accessibility: true });
   });
 
-  it("result:accept replace délègue au service de capture", async () => {
-    const replace = vi.fn(() => Promise.resolve({ applied: true }));
-    const harness = setup({});
-    registerIpcHandlers({
-      ipcMain: harness.ipcMain,
-      clipboard: harness.clipboard,
-      service: new RepromptService({
-        executeReprompt: streamingExecute(),
-        loadConfig: () => Promise.resolve(MOCK_CONFIG),
-        env: {},
-        createRunId: () => "run-1",
-      }),
-      captureService: {
-        consumeStashed: () => ({ empty: true }),
-        replace,
-      } as never,
-    });
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-
-    const response = await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    );
-    expect(response).toEqual({ applied: true });
-    expect(replace).toHaveBeenCalledWith("demande reformulée");
-  });
-
   it("permissions sans sonde câblée : mode dégradé explicite (§2.6)", async () => {
     const harness = setup({});
     const state = await harness.ipcMain.invoke(
@@ -583,7 +593,7 @@ describe("canaux capture et permissions (lot 2)", () => {
     expect(state).toEqual({
       accessibility: false,
       canReplace: false,
-      reason: "desktop.permissions_pending",
+      reason: "Permissions not probed yet.",
     });
     const request = await harness.ipcMain.invoke(
       IPC_CHANNELS.permissionsRequest,
@@ -638,6 +648,168 @@ describe("canaux capture et permissions (lot 2)", () => {
       harness.sender,
     );
     expect(response).toEqual({ registered: [], rejected: [] });
+  });
+});
+
+/**
+ * Le remplacement, et ce qu'il dit quand il n'a pas lieu.
+ *
+ * `applied: false` seul ne disait rien : la capsule ne pouvait pas
+ * distinguer une permission refusée d'une application source restée en
+ * arrière-plan, et affichait le même « remplacement impossible » pour les
+ * deux.
+ */
+describe("result:accept en mode replace", () => {
+  it("result:accept replace délègue au service de capture", async () => {
+    const replace = vi.fn(() => Promise.resolve({ applied: true }));
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      service: new RepromptService({
+        executeReprompt: streamingExecute(),
+        loadConfig: () => Promise.resolve(MOCK_CONFIG),
+        env: {},
+        createRunId: () => "run-1",
+      }),
+      captureService: {
+        consumeStashed: () => ({ empty: true }),
+        replace,
+      } as never,
+    });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "replace" },
+      harness.sender,
+    );
+    expect(response).toEqual({ applied: true });
+    expect(replace).toHaveBeenCalledWith("demande reformulée");
+  });
+
+  it("rend le focus clavier avant de coller", async () => {
+    // La capsule est un `type: "panel"` : sur macOS un panneau non activant
+    // garde le focus clavier sans rendre l'application frontmost. System Events
+    // répondait donc que l'application source était déjà au premier plan,
+    // `activateApp` confirmait une bascule qui n'avait pas lieu, et ⌘V
+    // atterrissait dans la capsule — sélection intacte, succès annoncé.
+    const order: string[] = [];
+    const replace = vi.fn(() => {
+      order.push("replace");
+      return Promise.resolve({ applied: true });
+    });
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      service: new RepromptService({
+        executeReprompt: streamingExecute(),
+        loadConfig: () => Promise.resolve(MOCK_CONFIG),
+        env: {},
+        createRunId: () => "run-1",
+      }),
+      captureService: { consumeStashed: () => ({ empty: true }), replace } as never,
+      hideCapsule: () => {
+        order.push("hide");
+      },
+      showCapsule: () => {
+        order.push("reveal");
+      },
+    });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "replace" },
+      harness.sender,
+    );
+
+    // Cachée avant la frappe, et laissée cachée : la capsule se ferme ensuite.
+    expect(order).toEqual(["hide", "replace"]);
+  });
+
+  it("ramène la capsule quand le remplacement a échoué", async () => {
+    // Le message d'échec s'affiche dans la capsule : la cacher sans la ramener
+    // le rendrait invisible.
+    const order: string[] = [];
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      service: new RepromptService({
+        executeReprompt: streamingExecute(),
+        loadConfig: () => Promise.resolve(MOCK_CONFIG),
+        env: {},
+        createRunId: () => "run-1",
+      }),
+      captureService: {
+        consumeStashed: () => ({ empty: true }),
+        replace: () => Promise.resolve({ applied: false, reason: "source app unknown" }),
+      } as never,
+      hideCapsule: () => {
+        order.push("hide");
+      },
+      showCapsule: () => {
+        order.push("reveal");
+      },
+    });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "replace" },
+      harness.sender,
+    );
+
+    expect(order).toEqual(["hide", "reveal"]);
+  });
+
+  it("porte jusqu'au renderer la raison d'un remplacement refusé", async () => {
+    // `ReplaceOutcome.reason` distingue « application source inconnue » d'une
+    // permission refusée. Elle s'arrêtait au contrat, qui ne déclarait que
+    // `applied` : la capsule ne pouvait dire que « remplacement impossible ».
+    const replace = vi.fn(() =>
+      Promise.resolve({ applied: false, reason: "source app did not come back to the front" }),
+    );
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      service: new RepromptService({
+        executeReprompt: streamingExecute(),
+        loadConfig: () => Promise.resolve(MOCK_CONFIG),
+        env: {},
+        createRunId: () => "run-1",
+      }),
+      captureService: {
+        consumeStashed: () => ({ empty: true }),
+        replace,
+      } as never,
+    });
+    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.resultAccept,
+      { runId: "run-1", mode: "replace" },
+      harness.sender,
+    );
+    expect(response).toEqual({
+      applied: false,
+      reason: "source app did not come back to the front",
+    });
   });
 });
 

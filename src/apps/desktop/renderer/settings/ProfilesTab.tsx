@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useT, type Translate } from "../shared/i18n.js";
 import {
   Check,
   Circle,
@@ -82,19 +83,23 @@ const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * One message at a time, in field order, so the user is not handed a list to
  * map back onto rows.
  */
-export function findFormProblem(form: FormState, taken: readonly string[]): string | undefined {
-  if (form.name.trim() === "") return "Le nom est obligatoire.";
-  if (form.id.trim() === "") return "L'identifiant est obligatoire.";
+export function findFormProblem(
+  form: FormState,
+  taken: readonly string[],
+  t: Translate = (key) => key,
+): string | undefined {
+  if (form.name.trim() === "") return t("profiles.nameRequired");
+  if (form.id.trim() === "") return t("profiles.idRequired");
   if (!ID_PATTERN.test(form.id.trim())) {
-    return "Identifiant invalide : minuscules, chiffres et tirets uniquement.";
+    return t("profiles.idInvalid");
   }
   // An edit keeps its own id, so it is not a collision with itself.
   if (form.mode !== "update" && taken.includes(form.id.trim())) {
-    return `L'identifiant « ${form.id.trim()} » est déjà pris.`;
+    return t("profiles.idTaken", { id: form.id.trim() });
   }
   if (form.mode === "duplicate") return undefined;
-  if (form.description.trim() === "") return "La description est obligatoire.";
-  if (form.instructions.trim() === "") return "Les instructions sont obligatoires.";
+  if (form.description.trim() === "") return t("profiles.descriptionRequired");
+  if (form.instructions.trim() === "") return t("profiles.instructionsRequired");
   return undefined;
 }
 
@@ -107,6 +112,7 @@ export function ProfilesTab({
   config,
   onSelectDefault,
 }: Readonly<ProfilesTabProps>): React.JSX.Element {
+  const t = useT();
   const [catalog, setCatalog] = useState<ProfileCatalogResponse | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [problem, setProblem] = useState<string | undefined>(undefined);
@@ -172,7 +178,7 @@ export function ProfilesTab({
 
   const submit = useCallback(async () => {
     if (form === null) return;
-    const found = findFormProblem(form, takenIds);
+    const found = findFormProblem(form, takenIds, t);
     if (found !== undefined) {
       setProblem(found);
       return;
@@ -203,7 +209,7 @@ export function ProfilesTab({
           }),
     );
     if (ok) setForm(null);
-  }, [form, run, takenIds]);
+  }, [form, run, t, takenIds]);
 
   if (form !== null) {
     return (
@@ -236,10 +242,7 @@ export function ProfilesTab({
       ))}
 
       <div className="profile-toolbar">
-        <p className="profile-intro">
-          Le profil sélectionné est celui que la capsule utilise. Un profil intégré se duplique pour
-          obtenir une copie modifiable.
-        </p>
+        <p className="profile-intro">{t("profiles.intro")}</p>
         <button
           type="button"
           className="button-primary profile-new"
@@ -249,15 +252,11 @@ export function ProfilesTab({
           }}
         >
           <Plus size={15} aria-hidden />
-          Nouveau profil local
+          {t("profiles.new")}
         </button>
       </div>
 
-      {locals.length === 0 && (
-        <p className="settings-note muted">
-          Aucun profil local. « Nouveau profil local » en crée un, ou dupliquez un profil intégré.
-        </p>
-      )}
+      {locals.length === 0 && <p className="settings-note muted">{t("profiles.empty")}</p>}
 
       <div className="profile-list">
         {entries.map((entry) => (
@@ -338,6 +337,7 @@ function ProfileRow({
   onSelectDefault,
   onStartDelete,
 }: Readonly<ProfileRowProps>): React.JSX.Element {
+  const t = useT();
   const isLocal = entry.origin === "local";
   const isAuto = entry.origin === "auto";
 
@@ -346,15 +346,17 @@ function ProfileRow({
       <div className="profile-identity">
         <div className="settings-row-title">
           {entry.name}
-          <span className="profile-origin">{profileOriginLabel(entry.origin)}</span>
+          <span className="profile-origin">{profileOriginLabel(entry.origin, t)}</span>
         </div>
         <div className="settings-row-detail profile-description">{entry.description}</div>
         {entry.defaultLevel !== undefined && (
-          <div className="settings-row-detail profile-meta">niveau {entry.defaultLevel}</div>
+          <div className="settings-row-detail profile-meta">
+            {t("profiles.levelMeta", { level: entry.defaultLevel })}
+          </div>
         )}
         {confirming && (
           <div className="settings-row-detail profile-confirm">
-            Supprimer « {entry.id} » ? Cette action est définitive.
+            {t("profiles.confirmDeleteQuestion", { id: entry.id })}
           </div>
         )}
       </div>
@@ -383,10 +385,15 @@ function ProfileRow({
   );
 }
 
-function profileOriginLabel(origin: ProfileCatalogEntry["origin"]): string {
+function profileOriginLabel(
+  origin: ProfileCatalogEntry["origin"],
+  t: Translate = (key) => key,
+): string {
+  // `Auto` et `Local` sont les mêmes mots dans les deux langues ; seul
+  // « Intégré » change.
   if (origin === "auto") return "Auto";
   if (origin === "local") return "Local";
-  return "Intégré";
+  return t("profiles.builtin");
 }
 
 interface DeleteConfirmationActionsProps {
@@ -400,17 +407,18 @@ function DeleteConfirmationActions({
   onCancel,
   onConfirm,
 }: Readonly<DeleteConfirmationActionsProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
       <IconButton
-        label="Confirmer la suppression"
+        label={t("profiles.confirmDelete")}
         tone="danger"
         disabled={busy}
         onClick={onConfirm}
       >
         <Check size={15} aria-hidden />
       </IconButton>
-      <IconButton label="Annuler" onClick={onCancel}>
+      <IconButton label={t("settings.cancel")} onClick={onCancel}>
         <X size={15} aria-hidden />
       </IconButton>
     </>
@@ -438,10 +446,11 @@ function ProfileRowActions({
   onSelectDefault,
   onStartDelete,
 }: Readonly<ProfileRowActionsProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
       <IconButton
-        label={isDefault ? "Profil utilisé par la capsule" : "Utiliser ce profil"}
+        label={isDefault ? t("profiles.tooltipInUse") : t("profiles.use")}
         active={isDefault}
         // Not disabled: a radio you cannot press reads as broken, and
         // re-selecting the current one is harmless.
@@ -450,32 +459,28 @@ function ProfileRowActions({
         {isDefault ? <CircleDot size={15} aria-hidden /> : <Circle size={15} aria-hidden />}
       </IconButton>
       <IconButton
-        label={isLocal ? "Modifier" : "Un profil intégré n'est pas modifiable"}
+        label={isLocal ? t("settings.edit") : t("profiles.builtinNotEditable")}
         disabled={!isLocal}
         onClick={onEdit}
       >
         <Pencil size={15} aria-hidden />
       </IconButton>
       <IconButton
-        label={
-          isAuto
-            ? "Le profil automatique ne se duplique pas"
-            : "Dupliquer vers un nouveau profil local"
-        }
+        label={isAuto ? t("profiles.tooltipAutoNoDuplicate") : t("profiles.duplicate")}
         disabled={isAuto}
         onClick={onDuplicate}
       >
         <CopyPlus size={15} aria-hidden />
       </IconButton>
       <IconButton
-        label={isAuto ? "Le profil automatique ne s'exporte pas" : "Exporter en JSON"}
+        label={isAuto ? t("profiles.tooltipAutoNoExport") : t("profiles.export")}
         disabled={isAuto}
         onClick={onExport}
       >
         <Download size={15} aria-hidden />
       </IconButton>
       <IconButton
-        label={isLocal ? "Supprimer" : "Un profil intégré n'est pas supprimable"}
+        label={isLocal ? t("settings.delete") : t("profiles.builtinNotDeletable")}
         tone="danger"
         disabled={!isLocal}
         onClick={onStartDelete}
@@ -507,6 +512,7 @@ function ProfileForm({
   onCancel,
   onSubmit,
 }: Readonly<ProfileFormProps>): React.JSX.Element {
+  const t = useT();
   const setField = (patch: Partial<FormState>): void => {
     onChange({ ...form, ...patch });
   };
@@ -522,18 +528,13 @@ function ProfileForm({
         </div>
       </div>
 
-      {duplicate && (
-        <p className="settings-note muted">
-          La copie reprend la description, le niveau et les instructions du profil source.
-          Choisissez seulement son identifiant local et son nom.
-        </p>
-      )}
+      {duplicate && <p className="settings-note muted">{t("profiles.duplicateNote")}</p>}
 
       {problem !== undefined && <p className="settings-warning">{problem}</p>}
       {error !== null && <p className="settings-warning">{error}</p>}
 
       <label className="settings-row">
-        <span className="settings-row-title">Nom</span>
+        <span className="settings-row-title">{t("profiles.name")}</span>
         <input
           className="settings-input"
           value={form.name}
@@ -549,7 +550,9 @@ function ProfileForm({
       <label className="settings-row">
         <span className="settings-row-title">
           Identifiant
-          {form.mode === "update" && <span className="profile-origin">non modifiable</span>}
+          {form.mode === "update" && (
+            <span className="profile-origin">{t("profiles.notEditableTag")}</span>
+          )}
         </span>
         <input
           className="settings-input"
@@ -564,7 +567,7 @@ function ProfileForm({
       {!duplicate && (
         <>
           <label className="settings-row">
-            <span className="settings-row-title">Description</span>
+            <span className="settings-row-title">{t("profiles.description")}</span>
             <input
               className="settings-input"
               value={form.description}
@@ -575,7 +578,7 @@ function ProfileForm({
           </label>
 
           <label className="settings-row">
-            <span className="settings-row-title">Base</span>
+            <span className="settings-row-title">{t("profiles.base")}</span>
             <select
               className="settings-select"
               value={form.extends}
@@ -583,7 +586,7 @@ function ProfileForm({
                 setField({ extends: event.target.value });
               }}
             >
-              <option value="">aucune</option>
+              <option value="">{t("profiles.noneLevel")}</option>
               {bases.map((id) => (
                 <option key={id} value={id}>
                   {id}
@@ -593,7 +596,7 @@ function ProfileForm({
           </label>
 
           <label className="settings-row">
-            <span className="settings-row-title">Niveau par défaut</span>
+            <span className="settings-row-title">{t("profiles.defaultLevel")}</span>
             <select
               className="settings-select"
               value={form.defaultLevel}
@@ -610,7 +613,7 @@ function ProfileForm({
           </label>
 
           <div className="settings-row profile-instructions">
-            <span className="settings-row-title">Instructions</span>
+            <span className="settings-row-title">{t("profiles.instructions")}</span>
             <textarea
               className="settings-input profile-textarea"
               rows={6}
@@ -625,10 +628,10 @@ function ProfileForm({
 
       <div className="settings-actions profile-form-actions">
         <button type="button" onClick={onCancel}>
-          Annuler
+          {t("settings.cancel")}
         </button>
         <button type="button" className="button-primary" disabled={busy} onClick={onSubmit}>
-          {busy ? "Enregistrement…" : "Enregistrer"}
+          {busy ? t("settings.saving") : t("settings.save")}
         </button>
       </div>
     </>

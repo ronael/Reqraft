@@ -18,6 +18,9 @@ import type { ProfileCatalogResponse } from "@/apps/desktop/shared/ipc-contract.
 import { resetProfileCatalog } from "@/profiles/catalog.js";
 import { getProfile } from "@/profiles/registry.js";
 import { findFormProblem, suggestId } from "@/apps/desktop/renderer/settings/ProfilesTab.js";
+import { createDesktopTranslator } from "@/i18n/desktop/index.js";
+
+const t = createDesktopTranslator("fr");
 
 /**
  * Settings → Profils, driven the way the renderer drives it.
@@ -252,9 +255,9 @@ describe("aides du formulaire renderer", () => {
       defaultLevel: "standard" as const,
       instructions: "",
     };
-    expect(findFormProblem(base, [])).toContain("nom");
-    expect(findFormProblem({ ...base, name: "SAV" }, [])).toContain("identifiant");
-    expect(findFormProblem({ ...base, name: "SAV", id: "S A V" }, [])).toContain("invalide");
+    expect(findFormProblem(base, [], t)).toContain("nom");
+    expect(findFormProblem({ ...base, name: "SAV" }, [], t)).toContain("identifiant");
+    expect(findFormProblem({ ...base, name: "SAV", id: "S A V" }, [], t)).toContain("invalide");
   });
 
   it("refuse un identifiant déjà pris, sauf pour le profil qu'on édite", () => {
@@ -267,9 +270,9 @@ describe("aides du formulaire renderer", () => {
       defaultLevel: "standard" as const,
       instructions: "i",
     };
-    expect(findFormProblem(form, ["sav"])).toContain("déjà pris");
+    expect(findFormProblem(form, ["sav"], t)).toContain("déjà pris");
     // An edit keeps its own id: that is not a collision with itself.
-    expect(findFormProblem({ ...form, mode: "update" }, ["sav"])).toBeUndefined();
+    expect(findFormProblem({ ...form, mode: "update" }, ["sav"], t)).toBeUndefined();
   });
 
   it("ne réclame pas les champs copiés par le main en mode duplication", () => {
@@ -286,6 +289,7 @@ describe("aides du formulaire renderer", () => {
           instructions: "",
         },
         [],
+        t,
       ),
     ).toBeUndefined();
   });
@@ -303,6 +307,7 @@ describe("aides du formulaire renderer", () => {
           instructions: "i",
         },
         [],
+        t,
       ),
     ).toBeUndefined();
   });

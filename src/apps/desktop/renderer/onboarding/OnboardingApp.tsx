@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useLocale, useT, type Translate } from "../shared/i18n.js";
 import { CheckCircle2, KeyRound, Loader2, TriangleAlert } from "lucide-react";
 import { groupProfiles } from "../shared/profiles.js";
 import {
@@ -35,10 +36,11 @@ interface OnboardingForm {
 
 const COMPATIBLE_PROVIDER_ID = "openai-compatible";
 
-const LEVEL_LABELS: Record<(typeof REPROMPT_LEVEL_IDS)[number], string> = {
-  minimal: "Minimale — corrige la forme, touche à peu",
-  standard: "Standard — reformule et structure",
-  complete: "Complète — restructure et détaille",
+/** Les niveaux passent par une clé : leur libellé dépend de la langue. */
+const LEVEL_KEYS: Record<(typeof REPROMPT_LEVEL_IDS)[number], string> = {
+  minimal: "onboarding.levelMinimal",
+  standard: "onboarding.levelStandard",
+  complete: "onboarding.levelComplete",
 };
 
 /**
@@ -50,55 +52,60 @@ const LEVEL_LABELS: Record<(typeof REPROMPT_LEVEL_IDS)[number], string> = {
 export function findOnboardingProblem(
   form: OnboardingForm,
   provider: OnboardingProviderOption | undefined,
+  t: Translate = (key) => key,
 ): string | undefined {
-  if (!provider) return "Choisissez un fournisseur.";
+  if (!provider) return t("onboarding.pickProvider");
 
   if (provider.id === COMPATIBLE_PROVIDER_ID) {
     if (!form.compatibleId.trim()) {
-      return "Donnez un identifiant à votre fournisseur (par exemple « local »).";
+      return t("onboarding.idRequired");
     }
     if (!/^[a-z0-9-]+$/.test(form.compatibleId.trim())) {
-      return "L'identifiant du fournisseur n'accepte que des minuscules, des chiffres et des tirets.";
+      return t("onboarding.idFormat");
     }
     const parsed = URL.parse(form.compatibleBaseUrl.trim());
     if (parsed?.protocol !== "http:" && parsed?.protocol !== "https:") {
-      return "L'URL de base doit commencer par http:// ou https://.";
+      return t("settings.baseUrlScheme");
     }
   }
 
-  if (!form.model.trim()) return "Indiquez le modèle à utiliser.";
+  if (!form.model.trim()) return t("onboarding.modelRequired");
 
   if (provider.requiresApiKey && !provider.credentialConfigured) {
-    return `Enregistrez une clé API pour ${provider.label} : sans elle, l'application ne peut rien envoyer.`;
+    return t("onboarding.keyRequired", { provider: provider.label });
   }
 
   return undefined;
 }
 
 /** How a detected credential is described, so its origin is never a mystery. */
-export function describeCredentialSource(provider: OnboardingProviderOption): string {
+export function describeCredentialSource(
+  provider: OnboardingProviderOption,
+  t: Translate = (key) => key,
+): string {
   // Asked first: a provider that needs no key is not a provider whose key is
   // missing, and saying "no key saved yet" sends someone looking for one that
   // does not exist.
   if (!provider.requiresApiKey && !provider.credentialConfigured) {
-    return "Aucune clé nécessaire pour ce fournisseur.";
+    return t("onboarding.keyNotNeededProvider");
   }
 
   switch (provider.credentialSource) {
     case "environment":
-      return `Clé détectée dans ${provider.envName ?? "votre environnement"}.`;
+      return t("onboarding.keyFromEnv", { envName: provider.envName ?? "" });
     case "keychain":
-      return "Clé trouvée dans le trousseau de votre système.";
+      return t("onboarding.keyInKeychain");
     case "config":
-      return "Fournisseur déclaré dans votre configuration.";
+      return t("onboarding.providerDeclared");
     case "builtin":
-      return "Aucune clé nécessaire.";
+      return t("onboarding.keyNotNeeded");
     default:
-      return "Aucune clé enregistrée pour l'instant.";
+      return t("onboarding.noKeyYet");
   }
 }
 
 export function OnboardingApp(): React.JSX.Element {
+  const t = useT();
   const [state, setState] = useState<OnboardingStateResponse | null>(null);
   // Read separately from the setup state: the profile catalogue is files on
   // disk, and a broken one must not stop the wizard from opening.
@@ -108,6 +115,12 @@ export function OnboardingApp(): React.JSX.Element {
   const [busy, setBusy] = useState<"credential" | "finish" | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Détectée au démarrage, changeable ici : c'est le premier écran, et il doit
+  // pouvoir se lire avant de pouvoir être rempli. Le choix part avec le reste
+  // de la configuration, pas avant — écrire le fichier maintenant ferait
+  // croire au processus principal que l'installation est déjà faite.
+  const { locale, previewLocale } = useLocale();
+  const [chosenLocale, setChosenLocale] = useState<"en" | "fr" | null>(null);
 
   const refresh = useCallback(async (): Promise<OnboardingStateResponse> => {
     const next = await window.reqraft.onboardingState();
@@ -157,11 +170,13 @@ export function OnboardingApp(): React.JSX.Element {
         <div className="onboarding-loading">
           {error === null ? (
             <span className="muted">
-              <Loader2 size={16} className="pulse" aria-hidden /> Lecture de votre configuration…
+              <Loader2 size={16} className="pulse" aria-hidden />
+              {t("onboarding.loading")}
             </span>
           ) : (
             <div className="settings-warning" role="alert">
-              <TriangleAlert size={13} aria-hidden /> Configuration illisible : {error}
+              <TriangleAlert size={13} aria-hidden />{" "}
+              {t("onboarding.unreadable", { reason: error })}
             </div>
           )}
         </div>
@@ -170,7 +185,7 @@ export function OnboardingApp(): React.JSX.Element {
   }
 
   const provider = state.providers.find((candidate) => candidate.id === form.provider);
-  const problem = findOnboardingProblem(form, provider);
+  const problem = findOnboardingProblem(form, provider, t);
   const needsKey = provider?.requiresApiKey === true && !provider.credentialConfigured;
 
   const update = (patch: Partial<OnboardingForm>): void => {
@@ -201,7 +216,7 @@ export function OnboardingApp(): React.JSX.Element {
       // rendered input is a key on screen.
       setSecret("");
       await refresh();
-      setNotice(`Clé ${provider.label} vérifiée et enregistrée dans votre trousseau.`);
+      setNotice(t("onboarding.keySaved", { provider: provider.label }));
     } catch (cause) {
       setError(messageOf(cause));
     } finally {
@@ -218,6 +233,9 @@ export function OnboardingApp(): React.JSX.Element {
         model: form.model.trim(),
         profile: form.profile,
         level: form.level,
+        // Seulement si le choix a été fait ici : sans cela, la langue détectée
+        // serait figée dans la configuration et cesserait de suivre le système.
+        ...(chosenLocale === null ? {} : { uiLocale: chosenLocale }),
         ...(form.provider === COMPATIBLE_PROVIDER_ID
           ? {
               compatibleProvider: {
@@ -232,9 +250,7 @@ export function OnboardingApp(): React.JSX.Element {
       if (response.state.required) {
         // Saved, but still not runnable. The main process keeps the window
         // open in that case, so say what is still missing.
-        setError(
-          "Configuration enregistrée, mais incomplète : il manque encore une clé utilisable.",
-        );
+        setError(t("onboarding.savedIncomplete"));
       }
     } catch (cause) {
       setError(messageOf(cause));
@@ -248,24 +264,39 @@ export function OnboardingApp(): React.JSX.Element {
       <div className="settings-titlebar">
         <div className="settings-titlebar-spacer" aria-hidden />
         <div className="settings-title">Reqraft</div>
-        <span className="onboarding-badge">configuration</span>
+        <span className="onboarding-badge">{t("onboarding.badge")}</span>
       </div>
 
       <div className="onboarding-body">
         <header className="onboarding-header">
-          <h1 className="onboarding-heading">Configurons Reqraft</h1>
-          <p className="onboarding-lede">
-            Quelques choix suffisent. Vous les retrouverez tous dans les réglages.
-          </p>
+          <h1 className="onboarding-heading">{t("onboarding.title")}</h1>
+          <p className="onboarding-lede">{t("onboarding.lede")}</p>
         </header>
 
         <div className="onboarding-card">
           <label className="onboarding-field">
             <span className="onboarding-label">
-              <span className="onboarding-label-title">Fournisseur</span>
-              <span className="onboarding-label-detail">
-                Le service qui reformulera vos demandes.
-              </span>
+              <span className="onboarding-label-title">{t("onboarding.language")}</span>
+              <span className="onboarding-label-detail">{t("onboarding.languageDetail")}</span>
+            </span>
+            <select
+              className="settings-select"
+              value={locale ?? "en"}
+              onChange={(event) => {
+                const next = event.target.value as "en" | "fr";
+                setChosenLocale(next);
+                previewLocale(next);
+              }}
+            >
+              <option value="en">{t("settings.languageEn")}</option>
+              <option value="fr">{t("settings.languageFr")}</option>
+            </select>
+          </label>
+
+          <label className="onboarding-field">
+            <span className="onboarding-label">
+              <span className="onboarding-label-title">{t("onboarding.provider")}</span>
+              <span className="onboarding-label-detail">{t("onboarding.providerDetail")}</span>
               {provider && (
                 <span
                   className={
@@ -275,7 +306,7 @@ export function OnboardingApp(): React.JSX.Element {
                   }
                 >
                   {provider.credentialConfigured && <CheckCircle2 size={12} aria-hidden />}
-                  {describeCredentialSource(provider)}
+                  {describeCredentialSource(provider, t)}
                 </span>
               )}
             </span>
@@ -298,9 +329,9 @@ export function OnboardingApp(): React.JSX.Element {
             <>
               <label className="onboarding-field">
                 <span className="onboarding-label">
-                  <span className="onboarding-label-title">Identifiant interne</span>
+                  <span className="onboarding-label-title">{t("onboarding.internalId")}</span>
                   <span className="onboarding-label-detail">
-                    Le nom court sous lequel ce fournisseur est enregistré.
+                    {t("onboarding.internalIdDetail")}
                   </span>
                 </span>
                 <input
@@ -313,10 +344,8 @@ export function OnboardingApp(): React.JSX.Element {
               </label>
               <label className="onboarding-field">
                 <span className="onboarding-label">
-                  <span className="onboarding-label-title">URL de base</span>
-                  <span className="onboarding-label-detail">
-                    L&apos;adresse de l&apos;API compatible OpenAI à appeler.
-                  </span>
+                  <span className="onboarding-label-title">{t("onboarding.baseUrl")}</span>
+                  <span className="onboarding-label-detail">{t("onboarding.baseUrlDetail")}</span>
                 </span>
                 <input
                   className="settings-input mono"
@@ -332,18 +361,17 @@ export function OnboardingApp(): React.JSX.Element {
           {needsKey && (
             <label className="onboarding-field onboarding-field-stacked">
               <span className="onboarding-label">
-                <span className="onboarding-label-title">Clé API {provider.label}</span>
-                <span className="onboarding-label-detail">
-                  Vérifiée puis rangée dans le trousseau de votre système. Elle n&apos;est jamais
-                  écrite dans votre fichier de configuration.
+                <span className="onboarding-label-title">
+                  {t("onboarding.apiKey", { provider: provider.label })}
                 </span>
+                <span className="onboarding-label-detail">{t("onboarding.apiKeyDetail")}</span>
               </span>
               <span className="onboarding-key-control">
                 <input
                   className="settings-input mono"
                   type="password"
                   value={secret}
-                  placeholder="Collez votre clé"
+                  placeholder={t("settings.pasteKey")}
                   autoComplete="off"
                   spellCheck={false}
                   onChange={(event) => {
@@ -363,7 +391,7 @@ export function OnboardingApp(): React.JSX.Element {
                   ) : (
                     <KeyRound size={13} aria-hidden />
                   )}
-                  Vérifier et enregistrer
+                  {t("onboarding.verifyAndSave")}
                 </button>
               </span>
             </label>
@@ -371,8 +399,8 @@ export function OnboardingApp(): React.JSX.Element {
 
           <label className="onboarding-field">
             <span className="onboarding-label">
-              <span className="onboarding-label-title">Modèle</span>
-              <span className="onboarding-label-detail">Ce que le fournisseur exécutera.</span>
+              <span className="onboarding-label-title">{t("onboarding.model")}</span>
+              <span className="onboarding-label-detail">{t("onboarding.modelDetail")}</span>
             </span>
             {provider && provider.models.length > 0 ? (
               <select
@@ -385,7 +413,7 @@ export function OnboardingApp(): React.JSX.Element {
                 {provider.models.map((model) => (
                   <option key={model.id} value={model.id}>
                     {model.name}
-                    {model.recommended ? " — recommandé" : ""}
+                    {model.recommended ? t("common.recommendedSuffix") : ""}
                   </option>
                 ))}
                 {provider.models.every((model) => model.id !== form.model) && (
@@ -396,7 +424,7 @@ export function OnboardingApp(): React.JSX.Element {
               <input
                 className="settings-input mono"
                 value={form.model}
-                placeholder="identifiant du modèle"
+                placeholder={t("onboarding.modelPlaceholder")}
                 onChange={(event) => {
                   update({ model: event.target.value });
                 }}
@@ -407,9 +435,9 @@ export function OnboardingApp(): React.JSX.Element {
           {profiles.length > 0 && (
             <label className="onboarding-field">
               <span className="onboarding-label">
-                <span className="onboarding-label-title">Profil par défaut</span>
+                <span className="onboarding-label-title">{t("onboarding.defaultProfile")}</span>
                 <span className="onboarding-label-detail">
-                  Le style appliqué quand vous n&apos;en choisissez pas un autre.
+                  {t("onboarding.defaultProfileDetail")}
                 </span>
               </span>
               <select
@@ -420,7 +448,7 @@ export function OnboardingApp(): React.JSX.Element {
                 }}
               >
                 {groupProfiles(profiles).map((group) => (
-                  <optgroup key={group.origin} label={group.label}>
+                  <optgroup key={group.origin} label={t(group.labelKey)}>
                     {group.entries.map((entry) => (
                       <option key={entry.id} value={entry.id}>
                         {entry.name}
@@ -434,10 +462,8 @@ export function OnboardingApp(): React.JSX.Element {
 
           <label className="onboarding-field">
             <span className="onboarding-label">
-              <span className="onboarding-label-title">Niveau de réécriture</span>
-              <span className="onboarding-label-detail">
-                À quel point Reqraft retravaille ce que vous écrivez.
-              </span>
+              <span className="onboarding-label-title">{t("onboarding.level")}</span>
+              <span className="onboarding-label-detail">{t("onboarding.levelDetail")}</span>
             </span>
             <select
               className="settings-select"
@@ -448,7 +474,7 @@ export function OnboardingApp(): React.JSX.Element {
             >
               {REPROMPT_LEVEL_IDS.map((level) => (
                 <option key={level} value={level}>
-                  {LEVEL_LABELS[level]}
+                  {t(LEVEL_KEYS[level])}
                 </option>
               ))}
             </select>
@@ -478,9 +504,7 @@ export function OnboardingApp(): React.JSX.Element {
       */}
       <footer className="onboarding-footer">
         <div className="onboarding-footer-inner">
-          <span className="onboarding-hint">
-            {problem ?? "Tout est prêt : vous pouvez terminer."}
-          </span>
+          <span className="onboarding-hint">{problem ?? t("onboarding.ready")}</span>
           <button
             type="button"
             className="button-primary"
@@ -490,7 +514,7 @@ export function OnboardingApp(): React.JSX.Element {
             }}
           >
             {busy === "finish" && <Loader2 size={13} className="pulse" aria-hidden />}
-            Terminer la configuration
+            {t("onboarding.finish")}
           </button>
         </div>
       </footer>

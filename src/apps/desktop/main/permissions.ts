@@ -1,4 +1,5 @@
 import type { MacosBridge } from "./macos.js";
+import { t } from "./i18n.js";
 
 /**
  * Permissions probing (DESKTOP.md §5.9, updated after the spike).
@@ -48,8 +49,7 @@ export async function probePermissions(probe: PermissionsProbe): Promise<Permiss
       automation: false,
       canReplace: false,
       gap: "wayland",
-      message:
-        "Wayland bloque l'injection de frappes par conception : la capsule fonctionne, mais ⏎ copie au lieu de remplacer.",
+      message: t("main.permissionsWaylandDetail"),
     };
   }
 
@@ -60,7 +60,7 @@ export async function probePermissions(probe: PermissionsProbe): Promise<Permiss
       automation: true,
       canReplace: true,
       gap: "none",
-      message: "Aucune permission requise sur cette plateforme.",
+      message: t("main.permissionsNotNeeded"),
     };
   }
 
@@ -93,15 +93,15 @@ function macosGap(accessibility: boolean, automation: boolean): PermissionGap {
 function describeGap(gap: PermissionGap): string {
   switch (gap) {
     case "none":
-      return "Accessibilité et Automatisation accordées.";
+      return t("main.permissionsGranted");
     case "accessibility":
-      return "Automatisation accordée, Accessibilité refusée — les frappes ne partiront pas.";
+      return t("main.permissionsAccessibilityMissing");
     case "automation":
-      return "Accessibilité accordée, Automatisation refusée.";
+      return t("main.permissionsAutomationMissing");
     case "both":
-      return "Aucune permission accordée : la capsule fonctionne en saisie manuelle.";
+      return t("main.permissionsNoneGranted");
     case "wayland":
-      return "Wayland bloque l'injection de frappes.";
+      return t("main.permissionsWayland");
   }
 }
 

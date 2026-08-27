@@ -156,7 +156,7 @@ describe("profiles:read", () => {
   it("refuses a built-in, which has no file", async () => {
     harness();
     await expect(ipcMain.invoke(IPC_CHANNELS.profileRead, { id: "clean" })).rejects.toThrow(
-      /intégré/,
+      /built-in/,
     );
   });
 
@@ -258,7 +258,7 @@ describe("profiles:save", () => {
           instructions: "Détourné.",
         },
       }),
-    ).rejects.toThrow(/intégré/);
+    ).rejects.toThrow(/built-in/);
   });
 
   it("rejects an unknown field rather than ignoring it", async () => {
@@ -365,7 +365,7 @@ describe("profiles:delete", () => {
   it("refuses a built-in", async () => {
     harness();
     await expect(ipcMain.invoke(IPC_CHANNELS.profileDelete, { id: "clean" })).rejects.toThrow(
-      /intégré/,
+      /built-in/,
     );
   });
 
@@ -375,7 +375,7 @@ describe("profiles:delete", () => {
 
     await expect(
       ipcMain.invoke(IPC_CHANNELS.profileDelete, { id: "support-client" }),
-    ).rejects.toThrow(/par défaut/);
+    ).rejects.toThrow(/default profile/);
 
     expect(await readLocalProfile("support-client", profilesDir)).toBeDefined();
   });

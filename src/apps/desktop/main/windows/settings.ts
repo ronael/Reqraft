@@ -1,4 +1,5 @@
 import { BrowserWindow } from "electron";
+import { t } from "../i18n.js";
 
 /**
  * Settings window (DESKTOP.md §3, §4.3): a normal framed window, not a panel.
@@ -24,7 +25,7 @@ export function createSettingsWindow(options: SettingsWindowOptions): Electron.B
     minHeight: 540,
     resizable: true,
     show: false,
-    title: "Reqraft — Réglages",
+    title: t("main.settingsTitle"),
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     autoHideMenuBar: true,
     webPreferences: {

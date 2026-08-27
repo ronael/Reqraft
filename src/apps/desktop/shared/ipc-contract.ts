@@ -62,6 +62,20 @@ export type ResultAcceptRequest = z.infer<typeof ResultAcceptRequestSchema>;
 /** Channels documented as `void` input accept no payload at all. */
 export const EmptyRequestSchema = z.undefined();
 
+/**
+ * Lire une autre langue que celle du démarrage.
+ *
+ * Sans argument, le canal rend la langue en vigueur. Avec, il rend le
+ * catalogue demandé : l'onboarding et les réglages montrent ainsi le résultat
+ * d'un choix avant qu'il ne soit enregistré, sans embarquer les catalogues
+ * dans le renderer.
+ */
+export const LocaleReadRequestSchema = z
+  .object({ locale: z.enum(["en", "fr"]).optional() })
+  .strict()
+  .optional();
+export type LocaleReadRequest = z.infer<typeof LocaleReadRequestSchema>;
+
 export const ConfigWriteRequestSchema = ConfigSchema.partial();
 export type ConfigWriteRequest = z.infer<typeof ConfigWriteRequestSchema>;
 
@@ -94,6 +108,15 @@ export type CaptureSelectionResponse =
 
 export interface ResultAcceptResponse {
   applied: boolean;
+  /**
+   * Pourquoi le remplacement n'a pas eu lieu.
+   *
+   * `ReplaceOutcome` la porte depuis toujours, mais elle s'arrêtait ici : la
+   * capsule ne pouvait dire que « remplacement impossible », sans jamais
+   * distinguer une permission refusée d'une application source qui n'est pas
+   * revenue au premier plan. Même oubli que pour la raison d'une capture vide.
+   */
+  reason?: string;
 }
 
 /**
@@ -222,7 +245,7 @@ export interface ProfileCatalogResponse {
 }
 
 const PROFILE_ID_ERROR =
-  "L'identifiant du profil doit être normalisé : lettres minuscules, chiffres et tirets uniquement.";
+  "A profile identifier must be normalised: lowercase letters, digits and hyphens only.";
 
 const ProfileIdSchema = z
   .string()
@@ -231,12 +254,11 @@ const ProfileIdSchema = z
   .regex(CUSTOM_PROFILE_ID_REGEX, PROFILE_ID_ERROR);
 
 const WritableProfileIdSchema = ProfileIdSchema.refine((id) => isValidCustomProfileId(id), {
-  message:
-    "L'identifiant du profil local est réservé, intégré ou non portable. Choisissez un autre identifiant.",
+  message: "This local profile identifier is reserved, built-in or not portable. Pick another one.",
 });
 
 const ExportableProfileIdSchema = ProfileIdSchema.refine((id) => id !== AUTO_PROFILE_ID, {
-  message: "Le profil automatique n'est pas un profil exportable ou duplicable.",
+  message: "The automatic profile can be neither exported nor duplicated.",
 });
 
 export const ProfileIdRequestSchema = z.object({ id: ProfileIdSchema }).strict();
@@ -320,7 +342,7 @@ export const ProviderSaveRequestSchema = z
       .string()
       .trim()
       .min(1)
-      .regex(/^[a-z0-9-]+$/, "L'identifiant du fournisseur doit être en minuscules."),
+      .regex(/^[a-z0-9-]+$/, "A provider identifier must be lowercase."),
     name: z.string().trim().min(1).optional(),
     baseUrl: z
       .string()
@@ -454,13 +476,15 @@ export const OnboardingCompleteRequestSchema = z
     model: z.string().trim().min(1),
     profile: z.string().trim().min(1),
     level: RepromptLevelSchema,
+    /** La langue choisie à la configuration, enregistrée avec le reste. */
+    uiLocale: z.enum(["auto", "en", "fr"]).optional(),
     compatibleProvider: z
       .object({
         id: z
           .string()
           .trim()
           .min(1)
-          .regex(/^[a-z0-9-]+$/, "L'identifiant du fournisseur doit être en minuscules."),
+          .regex(/^[a-z0-9-]+$/, "A provider identifier must be lowercase."),
         name: z.string().trim().min(1).optional(),
         // `.url()` alone is not enough: `localhost:11434` parses, with
         // `localhost:` as its protocol, and only fails when the first request
@@ -534,6 +558,18 @@ export interface CapsuleOpenedPayload {
   mode: "capture" | "input";
 }
 
+/**
+ * La langue de l'interface et ses libellés, résolus côté main.
+ *
+ * Les libellés voyagent avec : le renderer ne peut pas embarquer les
+ * catalogues sans dupliquer la source de vérité du CLI, et les recharger à
+ * chaque écran ferait clignoter l'interface.
+ */
+export interface LocaleResponse {
+  locale: "en" | "fr";
+  messages: Record<string, string>;
+}
+
 /** L'ouverture en attente, ou `null` si la capsule n'a pas été déclenchée. */
 export type CapsulePendingResponse = CapsuleOpenedPayload | null;
 
@@ -589,6 +625,7 @@ export interface ReqraftBridge {
   duplicateProfile(request: ProfileDuplicateRequest): Promise<ProfileMutationResponse>;
   deleteProfile(id: string): Promise<ProfileMutationResponse>;
   exportProfile(id: string): Promise<ProfileExportResponse>;
+  readLocale(locale?: "en" | "fr"): Promise<LocaleResponse>;
   capsulePending(): Promise<CapsulePendingResponse>;
   openSettings(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;

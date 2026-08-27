@@ -38,8 +38,8 @@ export function listDesktopCapabilities(): string[] {
     ids.add("interrupt");
   }
 
-  // The comparaison state of the §8.2 machine is the diff view.
-  if (CAPSULE_STATES.includes("comparaison")) {
+  // The comparison state of the §8.2 machine is the diff view.
+  if (CAPSULE_STATES.includes("comparison")) {
     ids.add("show-diff");
   }
 

@@ -33,6 +33,14 @@ export interface CapsuleWindow {
   window: Electron.BrowserWindow;
   /** Places the capsule on its anchor, then shows and focuses it. */
   show(anchor: CapsuleAnchor): void;
+  /**
+   * La remontre là où elle était, sans la replacer.
+   *
+   * Sert au collage : la capsule est cachée pour rendre le focus clavier à
+   * l'application source, puis ramenée telle quelle si le remplacement a
+   * échoué — la déplacer au curseur, à ce moment-là, la ferait sauter.
+   */
+  reveal(): void;
   hide(): void;
 }
 
@@ -107,6 +115,13 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
         display.workArea,
       );
       window.setPosition(x, y);
+      window.show();
+      window.focus();
+    },
+    reveal() {
+      if (window.isDestroyed()) {
+        return;
+      }
       window.show();
       window.focus();
     },

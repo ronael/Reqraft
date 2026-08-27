@@ -11,6 +11,7 @@ import type {
   ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import type { PermissionsReport } from "./permissions.js";
+import { t } from "./i18n.js";
 
 /**
  * Structured doctor report for the settings Diagnostic tab (DESKTOP.md
@@ -91,10 +92,11 @@ async function checkProvider(
     return {
       id: `provider:${id}`,
       ok: false,
-      detail: health.missingConfiguration?.join(", ") ?? health.code ?? "configuration incomplète",
+      detail:
+        health.missingConfiguration?.join(", ") ?? health.code ?? t("main.doctorConfigIncomplete"),
     };
   } catch {
-    return { id: `provider:${id}`, ok: false, detail: "erreur de validation" };
+    return { id: `provider:${id}`, ok: false, detail: t("main.doctorValidationError") };
   }
 }
 
@@ -103,12 +105,12 @@ function checkPermissions(report: PermissionsReport): DoctorCheck[] {
     {
       id: "permissions:accessibility",
       ok: report.accessibility,
-      detail: report.accessibility ? "accordée" : report.message,
+      detail: report.accessibility ? t("main.doctorPermissionGranted") : report.message,
     },
     {
       id: "permissions:automation",
       ok: report.automation,
-      detail: report.automation ? "accordée" : report.message,
+      detail: report.automation ? t("main.doctorPermissionGranted") : report.message,
     },
     {
       id: "permissions:replace",
@@ -129,8 +131,8 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
     ok: state.rejected.length === 0,
     detail:
       state.rejected.length === 0
-        ? "aucun refus"
-        : `refusés par le système : ${state.rejected.join(", ")}`,
+        ? t("main.doctorNoRejection")
+        : t("main.doctorRejectedBySystem", { list: state.rejected.join(", ") }),
   });
 
   return checks;
@@ -144,6 +146,6 @@ function checkShortcutIntent(
   return {
     id: `shortcuts:${intent}`,
     ok: active !== undefined,
-    detail: active ? `${active.label} (${active.accelerator})` : "aucun raccourci actif",
+    detail: active ? `${active.label} (${active.accelerator})` : t("main.doctorNoShortcut"),
   };
 }

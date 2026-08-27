@@ -45,6 +45,8 @@ const bridge: ReqraftBridge = {
   duplicateProfile: (request) => ipcRenderer.invoke(IPC_CHANNELS.profileDuplicate, request),
   deleteProfile: (id) => ipcRenderer.invoke(IPC_CHANNELS.profileDelete, { id }),
   exportProfile: (id) => ipcRenderer.invoke(IPC_CHANNELS.profileExport, { id }),
+  readLocale: (locale) =>
+    ipcRenderer.invoke(IPC_CHANNELS.localeRead, locale === undefined ? undefined : { locale }),
   capsulePending: () => ipcRenderer.invoke(IPC_CHANNELS.capsulePending),
   openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
   shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),

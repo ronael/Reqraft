@@ -2,7 +2,6 @@ import { type ComponentType, useCallback, useEffect, useState } from "react";
 import { Cpu, Plus, SlidersHorizontal, Stethoscope, UserRound, Waypoints } from "lucide-react";
 import {
   REPROMPT_LEVEL_IDS,
-  SHORTCUT_PRESETS,
   type DoctorReport,
   type PermissionsState,
   type ProviderStatus,
@@ -11,42 +10,45 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 
 import { ProfilesTab } from "./ProfilesTab.js";
+import { useT, type Translate } from "../shared/i18n.js";
+import { PreferencesTab } from "./PreferencesTab.js";
+import { version } from "@/version.js";
 
-const TABS = ["Profils", "Providers", "Modèles", "Réglages", "Diagnostic"] as const;
+const TABS = ["profiles", "providers", "models", "preferences", "diagnostic"] as const;
 type Tab = (typeof TABS)[number];
 
 const TAB_META: Record<
   Tab,
   {
     icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
-    title: string;
-    detail: string;
+    titleKey: string;
+    detailKey: string;
   }
 > = {
-  Profils: {
+  profiles: {
     icon: UserRound,
-    title: "Profils",
-    detail: "Style de reformulation et profils locaux.",
+    titleKey: "settings.nav.profiles",
+    detailKey: "settings.profiles.detail",
   },
-  Providers: {
+  providers: {
     icon: Waypoints,
-    title: "Providers",
-    detail: "Vos clés et vos endpoints, sans jamais afficher une clé.",
+    titleKey: "settings.nav.providers",
+    detailKey: "settings.providers.detail",
   },
-  Modèles: {
+  models: {
     icon: Cpu,
-    title: "Modèles",
-    detail: "Provider, modèle et niveau utilisés par défaut.",
+    titleKey: "settings.nav.models",
+    detailKey: "settings.models.detail",
   },
-  Réglages: {
+  preferences: {
     icon: SlidersHorizontal,
-    title: "Réglages",
-    detail: "Raccourcis globaux, permissions et préférences desktop.",
+    titleKey: "settings.nav.preferences",
+    detailKey: "settings.preferences.detail",
   },
-  Diagnostic: {
+  diagnostic: {
     icon: Stethoscope,
-    title: "Diagnostic",
-    detail: "Vérifications locales et rapport sans secret.",
+    titleKey: "settings.nav.diagnostic",
+    detailKey: "settings.diagnostic.detail",
   },
 };
 
@@ -57,7 +59,8 @@ const TAB_META: Record<
  * configured/absent states (§2.2).
  */
 export function SettingsApp(): React.JSX.Element {
-  const [tab, setTab] = useState<Tab>("Profils");
+  const t = useT();
+  const [tab, setTab] = useState<Tab>("profiles");
   const [config, setConfig] = useState<SafeConfig | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);
@@ -110,9 +113,9 @@ export function SettingsApp(): React.JSX.Element {
       return permissions.reason;
     }
     if (permissions?.canReplace === true) {
-      return "Accessibilité et Automatisation accordées.";
+      return t("settings.permissionsGranted");
     }
-    return "Requises pour la capture et le remplacement.";
+    return t("settings.permissionsNeeded");
   }
 
   return (
@@ -120,7 +123,7 @@ export function SettingsApp(): React.JSX.Element {
       <div className="settings-titlebar">
         <div className="settings-titlebar-spacer" aria-hidden />
         <div className="settings-title">Reqraft</div>
-        <span className="settings-ready">prêt</span>
+        <span className="settings-ready">{t("settings.ready")}</span>
       </div>
 
       <div className="settings-shell">
@@ -128,21 +131,20 @@ export function SettingsApp(): React.JSX.Element {
           <div className="settings-brand">
             <div>
               <span className="settings-brand-name">reqraft</span>
-              <span className="settings-brand-version">0.4.0</span>
+              <span className="settings-brand-version">{version}</span>
             </div>
-            <p>Shape the request. Keep the intent.</p>
+            <p>{t("settings.tagline")}</p>
           </div>
 
-          <nav className="settings-nav" aria-label="Réglages Reqraft">
+          <nav className="settings-nav" aria-label={t("settings.title")}>
             {TABS.map((label) => (
               <SettingsNavItem
                 key={label}
                 active={label === tab}
-                label={label}
                 meta={TAB_META[label]}
                 onClick={() => {
                   setTab(label);
-                  if (label === "Diagnostic" && doctor === null && !doctorRunning) {
+                  if (label === "diagnostic" && doctor === null && !doctorRunning) {
                     runDoctor();
                   }
                 }}
@@ -156,14 +158,14 @@ export function SettingsApp(): React.JSX.Element {
         <section className="settings-content">
           <header className="settings-screen-header">
             <div>
-              <h1>{activeTab.title}</h1>
-              <p>{activeTab.detail}</p>
+              <h1>{t(activeTab.titleKey)}</h1>
+              <p>{t(activeTab.detailKey)}</p>
             </div>
           </header>
 
           <div className="settings-panel">
-            {tab === "Réglages" && (
-              <RaccourcisTab
+            {tab === "preferences" && (
+              <PreferencesTab
                 captureShortcut={captureShortcut}
                 inputShortcut={inputShortcut}
                 rejectedShortcuts={rejectedShortcuts}
@@ -180,10 +182,14 @@ export function SettingsApp(): React.JSX.Element {
                     },
                   });
                 }}
+                uiLocale={config?.uiLocale ?? "auto"}
+                onChooseLanguage={(preference) => {
+                  patchConfig({ uiLocale: preference });
+                }}
               />
             )}
 
-            {tab === "Providers" && config !== null && (
+            {tab === "providers" && config !== null && (
               <ProvidersTab
                 providers={providers}
                 config={config}
@@ -195,11 +201,11 @@ export function SettingsApp(): React.JSX.Element {
               />
             )}
 
-            {tab === "Modèles" && config !== null && (
+            {tab === "models" && config !== null && (
               <ModelsTab config={config} providers={providers} onPatchConfig={patchConfig} />
             )}
 
-            {tab === "Profils" && config !== null && (
+            {tab === "profiles" && config !== null && (
               <ProfilesTab
                 config={config}
                 onSelectDefault={(id) => {
@@ -208,7 +214,7 @@ export function SettingsApp(): React.JSX.Element {
               />
             )}
 
-            {tab === "Diagnostic" && (
+            {tab === "diagnostic" && (
               <DiagnosticTab doctor={doctor} running={doctorRunning} onRunDoctor={runDoctor} />
             )}
           </div>
@@ -221,7 +227,7 @@ export function SettingsApp(): React.JSX.Element {
             ? "configuration en lecture"
             : `${config.defaultProvider} · ${config.defaultModel}`}
         </span>
-        <span>Local-first · aucun prompt stocké</span>
+        <span>{t("settings.footer")}</span>
       </footer>
     </main>
   );
@@ -229,17 +235,16 @@ export function SettingsApp(): React.JSX.Element {
 
 interface SettingsNavItemProps {
   active: boolean;
-  label: Tab;
   meta: (typeof TAB_META)[Tab];
   onClick(): void;
 }
 
 function SettingsNavItem({
   active,
-  label,
   meta,
   onClick,
 }: Readonly<SettingsNavItemProps>): React.JSX.Element {
+  const t = useT();
   const Icon = meta.icon;
   return (
     <button
@@ -248,7 +253,9 @@ function SettingsNavItem({
       onClick={onClick}
     >
       <Icon size={15} aria-hidden />
-      <span>{label}</span>
+      {/* Le libellé traduit, pas la clé d'onglet : `label` est un identifiant
+          interne, et l'afficher laissait « Modèles » dans une fenêtre anglaise. */}
+      <span>{t(meta.titleKey)}</span>
     </button>
   );
 }
@@ -262,20 +269,32 @@ function ContextPanel({
   config,
   configuredProviderCount,
 }: Readonly<ContextPanelProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
       <div className="settings-context">
-        <div className="settings-context-title">Contexte</div>
+        <div className="settings-context-title">{t("settings.context")}</div>
         <dl>
-          <ContextRow label="provider" value={config?.defaultProvider ?? "—"} />
-          <ContextRow label="modèle" value={config?.defaultModel ?? "—"} mono />
-          <ContextRow label="profil" value={config?.defaultProfile ?? "—"} />
-          <ContextRow label="niveau" value={config?.defaultLevel ?? "—"} />
+          <ContextRow
+            label={t("settings.context.provider")}
+            value={config?.defaultProvider ?? "—"}
+          />
+          <ContextRow
+            label={t("settings.context.model")}
+            value={config?.defaultModel ?? "—"}
+            mono
+          />
+          <ContextRow label={t("settings.context.profile")} value={config?.defaultProfile ?? "—"} />
+          <ContextRow label={t("settings.context.level")} value={config?.defaultLevel ?? "—"} />
         </dl>
       </div>
       <div className="settings-sidebar-note">
-        {configuredProviderCount} provider configuré
-        {configuredProviderCount > 1 ? "s" : ""} · télémétrie désactivée
+        {t(
+          configuredProviderCount > 1
+            ? "settings.providersConfiguredPlural"
+            : "settings.providersConfigured",
+          { count: String(configuredProviderCount) },
+        )}
       </div>
     </>
   );
@@ -315,36 +334,41 @@ interface EndpointForm {
 export function findEndpointProblem(
   form: EndpointForm,
   takenIds: readonly string[],
+  t: Translate = (key) => key,
 ): string | undefined {
   const id = form.id.trim();
-  if (!id) return "Donnez un identifiant à ce fournisseur.";
+  if (!id) return t("settings.identifierMissing");
   if (!/^[a-z0-9-]+$/.test(id)) {
-    return "L'identifiant n'accepte que des minuscules, des chiffres et des tirets.";
+    return t("settings.identifierFormat");
   }
   if (form.mode === "create" && takenIds.includes(id)) {
-    return "Cet identifiant est déjà pris.";
+    return t("settings.identifierTaken");
   }
   const parsed = URL.parse(form.baseUrl.trim());
   if (parsed?.protocol !== "http:" && parsed?.protocol !== "https:") {
-    return "L'URL de base doit commencer par http:// ou https://.";
+    return t("settings.baseUrlScheme");
   }
   return undefined;
 }
 
 /** How a credential's origin reads, and whether the settings can change it. */
-export function describeProviderSource(provider: ProviderStatus): string {
-  if (!provider.requiresApiKey) return "Aucune clé nécessaire.";
+export function describeProviderSource(
+  provider: ProviderStatus,
+  t: Translate = (key) => key,
+): string {
+  if (!provider.requiresApiKey) return t("settings.keyNotNeeded");
   switch (provider.source) {
     case "environment":
-      return `Clé lue dans ${provider.envName ?? "votre environnement"}.`;
+      return t("settings.keyFromEnv", { envName: provider.envName ?? "" });
     case "keychain":
-      return "Clé enregistrée dans votre trousseau.";
+      return t("settings.keyInKeychain");
     default:
-      return "Aucune clé enregistrée.";
+      return t("settings.noKeyStored");
   }
 }
 
 function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
+  const t = useT();
   const [editing, setEditing] = useState<string | null>(null);
   const [secret, setSecret] = useState("");
   // Removing a key destroys it: the keychain has no undo, and an API key
@@ -411,7 +435,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
 
   return (
     <>
-      <h3 className="settings-subhead">Fournisseurs intégrés</h3>
+      <h3 className="settings-subhead">{t("settings.builtinProviders")}</h3>
       <div className="settings-card-list">
         {keyProviders.map((provider) => (
           <BuiltinProviderRow
@@ -448,13 +472,10 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         ))}
       </div>
 
-      <h3 className="settings-subhead">Fournisseurs compatibles OpenAI</h3>
+      <h3 className="settings-subhead">{t("settings.compatibleProviders")}</h3>
       <div className="settings-card-list">
         {endpoints.length === 0 && !form && (
-          <p className="settings-note muted">
-            Aucun fournisseur personnalisé. Ajoutez-en un pour appeler un serveur local ou une
-            passerelle compatible.
-          </p>
+          <p className="settings-note muted">{t("settings.noCustomProvider")}</p>
         )}
         {endpoints.map(([id, endpoint]) => (
           <div key={id} className="settings-row">
@@ -463,8 +484,8 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
               <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
               <span className="settings-row-detail">
                 {endpoint.apiKeyEnv === undefined
-                  ? "Sans clé."
-                  : `Clé lue dans ${endpoint.apiKeyEnv}.`}
+                  ? t("settings.endpointNoKey")
+                  : t("settings.keyFromEnv", { envName: endpoint.apiKeyEnv })}
               </span>
               {confirming === `endpoint:${id}` && (
                 <span className="settings-row-detail provider-confirm">
@@ -487,7 +508,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                   });
                 }}
               >
-                Modifier
+                {t("settings.edit")}
               </button>
               {confirming === `endpoint:${id}` ? (
                 <>
@@ -502,7 +523,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                       });
                     }}
                   >
-                    Confirmer
+                    {t("settings.confirm")}
                   </button>
                   <button
                     type="button"
@@ -511,7 +532,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                       setConfirming(null);
                     }}
                   >
-                    Annuler
+                    {t(CANCEL_KEY)}
                   </button>
                 </>
               ) : (
@@ -523,7 +544,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                     setConfirming(`endpoint:${id}`);
                   }}
                 >
-                  Supprimer
+                  {t("settings.delete")}
                 </button>
               )}
             </span>
@@ -559,7 +580,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
               });
             }}
           >
-            <Plus size={13} aria-hidden /> Ajouter un fournisseur
+            <Plus size={13} aria-hidden /> {t("settings.addProvider")}
           </button>
         </div>
       )}
@@ -570,10 +591,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         </div>
       )}
 
-      <p className="settings-warning settings-soft-warning">
-        Les clés sont vérifiées auprès du fournisseur puis rangées dans le trousseau de votre
-        système. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.
-      </p>
+      <p className="settings-warning settings-soft-warning">{t("settings.keysNote")}</p>
     </>
   );
 }
@@ -594,23 +612,19 @@ interface BuiltinProviderRowProps {
 }
 
 function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX.Element {
+  const t = useT();
   const { provider } = props;
   return (
     <div className="settings-row">
       <span>
         <span className="settings-row-title">{provider.label}</span>
-        <span className="settings-row-detail">{describeProviderSource(provider)}</span>
+        <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
         {provider.source === "environment" && (
-          <span className="settings-row-detail">
-            Une variable d&apos;environnement l&apos;emporte sur le trousseau : retirez-la de votre
-            shell pour utiliser une autre clé.
-          </span>
+          <span className="settings-row-detail">{t("settings.envWinsOverKeychain")}</span>
         )}
         {props.confirming && (
           <span className="settings-row-detail provider-confirm">
-            Supprimer la clé {provider.label} du trousseau ? Elle sera définitivement perdue : le
-            trousseau n&apos;a pas de corbeille, et une clé API ne se réaffiche pas chez le
-            fournisseur. Il faudra en générer une nouvelle.
+            {t("settings.confirmDeleteKey", { provider: provider.label })}
           </span>
         )}
       </span>
@@ -620,7 +634,7 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
             className="settings-input mono"
             type="password"
             value={props.secret}
-            placeholder="Collez votre clé"
+            placeholder={t("settings.pasteKey")}
             autoComplete="off"
             spellCheck={false}
             onChange={(event) => {
@@ -633,10 +647,10 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
             disabled={props.secret.trim() === "" || props.busy}
             onClick={props.onSave}
           >
-            Vérifier
+            {t("settings.verify")}
           </button>
           <button type="button" className="chip" onClick={props.onCancel}>
-            Annuler
+            {t(CANCEL_KEY)}
           </button>
         </span>
       ) : (
@@ -649,16 +663,16 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
                 disabled={props.busy}
                 onClick={props.onRemove}
               >
-                Supprimer définitivement
+                {t("settings.deleteForever")}
               </button>
               <button type="button" className="chip" onClick={props.onCancelRemove}>
-                Annuler
+                {t(CANCEL_KEY)}
               </button>
             </>
           ) : (
             <>
               <button type="button" className="chip chip-active" onClick={props.onStartEdit}>
-                {provider.configured ? "Remplacer la clé" : "Ajouter une clé"}
+                {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
               </button>
               {provider.source === "keychain" && (
                 <button
@@ -667,7 +681,7 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
                   disabled={props.busy}
                   onClick={props.onStartRemove}
                 >
-                  Retirer
+                  {t("settings.remove")}
                 </button>
               )}
             </>
@@ -688,6 +702,7 @@ interface EndpointFormProps {
 }
 
 function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
+  const t = useT();
   const { form } = props;
   const field = (
     title: string,
@@ -716,25 +731,36 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
   return (
     <div className="settings-card-list provider-form">
       {field(
-        "Identifiant",
-        "Minuscules, chiffres et tirets.",
+        t("settings.identifier"),
+        t("settings.endpointIdDetail"),
         form.id,
         "id",
         true,
         form.mode === "update",
       )}
-      {field("Nom affiché", "Facultatif.", form.name, "name", false)}
-      {field("URL de base", "L'API compatible OpenAI à appeler.", form.baseUrl, "baseUrl")}
       {field(
-        "Variable de clé",
-        "Facultatif : le nom de la variable d'environnement à lire.",
+        t("settings.endpointNameLabel"),
+        t("settings.endpointNameDetail"),
+        form.name,
+        "name",
+        false,
+      )}
+      {field(
+        t("settings.endpointBaseUrlLabel"),
+        t("settings.endpointBaseUrlDetail"),
+        form.baseUrl,
+        "baseUrl",
+      )}
+      {field(
+        t("settings.endpointKeyEnvLabel"),
+        t("settings.endpointKeyEnvDetail"),
         form.apiKeyEnv,
         "apiKeyEnv",
       )}
       {props.problem !== undefined && <p className="settings-note muted">{props.problem}</p>}
       <div className="settings-actions provider-form-actions">
         <button type="button" className="chip" onClick={props.onCancel}>
-          Annuler
+          {t(CANCEL_KEY)}
         </button>
         <button
           type="button"
@@ -742,7 +768,7 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
           disabled={props.problem !== undefined || props.busy}
           onClick={props.onSave}
         >
-          Enregistrer
+          {t("settings.save")}
         </button>
       </div>
     </div>
@@ -764,6 +790,9 @@ interface ModelsTabProps {
 /** Sentinel for the "type your own identifier" entry in the model list. */
 const CUSTOM_MODEL_OPTION = "__custom__";
 
+/** Nommée parce qu'elle sert dans quatre boutons différents. */
+const CANCEL_KEY = "settings.cancel";
+
 /**
  * The model that should follow a change of provider.
  *
@@ -783,6 +812,7 @@ function ModelsTab({
   providers,
   onPatchConfig,
 }: Readonly<ModelsTabProps>): React.JSX.Element {
+  const t = useT();
   const current = providers.find((provider) => provider.id === config.defaultProvider);
   const models = current?.models ?? [];
   const known = models.some((model) => model.id === config.defaultModel);
@@ -794,8 +824,8 @@ function ModelsTab({
     <div className="settings-card-list">
       <label className="settings-row">
         <span>
-          <span className="settings-row-title">Provider par défaut</span>
-          <span className="settings-row-detail">Utilisé par la capsule et le popover.</span>
+          <span className="settings-row-title">{t("settings.defaultProvider")}</span>
+          <span className="settings-row-detail">{t("settings.defaultProviderDetail")}</span>
         </span>
         <select
           className="settings-select"
@@ -820,10 +850,8 @@ function ModelsTab({
 
       <label className="settings-row">
         <span>
-          <span className="settings-row-title">Modèle par défaut</span>
-          <span className="settings-row-detail">
-            Les modèles pris en charge par ce provider, ou le vôtre.
-          </span>
+          <span className="settings-row-title">{t("settings.defaultModel")}</span>
+          <span className="settings-row-detail">{t("settings.defaultModelDetail")}</span>
         </span>
         <select
           className="settings-select"
@@ -840,18 +868,18 @@ function ModelsTab({
           {models.map((model) => (
             <option key={model.id} value={model.id}>
               {model.name}
-              {model.recommended ? " — recommandé" : ""}
+              {model.recommended ? t("common.recommendedSuffix") : ""}
             </option>
           ))}
-          <option value={CUSTOM_MODEL_OPTION}>Autre identifiant…</option>
+          <option value={CUSTOM_MODEL_OPTION}>{t("settings.otherModel")}</option>
         </select>
       </label>
 
       {typing && (
         <label className="settings-row">
           <span>
-            <span className="settings-row-title">Identifiant du modèle</span>
-            <span className="settings-row-detail">Envoyé tel quel au provider choisi.</span>
+            <span className="settings-row-title">{t("settings.modelId")}</span>
+            <span className="settings-row-detail">{t("settings.modelIdDetail")}</span>
           </span>
           <input
             className="settings-input mono"
@@ -870,10 +898,8 @@ function ModelsTab({
 
       <label className="settings-row">
         <span>
-          <span className="settings-row-title">Niveau par défaut</span>
-          <span className="settings-row-detail">
-            S&apos;applique quand le profil ne force aucun niveau.
-          </span>
+          <span className="settings-row-title">{t("settings.defaultLevel")}</span>
+          <span className="settings-row-detail">{t("settings.defaultLevelDetail")}</span>
         </span>
         <select
           className="settings-select"
@@ -904,9 +930,10 @@ function DiagnosticTab({
   running,
   onRunDoctor,
 }: Readonly<DiagnosticTabProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
-      {running && <p className="muted">Diagnostic en cours…</p>}
+      {running && <p className="muted">{t("settings.diagnosticRunning")}</p>}
       <div className="diagnostic-list">
         {doctor?.checks.map((check) => (
           <div
@@ -925,170 +952,9 @@ function DiagnosticTab({
       </div>
       <div className="settings-actions">
         <button type="button" className="button-secondary" onClick={onRunDoctor} disabled={running}>
-          Relancer le diagnostic
+          {t("settings.rerunDiagnostic")}
         </button>
       </div>
     </>
   );
-}
-
-interface RaccourcisTabProps {
-  chosen: { capture?: string; input?: string };
-  onChoose(intent: "capture" | "input", accelerator: string): void;
-  captureShortcut: string;
-  inputShortcut: string;
-  rejectedShortcuts: string[];
-  hasNoShortcut: boolean;
-  permissionDetail: string;
-  canReplace: boolean | null;
-  onAskPermissions: () => void;
-}
-
-/** Onglet Raccourcis : raccourcis actifs, conflits visibles (§5.5), permissions. */
-function RaccourcisTab(props: Readonly<RaccourcisTabProps>): React.JSX.Element {
-  return (
-    <>
-      <ShortcutRow
-        title="Reformuler la sélection"
-        detail="Capsule ancrée au curseur"
-        active={props.captureShortcut}
-        presets={SHORTCUT_PRESETS.capture}
-        chosen={props.chosen.capture ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("capture", accelerator);
-        }}
-      />
-      <ShortcutRow
-        title="Ouvrir sans sélection"
-        detail="Capsule centrée, saisie libre"
-        active={props.inputShortcut}
-        presets={SHORTCUT_PRESETS.input}
-        chosen={props.chosen.input ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("input", accelerator);
-        }}
-      />
-      <p className="settings-note muted">
-        Un changement prend effet au prochain démarrage : un raccourci global se réserve auprès du
-        système au lancement.
-      </p>
-      {props.rejectedShortcuts.length > 0 && (
-        <div className="settings-warning" role="alert">
-          ! Raccourcis déjà pris par une autre application : {props.rejectedShortcuts.join(", ")}.
-          Un repli a été enregistré — modifie le raccourci concurrent pour utiliser ton choix
-          préféré.
-        </div>
-      )}
-      {props.hasNoShortcut && (
-        <div className="settings-warning" role="alert">
-          ! Aucun raccourci global disponible. Reqraft ne peut pas se déclencher au clavier — libère
-          un raccourci puis relance l’application.
-        </div>
-      )}
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">Permissions macOS</div>
-          <div className="settings-row-detail">{props.permissionDetail}</div>
-        </div>
-        {props.canReplace === false && (
-          <button type="button" className="chip chip-active" onClick={props.onAskPermissions}>
-            Autoriser…
-          </button>
-        )}
-      </div>
-    </>
-  );
-}
-
-interface ShortcutRowProps {
-  title: string;
-  detail: string;
-  /** The accelerator actually in force right now, fallback included, raw. */
-  active: string;
-  presets: readonly string[];
-  chosen: string;
-  onChoose(accelerator: string): void;
-}
-
-/**
- * One shortcut: what is in force, and what may be chosen instead.
- *
- * The two are shown separately on purpose. "Automatique" does not mean "none":
- * it means the application walks its own list, and the combination that came
- * out of it is the one displayed beside it. Merging them would hide the case
- * where a preferred choice was refused and something else is answering.
- */
-function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
-  // Raw against raw. Comparing formatted labels made this fire whenever the two
-  // formatters disagreed, which is a bug report about a shortcut that works.
-  const overridden = props.chosen !== "" && props.chosen !== props.active;
-
-  // A value stored before the offered list changed still belongs in the list:
-  // without it the select silently shows its first option, which is a choice
-  // the user never made.
-  const options = props.presets.includes(props.chosen)
-    ? props.presets
-    : [...props.presets, ...(props.chosen === "" ? [] : [props.chosen])];
-
-  return (
-    <div className="settings-row">
-      <div>
-        <div className="settings-row-title">{props.title}</div>
-        <div className="settings-row-detail">{props.detail}</div>
-        {overridden && (
-          <div className="settings-row-detail shortcut-overridden">
-            Choix non disponible : {formatAccelerator(props.active)} est actif à la place.
-          </div>
-        )}
-      </div>
-      <div className="shortcut-control">
-        <kbd>{formatAccelerator(props.active)}</kbd>
-        <select
-          className="settings-select"
-          value={props.chosen}
-          onChange={(event) => {
-            props.onChoose(event.target.value);
-          }}
-        >
-          <option value="">Automatique</option>
-          {options.map((accelerator) => (
-            <option key={accelerator} value={accelerator}>
-              {formatAccelerator(accelerator)}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-/**
- * An accelerator written out in words.
- *
- * `⌘⌃⌥N` is four glyphs someone has to already know; three of them look alike
- * at 11px and ⌃ renders as a bare caret in most interface fonts, so `⌘^⌥N` is
- * what the user actually saw. Words cost a few characters and remove the
- * decoding step entirely — which matters most here, where the whole point is
- * to press the right keys.
- */
-const MODIFIER_LABELS: readonly (readonly [string, string])[] = [
-  ["CommandOrControl", "Cmd"],
-  ["Command", "Cmd"],
-  ["Control", "Ctrl"],
-  ["Alt", "Option"],
-  ["Shift", "Maj"],
-];
-
-export function formatAccelerator(accelerator: string): string {
-  if (accelerator === "") return "—";
-  return accelerator
-    .split("+")
-    .map((part) => MODIFIER_LABELS.find(([name]) => name === part)?.[1] ?? keyLabel(part))
-    .join(" + ");
-}
-
-/** The non-modifier key, spelled where its name is clearer than its glyph. */
-function keyLabel(part: string): string {
-  if (part === "Space") return "Espace";
-  return part;
 }

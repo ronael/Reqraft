@@ -12,6 +12,9 @@ import {
   describeProviderSource,
   findEndpointProblem,
 } from "@/apps/desktop/renderer/settings/SettingsApp.js";
+import { createDesktopTranslator } from "@/i18n/desktop/index.js";
+
+const t = createDesktopTranslator("fr");
 
 /**
  * Managing providers from the settings.
@@ -147,7 +150,7 @@ describe("providers:save", () => {
         id: "Mon Serveur",
         baseUrl: "http://localhost:11434/v1",
       }),
-    ).rejects.toThrow(/minuscules/);
+    ).rejects.toThrow(/lowercase/);
   });
 
   it("refuse un champ hors contrat", async () => {
@@ -214,7 +217,7 @@ describe("providers:delete", () => {
 
   it("refuse un identifiant inconnu", async () => {
     await expect(ipcMain.invoke(IPC_CHANNELS.providerDelete, { id: "fantome" })).rejects.toThrow(
-      /Aucun fournisseur/,
+      /No custom provider/,
     );
     expect(saved).toEqual([]);
   });
@@ -230,7 +233,7 @@ describe("credential:delete", () => {
   it("refuse un fournisseur qui n'a pas de clé au trousseau", async () => {
     await expect(
       ipcMain.invoke(IPC_CHANNELS.credentialDelete, { provider: "openai-compatible" }),
-    ).rejects.toThrow(/trousseau/);
+    ).rejects.toThrow(/keychain/);
     expect(removed).toEqual([]);
   });
 
@@ -282,29 +285,29 @@ describe("le formulaire d'endpoint, côté renderer", () => {
   };
 
   it("accepte un formulaire complet", () => {
-    expect(findEndpointProblem(form, ["local"])).toBeUndefined();
+    expect(findEndpointProblem(form, ["local"], t)).toBeUndefined();
   });
 
   it("refuse un identifiant déjà pris, sauf sur une modification", () => {
-    expect(findEndpointProblem({ ...form, id: "local" }, ["local"])).toContain("déjà pris");
+    expect(findEndpointProblem({ ...form, id: "local" }, ["local"], t)).toContain("déjà pris");
     // Editing keeps its own id: that is not a collision with itself.
     expect(
-      findEndpointProblem({ ...form, mode: "update", id: "local" }, ["local"]),
+      findEndpointProblem({ ...form, mode: "update", id: "local" }, ["local"], t),
     ).toBeUndefined();
   });
 
   it("refuse un identifiant non normalisé", () => {
-    expect(findEndpointProblem({ ...form, id: "Mon Serveur" }, [])).toContain("minuscules");
+    expect(findEndpointProblem({ ...form, id: "Mon Serveur" }, [], t)).toContain("minuscules");
   });
 
   it("refuse une URL sans schéma", () => {
     // `localhost:8080` parses, with `localhost:` as its protocol, and would
     // only fail on the first request.
-    expect(findEndpointProblem({ ...form, baseUrl: "localhost:8080" }, [])).toContain("http://");
+    expect(findEndpointProblem({ ...form, baseUrl: "localhost:8080" }, [], t)).toContain("http://");
   });
 
   it("réclame un identifiant", () => {
-    expect(findEndpointProblem({ ...form, id: "  " }, [])).toContain("identifiant");
+    expect(findEndpointProblem({ ...form, id: "  " }, [], t)).toContain("identifiant");
   });
 });
 
@@ -321,25 +324,28 @@ describe("ce que la ligne d'un fournisseur annonce", () => {
   };
 
   it("nomme la variable quand la clé vient de l'environnement", () => {
-    expect(describeProviderSource({ ...provider, source: "environment" })).toContain(
+    expect(describeProviderSource({ ...provider, source: "environment" }, t)).toContain(
       "ANTHROPIC_API_KEY",
     );
   });
 
   it("ne réclame pas de clé à un fournisseur qui n'en demande pas", () => {
     expect(
-      describeProviderSource({
-        ...provider,
-        requiresApiKey: false,
-        configured: false,
-        source: "not_configured",
-      }),
+      describeProviderSource(
+        {
+          ...provider,
+          requiresApiKey: false,
+          configured: false,
+          source: "not_configured",
+        },
+        t,
+      ),
     ).toContain("Aucune clé nécessaire");
   });
 
   it("dit clairement qu'aucune clé n'est enregistrée", () => {
     expect(
-      describeProviderSource({ ...provider, configured: false, source: "not_configured" }),
+      describeProviderSource({ ...provider, configured: false, source: "not_configured" }, t),
     ).toContain("Aucune clé enregistrée");
   });
 });

@@ -6,6 +6,7 @@ import { hydrateCredentials, login, logout } from "@/auth/credentials.js";
 import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
 import { createInitConfig, evaluateSetupState } from "@/config/setup.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
+import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
 import { ConfigSchema, type Config } from "@/config/schema.js";
 import {
   getProviderDefinition,
@@ -36,6 +37,7 @@ import {
   CredentialDeleteRequestSchema,
   CredentialSaveRequestSchema,
   EmptyRequestSchema,
+  LocaleReadRequestSchema,
   OnboardingCompleteRequestSchema,
   ProviderDeleteRequestSchema,
   ProviderSaveRequestSchema,
@@ -60,6 +62,7 @@ import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
+import { mainLocale, t } from "./i18n.js";
 
 /**
  * IPC handlers — registration only (DESKTOP.md §8.1). Channel names and
@@ -101,6 +104,19 @@ export interface DesktopIpcDependencies {
   openSettings?: () => void;
   /** Pourquoi la capsule est ouverte, pour qu'elle puisse le demander. */
   capsulePending?: () => CapsuleOpenedPayload | null;
+  /**
+   * Cache la capsule avant de coller, et la ramène si le collage échoue.
+   *
+   * La capsule est un `type: "panel"` : sur macOS, un panneau non activant
+   * garde le focus clavier **sans** rendre l'application frontmost. System
+   * Events répondait donc que l'application source était déjà au premier plan,
+   * `activateApp` confirmait une bascule qui n'avait jamais lieu, et ⌘V
+   * atterrissait dans la capsule — sélection intacte, remplacement déclaré
+   * réussi. Rendre le focus pour de bon est la seule façon de coller au bon
+   * endroit.
+   */
+  hideCapsule?: () => void;
+  showCapsule?: () => void;
   /** Lot 5: structured doctor report (settings Diagnostic tab). */
   runDoctorReport?: () => Promise<DoctorReport>;
   /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
@@ -185,7 +201,16 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     if (!dependencies.captureService) {
       return { applied: false };
     }
-    return await dependencies.captureService.replace(result.rewritten);
+
+    // Le focus d'abord, la frappe ensuite : voir `hideCapsule`.
+    dependencies.hideCapsule?.();
+    const outcome = await dependencies.captureService.replace(result.rewritten);
+    if (!outcome.applied) {
+      // Le message d'échec s'affiche dans la capsule : la cacher sans la
+      // ramener le rendrait invisible.
+      dependencies.showCapsule?.();
+    }
+    return outcome;
   });
 
   ipcMain.handle(IPC_CHANNELS.configRead, async (_event, payload) => {
@@ -227,9 +252,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.credentialSave, async (_event, payload) => {
     const request = CredentialSaveRequestSchema.parse(payload);
     if (!isCredentialProvider(request.provider)) {
-      throw new Error(
-        `Le fournisseur ${request.provider} ne prend pas de clé enregistrable dans le trousseau.`,
-      );
+      throw new Error(t("main.errorProviderNotStorable", { provider: request.provider }));
     }
     // The secret stops here. `login` checks it is not a placeholder, calls the
     // provider to confirm it works, then writes it to the OS keychain — the
@@ -250,9 +273,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.onboardingComplete, async (_event, payload) => {
     const request = OnboardingCompleteRequestSchema.parse(payload);
     if (!getProviderDefinition(request.provider).visibleInInit) {
-      throw new Error(
-        `Le fournisseur ${request.provider} ne peut pas être choisi à la configuration.`,
-      );
+      throw new Error(t("main.errorProviderNotSelectable", { provider: request.provider }));
     }
 
     // Built by the shared domain, so the file the desktop writes is the file
@@ -263,6 +284,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
       model: request.model,
       profile: request.profile,
       level: request.level,
+      ...(request.uiLocale === undefined ? {} : { uiLocale: request.uiLocale }),
       copyAfterGeneration: existing?.copyAfterGeneration ?? DEFAULT_CONFIG.copyAfterGeneration,
       stream: existing?.stream ?? DEFAULT_CONFIG.stream,
       timeoutMs: existing?.timeoutMs ?? DEFAULT_CONFIG.timeoutMs,
@@ -297,7 +319,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     EmptyRequestSchema.parse(payload);
     if (!dependencies.probePermissions) {
       // No probe wired (tests): the explicit degraded mode promised by §2.6.
-      return { accessibility: false, canReplace: false, reason: "desktop.permissions_pending" };
+      return { accessibility: false, canReplace: false, reason: t("main.permissionsPending") };
     }
     const report = await dependencies.probePermissions();
     return {
@@ -323,7 +345,11 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     // The renderer gets identity and wording only — instructions and the
     // detect function stay in the engine. "auto" leads: it is the default.
     return [
-      { id: AUTO_PROFILE_ID, name: "Auto", description: "Détection locale du profil" },
+      {
+        id: AUTO_PROFILE_ID,
+        name: t("main.autoProfileName"),
+        description: t("main.autoProfileSummary"),
+      },
       ...listProfiles().map((profile) => ({
         id: profile.id,
         name: profile.name,
@@ -333,6 +359,15 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   });
 
   registerProfileIpcHandlers(dependencies, load);
+
+  ipcMain.handle(IPC_CHANNELS.localeRead, (_event, payload) => {
+    const request = LocaleReadRequestSchema.parse(payload);
+    // Par défaut, la langue arrêtée au démarrage — pas celle du fichier : sans
+    // cela, une fenêtre ouverte après un changement de réglage parlerait une
+    // autre langue que le menu de la barre, qui ne peut plus être réétiqueté.
+    const locale = request?.locale ?? mainLocale();
+    return { locale, messages: DESKTOP_MESSAGES[locale] };
+  });
 
   ipcMain.handle(IPC_CHANNELS.capsulePending, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
@@ -370,8 +405,8 @@ function registerProfileIpcHandlers(
       entries: [
         {
           id: AUTO_PROFILE_ID,
-          name: "Auto",
-          description: "Reqraft laisse le modèle choisir le profil adapté au texte.",
+          name: t("main.autoProfileName"),
+          description: t("main.autoProfileDescription"),
           origin: "auto" as const,
         },
         ...catalog.builtin.map((profile) => ({
@@ -400,9 +435,7 @@ function registerProfileIpcHandlers(
   /** Refuses anything that is not a local profile, with the reason. */
   function assertLocal(id: string): void {
     if (getProfileOrigin(id) === "builtin") {
-      throw new Error(
-        `« ${id} » est un profil intégré : il n'est ni modifiable ni supprimable. Dupliquez-le pour en obtenir une copie.`,
-      );
+      throw new Error(t("main.errorProfileBuiltin", { id }));
     }
   }
 
@@ -469,9 +502,7 @@ function registerProfileIpcHandlers(
     // into an unknown-profile failure.
     const config = await load();
     if (config.defaultProfile === id) {
-      throw new Error(
-        `« ${id} » est le profil par défaut : choisissez-en un autre avant de le supprimer.`,
-      );
+      throw new Error(t("main.errorProfileIsDefault", { id }));
     }
 
     await deleteLocalProfile(id, profilesDir);
@@ -596,7 +627,7 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
   ipcMain.handle(IPC_CHANNELS.credentialDelete, async (_event, payload) => {
     const { provider } = CredentialDeleteRequestSchema.parse(payload);
     if (!isCredentialProvider(provider)) {
-      throw new Error(`Le fournisseur ${provider} n'a pas de clé enregistrée dans le trousseau.`);
+      throw new Error(t("main.errorProviderNoStoredKey", { provider }));
     }
     await removeCredential(provider);
     return { providers: await listProviderStatuses(env, hydrate, load) };
@@ -636,7 +667,7 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
     const { id } = ProviderDeleteRequestSchema.parse(payload);
     const config = await load();
     if (!config.providers?.[id]) {
-      throw new Error(`Aucun fournisseur personnalisé nommé ${id}.`);
+      throw new Error(t("main.errorProviderUnknown", { id }));
     }
 
     const remaining = Object.fromEntries(

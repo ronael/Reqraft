@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useT } from "./i18n.js";
 import { ChevronLeft, Search } from "lucide-react";
 import { type ProfileCatalogEntry } from "@/apps/desktop/shared/ipc-contract.js";
 import { filterProfiles, groupProfiles } from "./profiles.js";
@@ -26,6 +27,7 @@ export interface ProfileSheetProps {
 }
 
 export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Element {
+  const t = useT();
   const [query, setQuery] = useState("");
   const [highlighted, setHighlighted] = useState(0);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -47,7 +49,7 @@ export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Elem
     <section
       className="profile-sheet"
       role="dialog"
-      aria-label="Choisir un profil"
+      aria-label={t("picker.dialogLabel")}
       onKeyDown={(event) => {
         if (event.key === "Escape") {
           event.preventDefault();
@@ -73,14 +75,16 @@ export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Elem
         <button
           type="button"
           className="profile-sheet-back"
-          aria-label="Revenir à la saisie"
+          aria-label={t("picker.backToInput")}
           onClick={props.onClose}
         >
           <ChevronLeft size={13} aria-hidden />
-          Profils
+          {t("picker.title")}
         </button>
         <span className="profile-sheet-count">
-          {props.entries.length} disponible{props.entries.length > 1 ? "s" : ""}
+          {t(props.entries.length > 1 ? "picker.available" : "picker.availableOne", {
+            count: String(props.entries.length),
+          })}
         </span>
       </div>
 
@@ -89,7 +93,7 @@ export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Elem
         <input
           ref={searchRef}
           className="profile-sheet-input"
-          placeholder="Rechercher un profil…"
+          placeholder={t("picker.search")}
           value={query}
           onChange={(event) => {
             setQuery(event.target.value);
@@ -98,12 +102,10 @@ export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Elem
       </div>
 
       <div className="profile-sheet-list">
-        {walkable.length === 0 && (
-          <p className="profile-sheet-empty">Aucun profil ne correspond.</p>
-        )}
+        {walkable.length === 0 && <p className="profile-sheet-empty">{t("picker.noMatch")}</p>}
         {groups.map((group) => (
           <div key={group.origin} className="profile-sheet-group">
-            <div className="profile-sheet-group-label">{group.label}</div>
+            <div className="profile-sheet-group-label">{t(group.labelKey)}</div>
             {group.entries.map((entry) => {
               const index = walkable.indexOf(entry);
               const active = entry.id === props.selectedId;
@@ -131,7 +133,7 @@ export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Elem
                   />
                   <span className="profile-option-name mono">{entry.name}</span>
                   <span className="profile-option-hint">
-                    {active ? "actif" : entry.description}
+                    {active ? t("picker.active") : entry.description}
                   </span>
                 </button>
               );
@@ -141,7 +143,7 @@ export function ProfileSheet(props: Readonly<ProfileSheetProps>): React.JSX.Elem
       </div>
 
       <button type="button" className="profile-sheet-manage" onClick={props.onManage}>
-        <span>Gérer les profils…</span>
+        <span>{t("picker.manage")}</span>
         <span aria-hidden>›</span>
       </button>
     </section>

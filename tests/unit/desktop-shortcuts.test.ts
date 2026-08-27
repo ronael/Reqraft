@@ -81,7 +81,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
 describe("prettyAccelerator", () => {
   it("produit les symboles macOS", () => {
     expect(prettyAccelerator("Control+Alt+R")).toBe("⌃⌥R");
-    expect(prettyAccelerator("Command+Shift+Space")).toBe("⌘⇧Espace");
+    expect(prettyAccelerator("Command+Shift+Space")).toBe("⌘⇧Space");
   });
 });
 

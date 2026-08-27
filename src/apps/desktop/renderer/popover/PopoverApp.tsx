@@ -4,6 +4,7 @@ import {
   type RepromptResult,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useT } from "../shared/i18n.js";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
@@ -15,6 +16,7 @@ type Level = (typeof REPROMPT_LEVEL_IDS)[number];
  * goes through the IPC bridge.
  */
 export function PopoverApp(): React.JSX.Element {
+  const t = useT();
   const [input, setInput] = useState("");
   const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([]);
   const [profileId, setProfileId] = useState("auto");
@@ -114,7 +116,8 @@ export function PopoverApp(): React.JSX.Element {
         />
         <footer className="popover-footer">
           <span>
-            <kbd>↑↓</kbd> parcourir · <kbd>⏎</kbd> choisir · <kbd>esc</kbd> retour
+            <kbd>↑↓</kbd> {t("popover.browse")} · <kbd>⏎</kbd> {t("popover.choose")} ·{" "}
+            <kbd>esc</kbd> {t("popover.back")}
           </span>
         </footer>
       </main>
@@ -126,7 +129,7 @@ export function PopoverApp(): React.JSX.Element {
       <div className="popover-input-zone">
         <textarea
           className="popover-input"
-          placeholder="Écris, ou ⌘V pour coller…"
+          placeholder={t("popover.placeholder")}
           rows={2}
           value={input}
           autoFocus
@@ -147,7 +150,7 @@ export function PopoverApp(): React.JSX.Element {
         <button
           type="button"
           className="profile-chip profile-chip-pick"
-          title="Changer de profil"
+          title={t("capsule.changeProfile")}
           onClick={() => {
             setPicking(true);
           }}
@@ -157,7 +160,7 @@ export function PopoverApp(): React.JSX.Element {
         <button
           type="button"
           className="level-toggle"
-          title="Niveau de reformulation (cliquer pour changer)"
+          title={t("capsule.levelTitle")}
           onClick={() => {
             const nextIndex = (REPROMPT_LEVEL_IDS.indexOf(level) + 1) % REPROMPT_LEVEL_IDS.length;
             setLevel(REPROMPT_LEVEL_IDS[nextIndex] ?? "standard");
@@ -169,7 +172,7 @@ export function PopoverApp(): React.JSX.Element {
 
       {running && (
         <div className="popover-section">
-          <div className="popover-label">Réception…</div>
+          <div className="popover-label">{t("popover.receiving")}</div>
           <p className="popover-result">
             {streamed}
             <span className="caret" aria-hidden="true" />
@@ -185,10 +188,10 @@ export function PopoverApp(): React.JSX.Element {
 
       {!running && lastResult !== null && (
         <div className="popover-section">
-          <div className="popover-label">Dernier résultat</div>
+          <div className="popover-label">{t("popover.lastResult")}</div>
           <p className="popover-result">{lastResult.rewritten}</p>
           <button type="button" className="chip" onClick={copyLastResult}>
-            ⌘C copier
+            {t("popover.copy")}
           </button>
         </div>
       )}
@@ -197,14 +200,15 @@ export function PopoverApp(): React.JSX.Element {
         {/* Le popover s'ouvre à la souris : son action principale doit s'y
             prendre aussi, pas seulement au clavier. */}
         <button type="button" className="capsule-key" onClick={run}>
-          <kbd>⌘⏎</kbd> reformuler
+          <kbd>⌘⏎</kbd>
+          {t("capsule.reformulate")}
         </button>
         <button
           type="button"
           className="popover-settings"
           onClick={() => void window.reqraft.openSettings()}
         >
-          Réglages…
+          {t("popover.settings")}
         </button>
       </footer>
     </main>

@@ -4,6 +4,7 @@ import { App as CapsuleApp } from "./capsule/App.js";
 import { PopoverApp } from "./popover/PopoverApp.js";
 import { SettingsApp } from "./settings/SettingsApp.js";
 import { OnboardingApp } from "./onboarding/OnboardingApp.js";
+import { TranslationProvider } from "./shared/i18n.js";
 import "./shared/desktop.css";
 
 /**
@@ -22,7 +23,7 @@ const THEME_VARIABLES: Record<string, string> = {
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {
-  throw new Error("Élément #root introuvable dans le renderer.");
+  throw new Error("Reqraft: the renderer has no #root element.");
 }
 
 for (const [name, value] of Object.entries(THEME_VARIABLES)) {
@@ -44,4 +45,8 @@ function Surface(): React.JSX.Element {
   }
 }
 
-createRoot(rootElement).render(<Surface />);
+createRoot(rootElement).render(
+  <TranslationProvider>
+    <Surface />
+  </TranslationProvider>,
+);

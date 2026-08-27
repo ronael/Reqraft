@@ -1,5 +1,6 @@
 import { Menu, Tray, app, nativeImage } from "electron";
 import { trayIconPng, trayTooltip, type TrayState } from "./tray-icon.js";
+import { t } from "./i18n.js";
 
 /**
  * Menu-bar presence (DESKTOP.md lot 4): the only persistent element of the
@@ -24,10 +25,10 @@ export function createTray(actions: TrayActions): TrayController {
   const tray = new Tray(nativeImage.createFromBuffer(trayIconPng(state)));
 
   const contextMenu = Menu.buildFromTemplate([
-    { label: "Réglages…", click: actions.onOpenSettings },
+    { label: t("main.traySettings"), click: actions.onOpenSettings },
     { type: "separator" },
     {
-      label: "Quitter Reqraft",
+      label: t("main.trayQuit"),
       click: () => {
         app.quit();
       },

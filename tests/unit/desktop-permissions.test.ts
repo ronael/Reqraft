@@ -39,7 +39,7 @@ describe("probePermissions (DESKTOP.md §5.9)", () => {
     expect(report.accessibility).toBe(true);
     expect(report.canReplace).toBe(false);
     expect(report.gap).toBe("automation");
-    expect(report.message).toContain("Automatisation");
+    expect(report.message).toContain("Automation");
   });
 
   it("macOS : Automatisation seule → le message nomme l'Accessibilité", async () => {
@@ -51,7 +51,7 @@ describe("probePermissions (DESKTOP.md §5.9)", () => {
     );
 
     expect(report.gap).toBe("accessibility");
-    expect(report.message).toContain("Accessibilité");
+    expect(report.message).toContain("Accessibility");
   });
 
   it("macOS : aucune permission → mode dégradé explicite, jamais bloquant", async () => {

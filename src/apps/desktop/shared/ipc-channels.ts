@@ -31,6 +31,10 @@ export const IPC_CHANNELS = {
   profileDuplicate: "profiles:duplicate",
   profileDelete: "profiles:delete",
   profileExport: "profiles:export",
+  // La langue de l'interface, résolue par le processus principal. Le renderer
+  // la demande au montage plutôt que d'embarquer les catalogues : une seule
+  // source de vérité, partagée avec le CLI.
+  localeRead: "locale:read",
   // Doublon volontaire de `capsule:opened` : un message poussé se perd si le
   // renderer n'écoute pas encore, et la capsule reste alors sur son état de
   // départ, sablier compris. Elle peut donc aussi demander pourquoi elle est
@@ -84,6 +88,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.profileDuplicate,
   IPC_CHANNELS.profileDelete,
   IPC_CHANNELS.profileExport,
+  IPC_CHANNELS.localeRead,
   IPC_CHANNELS.capsulePending,
   IPC_CHANNELS.windowOpenSettings,
   IPC_CHANNELS.shortcutsState,

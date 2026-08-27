@@ -62,8 +62,11 @@ describe("groupProfiles", () => {
     ]);
   });
 
-  it("nomme le groupe local par ce qu'il est pour l'utilisateur", () => {
-    expect(groupProfiles(CATALOG).find((g) => g.origin === "local")?.label).toBe("Mes profils");
+  it("désigne le groupe local par une clé, pas par un libellé", () => {
+    // Le nom dépend de la langue : le figer ici le rendrait français partout.
+    expect(groupProfiles(CATALOG).find((g) => g.origin === "local")?.labelKey).toBe(
+      "picker.groupLocal",
+    );
   });
 
   it("laisse tomber un groupe vide", () => {

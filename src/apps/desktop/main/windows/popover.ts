@@ -72,7 +72,7 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
       // Même faille que la capsule : `quitting` ne redescend jamais, et sur
       // macOS l'application survit sans fenêtre. Sortir en silence laisserait
       // l'icône de la barre de menus sans effet, sans rien dire.
-      console.error("Reqraft : popover détruit, relancez l'application.");
+      console.error("Reqraft: the popover was destroyed, restart the application.");
       return;
     }
     const display = screen.getDisplayNearestPoint({

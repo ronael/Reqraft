@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
+import { useT } from "../shared/i18n.js";
 import {
   AUTO_PROFILE_ID,
   type ProfileCatalogEntry,
@@ -11,14 +12,15 @@ import {
 import { transition, type CapsuleState } from "@/apps/desktop/shared/capsule-machine.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
-const GENERATING = "génération";
+const GENERATING = "generating";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
-const QUALITY_LABELS: Record<RepromptResult["quality"]["status"], string> = {
-  good: "✓ fidèle",
-  review: "à relire",
-  risky: "risqué",
+/** Les libellés de qualité passent par le traducteur, comme le reste. */
+const QUALITY_KEYS: Record<RepromptResult["quality"]["status"], string> = {
+  good: "capsule.qualityGood",
+  review: "capsule.qualityReview",
+  risky: "capsule.qualityRisky",
 };
 
 export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
@@ -98,24 +100,27 @@ interface CapsuleHeaderProps {
 
 /** La bande du haut : d'où vient le texte, quel profil, et la sortie. */
 function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
+  const t = useT();
   return (
     <header className="capsule-band">
       <span className="capsule-brand">rq</span>
       <span className="capsule-origin">
-        {props.origin !== null ? `sélection · ${props.origin}` : "nouvelle reformulation"}
+        {props.origin !== null
+          ? t("capsule.selectionFrom", { app: props.origin })
+          : t("capsule.newReformulation")}
       </span>
       <span className="capsule-profile">
         {props.detecting && (
           <>
-            profil <b>auto</b>
-            <span className="capsule-profile-note pulse"> · analyse…</span>
+            {t("capsule.profile")} <b>auto</b>
+            <span className="capsule-profile-note pulse"> · {t("capsule.analysing")}</span>
           </>
         )}
         {props.displayedProfile !== null && (
           <>
-            profil <b>{props.displayedProfile}</b>
+            {t("capsule.profile")} <b>{props.displayedProfile}</b>
             {props.autoRequested && (
-              <span className="capsule-profile-note"> · détecté automatiquement</span>
+              <span className="capsule-profile-note"> · {t("capsule.autoDetected")}</span>
             )}
           </>
         )}
@@ -154,15 +159,16 @@ interface CapsuleFooterProps {
 
 /** Le pied : ce qu'on peut faire maintenant, au clavier comme à la souris. */
 function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
-      {props.state === "saisie" ? (
+      {props.state === "input" ? (
         <div className="capsule-hints">
           <button
             type="button"
             className="profile-chip profile-chip-pick"
             disabled={!props.pickable}
-            title={props.pickable ? "Changer de profil" : undefined}
+            title={props.pickable ? t("capsule.changeProfile") : undefined}
             onClick={props.onPick}
           >
             {props.profileLabel}
@@ -170,21 +176,21 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
           <button
             type="button"
             className="level-toggle"
-            title="Niveau de reformulation (cliquer pour changer)"
+            title={t("capsule.levelTitle")}
             onClick={props.onCycleLevel}
           >
             {props.level}
           </button>
           <CapsuleKey touche="⌘⏎" className="capsule-hint-key" onClick={props.onSubmit}>
-            reformuler
+            {t("capsule.reformulate")}
           </CapsuleKey>
         </div>
       ) : (
         <footer className="capsule-footer">
           <div className="capsule-verdict">
-            {(props.state === "génération" || props.state === "streaming") && (
+            {(props.state === "generating" || props.state === "streaming") && (
               <>
-                <span className="pulse accent">réception…</span>
+                <span className="pulse accent">{t("capsule.receiving")}</span>
                 <span className="capsule-elapsed">{(props.elapsedMs / 1000).toFixed(1)} s</span>
               </>
             )}
@@ -195,61 +201,61 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                 </span>
                 <span className="muted">{props.verdictDetail}</span>
                 <span className="capsule-meta">
-                  niveau {props.finalResult.level} · {props.finalResult.model}
+                  {t("capsule.level")} {props.finalResult.level} · {props.finalResult.model}
                   {props.finalResult.latencyMs !== undefined &&
                     ` · ${(props.finalResult.latencyMs / 1000).toFixed(1)} s`}
                 </span>
               </>
             )}
-            {props.state === "erreur" && <span className="muted">esc pour fermer</span>}
+            {props.state === "error" && <span className="muted">{t("capsule.escToClose")}</span>}
           </div>
           <div className="capsule-keys">
-            {(props.state === "prêt" || props.state === "comparaison") && (
+            {(props.state === "ready" || props.state === "comparison") && (
               <>
                 {/* Le même déclencheur que sur C0, à l'endroit où l'on agit. */}
                 <button
                   type="button"
                   className="profile-chip profile-chip-pick"
                   disabled={!props.pickable}
-                  title={props.pickable ? "Changer de profil" : undefined}
+                  title={props.pickable ? t("capsule.changeProfile") : undefined}
                   onClick={props.onPick}
                 >
                   {props.profileLabel}
                 </button>
                 {props.expansion && (
                   <CapsuleKey touche="⇥" className="key-primary" onClick={props.onLevel}>
-                    baisser le niveau
+                    {t("capsule.lowerLevel")}
                   </CapsuleKey>
                 )}
                 <CapsuleKey touche="⏎" className="key-primary" onClick={props.onAccept}>
-                  remplacer
+                  {t("capsule.replace")}
                 </CapsuleKey>
                 <CapsuleKey touche="⌥" onClick={props.onCompare}>
-                  comparer
+                  {t("capsule.compare")}
                 </CapsuleKey>
                 <CapsuleKey touche="⌘C" onClick={props.onCopy}>
-                  copier
+                  {t("capsule.copy")}
                 </CapsuleKey>
                 <CapsuleKey touche="⌘R" onClick={props.onRerun}>
-                  relancer
+                  {t("capsule.rerun")}
                 </CapsuleKey>
                 <CapsuleKey touche="⇥" onClick={props.onLevel}>
-                  niveau
+                  {t("capsule.level")}
                 </CapsuleKey>
               </>
             )}
             {props.running && (
               <>
                 <CapsuleKey touche="⌘." onClick={props.onCancel}>
-                  interrompre
+                  {t("capsule.interrupt")}
                 </CapsuleKey>
                 {/* La capsule travaille sans le focus : le dire évite d'attendre
                   devant elle pour rien. */}
-                <span className="capsule-hint">tu peux changer d&apos;app</span>
+                <span className="capsule-hint">{t("capsule.switchApps")}</span>
               </>
             )}
             <CapsuleKey touche="esc" className="key-close" onClick={props.onClose}>
-              fermer
+              {t("capsule.close")}
             </CapsuleKey>
           </div>
         </footer>
@@ -259,6 +265,7 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
 }
 
 export function App(): React.JSX.Element {
+  const t = useT();
   const [state, setState] = useState<CapsuleState>("capture");
   const [input, setInput] = useState("");
   const [origin, setOrigin] = useState<string | null>(null);
@@ -308,6 +315,15 @@ export function App(): React.JSX.Element {
 
   const startRun = useCallback(
     (text: string, chosenLevel: Level) => {
+      // Entrer dans `analysis` ici, pas chez l'appelant.
+      //
+      // Trois chemins sur cinq l'oubliaient — ⌘R, ⇥ et la pastille de niveau —
+      // et un run parti de `ready` y restait : `run-accepted` était refusé, donc
+      // ni barre d'activité, ni texte en cours de réception, ni écran d'erreur
+      // si le fournisseur refusait. Seul le résultat final finissait par
+      // apparaître, sans rien entre les deux. Depuis `analysis` ou `input`,
+      // l'événement est sans effet : la transition a déjà eu lieu.
+      dispatch("rerun");
       setStartedAt(Date.now());
       setElapsedMs(0);
       setStreamedBoth(() => "");
@@ -322,21 +338,21 @@ export function App(): React.JSX.Element {
         })
         .then((response) => {
           activeRunId.current = response.runId;
-          // analyse → profil-détecté → génération (§8.2). The event only means
+          // analysis → run-accepted → generating (§8.2). The event only means
           // the run started: for `auto`, the applied profile is still unknown
           // here and lands with the result.
           setRequestedProfile(response.requestedProfile);
-          dispatch("profil-détecté");
+          dispatch("run-accepted");
         })
         .catch((reason: unknown) => {
           setError({
-            title: "Erreur",
+            title: t("capsule.error"),
             message: reason instanceof Error ? reason.message : String(reason),
           });
-          dispatch("échec");
+          dispatch("failed");
         });
     },
-    [chosenProfile, dispatch, setStreamedBoth],
+    [chosenProfile, dispatch, setStreamedBoth, t],
   );
 
   // Session lifecycle: the window persists between triggers (hidden, never
@@ -366,18 +382,18 @@ export function App(): React.JSX.Element {
         if ("text" in capture) {
           setInput(capture.text);
           setOrigin(capture.sourceApp);
-          dispatch("capturé");
+          dispatch("captured");
           startRun(capture.text, "standard");
         } else {
           // Une capture vide a deux causes très différentes : rien n'était
           // sélectionné, ou macOS a refusé. Seule la seconde demande une
           // action, et elle est invisible si on ne la dit pas.
           if (capture.reason !== undefined) setNotice(capture.reason);
-          dispatch("rien-à-capturer");
+          dispatch("nothing-to-capture");
         }
       })
       .catch(() => {
-        dispatch("rien-à-capturer");
+        dispatch("nothing-to-capture");
       });
   }, [dispatch, resetSession, startRun]);
 
@@ -403,7 +419,7 @@ export function App(): React.JSX.Element {
         // qu'on clique ailleurs, et repartir de zéro à la réouverture jette ce
         // qui venait d'être écrit. Le brouillon est effacé après un envoi.
         setNotice(null);
-        setState("saisie");
+        setState("input");
       }
     },
     [beginCapture],
@@ -430,7 +446,7 @@ export function App(): React.JSX.Element {
     const offDelta = window.reqraft.onRunDelta((payload) => {
       if (payload.runId === activeRunId.current) {
         if (streamedRef.current === "") {
-          dispatch("premier-fragment");
+          dispatch("first-chunk");
         }
         setStreamedBoth((previous) => previous + payload.chunk);
       }
@@ -438,22 +454,22 @@ export function App(): React.JSX.Element {
     const offDone = window.reqraft.onRunDone((payload) => {
       if (payload.runId === activeRunId.current) {
         setResult(payload.result);
-        dispatch("résultat-complet");
+        dispatch("result-complete");
       }
     });
     const offError = window.reqraft.onRunError((payload) => {
       if (payload.runId === activeRunId.current) {
         setError(payload.error);
-        dispatch("échec");
+        dispatch("failed");
       }
     });
     const offCancelled = window.reqraft.onRunCancelled((payload) => {
       if (payload.runId === activeRunId.current) {
-        // §8.2: partial text lands on prêt, otherwise the capsule closes.
+        // §8.2: partial text lands on ready, otherwise the capsule closes.
         if (streamedRef.current === "") {
           window.close();
         } else {
-          dispatch("résultat-complet");
+          dispatch("result-complete");
         }
       }
     });
@@ -465,35 +481,64 @@ export function App(): React.JSX.Element {
     };
   }, [dispatch, setStreamedBoth]);
 
+  /**
+   * Un remplacement qui n'a pas eu lieu doit se voir, et laisser la main.
+   *
+   * `dispatch("accept")` a déjà fait passer la capsule sur `applying`, où le
+   * pied ne rend plus aucune touche : sans retour explicite vers `ready`, la
+   * fenêtre restait muette et inerte, esc mis à part.
+   */
+  const echecDuRemplacement = useCallback(
+    (reason?: string) => {
+      setNotice(
+        reason === undefined
+          ? t("capsule.replaceFailed")
+          : t("capsule.replaceFailedWhy", { reason }),
+      );
+      dispatch("failed");
+    },
+    [dispatch, t],
+  );
+
   const accept = useCallback(() => {
     const runId = activeRunId.current;
     if (runId === null) {
       return;
     }
-    dispatch("accepter");
+    dispatch("accept");
     window.reqraft
       .acceptResult(runId, "replace")
-      .then(async ({ applied }) => {
+      .then(async ({ applied, reason }) => {
         if (applied) {
-          dispatch("appliqué");
+          dispatch("applied");
           window.close();
           return;
         }
         // Floor mode (permissions, Wayland, unknown source app): copy instead
-        // of replacing, and say so (§2.6, §5.4).
+        // of replacing, and say so (§2.6, §5.4). The reason comes from the
+        // main process when it has one — « indisponible » alone leaves the
+        // user with nothing to act on.
         const copy = await window.reqraft.acceptResult(runId, "copy");
-        if (copy.applied) {
-          setNotice("Remplacement indisponible — résultat copié, ⌘V pour coller.");
-          dispatch("appliqué");
-          window.setTimeout(() => {
-            window.close();
-          }, 1200);
+        if (!copy.applied) {
+          // Ni remplacé, ni copié : le résultat est perdu de vue si on ne le
+          // dit pas, et la capsule resterait figée sur `applying`.
+          echecDuRemplacement(reason);
+          return;
         }
+        setNotice(
+          reason === undefined
+            ? t("capsule.replaceUnavailable")
+            : t("capsule.replaceUnavailableWhy", { reason }),
+        );
+        dispatch("applied");
+        window.setTimeout(() => {
+          window.close();
+        }, 1200);
       })
-      .catch(() => {
-        setNotice("Le remplacement a échoué — le résultat reste affiché.");
+      .catch((cause: unknown) => {
+        echecDuRemplacement(cause instanceof Error ? cause.message : undefined);
       });
-  }, [dispatch]);
+  }, [dispatch, echecDuRemplacement, t]);
 
   const cancelRun = useCallback(() => {
     const runId = activeRunId.current;
@@ -502,7 +547,7 @@ export function App(): React.JSX.Element {
     }
   }, []);
 
-  /** Keys handled in prêt/comparaison: ⏎ ⌘C ⌘R ⇥. */
+  /** Keys handled in ready/comparison: ⏎ ⌘C ⌘R ⇥. */
   /**
    * Relance en imposant un profil.
    *
@@ -517,32 +562,32 @@ export function App(): React.JSX.Element {
       setResult(null);
       setError(null);
       setNotice(null);
-      dispatch("relancer");
+      dispatch("rerun");
       window.reqraft
         .startReprompt({ input: text, level: chosenLevel, profileId })
         .then((response) => {
           activeRunId.current = response.runId;
           setRequestedProfile(response.requestedProfile);
-          dispatch("profil-détecté");
+          dispatch("run-accepted");
         })
         .catch((reason: unknown) => {
           setError({
-            title: "Erreur",
+            title: t("capsule.error"),
             message: reason instanceof Error ? reason.message : String(reason),
           });
-          dispatch("échec");
+          dispatch("failed");
         });
     },
-    [dispatch, setStreamedBoth],
+    [dispatch, setStreamedBoth, t],
   );
 
   const copier = useCallback(() => {
     const runId = activeRunId.current;
     if (runId !== null) {
       void window.reqraft.acceptResult(runId, "copy");
-      setNotice("Résultat copié.");
+      setNotice(t("capsule.copied"));
     }
-  }, []);
+  }, [t]);
 
   const relancer = useCallback(() => {
     startRun(input, level);
@@ -556,14 +601,14 @@ export function App(): React.JSX.Element {
 
   const fermer = useCallback(() => {
     cancelRun();
-    setState("fermée");
+    setState("closed");
     window.close();
   }, [cancelRun]);
 
   /** Le clic bascule ce que ⌥ maintient : on ne peut pas « garder » un clic. */
   const basculerComparaison = useCallback(() => {
     comparing.current = !comparing.current;
-    dispatch(comparing.current ? "comparer" : "fin-comparaison");
+    dispatch(comparing.current ? "compare" : "compare-end");
   }, [dispatch]);
 
   const handleReadyKey = useCallback(
@@ -596,9 +641,9 @@ export function App(): React.JSX.Element {
   // ⇥ niveau, esc fermer, ⌘. interrompre.
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Alt" && state === "prêt" && !comparing.current) {
+      if (event.key === "Alt" && state === "ready" && !comparing.current) {
         comparing.current = true;
-        dispatch("comparer");
+        dispatch("compare");
         return;
       }
       if (event.key === "Escape") {
@@ -609,14 +654,14 @@ export function App(): React.JSX.Element {
         cancelRun();
         return;
       }
-      if (state === "prêt" || state === "comparaison") {
+      if (state === "ready" || state === "comparison") {
         handleReadyKey(event);
       }
     };
     const onKeyUp = (event: KeyboardEvent): void => {
       if (event.key === "Alt" && comparing.current) {
         comparing.current = false;
-        dispatch("fin-comparaison");
+        dispatch("compare-end");
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -630,9 +675,9 @@ export function App(): React.JSX.Element {
   // Choisir un profil a un sens avant de lancer, et devant un résultat qu'on
   // peut relancer autrement. Pendant le travail, non.
   const profilChoisissable =
-    profiles.length > 0 && (state === "saisie" || state === "prêt" || state === "comparaison");
+    profiles.length > 0 && (state === "input" || state === "ready" || state === "comparison");
 
-  const running = state === GENERATING || state === "streaming" || state === "analyse";
+  const running = state === GENERATING || state === "streaming" || state === "analysis";
 
   useEffect(() => {
     if (!running || startedAt === null) {
@@ -652,7 +697,7 @@ export function App(): React.JSX.Element {
     (signal) => signal.code === "disproportionate_expansion",
   );
   const showResult =
-    (state === "prêt" || state === "comparaison" || state === "application") && result !== null;
+    (state === "ready" || state === "comparison" || state === "applying") && result !== null;
   const finalResult = showResult ? result : null;
 
   function computeVerdictLabel(): string {
@@ -660,13 +705,13 @@ export function App(): React.JSX.Element {
       return "";
     }
     if (expansion === true) {
-      return "! expansion détectée";
+      return t("capsule.expansionDetected");
     }
-    return QUALITY_LABELS[finalResult.quality.status];
+    return t(QUALITY_KEYS[finalResult.quality.status]);
   }
   const verdictLabel = computeVerdictLabel();
   const verdictDetail =
-    expansion === true ? "fonctionnalités non demandées" : "aucune invention détectée";
+    expansion === true ? t("capsule.expansionDetail") : t("capsule.noInvention");
 
   // `result.profile` is the profile actually applied and outranks anything
   // known at start. Until it arrives, an explicit request is already its own
@@ -686,7 +731,7 @@ export function App(): React.JSX.Element {
         displayedProfile={displayedProfile}
         autoRequested={autoRequested}
         detecting={running && awaitingDetection}
-        closable={state === "saisie"}
+        closable={state === "input"}
         onClose={fermer}
       />
       {(running || state === "capture") && <div className="capsule-bar" aria-hidden="true" />}
@@ -700,7 +745,7 @@ export function App(): React.JSX.Element {
             setPicking(false);
             // Depuis un résultat, le choix se voit tout de suite : le relancer
             // est ce que « changer de profil » veut dire à ce moment-là.
-            if (state === "prêt" || state === "comparaison") {
+            if (state === "ready" || state === "comparison") {
               startRunAvecProfil(input, level, id);
             }
           }}
@@ -710,12 +755,12 @@ export function App(): React.JSX.Element {
           onManage={() => void window.reqraft.openSettings()}
         />
       ) : (
-        <section className={state === "saisie" ? "capsule-body capsule-flush" : "capsule-body"}>
-          {state === "saisie" && (
+        <section className={state === "input" ? "capsule-body capsule-flush" : "capsule-body"}>
+          {state === "input" && (
             <>
               <textarea
                 className="capsule-input"
-                placeholder="Qu'est-ce que tu veux mieux formuler ?"
+                placeholder={t("capsule.placeholder")}
                 value={input}
                 rows={4}
                 autoFocus
@@ -724,7 +769,7 @@ export function App(): React.JSX.Element {
                 }}
                 onKeyDown={(event) => {
                   if (event.key === "Enter" && event.metaKey && input.trim() !== "") {
-                    dispatch("validation");
+                    dispatch("submitted");
                     startRun(input, level);
                   }
                 }}
@@ -732,22 +777,22 @@ export function App(): React.JSX.Element {
             </>
           )}
 
-          {state !== "saisie" && input !== "" && state !== "comparaison" && (
+          {state !== "input" && input !== "" && state !== "comparison" && (
             <div className="capsule-source">
-              <span className="capsule-source-label">avant</span>
+              <span className="capsule-source-label">{t("capsule.before")}</span>
               <span className="capsule-source-text">{input}</span>
             </div>
           )}
 
-          {state === "capture" && <p className="muted">Lecture de la sélection…</p>}
+          {state === "capture" && <p className="muted">{t("capsule.readingSelection")}</p>}
 
-          {state === "analyse" && <p className="muted">Analyse de l&apos;intention…</p>}
+          {state === "analysis" && <p className="muted">{t("capsule.analysingIntent")}</p>}
 
           {state === GENERATING && (
             <p className="muted">
               {displayedProfile !== null
-                ? `${displayedProfile} détecté · préparation…`
-                : "Préparation…"}
+                ? t("capsule.detectedPreparing", { profile: displayedProfile })
+                : t("capsule.preparing")}
             </p>
           )}
 
@@ -758,18 +803,18 @@ export function App(): React.JSX.Element {
             </pre>
           )}
 
-          {(state === "prêt" || state === "application") && result !== null && (
+          {(state === "ready" || state === "applying") && result !== null && (
             <pre className="capsule-stream">{result.rewritten}</pre>
           )}
 
-          {state === "comparaison" && result !== null && (
+          {state === "comparison" && result !== null && (
             <div className="capsule-diff">
               <div className="diff-before">− {input}</div>
               <div className="diff-after">+ {result.rewritten}</div>
             </div>
           )}
 
-          {state === "erreur" && error !== null && (
+          {state === "error" && error !== null && (
             <div role="alert">
               <div className="error-title">× {error.title}</div>
               <p className="error-detail">{error.message}</p>
@@ -800,7 +845,7 @@ export function App(): React.JSX.Element {
         level={level}
         onSubmit={() => {
           if (input.trim() === "") return;
-          dispatch("validation");
+          dispatch("submitted");
           startRun(input, level);
         }}
         onAccept={accept}

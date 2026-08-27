@@ -187,7 +187,7 @@ describe("credential:save", () => {
         provider: "openai-compatible",
         secret: SECRET,
       }),
-    ).rejects.toThrow(/trousseau/);
+    ).rejects.toThrow(/keychain/);
     expect(stored).toEqual([]);
   });
 
@@ -268,7 +268,7 @@ describe("onboarding:complete", () => {
   it("refuses a provider that cannot be chosen", async () => {
     await expect(
       ipcMain.invoke(IPC_CHANNELS.onboardingComplete, { ...request, provider: "mock" }),
-    ).rejects.toThrow(/ne peut pas être choisi/);
+    ).rejects.toThrow(/cannot be chosen/);
     expect(saved).toEqual([]);
   });
 

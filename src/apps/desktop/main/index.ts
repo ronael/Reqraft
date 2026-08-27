@@ -32,10 +32,12 @@ import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } fro
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createOnboardingWindow } from "./windows/onboarding.js";
 import { createTray } from "./tray.js";
+import type { TrayState } from "./tray-icon.js";
 import { createCapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow } from "./windows/popover.js";
 import { createSettingsWindow } from "./windows/settings.js";
 import { revealExistingWindow } from "./windows/reveal.js";
+import { resolveMainLocale, setMainLocale, t } from "./i18n.js";
 
 /**
  * Desktop bootstrap. Order matters:
@@ -84,6 +86,42 @@ function createOuvertureTracker(): {
   };
 }
 
+/**
+ * The language, before anything is displayed.
+ *
+ * The tray, the window titles and the permission messages are written in the
+ * main process, and a menu built in one language cannot be relabelled
+ * afterwards. A failed read leaves English in place rather than stopping the
+ * start-up.
+ */
+async function applyConfiguredLocale(): Promise<void> {
+  try {
+    setMainLocale(resolveMainLocale((await loadConfig()).uiLocale));
+  } catch (error) {
+    console.error("Reqraft: could not read the interface language:", error);
+  }
+}
+
+/**
+ * Local profiles are files: the catalogue has to be read before anything can
+ * resolve one. Without this the desktop saw the built-in profiles alone, and a
+ * local profile chosen as the default failed the run with `profile.unknown`.
+ * Failures are reported, never thrown — a broken file must not stop the
+ * application from starting.
+ */
+async function preloadProfileCatalog(): Promise<void> {
+  const catalog = await loadProfileCatalog();
+  for (const problem of catalog.problems) {
+    console.error(`Reqraft: local profile ignored (${problem.path}): ${problem.detail}`);
+  }
+}
+
+/** L'icône de la barre suit le cycle de vie d'un run (lot 4). */
+function trayStateFor(event: "start" | "done" | "error" | "cancelled"): TrayState {
+  if (event === "start") return "busy";
+  return event === "error" ? "error" : "repos";
+}
+
 function bootstrap(): void {
   if (process.platform === "darwin") {
     // Accessory application: the Dock icon only comes back with packaging
@@ -92,15 +130,9 @@ function bootstrap(): void {
   }
 
   void app.whenReady().then(async () => {
-    // Local profiles are files: the catalogue has to be read before anything
-    // can resolve one. Without this the desktop saw the built-in profiles
-    // alone, and a local profile chosen as the default failed the run with
-    // `profile.unknown`. Failures are reported, never thrown — a broken file
-    // must not stop the application from starting.
-    const catalog = await loadProfileCatalog();
-    for (const problem of catalog.problems) {
-      console.error(`Profil local ignoré (${problem.path}) : ${problem.detail}`);
-    }
+    await applyConfiguredLocale();
+
+    await preloadProfileCatalog();
 
     const bridge = createMacosBridge(createOsascriptRunner());
     const captureService = new CaptureService({ bridge, clipboard });
@@ -231,7 +263,7 @@ function bootstrap(): void {
           .trigger()
           .then(show)
           .catch((error: unknown) => {
-            console.error("Capture impossible :", error);
+            console.error("Reqraft: capture failed:", error);
             show();
           });
       },
@@ -252,18 +284,7 @@ function bootstrap(): void {
         loadConfig,
         env: process.env,
         onRunEvent: (event) => {
-          switch (event) {
-            case "start":
-              tray.setState("busy");
-              break;
-            case "done":
-            case "cancelled":
-              tray.setState("repos");
-              break;
-            case "error":
-              tray.setState("error");
-              break;
-          }
+          tray.setState(trayStateFor(event));
         },
       }),
       probePermissions: async () => await probePermissions(permissionsProbe),
@@ -272,6 +293,14 @@ function bootstrap(): void {
       },
       openSettings,
       capsulePending: () => ouvertures.pending(),
+      // Rendre le focus clavier avant de coller, et ramener la capsule si le
+      // remplacement n'a pas eu lieu — c'est elle qui porte le message.
+      hideCapsule: () => {
+        capsule.hide();
+      },
+      showCapsule: () => {
+        capsule.reveal();
+      },
       // Applique immédiatement un raccourci changé dans les réglages, au lieu
       // d'attendre le prochain lancement.
       onShortcutsChanged: (shortcuts) => {
@@ -294,7 +323,7 @@ function bootstrap(): void {
         // The renderer never names a path: the user does, through the OS.
         const result = await dialog.showSaveDialog({
           defaultPath: defaultFileName,
-          filters: [{ name: "Profil Reqraft", extensions: ["json"] }],
+          filters: [{ name: t("main.profileFileType"), extensions: ["json"] }],
         });
         return result.canceled ? undefined : result.filePath;
       },
@@ -318,7 +347,7 @@ function bootstrap(): void {
         openOnboarding();
       }
     } catch (error) {
-      console.error("État de configuration indéterminé :", error);
+      console.error("Reqraft: could not determine the setup state:", error);
     }
 
     // Read once, here: the candidate chain is walked at start-up and a change
@@ -346,7 +375,7 @@ function bootstrap(): void {
       // §5.5: never silent. The settings window (lot 5) will surface this;
       // until then the failure is at least on record.
       console.error(
-        `Reqraft: aucun raccourci global disponible (refusés : ${resolution.rejected.join(", ")})`,
+        `Reqraft: no global shortcut available (rejected: ${resolution.rejected.join(", ")})`,
       );
     }
 
