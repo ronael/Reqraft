@@ -291,6 +291,8 @@ export const DESKTOP_EN = {
   "capsule.inventionDetected": "! not in your request",
   "capsule.inventedPaths": "paths you did not mention: {list}",
   "capsule.inventedCommands": "commands you did not ask for: {list}",
+  "capsule.technicalTermsMissing": "! technical terms missing",
+  "capsule.missingTechnicalTerms": "missing from the result: {list}",
   "capsule.structuralInflation": "came back as a structured plan",
   "capsule.restructured": "! restructured",
 } as const;

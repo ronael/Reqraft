@@ -116,6 +116,20 @@ argument*, so a request mentioning `git status` does not license an invented
 a warning that fires on an honest request teaches people to ignore the ones that
 matter.
 
+#### Technical terms preserved
+
+The inverse check protects literals supplied by the user and then lost by the
+rewrite. It covers only syntax that can be verified without interpreting the
+request: paths, commands, URLs, long flags, environment-style variables,
+camel/snake-case identifiers, versions, inline code and HTTP method/route
+pairs. A missing literal is reported by name.
+
+Matching is case-insensitive and accepts formatting around the literal. Common
+prose and business vocabulary are deliberately excluded; deciding whether a
+synonym preserves those would require a semantic judge and would make a local
+warning overconfident. The same extractor contributes to the benchmark's term
+preservation score, whose version is incremented when that rule changes.
+
 ## Quality states
 
 - `good`: no warning requiring user attention;

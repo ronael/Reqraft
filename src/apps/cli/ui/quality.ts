@@ -34,6 +34,8 @@ export function describeQualitySignal(
       return t("quality.inventedPaths", { paths: signal.params.paths.join(", ") });
     case "invented_commands":
       return t("quality.inventedCommands", { commands: signal.params.commands.join(", ") });
+    case "missing_technical_terms":
+      return t("quality.missingTechnicalTerms", { terms: signal.params.terms.join(", ") });
     case "structural_inflation":
       return t("quality.structuralInflation");
     case "output_truncated":

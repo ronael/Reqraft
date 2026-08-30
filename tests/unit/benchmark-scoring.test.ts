@@ -63,6 +63,25 @@ describe("scoreCase", () => {
 
     expect(score.noInvention).toBe(1);
   });
+
+  it("intègre les littéraux techniques de la demande au score de conservation", () => {
+    const originalCase = benchmarkCase({
+      input: "corrige parseResult avec --dry-run",
+      requiredTerms: [],
+    });
+
+    expect(scoreCase("Corrige parseResult avec --dry-run.", originalCase).terms).toBe(1);
+    expect(scoreCase("Corrige la fonction.", originalCase).terms).toBe(0);
+  });
+
+  it("ne pondère pas deux fois le même terme avec une casse différente", () => {
+    const originalCase = benchmarkCase({
+      input: "corrige parseResult et garde le formulaire",
+      requiredTerms: ["PARSERESULT", "formulaire"],
+    });
+
+    expect(scoreCase("Garde uniquement parseResult.", originalCase).terms).toBe(0.5);
+  });
 });
 
 describe("summarizeByProfile", () => {

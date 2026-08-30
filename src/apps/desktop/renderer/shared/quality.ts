@@ -44,6 +44,14 @@ export function describeQualityFinding(
     };
   }
 
+  const missingTerms = visible.find((signal) => signal.code === "missing_technical_terms");
+  if (missingTerms?.code === "missing_technical_terms") {
+    return {
+      label: t("capsule.technicalTermsMissing"),
+      detail: t("capsule.missingTechnicalTerms", { list: missingTerms.params.terms.join(", ") }),
+    };
+  }
+
   // Un autre mot : rien n'est « absent de votre demande » ici, la demande a
   // changé de forme. Reprendre le même verdict enverrait chercher une invention
   // qui n'existe pas.

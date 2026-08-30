@@ -129,8 +129,12 @@ repli.
   et rendait deux modèles indiscernables sur près de la moitié du score.
   `profile` est retiré — il mesurait ce que le runner imposait — et `intention`
   mesure désormais ce qui survit des mots porteurs de sens.
-- Reste : l'ajout de scope et les termes techniques, encore adossés à une liste
-  de termes produit plutôt qu'à une vérification. Et des cas de régression par
+- ~~Vérifier la conservation des termes techniques.~~ Fait : chemins,
+  commandes, URLs, flags, variables d'environnement, identifiants, versions et
+  endpoints fournis puis perdus sont signalés nommément. Le même extracteur
+  alimente le score de conservation du benchmark (règles version 3).
+- Reste : l'ajout de scope général, encore adossé à une liste de termes produit
+  plutôt qu'à une vérification sémantique fiable. Et des cas de régression par
   profil, à écrire à partir de vraies sorties de modèle.
 
 **Sortie :** une suite de régression démontre que Reqraft améliore la forme

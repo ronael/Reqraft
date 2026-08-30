@@ -490,6 +490,8 @@ export const en = {
     `Paths that were not in your request: ${paths}.`,
   "quality.inventedCommands": ({ commands }: { commands: string }) =>
     `Commands that were not in your request: ${commands}.`,
+  "quality.missingTechnicalTerms": ({ terms }: { terms: string }) =>
+    `Technical terms missing from the reformulation: ${terms}.`,
   "quality.structuralInflation": () =>
     "Your request came back as a structured plan; check that nothing was added.",
   "quality.outputTruncated": () => "The provider truncated the generated output.",

@@ -32,6 +32,21 @@ describe("describeQualityFinding", () => {
     expect(describeQualityFinding(signals, t)?.detail).toContain("rm -rf");
   });
 
+  it("nomme les termes techniques perdus", () => {
+    const signals: Signals = [
+      {
+        code: "missing_technical_terms",
+        severity: "warning",
+        params: { terms: ["parseResult"] },
+      },
+    ];
+
+    expect(describeQualityFinding(signals, t)).toEqual({
+      label: t("capsule.technicalTermsMissing"),
+      detail: t("capsule.missingTechnicalTerms", { list: "parseResult" }),
+    });
+  });
+
   it("ne dit rien quand rien n'a été inventé", () => {
     const signals: Signals = [{ code: "disproportionate_expansion", severity: "warning" }];
 

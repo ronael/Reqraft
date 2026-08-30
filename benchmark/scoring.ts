@@ -1,5 +1,6 @@
 import type { BenchmarkCase } from "./cases/dataset.js";
 import { detectInventedCommands, detectInventedPaths } from "@/core/invention.js";
+import { extractTechnicalTerms } from "@/core/technical-terms.js";
 
 /**
  * Ce qu'on mesure sur une reformulation, localement.
@@ -18,7 +19,7 @@ import { detectInventedCommands, detectInventedPaths } from "@/core/invention.js
  * écart qui ne mesure que le changement de règles. `compare` refuse de le
  * faire ; ce numéro est ce qui le lui permet.
  */
-export const SCORE_VERSION = 2;
+export const SCORE_VERSION = 3;
 
 export interface BenchmarkScore {
   /** Termes de la demande retrouvés dans la sortie. */
@@ -133,16 +134,23 @@ function scoreIntention(input: string, output: string): number {
   return kept / wanted.size;
 }
 
+function uniqueTerms(terms: readonly string[]): string[] {
+  const byCanonicalForm = new Map<string, string>();
+  for (const term of terms) byCanonicalForm.set(term.toLocaleLowerCase("en-US"), term);
+  return [...byCanonicalForm.values()];
+}
+
 export function scoreCase(output: string, originalCase: BenchmarkCase): BenchmarkScore {
   const lowerOutput = output.toLowerCase();
 
-  const requiredTermsFound = originalCase.requiredTerms.filter((term) =>
+  const termsToPreserve = uniqueTerms([
+    ...originalCase.requiredTerms,
+    ...extractTechnicalTerms(originalCase.input),
+  ]);
+  const requiredTermsFound = termsToPreserve.filter((term) =>
     lowerOutput.includes(term.toLowerCase()),
   ).length;
-  const terms =
-    originalCase.requiredTerms.length === 0
-      ? 1
-      : requiredTermsFound / originalCase.requiredTerms.length;
+  const terms = termsToPreserve.length === 0 ? 1 : requiredTermsFound / termsToPreserve.length;
 
   // Les mêmes détecteurs que le produit : ce que le benchmark mesure est ce
   // que l'utilisateur verra signalé, pas une seconde définition de l'invention.

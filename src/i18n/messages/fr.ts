@@ -500,6 +500,8 @@ export const fr = {
     `Chemins absents de votre demande : ${paths}.`,
   "quality.inventedCommands": ({ commands }: { commands: string }) =>
     `Commandes absentes de votre demande : ${commands}.`,
+  "quality.missingTechnicalTerms": ({ terms }: { terms: string }) =>
+    `Termes techniques perdus dans la reformulation : ${terms}.`,
   "quality.structuralInflation": () =>
     "Votre demande est revenue sous forme de plan structuré ; vérifiez que rien n'a été ajouté.",
   "quality.outputTruncated": () => "Le provider a tronqué la sortie générée.",

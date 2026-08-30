@@ -51,6 +51,11 @@ export type QualitySignal =
       severity: "info" | "warning";
       params: { commands: string[] };
     }
+  | {
+      code: "missing_technical_terms";
+      severity: "info" | "warning";
+      params: { terms: string[] };
+    }
   /**
    * La demande est devenue un plan.
    *

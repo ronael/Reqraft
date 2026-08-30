@@ -503,6 +503,7 @@ export interface MessageParameters {
   "quality.disproportionateExpansion": undefined;
   "quality.inventedPaths": { paths: string };
   "quality.inventedCommands": { commands: string };
+  "quality.missingTechnicalTerms": { terms: string };
   "quality.structuralInflation": undefined;
   "quality.outputTruncated": undefined;
   "quality.unstructuredResponse": undefined;
