@@ -1,4 +1,7 @@
 import { execFileSync } from "node:child_process";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import process from "node:process";
 import { describe, expect, it } from "vitest";
 
@@ -43,11 +46,21 @@ function packReport(): PackReport {
   // Neither name has a stable absolute path across nvm, Volta, Homebrew and CI
   // images, so pinning one would break this check everywhere. The command is a
   // fixed constant with no interpolated input.
-  const stdout = execFileSync(NPM, ["pack", "--dry-run", "--json", "--ignore-scripts"], {
-    encoding: "utf8",
-    maxBuffer: 32 * 1024 * 1024,
-    shell: IS_WINDOWS,
-  });
+  const cache = mkdtempSync(path.join(tmpdir(), "reqraft-npm-pack-test-"));
+  const env = { ...process.env };
+  delete env.npm_config_verify_deps_before_run;
+  env.npm_config_cache = cache;
+  let stdout: string;
+  try {
+    stdout = execFileSync(NPM, ["pack", "--dry-run", "--json", "--ignore-scripts"], {
+      encoding: "utf8",
+      env,
+      maxBuffer: 32 * 1024 * 1024,
+      shell: IS_WINDOWS,
+    });
+  } finally {
+    rmSync(cache, { recursive: true, force: true });
+  }
   const [report] = JSON.parse(stdout) as PackReport[];
   if (report === undefined) {
     throw new Error("npm pack --dry-run returned no report");

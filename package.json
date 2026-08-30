@@ -23,6 +23,7 @@
     "dev:desktop": "pnpm build:desktop && env -u ELECTRON_RUN_AS_NODE electron release/desktop/bundle/main/index.mjs",
     "icon:desktop": "tsx scripts/generate-icon.ts",
     "pack:desktop": "pnpm build:desktop && electron-builder --mac --dir",
+    "test:desktop:packaged": "pnpm pack:desktop && tsx scripts/smoke-packaged-desktop.ts",
     "dist:desktop": "pnpm build:desktop && electron-builder --publish never --mac",
     "dist:desktop:mac": "pnpm build:desktop && electron-builder --publish never --mac",
     "dist:desktop:win": "pnpm build:desktop && electron-builder --publish never --win",
@@ -39,15 +40,15 @@
     "benchmark": "tsx benchmark/runner.ts",
     "benchmark:fidelity": "tsx benchmark/fidelity-runner.ts",
     "benchmark:auto-profile": "tsx benchmark/auto-profile-runner.ts",
+    "benchmark:compare": "tsx benchmark/compare.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.tui.json",
     "quality": "pnpm typecheck && pnpm format:check && pnpm lint && pnpm build && pnpm build:desktop && pnpm test:coverage && pnpm test:tui",
-    "pack:dry-run": "pnpm publish --dry-run --access public --ignore-scripts",
+    "pack:dry-run": "tsx scripts/pack-dry-run.ts",
     "release:check": "pnpm quality && pnpm pack:dry-run",
     "release": "tsx scripts/release.ts",
     "publish:public": "pnpm publish --access public",
     "prepublishOnly": "pnpm quality",
-    "prepack": "pnpm build",
-    "benchmark:compare": "tsx benchmark/compare.ts"
+    "prepack": "pnpm build"
   },
   "keywords": [
     "cli",

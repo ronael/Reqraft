@@ -16,6 +16,10 @@ livraison.
   presse-papiers image restent des tests d'intégration injectés : les jouer sur
   l'OS modifierait les permissions, les frappes ou le presse-papiers de la
   machine qui lance la suite.
+- `pnpm test:desktop:packaged` construit le vrai paquet macOS et vérifie son
+  démarrage, son nom produit, ses fenêtres persistantes et ses raccourcis dans
+  un environnement isolé. La revue visuelle et les interactions OS restent
+  manuelles.
 - Valider manuellement le cycle macOS réel : permissions Accessibilité et
   Automatisation, capture, remplacement, relance après changement de langue,
   popover et raccourcis configurés — couvert par la
@@ -135,9 +139,9 @@ d'une demande sans dégrader son intention.
 ## Later — distribution desktop
 
 - Signature et notarisation macOS, puis auto-update lorsque le canal de
-distribution est stabilisé.
+  distribution est stabilisé.
 - Évaluer Windows et Linux selon une demande réelle ; ne pas confondre un
-installateur expérimental avec une plateforme pleinement supportée.
+  installateur expérimental avec une plateforme pleinement supportée.
 
 **Sortie :** les plateformes déclarées supportées ont un parcours
 d'installation, de mise à jour et de diagnostic testé.

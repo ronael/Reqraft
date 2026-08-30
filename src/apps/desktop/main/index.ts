@@ -62,6 +62,7 @@ import {
 
 const OPEN_SETTINGS_ARG_PREFIX = "--reqraft-open-settings=";
 const SETTINGS_TAB_AFTER_RELAUNCH = "preferences";
+const DESKTOP_PRODUCT_NAME = "Reqraft";
 
 /**
  * Desktop bootstrap. Order matters:
@@ -70,6 +71,7 @@ const SETTINGS_TAB_AFTER_RELAUNCH = "preferences";
  *    (§5.8) ;
  * 3. the app runs accessory-style, without a Dock icon on macOS.
  */
+app.setName(DESKTOP_PRODUCT_NAME);
 applyCrashReportPolicy(crashReporter);
 
 // Scheme privileges are startup-only: they must be declared before the app

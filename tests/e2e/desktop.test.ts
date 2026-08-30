@@ -235,6 +235,7 @@ describeElectron("desktop Electron smoke", () => {
       const payload = await runDesktopProbe();
 
       expect(payload.ready).toBe(true);
+      expect(payload.appName).toBe("Reqraft");
       expect(payload.windowCount).toBeGreaterThanOrEqual(2);
       expect(payload.windows).toEqual(
         expect.arrayContaining([

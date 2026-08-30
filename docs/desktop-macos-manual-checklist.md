@@ -8,6 +8,12 @@ sélection et réinjecte du texte — trois claims distincts de « le build pass
 Référence normative : `docs/internal/DESKTOP.md`. Support des plateformes :
 `docs/desktop-platform-support.md`.
 
+Avant la revue visuelle, exécuter `pnpm test:desktop:packaged`. Cette commande
+construit le vrai `.app`, le lance avec une configuration et un dossier Electron
+isolés, puis vérifie le nom produit, les fenêtres persistantes et les raccourcis
+enregistrés. Elle ne remplace pas les essais ci-dessous : elle ne touche
+volontairement ni aux permissions, ni aux frappes système, ni au presse-papiers.
+
 ## Comment s'en servir
 
 - Cocher chaque ligne uniquement après avoir vu le résultat attendu.
