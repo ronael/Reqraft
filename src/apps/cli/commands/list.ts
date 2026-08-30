@@ -24,6 +24,19 @@ function logProfile(profile: PromptProfile, output: ListOutput, t: Translator): 
   );
 }
 
+function logProblems(
+  problems: readonly { path: string; detail: string }[],
+  titleKey: "list.profiles.shadowed" | "list.profiles.invalid",
+  output: ListOutput,
+  t: Translator,
+): void {
+  if (problems.length === 0) return;
+  output.log(`\n  ${t(titleKey)}`);
+  for (const problem of problems) {
+    output.log(`  ${problem.path} — ${problem.detail}`);
+  }
+}
+
 /**
  * Lists what `--profile` accepts: `auto`, the built-in profiles, then the local
  * ones held by the shared catalogue. Local files the catalogue had to skip are
@@ -42,6 +55,13 @@ export function runProfilesList(
     logProfile(profile, output, t);
   }
 
+  if (catalog.project.length > 0) {
+    output.log(`\n  ${t("list.profiles.project")}`);
+    for (const profile of catalog.project) {
+      logProfile(profile, output, t);
+    }
+  }
+
   output.log(`\n  ${t("list.profiles.local")}`);
   if (catalog.local.length === 0) {
     output.log(t("list.profiles.localNone"));
@@ -50,12 +70,21 @@ export function runProfilesList(
     logProfile(profile, output, t);
   }
 
-  if (catalog.problems.length > 0) {
-    output.log(`\n  ${t("list.profiles.invalid")}`);
-    for (const problem of catalog.problems) {
-      output.log(`  ${problem.path} — ${problem.detail}`);
-    }
-  }
+  // Masqué et illisible sont deux choses différentes : un profil recouvert par
+  // le projet fonctionne, il n'est simplement pas celui qui s'applique ici. Les
+  // ranger ensemble apprendrait à ignorer les deux.
+  logProblems(
+    catalog.problems.filter((problem) => problem.kind === "shadowed"),
+    "list.profiles.shadowed",
+    output,
+    t,
+  );
+  logProblems(
+    catalog.problems.filter((problem) => problem.kind !== "shadowed"),
+    "list.profiles.invalid",
+    output,
+    t,
+  );
 }
 
 export function runProvidersList(

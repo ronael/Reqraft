@@ -37,6 +37,103 @@ export const REPROMPT_POLICY = {
     },
   },
   fidelity: {
+    /**
+     * Ce qui fait qu'un mot de la sortie est un chemin ou une commande.
+     *
+     * Deux listes fermées plutôt qu'une heuristique ouverte : une reformulation
+     * qui invente `src/auth/session.ts` ou `pnpm run migrate` produit du
+     * vérifiable, et un avertissement qui se déclenche à tort sur une phrase
+     * ordinaire finit par être ignoré.
+     */
+    invention: {
+      fileExtensions: [
+        "ts",
+        "tsx",
+        "js",
+        "jsx",
+        "mjs",
+        "cjs",
+        "json",
+        "yml",
+        "yaml",
+        "toml",
+        "md",
+        "css",
+        "scss",
+        "html",
+        "py",
+        "rb",
+        "go",
+        "rs",
+        "java",
+        "kt",
+        "php",
+        "sql",
+        "sh",
+        "bash",
+        "zsh",
+        "env",
+        "lock",
+        "cfg",
+        "ini",
+      ],
+      commandBinaries: [
+        "npm",
+        "pnpm",
+        "yarn",
+        "bun",
+        "npx",
+        "git",
+        "docker",
+        "kubectl",
+        "helm",
+        "make",
+        "cargo",
+        "go",
+        "python",
+        "python3",
+        "pip",
+        "pip3",
+        "curl",
+        "wget",
+        "ssh",
+        "scp",
+        "rsync",
+        "rm",
+        "mv",
+        "cp",
+        "chmod",
+        "chown",
+        "systemctl",
+        "brew",
+        "apt",
+        "apt-get",
+        "yum",
+        "terraform",
+        "ansible",
+        "psql",
+        "mysql",
+        "redis-cli",
+        "mongo",
+        "aws",
+        "gcloud",
+        "az",
+      ],
+    },
+    /**
+     * Combien de structure une reformulation peut ajouter d'elle-même.
+     *
+     * `minimal` ne doit rien restructurer : une seule puce ajoutée est déjà un
+     * changement de nature. `complete` est fait pour détailler, donc le seuil y
+     * est haut — au-delà, la demande est devenue un cahier des charges.
+     */
+    structure: {
+      levels: {
+        minimal: { addedListItems: 0, addedHeadings: 0 },
+        standard: { addedListItems: 4, addedHeadings: 1 },
+        complete: { addedListItems: 10, addedHeadings: 3 },
+      },
+    },
     expansion: {
       // Higher levels intentionally allow more structure and clarification.
       levels: {

@@ -13,7 +13,18 @@ import {
   systemPreferences,
 } from "electron";
 import { executeReprompt } from "@/application/reprompt.js";
-import { configPath, loadConfig } from "@/config/loader.js";
+import { configPath, loadConfig as loadLayeredConfig } from "@/config/loader.js";
+
+/**
+ * La configuration vue par le desktop : celle de la personne, sans couche
+ * projet.
+ *
+ * Une application lancée depuis le Dock hérite du `cwd` de macOS ; laisser un
+ * `.reqraft` qui s'y trouve décider de ses réglages serait un effet de bord que
+ * personne n'a demandé. Le contexte projet appartient au CLI et à la TUI, qui
+ * eux sont lancés depuis un dossier choisi.
+ */
+const loadConfig = (): ReturnType<typeof loadLayeredConfig> => loadLayeredConfig(null);
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
@@ -34,16 +45,23 @@ import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createOnboardingWindow } from "./windows/onboarding.js";
 import { createTray } from "./tray.js";
 import type { TrayState } from "./tray-icon.js";
-import { createCapsuleWindow } from "./windows/capsule.js";
+import { createCapsuleWindow, type CapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow } from "./windows/popover.js";
 import { createSettingsWindow } from "./windows/settings.js";
 import { revealExistingWindow } from "./windows/reveal.js";
 import { resolveMainLocale, setMainLocale, t } from "./i18n.js";
+import {
+  DESKTOP_E2E_PROBE,
+  DESKTOP_E2E_HOLD,
+  DESKTOP_E2E_REJECT_SHORTCUTS,
+  DESKTOP_E2E_SCENARIO,
+  runE2eScenario,
+  type E2eScenarioReport,
+  type E2eScenarioTargets,
+} from "./e2e-probe.js";
 
 const OPEN_SETTINGS_ARG_PREFIX = "--reqraft-open-settings=";
 const SETTINGS_TAB_AFTER_RELAUNCH = "preferences";
-const DESKTOP_E2E_PROBE = "REQRAFT_DESKTOP_E2E_PROBE";
-const DESKTOP_E2E_REJECT_SHORTCUTS = "REQRAFT_DESKTOP_E2E_REJECT_SHORTCUTS";
 
 /**
  * Desktop bootstrap. Order matters:
@@ -116,7 +134,10 @@ async function applyConfiguredLocale(): Promise<void> {
  * application from starting.
  */
 async function preloadProfileCatalog(): Promise<void> {
-  const catalog = await loadProfileCatalog();
+  // Sans couche projet : le `cwd` d'une application lancée depuis le Dock est
+  // celui d'où macOS l'a lancée, et laisser un `.reqraft` qui s'y trouve
+  // décider des profils serait un effet de bord que personne n'a demandé.
+  const catalog = await loadProfileCatalog({ projectProfilesDir: null });
   for (const problem of catalog.problems) {
     console.error(`Reqraft: local profile ignored (${problem.path}): ${problem.detail}`);
   }
@@ -163,7 +184,16 @@ async function reportDesktopE2eReadiness(options: {
   onboarding: Electron.BrowserWindow | null;
   shortcuts: ShortcutResolution;
   permissionsProbe: PermissionsProbe;
+  scenarioTargets: E2eScenarioTargets;
 }): Promise<void> {
+  // Le scénario d'abord : il ouvre des fenêtres et lance des runs, donc
+  // l'inventaire doit être pris après lui, pas avant.
+  const scenarioName = process.env[DESKTOP_E2E_SCENARIO];
+  const scenario: E2eScenarioReport | undefined =
+    scenarioName === undefined
+      ? undefined
+      : await runE2eScenario(scenarioName, options.scenarioTargets);
+
   const windows = [
     { surface: "capsule", window: options.capsule },
     { surface: "popover", window: options.popover },
@@ -191,9 +221,12 @@ async function reportDesktopE2eReadiness(options: {
       windows,
       shortcuts: options.shortcuts,
       permissions,
+      ...(scenario === undefined ? {} : { scenario }),
     })}\n`,
   );
-  app.quit();
+  if (process.env[DESKTOP_E2E_HOLD] !== "1") {
+    app.quit();
+  }
 }
 
 function createShortcutRegistrar(): (accelerator: string, handler: () => void) => boolean {
@@ -235,6 +268,54 @@ async function openStartupWindow(options: {
   if (tab !== undefined) {
     options.openSettings(tab);
   }
+}
+
+/**
+ * Ce que font les deux raccourcis globaux.
+ *
+ * Extraits du démarrage parce qu'ils servent trois fois : à l'enregistrement
+ * initial, à chaque ré-enregistrement quand un réglage change une combinaison,
+ * et aux scénarios de test bout en bout — qui doivent emprunter exactement le
+ * même chemin que le clavier, sinon ils ne prouvent rien.
+ */
+function createShortcutHandlers(deps: {
+  captureService: CaptureService;
+  liveCapsule: () => CapsuleWindow;
+  ouvertures: ReturnType<typeof createOuvertureTracker>;
+}): { onCapture: () => void; onInput: () => void } {
+  return {
+    onCapture: () => {
+      // Record the source app and capture BEFORE the capsule takes the focus
+      // (§5.2), then show anchored at the cursor (§3) and tell the renderer to
+      // start a fresh session — the window persists between triggers, it is
+      // hidden, never destroyed.
+      const cursor = screen.getCursorScreenPoint();
+      // The capsule opens whatever the capture did. `trigger()` already
+      // degrades a failed capture to an empty one, and this catch is the belt
+      // to that braces: a rejection here would leave the user pressing a
+      // shortcut that does nothing but print to a console they never see.
+      const show = (): void => {
+        // `liveCapsule()` comme la branche saisie : la capture aussi doit
+        // survivre à une fenêtre détruite, et c'est le chemin le plus utilisé.
+        const target = deps.liveCapsule();
+        target.show({ kind: "cursor", point: cursor });
+        deps.ouvertures.annonce(target, "capture");
+      };
+      void deps.captureService
+        .trigger()
+        .then(show)
+        .catch((error: unknown) => {
+          console.error("Reqraft: capture failed:", error);
+          show();
+        });
+    },
+    onInput: () => {
+      deps.captureService.clear();
+      const target = deps.liveCapsule();
+      target.show({ kind: "centered" });
+      deps.ouvertures.annonce(target, "input");
+    },
+  };
 }
 
 function bootstrap(): void {
@@ -360,52 +441,26 @@ function bootstrap(): void {
     // chaque fois qu'un réglage change une combinaison.
     const ouvertures = createOuvertureTracker();
 
-    const shortcutHandlers = {
-      onCapture: () => {
-        // Record the source app and capture BEFORE the capsule takes the
-        // focus (§5.2), then show anchored at the cursor (§3) and tell the
-        // renderer to start a fresh session — the window persists between
-        // triggers, it is hidden, never destroyed.
-        const cursor = screen.getCursorScreenPoint();
-        // The capsule opens whatever the capture did. `trigger()` already
-        // degrades a failed capture to an empty one, and this catch is the
-        // belt to that braces: a rejection here would leave the user pressing
-        // a shortcut that does nothing but print to a console they never see.
-        const show = (): void => {
-          // `liveCapsule()` comme la branche saisie : la capture aussi doit
-          // survivre à une fenêtre détruite, et c'est le chemin le plus utilisé.
-          const target = liveCapsule();
-          target.show({ kind: "cursor", point: cursor });
-          ouvertures.annonce(target, "capture");
-        };
-        void captureService
-          .trigger()
-          .then(show)
-          .catch((error: unknown) => {
-            console.error("Reqraft: capture failed:", error);
-            show();
-          });
+    const shortcutHandlers = createShortcutHandlers({
+      captureService,
+      liveCapsule,
+      ouvertures,
+    });
+
+    const repromptService = new RepromptService({
+      executeReprompt,
+      loadConfig,
+      env: process.env,
+      onRunEvent: (event) => {
+        tray.setState(trayStateFor(event));
       },
-      onInput: () => {
-        captureService.clear();
-        const target = liveCapsule();
-        target.show({ kind: "centered" });
-        ouvertures.annonce(target, "input");
-      },
-    };
+    });
 
     registerIpcHandlers({
       ipcMain,
       clipboard,
       captureService,
-      service: new RepromptService({
-        executeReprompt,
-        loadConfig,
-        env: process.env,
-        onRunEvent: (event) => {
-          tray.setState(trayStateFor(event));
-        },
-      }),
+      service: repromptService,
       probePermissions: async () => await probePermissions(permissionsProbe),
       requestAccessibility: () => {
         requestAccessibility(systemPreferences);
@@ -497,6 +552,12 @@ function bootstrap(): void {
         onboarding: onboardingWindow,
         shortcuts: shortcutResolution,
         permissionsProbe,
+        scenarioTargets: {
+          repromptService,
+          shortcutHandlers,
+          capsuleVisible: () => !capsule.window.isDestroyed() && capsule.window.isVisible(),
+          capsulePending: () => ouvertures.pending(),
+        },
       });
     }
   });

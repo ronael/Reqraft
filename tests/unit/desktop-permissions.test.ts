@@ -28,6 +28,22 @@ describe("probePermissions (DESKTOP.md §5.9)", () => {
     expect(report.gap).toBe("none");
   });
 
+  it("macOS : aucune des deux → le message les nomme toutes les deux", async () => {
+    // §5.9 : le message de dégradation doit dire LAQUELLE manque. « Aucune
+    // permission accordée » ne disait rien de ce qu'il faut aller autoriser,
+    // et les deux se demandent dans deux panneaux différents.
+    const report = await probePermissions({
+      platform: "darwin",
+      env: {},
+      isTrustedAccessibilityClient: () => false,
+      hasAutomation: () => Promise.resolve(false),
+    });
+
+    expect(report.gap).toBe("both");
+    expect(report.message).toContain("Accessibility");
+    expect(report.message).toContain("Automation");
+  });
+
   it("macOS : Accessibilité seule → le message nomme l'Automatisation", async () => {
     const report = await probePermissions(
       createProbe({

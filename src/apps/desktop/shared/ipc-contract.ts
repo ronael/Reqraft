@@ -234,6 +234,8 @@ export interface ProfileDetail {
 
 /** A local profile file the catalogue could not load, reported not hidden. */
 export interface ProfileCatalogProblemInfo {
+  /** Cassé, ou seulement recouvert par un profil du projet. */
+  kind: "invalid" | "shadowed";
   id: string;
   path: string;
   detail: string;

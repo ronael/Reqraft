@@ -10,9 +10,12 @@ livraison.
   régressions concrètement remontées.
 - Valider manuellement les paquets macOS avant chaque release desktop, en
   déroulant [la checklist de test manuel desktop macOS](desktop-macos-manual-checklist.md).
-- Écrire les premiers tests bout en bout desktop/Electron : démarrage, capsule,
-  provider mock, permissions refusées, raccourci indisponible, presse-papiers
-  image et seconde instance.
+- Premiers tests desktop automatisés en place : le bundle Electron réel couvre
+  le démarrage, l'ouverture de la capsule, le service mock, le raccourci
+  indisponible et la seconde instance. Les permissions refusées et le
+  presse-papiers image restent des tests d'intégration injectés : les jouer sur
+  l'OS modifierait les permissions, les frappes ou le presse-papiers de la
+  machine qui lance la suite.
 - Valider manuellement le cycle macOS réel : permissions Accessibilité et
   Automatisation, capture, remplacement, relance après changement de langue,
   popover et raccourcis configurés — couvert par la
@@ -56,34 +59,75 @@ le CLI.
 
 ## Next — passer à l'échelle des profils
 
-- Vérifier que les sélecteurs de profil du desktop, du CLI et du TUI tiennent
+- ~~Vérifier que les sélecteurs de profil du desktop, du CLI et du TUI tiennent
   le même contrat quand le catalogue grandit : liste bornée, recherche et
-  groupement par origine.
-- Étudier un ordre par usage récent plutôt qu'un ordre fixe, une fois qu'un
-  catalogue réel existe.
+  groupement par origine.~~ Fait, et l'écart trouvé a été comblé : la TUI n'avait
+  pas de recherche, et sa liste ne suivait pas le surlignage au-delà de la
+  hauteur du dialogue. Le contrat commun est tenu par un test
+  (`tests/unit/profile-picker-scale.test.ts`).
+- ~~Étudier un ordre par usage récent plutôt qu'un ordre fixe.~~ Fait :
+  [Ordering the profile list](profile-ordering.md). Conclusion : pas maintenant,
+  et pas sous forme d'usage récent. Une liste qui se réordonne entre deux
+  ouvertures détruit la mémoire gestuelle, la recherche absorbe déjà l'essentiel
+  du besoin, et l'ordre par usage demande un journal, une décroissance et une
+  écriture disque sur le chemin chaud. Deux changements moins chers couvrent le
+  besoin : garder un ordre fixe et rendre la recherche visible, ce que la TUI
+  fait désormais. Épingler un profil reste différé tant que toutes les surfaces
+  ne reçoivent pas explicitement le même profil configuré par défaut.
 
 **Sortie :** un catalogue de plusieurs dizaines de profils reste utilisable sur
 toutes les surfaces, sans que la taille d'une fenêtre dépende du nombre de
 profils.
 
-## Later — contexte par projet
+## Livré — contexte par projet
 
-- Ajouter `.reqraft/config.json` avec une priorité claire : options CLI,
-  configuration projet, configuration utilisateur, puis valeurs par défaut.
-- Autoriser des profils propres au projet dans `.reqraft/profiles/`,
-  versionnables avec le dépôt.
-- Interdire toute credential ou secret dans `.reqraft/`.
+- `.reqraft/config.json`, trouvé en remontant depuis le dossier courant, avec la
+  priorité annoncée : options CLI, configuration projet, configuration
+  utilisateur, valeurs par défaut. La couche projet recouvre clé par clé, et
+  tout ce qui écrit part de la configuration utilisateur — une valeur venue d'un
+  projet ne devient jamais permanente.
+- Profils propres au projet dans `.reqraft/profiles/`, versionnables avec le
+  dépôt, en lecture seule depuis toutes les surfaces. Ils l'emportent sur un
+  profil personnel du même identifiant, qui est alors signalé comme masqué
+  plutôt qu'effacé.
+- Aucune credential possible dans `.reqraft/` : le schéma est strict et refuse
+  `customHeaders`, les réglages qui appartiennent à la personne ou à sa machine,
+  et toute clé inconnue — bruyamment, jamais en silence.
+- Le desktop n'a pas de projet : son dossier courant est celui du lanceur, pas
+  un choix.
 
-**Sortie :** deux projets peuvent appliquer automatiquement des conventions
-différentes, tout en conservant les réglages utilisateur comme repli.
+Documenté dans [Project context](project-context.md).
+
+**Sortie atteinte :** deux projets peuvent appliquer automatiquement des
+conventions différentes, tout en conservant les réglages utilisateur comme
+repli.
 
 ## Later — fidélité et qualité
 
-- Renforcer les benchmarks de fidélité et les cas de régression par profil.
-- Améliorer les détections locales : ajout de scope, expansion
-  disproportionnée, termes techniques, chemins et commandes.
-- Produire des métriques comparables selon le profil et le modèle, sans perdre
-  le caractère local-first du produit.
+- ~~Améliorer les détections locales : chemins et commandes.~~ Fait : un chemin
+  ou une commande présents dans la sortie et absents de la demande sont
+  signalés, nommément, dans le CLI comme dans la capsule. Ce sont les
+  inventions les plus coûteuses — elles ont l'air d'un fait vérifié, et
+  quelqu'un les exécutera — et ce sont les seules qui se vérifient sans
+  ambiguïté. Le repérage est volontairement conservateur, et un test le tient
+  silencieux sur les 46 cas du jeu de données.
+- ~~Produire des métriques comparables selon le profil et le modèle.~~ Fait :
+  le benchmark rend un tableau par profil, `pnpm benchmark:compare` donne
+  l'écart entre deux exécutions profil par profil, et refuse de comparer deux
+  scores calculés par des règles différentes.
+- ~~Renforcer les cas de régression par profil.~~ Fait pour le corpus écrit à la
+  main : dix-huit cas générés à partir de cinq entrées répétées sont remplacés
+  par dix-neuf cas spécifiques, chacun nommant une dérive plausible. Le corpus
+  compte 42 cas, cinq à huit par profil, et le test vérifie profils, niveaux et
+  absence de doublon plutôt qu'un simple compte.
+- ~~Renforcer les benchmarks de fidélité.~~ Fait en partie : `intention` et
+  `profile` valaient 1 quoi qu'il arrive, ce qui remontait chaque total de 0,4
+  et rendait deux modèles indiscernables sur près de la moitié du score.
+  `profile` est retiré — il mesurait ce que le runner imposait — et `intention`
+  mesure désormais ce qui survit des mots porteurs de sens.
+- Reste : l'ajout de scope et les termes techniques, encore adossés à une liste
+  de termes produit plutôt qu'à une vérification. Et des cas de régression par
+  profil, à écrire à partir de vraies sorties de modèle.
 
 **Sortie :** une suite de régression démontre que Reqraft améliore la forme
 d'une demande sans dégrader son intention.

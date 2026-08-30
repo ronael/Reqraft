@@ -180,20 +180,189 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
     forbiddenAdditions: ["nouvelle typographie", "témoignages", "FAQ"],
     mustPreserve: ["bleu", "blanc"],
   },
-  ...Array.from({ length: 18 }, (_, index) => ({
-    id: `short-regression-${String(index + 1)}`,
-    input:
-      [
-        "ajoute une icône",
-        "corrige le padding",
-        "renomme ce bouton",
-        "améliore le titre",
-        "fix le bug mobile",
-      ][index % 5] ?? "corrige",
-    profile: ["frontend", "clean", "code", "web-design", "debug"][index % 5] ?? "clean",
-    level: ["minimal", "standard", "complete"][index % 3] as RepromptLevel,
-    forbiddenAdditions: ["témoignages", "pricing", "FAQ", "authentification", "base de données"],
-  })),
+  // Cas de régression spécifiques écrits à la main, un par tentation identifiée.
+  //
+  // Ils remplacent dix-huit cas générés à partir de cinq entrées répétées sur
+  // trois niveaux : ils remplissaient un seuil de comptage sans rien couvrir de
+  // plus que ces cinq phrases. Chaque cas ci-dessous nomme ce qu'un modèle a
+  // envie d'ajouter à cette demande-là.
+
+  // clean — la correction ne doit rien reformuler d'autre.
+  {
+    id: "clean-typo-only",
+    input: "corrige les fautes dans ce paragraphe, ne change rien d'autre",
+    profile: "clean",
+    level: "minimal",
+    forbiddenAdditions: ["restructure", "plan", "titre", "sections"],
+    mustPreserve: ["fautes", "paragraphe"],
+  },
+  {
+    id: "clean-keep-tone",
+    input: "relis ce message, garde le ton familier",
+    profile: "clean",
+    level: "standard",
+    forbiddenAdditions: ["formel", "professionnel", "vouvoiement"],
+    mustPreserve: ["ton", "familier"],
+  },
+  {
+    id: "clean-no-length-change",
+    input: "corrige l'orthographe de ce tweet, il doit rester court",
+    profile: "clean",
+    level: "minimal",
+    forbiddenAdditions: ["hashtags", "emoji", "call to action"],
+    mustPreserve: ["orthographe", "court"],
+  },
+
+  // debug — la demande décrit un symptôme, pas une cause.
+  {
+    id: "debug-symptom-not-cause",
+    input: "l'appli plante au démarrage depuis hier",
+    profile: "debug",
+    level: "standard",
+    // Le piège : proposer une cause inventée, ou un fichier qu'on n'a pas vu.
+    forbiddenAdditions: ["migration", "dépendance corrompue", "cache", "base de données"],
+    mustPreserve: ["démarrage"],
+  },
+  {
+    id: "debug-no-invented-path",
+    input: "le login échoue une fois sur deux, trouve pourquoi",
+    profile: "debug",
+    level: "standard",
+    forbiddenAdditions: ["authentification à deux facteurs", "rate limiting"],
+    mustPreserve: ["login"],
+  },
+  {
+    id: "debug-no-invented-command",
+    input: "les tests passent en local mais pas en CI",
+    profile: "debug",
+    level: "complete",
+    forbiddenAdditions: ["docker", "cache npm", "variables d'environnement manquantes"],
+    mustPreserve: ["tests", "CI"],
+  },
+
+  // writing — un message court ne devient pas une note de service.
+  {
+    id: "writing-short-stays-short",
+    input: "dis à Paul que je serai en retard de dix minutes",
+    profile: "writing",
+    level: "minimal",
+    forbiddenAdditions: ["excuses", "explication", "réunion", "ordre du jour"],
+    mustPreserve: ["Paul", "retard"],
+  },
+  {
+    id: "writing-no-invented-facts",
+    input: "écris un mail pour décaler le point de lundi",
+    profile: "writing",
+    level: "standard",
+    // Le piège : inventer une raison, une nouvelle date, des participants.
+    forbiddenAdditions: ["imprévu", "urgence", "mardi", "visioconférence"],
+    mustPreserve: ["lundi"],
+  },
+  {
+    id: "writing-keep-language",
+    input: "reformule ce message en gardant le français",
+    profile: "writing",
+    level: "standard",
+    forbiddenAdditions: ["english", "translation"],
+    mustPreserve: ["français"],
+  },
+
+  // review — la revue porte sur ce qui est demandé, pas sur tout le dépôt.
+  {
+    id: "review-scope-stays-narrow",
+    input: "relis cette fonction, juste la lisibilité",
+    profile: "review",
+    level: "standard",
+    forbiddenAdditions: ["performance", "sécurité", "tests", "architecture"],
+    mustPreserve: ["lisibilité"],
+  },
+  {
+    id: "review-no-invented-checklist",
+    input: "regarde si ce patch casse quelque chose",
+    profile: "review",
+    level: "minimal",
+    forbiddenAdditions: ["couverture de tests", "documentation", "changelog"],
+    mustPreserve: ["patch"],
+  },
+
+  // code — une demande de correction n'est pas une demande de réécriture.
+  {
+    id: "code-no-new-dependency",
+    input: "simplifie cette boucle",
+    profile: "code",
+    level: "standard",
+    forbiddenAdditions: ["lodash", "bibliothèque", "dépendance", "framework"],
+    mustPreserve: ["boucle"],
+  },
+  {
+    id: "code-no-invented-file",
+    input: "extrais cette logique dans une fonction à part",
+    profile: "code",
+    level: "standard",
+    // Le piège le plus courant : nommer un fichier que personne n'a mentionné.
+    forbiddenAdditions: ["tests unitaires", "documentation", "interface"],
+    mustPreserve: ["fonction"],
+  },
+  {
+    id: "code-keep-behaviour",
+    input: "réécris ça en async sans changer ce que ça fait",
+    profile: "code",
+    level: "complete",
+    forbiddenAdditions: ["nouvelle API", "gestion d'erreurs supplémentaire", "logs"],
+    mustPreserve: ["async", "comportement"],
+  },
+
+  // frontend — une correction visuelle reste une correction visuelle.
+  {
+    id: "frontend-padding-only",
+    input: "corrige le padding de la carte, rien d'autre",
+    profile: "frontend",
+    level: "minimal",
+    forbiddenAdditions: ["responsive", "animations", "palette", "accessibilité"],
+    mustPreserve: ["padding", "carte"],
+  },
+  {
+    id: "frontend-rename-only",
+    input: "renomme ce bouton en « Enregistrer »",
+    profile: "frontend",
+    level: "minimal",
+    forbiddenAdditions: ["confirmation", "modale", "toast", "raccourci"],
+    mustPreserve: ["Enregistrer"],
+  },
+  {
+    id: "frontend-mobile-bug",
+    input: "le menu déborde sur mobile",
+    profile: "frontend",
+    level: "standard",
+    forbiddenAdditions: ["refonte", "design system", "tablette", "desktop"],
+    mustPreserve: ["menu", "mobile"],
+  },
+
+  // web-design — la demande donne une direction, pas un cahier des charges.
+  {
+    id: "web-design-hero-only",
+    input: "refais juste le bloc du haut",
+    profile: "web-design",
+    level: "standard",
+    forbiddenAdditions: ["footer", "pricing", "témoignages", "FAQ", "SEO"],
+    mustPreserve: ["bloc"],
+  },
+  {
+    id: "web-design-color-direction",
+    input: "rends la page plus sobre",
+    profile: "web-design",
+    level: "standard",
+    forbiddenAdditions: ["animations", "vidéo", "carrousel", "authentification"],
+    mustPreserve: ["sobre"],
+  },
+  {
+    id: "web-design-single-section",
+    input: "ajoute une section contact en bas",
+    profile: "web-design",
+    level: "minimal",
+    forbiddenAdditions: ["base de données", "envoi d'e-mail", "captcha", "RGPD"],
+    mustPreserve: ["contact"],
+  },
   {
     id: "code-refactore-typo",
     input: "refactore ce helper sans changer le comportement",

@@ -236,7 +236,13 @@ export function ProfilesTab({
     <>
       {error !== null && <p className="settings-warning">{error}</p>}
       {catalog?.problems.map((entry) => (
-        <p key={entry.path} className="settings-warning">
+        // Un profil masqué par le projet fonctionne : il n'est pas un
+        // avertissement, seulement une note. Les peindre pareil apprendrait à
+        // ignorer les deux.
+        <p
+          key={entry.path}
+          className={entry.kind === "shadowed" ? "settings-note muted" : "settings-warning"}
+        >
           {entry.detail}
         </p>
       ))}

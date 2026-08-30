@@ -209,7 +209,7 @@ export const DESKTOP_FR = {
     "Automatisation accordée, Accessibilité refusée — les frappes ne partiront pas.",
   "main.permissionsAutomationMissing": "Accessibilité accordée, Automatisation refusée.",
   "main.permissionsNoneGranted":
-    "Aucune permission accordée : la capsule fonctionne en saisie manuelle.",
+    "Ni Accessibilité ni Automatisation accordées : la capsule fonctionne en saisie manuelle.",
   "main.permissionsWayland": "Wayland bloque l'injection de frappes.",
   "main.permissionsWaylandDetail":
     "Wayland bloque l'injection de frappes par conception : la capsule fonctionne, mais ⏎ copie au lieu de remplacer.",
@@ -284,4 +284,9 @@ export const DESKTOP_FR = {
   "capsule.replaceUnavailableWhy":
     "Remplacement indisponible ({reason}) — résultat copié, ⌘V pour coller.",
   "capsule.replaceFailedWhy": "Le remplacement a échoué ({reason}) — le résultat reste affiché.",
+  "capsule.inventionDetected": "! absent de votre demande",
+  "capsule.inventedPaths": "chemins que vous n'avez pas cités : {list}",
+  "capsule.inventedCommands": "commandes que vous n'avez pas demandées : {list}",
+  "capsule.structuralInflation": "revenue sous forme de plan",
+  "capsule.restructured": "! restructurée",
 } as const;

@@ -5,7 +5,7 @@ import { REPROMPT_LEVELS, type RepromptLevel } from "@/core/levels.js";
 import { loadConfig } from "@/config/loader.js";
 import { getProfilesDir } from "@/config/paths.js";
 import { getBuiltinProfile, isBuiltinProfileAlias } from "@/profiles/builtins.js";
-import { loadProfileCatalog, type ProfileCatalog } from "@/profiles/catalog.js";
+import { getProfileOrigin, loadProfileCatalog, type ProfileCatalog } from "@/profiles/catalog.js";
 import {
   CUSTOM_PROFILE_SCHEMA_VERSION,
   isValidCustomProfileId,
@@ -378,6 +378,13 @@ export async function runProfilesRemove(
     output.error(t("profiles.remove.builtin", { id }));
     return EXIT_CODES.INVALID_INPUT;
   }
+  // Un profil du projet est un fichier du dépôt : le supprimer d'ici toucherait
+  // le travail de tout le monde, et `deleteLocalProfile` ne le trouverait même
+  // pas — il ne regarde que le dossier personnel.
+  if (getProfileOrigin(id) === "project") {
+    output.error(t("profiles.remove.project", { id }));
+    return EXIT_CODES.INVALID_INPUT;
+  }
   if (!isValidCustomProfileId(id)) {
     output.error(t("profiles.remove.unknown", { id }));
     return EXIT_CODES.INVALID_INPUT;
@@ -427,6 +434,9 @@ export interface ProfilesEditOptions {
 function findWriteRefusal(id: string, t: Translator): string | undefined {
   if (id === AUTO_PROFILE_ID || getBuiltinProfile(id) || isBuiltinProfileAlias(id)) {
     return t("profiles.edit.builtin", { id });
+  }
+  if (getProfileOrigin(id) === "project") {
+    return t("profiles.edit.project", { id });
   }
   return isValidCustomProfileId(id) ? undefined : t("profiles.edit.unknown", { id });
 }

@@ -214,7 +214,8 @@ export const DESKTOP_EN = {
   "main.permissionsAccessibilityMissing":
     "Automation granted, Accessibility denied — keystrokes will not go through.",
   "main.permissionsAutomationMissing": "Accessibility granted, Automation denied.",
-  "main.permissionsNoneGranted": "No permission granted: the capsule works in free-input mode.",
+  "main.permissionsNoneGranted":
+    "Neither Accessibility nor Automation granted: the capsule works in free-input mode.",
   "main.permissionsWayland": "Wayland blocks keystroke injection.",
   "main.permissionsWaylandDetail":
     "Wayland blocks keystroke injection by design: the capsule works, but ⏎ copies instead of replacing.",
@@ -287,4 +288,9 @@ export const DESKTOP_EN = {
   "capsule.replaceUnavailableWhy":
     "Replacement unavailable ({reason}) — result copied, ⌘V to paste.",
   "capsule.replaceFailedWhy": "Replacement failed ({reason}) — the result is still shown.",
+  "capsule.inventionDetected": "! not in your request",
+  "capsule.inventedPaths": "paths you did not mention: {list}",
+  "capsule.inventedCommands": "commands you did not ask for: {list}",
+  "capsule.structuralInflation": "came back as a structured plan",
+  "capsule.restructured": "! restructured",
 } as const;

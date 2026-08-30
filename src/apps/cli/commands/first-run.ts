@@ -10,7 +10,7 @@ import {
   type CompatibleProviderInput,
   type InitConfigInput,
 } from "@/config/setup.js";
-import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
+import { configPath, loadUserConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
 import { getPresetModels } from "@/models/presets.js";
 import { createProvider } from "@/providers/registry.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
@@ -287,7 +287,10 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
     return DEFAULT_CONFIG;
   }
 
-  const existingConfig = await loadConfig();
+  // Les valeurs de départ de l'assistant sont celles de la personne : elles
+  // finissent enregistrées, et un réglage venu du projet courant deviendrait
+  // permanent en passant par là.
+  const existingConfig = await loadUserConfig();
 
   if (reset) {
     writeIntro(io);
@@ -629,7 +632,10 @@ async function verifySavedConfig(
   keyStatus: ApiKeyStatus,
   io: InitIo,
 ): Promise<void> {
-  const saved = await loadConfig();
+  // Relire ce qui vient d'être écrit, sans la couche projet : sinon une
+  // convention de dépôt ferait échouer la vérification d'un enregistrement
+  // pourtant correct.
+  const saved = await loadUserConfig();
   ConfigSchema.parse(saved);
   if (
     saved.defaultProvider !== expected.defaultProvider ||

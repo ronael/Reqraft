@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { useT } from "../shared/i18n.js";
+import { describeQualityFinding } from "../shared/quality.js";
 import {
   AUTO_PROFILE_ID,
   type ProfileCatalogEntry,
@@ -700,9 +701,14 @@ export function App(): React.JSX.Element {
     (state === "ready" || state === "comparison" || state === "applying") && result !== null;
   const finalResult = showResult ? result : null;
 
+  const finding = describeQualityFinding(finalResult?.quality.signals ?? [], t);
+
   function computeVerdictLabel(): string {
     if (finalResult === null) {
       return "";
+    }
+    if (finding !== null) {
+      return finding.label;
     }
     if (expansion === true) {
       return t("capsule.expansionDetected");
@@ -710,8 +716,12 @@ export function App(): React.JSX.Element {
     return t(QUALITY_KEYS[finalResult.quality.status]);
   }
   const verdictLabel = computeVerdictLabel();
-  const verdictDetail =
-    expansion === true ? t("capsule.expansionDetail") : t("capsule.noInvention");
+
+  function computeVerdictDetail(): string {
+    if (finding !== null) return finding.detail;
+    return expansion === true ? t("capsule.expansionDetail") : t("capsule.noInvention");
+  }
+  const verdictDetail = computeVerdictDetail();
 
   // `result.profile` is the profile actually applied and outranks anything
   // known at start. Until it arrives, an explicit request is already its own

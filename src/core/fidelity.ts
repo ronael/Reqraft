@@ -1,4 +1,6 @@
 import { REPROMPT_POLICY } from "./reprompt-policy.js";
+import { detectInventedCommands, detectInventedPaths } from "./invention.js";
+import { isStructurallyInflated } from "./structure.js";
 import { DEFAULT_REPROMPT_LEVEL } from "./levels.js";
 import type {
   FidelityMode,
@@ -89,6 +91,34 @@ export function assessFidelity(
   if (isDisproportionateExpansion(input, output, level)) {
     signals.push({
       code: "disproportionate_expansion",
+      severity: mode === "permissive" ? "info" : "warning",
+    });
+  }
+
+  // Un chemin ou une commande inventés se vérifient : ils avertissent dès que
+  // le mode n'est pas permissif, sans attendre le mode strict comme les
+  // additions de vocabulaire.
+  const paths = detectInventedPaths(input, output);
+  if (paths.length > 0) {
+    signals.push({
+      code: "invented_paths",
+      severity: mode === "permissive" ? "info" : "warning",
+      params: { paths },
+    });
+  }
+
+  const commands = detectInventedCommands(input, output);
+  if (commands.length > 0) {
+    signals.push({
+      code: "invented_commands",
+      severity: mode === "permissive" ? "info" : "warning",
+      params: { commands },
+    });
+  }
+
+  if (isStructurallyInflated(input, output, level)) {
+    signals.push({
+      code: "structural_inflation",
       severity: mode === "permissive" ? "info" : "warning",
     });
   }

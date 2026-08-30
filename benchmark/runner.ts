@@ -2,7 +2,7 @@ import process from "node:process";
 import { writeFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { BENCHMARK_DATASET } from "./cases/dataset.js";
-import { scoreCase } from "./scoring.js";
+import { SCORE_VERSION, scoreCase, summarizeByProfile, type ProfileBreakdown } from "./scoring.js";
 import { rewrite } from "@/core/engine.js";
 import { resolveProfile } from "@/profiles/registry.js";
 import { createProvider } from "@/providers/registry.js";
@@ -20,10 +20,19 @@ interface BenchmarkRun {
     output: RepromptResult;
     score: ReturnType<typeof scoreCase>;
   }[];
+  /**
+   * La version des règles de calcul.
+   *
+   * Sans elle, comparer deux exécutions séparées par un changement de score
+   * donnerait un écart qui ne mesure que ce changement.
+   */
+  scoreVersion: number;
   aggregate: {
     meanTotal: number;
     totalTokens: number;
     totalLatencyMs: number;
+    /** Le même score, profil par profil : une moyenne unique les compense. */
+    byProfile: ProfileBreakdown[];
   };
 }
 
@@ -66,11 +75,13 @@ async function runBenchmark(providerId: string, modelId?: string): Promise<Bench
     provider: providerId,
     model,
     timestamp,
+    scoreVersion: SCORE_VERSION,
     results,
     aggregate: {
       meanTotal,
       totalTokens,
       totalLatencyMs,
+      byProfile: summarizeByProfile(results),
     },
   };
 }
@@ -86,6 +97,19 @@ function formatMarkdown(run: BenchmarkRun): string {
     `- Score moyen : ${run.aggregate.meanTotal.toFixed(2)}`,
     `- Tokens totaux : ${String(run.aggregate.totalTokens)}`,
     `- Latence totale : ${String(run.aggregate.totalLatencyMs)}ms`,
+    "",
+    "## Par profil",
+    "",
+    "| Profil | Cas | Total | Termes | Intention | Sans invention | Clarté |",
+    "|---|---|---|---|---|---|---|",
+    ...run.aggregate.byProfile.map(
+      (row) =>
+        `| ${row.profile} | ${String(row.cases)} | ${row.meanTotal.toFixed(2)} | ` +
+        `${row.meanTerms.toFixed(2)} | ${row.meanIntention.toFixed(2)} | ` +
+        `${row.meanNoInvention.toFixed(2)} | ${row.meanClarity.toFixed(2)} |`,
+    ),
+    "",
+    "## Cas",
     "",
     "| ID | Profil | Score | Input | Output |",
     "|---|---|---|---|---|",

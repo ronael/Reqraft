@@ -3,7 +3,13 @@ import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { executeReprompt } from "@/application/reprompt.js";
 import { hydrateCredentials, login, logout } from "@/auth/credentials.js";
-import { configPath, loadConfig, saveConfig, DEFAULT_CONFIG } from "@/config/loader.js";
+import {
+  configPath,
+  loadConfig,
+  loadUserConfig,
+  saveConfig,
+  DEFAULT_CONFIG,
+} from "@/config/loader.js";
 import { createInitConfig, evaluateSetupState } from "@/config/setup.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
 import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
@@ -91,6 +97,13 @@ export interface DesktopIpcDependencies {
   clipboard: ClipboardLike;
   service?: RepromptService;
   loadConfig?: () => Promise<Config>;
+  /**
+   * La configuration utilisateur seule, pour tout ce qui écrit.
+   *
+   * Retombe sur `loadConfig` quand elle n'est pas fournie : les tests injectent
+   * une seule configuration et n'ont pas de projet autour d'eux.
+   */
+  loadUserConfig?: () => Promise<Config>;
   saveConfig?: (config: Config) => Promise<void>;
   hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
   env?: NodeJS.ProcessEnv;
@@ -168,6 +181,7 @@ export interface DesktopIpcDependencies {
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
   const env = dependencies.env ?? process.env;
   const load = dependencies.loadConfig ?? loadConfig;
+  const loadUser = dependencies.loadUserConfig ?? dependencies.loadConfig ?? loadUserConfig;
   const save = dependencies.saveConfig ?? saveConfig;
   const hydrate = dependencies.hydrateCredentials ?? hydrateCredentials;
   const service =
@@ -225,7 +239,10 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
 
   ipcMain.handle(IPC_CHANNELS.configWrite, async (_event, payload) => {
     const patch = ConfigWriteRequestSchema.parse(payload);
-    const current = await load();
+    // Même raison que `rp config set` : on écrit dans la configuration de la
+    // personne, donc on part d'elle. L'effective y ferait entrer les valeurs du
+    // projet courant, qui n'ont rien à faire dans un fichier permanent.
+    const current = await loadUser();
     // The desktop surface never enables telemetry, whatever the renderer asks.
     const merged: Config = ConfigSchema.parse({ ...current, ...patch, telemetry: false });
     await save(merged);
@@ -411,7 +428,7 @@ function registerProfileIpcHandlers(
   const profilesDir = dependencies.profilesDir;
 
   async function readCatalog(): Promise<ProfileCatalogResponse> {
-    const catalog = await loadProfileCatalog({ profilesDir });
+    const catalog = await loadProfileCatalog({ profilesDir, projectProfilesDir: null });
     return {
       entries: [
         {
@@ -439,6 +456,7 @@ function registerProfileIpcHandlers(
         id: problem.id,
         path: problem.path,
         detail: problem.detail,
+        kind: problem.kind,
       })),
     };
   }
@@ -457,7 +475,7 @@ function registerProfileIpcHandlers(
 
   ipcMain.handle(IPC_CHANNELS.profileRead, async (_event, payload) => {
     const { id } = ProfileIdRequestSchema.parse(payload);
-    await loadProfileCatalog({ profilesDir });
+    await loadProfileCatalog({ profilesDir, projectProfilesDir: null });
     assertLocal(id);
     const stored = await readLocalProfile(id, profilesDir);
     // The whole file, this time: an explicit edit is the one case where the
@@ -475,7 +493,7 @@ function registerProfileIpcHandlers(
 
   ipcMain.handle(IPC_CHANNELS.profileSave, async (_event, payload) => {
     const request = ProfileSaveRequestSchema.parse(payload);
-    await loadProfileCatalog({ profilesDir });
+    await loadProfileCatalog({ profilesDir, projectProfilesDir: null });
 
     const profile = {
       schemaVersion: CUSTOM_PROFILE_SCHEMA_VERSION,
@@ -496,7 +514,7 @@ function registerProfileIpcHandlers(
 
   ipcMain.handle(IPC_CHANNELS.profileDuplicate, async (_event, payload) => {
     const request = ProfileDuplicateRequestSchema.parse(payload);
-    await loadProfileCatalog({ profilesDir });
+    await loadProfileCatalog({ profilesDir, projectProfilesDir: null });
     await duplicateProfile(request.sourceId, request.targetId, {
       profilesDir,
       ...(request.name === undefined ? {} : { name: request.name }),
@@ -506,7 +524,7 @@ function registerProfileIpcHandlers(
 
   ipcMain.handle(IPC_CHANNELS.profileDelete, async (_event, payload) => {
     const { id } = ProfileIdRequestSchema.parse(payload);
-    await loadProfileCatalog({ profilesDir });
+    await loadProfileCatalog({ profilesDir, projectProfilesDir: null });
     assertLocal(id);
 
     // A configuration left pointing at a deleted profile turns every later run
@@ -522,7 +540,7 @@ function registerProfileIpcHandlers(
 
   ipcMain.handle(IPC_CHANNELS.profileExport, async (_event, payload) => {
     const { id } = ProfileExportRequestSchema.parse(payload);
-    await loadProfileCatalog({ profilesDir });
+    await loadProfileCatalog({ profilesDir, projectProfilesDir: null });
     const result = await exportProfile(id, { profilesDir });
 
     const target = await (dependencies.showSaveDialog ?? (() => Promise.resolve(undefined)))(

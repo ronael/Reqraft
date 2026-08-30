@@ -31,6 +31,10 @@ export interface MessageParameters {
   "tui.tooSmall.title": undefined;
   "tui.tooSmall.body": undefined;
   "tui.picker.current": undefined;
+  "tui.picker.search": undefined;
+  "tui.picker.searchHint": undefined;
+  "tui.picker.noMatch": undefined;
+  "tui.picker.range": { from: string; to: string; total: string };
   "tui.palette.title": undefined;
   "tui.palette.searchPlaceholder": undefined;
   "tui.palette.noResult": undefined;
@@ -155,6 +159,10 @@ export interface MessageParameters {
   "profiles.edit.subtitle": { id: string };
   "profiles.edit.usage": undefined;
   "profiles.edit.builtin": { id: string };
+  "profiles.edit.project": { id: string };
+  "profiles.remove.project": { id: string };
+  "list.profiles.project": undefined;
+  "list.profiles.shadowed": undefined;
   "profiles.edit.unknown": { id: string };
   "profiles.edit.keepHint": undefined;
   "profiles.edit.done": { id: string; path: string };
@@ -493,6 +501,9 @@ export interface MessageParameters {
   "quality.statusRisky": undefined;
   "quality.unsupportedAdditions": { additions: string };
   "quality.disproportionateExpansion": undefined;
+  "quality.inventedPaths": { paths: string };
+  "quality.inventedCommands": { commands: string };
+  "quality.structuralInflation": undefined;
   "quality.outputTruncated": undefined;
   "quality.unstructuredResponse": undefined;
   "quality.modelWarning": { detail: string };

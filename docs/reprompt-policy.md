@@ -86,6 +86,36 @@ The formula is intentionally explainable and non-blocking. It must be changed
 only with benchmark evidence, because some valid tasks such as plans naturally
 expand short requests.
 
+#### Structure added
+
+Word count misses one frequent case: a sentence that comes back as a six-bullet
+specification without growing much. That is a change of nature, not of size, so
+it is counted separately — bullets and headings the output added that the input
+did not have.
+
+| Level | Added list items | Added headings |
+|---|---:|---:|
+| minimal | 0 | 0 |
+| standard | 4 | 1 |
+| complete | 10 | 3 |
+
+Only what the output *adds* counts: a request already written as a list may come
+back as a list without anything having been invented.
+
+#### Paths and commands
+
+A file path or a shell command present in the output and absent from the request
+is reported by name. These are the costliest inventions — they look like a
+verified fact, and somebody will run them — and the only ones that can be
+checked without ambiguity: the path is in the request, or it is not.
+
+Detection is deliberately conservative. URLs, dates, fractions and two words
+separated by a slash are not paths; a command is a known binary *with its first
+argument*, so a request mentioning `git status` does not license an invented
+`git push`. A test keeps the detectors silent across the whole benchmark corpus:
+a warning that fires on an honest request teaches people to ignore the ones that
+matter.
+
 ## Quality states
 
 - `good`: no warning requiring user attention;
