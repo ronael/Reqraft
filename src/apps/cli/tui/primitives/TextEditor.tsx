@@ -60,7 +60,7 @@ export function TextEditor({
   const handleContentChange = useCallback(() => {
     const current = editor.current?.plainText;
     if (current !== undefined) onChange(current);
-  }, [onChange]);
+  }, [editor, onChange]);
 
   useEffect(() => {
     const renderable = editor.current;
@@ -77,7 +77,7 @@ export function TextEditor({
       // Any other external replacement stays undoable.
       renderable.replaceText(value);
     }
-  }, [value]);
+  }, [editor, value]);
 
   return (
     <textarea
