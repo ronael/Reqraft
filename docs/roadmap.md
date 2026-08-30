@@ -41,7 +41,9 @@ et le TUI.
 ## Livré — desktop autonome
 
 - Onboarding desktop natif : une installation sans configuration ouvre une
-  fenêtre de configuration au démarrage, sans CLI ni `rp init`.
+  présentation de découverte en trois écrans, puis une fenêtre de configuration
+  au démarrage, sans CLI ni `rp init`. Une installation existante qui perd une
+  clé arrive directement à la réparation et ne revoit pas la présentation.
 - Paramètres modifiables depuis le desktop : provider, modèle, niveau et
   profil, dans l'onboarding, les réglages, le popover et la capsule.
 - Préférences desktop : raccourcis globaux configurables avec ré-enregistrement

@@ -28,6 +28,11 @@ volontairement ni aux permissions, ni aux frappes système, ni au presse-papiers
 
 - [ ] Le `.dmg` monte, l'app se copie dans `/Applications`, se lance au premier
       double-clic (override Gatekeeper attendu tant que non signée/notarisée).
+- [ ] Installation vierge : les trois écrans de découverte sont lisibles à la
+      taille par défaut, les points de progression suivent la navigation, les
+      flèches gauche/droite fonctionnent et « Passer » ouvre la configuration.
+- [ ] Configuration existante incomplète (clé retirée) : la réparation s'ouvre
+      directement, sans rejouer les écrans de découverte.
 - [ ] Aucune icône dans le Dock ; l'icône est présente dans la menu bar (app
       accessoire, `LSUIElement`).
 - [ ] Le menu de la barre et l'infobulle du tray sont dans la langue résolue au

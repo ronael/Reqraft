@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useLocale, useT, type Translate } from "../shared/i18n.js";
 import { CheckCircle2, KeyRound, Loader2, TriangleAlert } from "lucide-react";
 import { groupProfiles } from "../shared/profiles.js";
+import { shouldShowWelcomeTour, WelcomeTour } from "./WelcomeTour.js";
 import {
   REPROMPT_LEVEL_IDS,
   type ProfileCatalogEntry,
@@ -121,6 +122,7 @@ export function OnboardingApp(): React.JSX.Element {
   // croire au processus principal que l'installation est déjà faite.
   const { locale, previewLocale } = useLocale();
   const [chosenLocale, setChosenLocale] = useState<"en" | "fr" | null>(null);
+  const [tourDismissed, setTourDismissed] = useState(false);
 
   const refresh = useCallback(async (): Promise<OnboardingStateResponse> => {
     const next = await window.reqraft.onboardingState();
@@ -187,6 +189,16 @@ export function OnboardingApp(): React.JSX.Element {
   const provider = state.providers.find((candidate) => candidate.id === form.provider);
   const problem = findOnboardingProblem(form, provider, t);
   const needsKey = provider?.requiresApiKey === true && !provider.credentialConfigured;
+
+  if (shouldShowWelcomeTour(state.blocker, tourDismissed)) {
+    return (
+      <WelcomeTour
+        onContinue={() => {
+          setTourDismissed(true);
+        }}
+      />
+    );
+  }
 
   const update = (patch: Partial<OnboardingForm>): void => {
     setForm({ ...form, ...patch });
