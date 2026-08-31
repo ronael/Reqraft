@@ -262,7 +262,7 @@ async function openStartupWindow(options: {
   const onboarding = await buildOnboardingState(options.env, hydrateCredentials, loadConfig, () =>
     existsSync(configPath()),
   );
-  if (onboarding.required) {
+  if (onboarding.required || onboarding.welcomeTourRequired) {
     options.openOnboarding();
     return;
   }
@@ -411,15 +411,15 @@ function bootstrap(): void {
       }
     };
 
-    // Onboarding window: opened only when the installation cannot be used as
-    // it stands, and closed as soon as it can be.
+    // Onboarding window: also carries the once-per-installation welcome tour.
     let onboardingWindow: Electron.BrowserWindow | null = null;
-    const openOnboarding = (): void => {
+    const openOnboarding = (forceTour = false): void => {
+      const params = forceTour ? { tour: "1" } : undefined;
       if (onboardingWindow === null || onboardingWindow.isDestroyed()) {
         onboardingWindow = createOnboardingWindow({
           ...windowDefaults,
-          rendererUrl: rqRendererUrl("onboarding"),
-          devServerUrl: withSurface("onboarding"),
+          rendererUrl: rqRendererUrl("onboarding", params),
+          devServerUrl: withSurface("onboarding", params),
         });
         onboardingWindow.on("closed", () => {
           onboardingWindow = null;
@@ -468,6 +468,9 @@ function bootstrap(): void {
         requestAccessibility(systemPreferences);
       },
       openSettings,
+      openWelcomeTour: () => {
+        openOnboarding(true);
+      },
       capsulePending: () => ouvertures.pending(),
       // Rendre le focus clavier avant de coller, et ramener la capsule si le
       // remplacement n'a pas eu lieu — c'est elle qui porte le message.
@@ -493,6 +496,9 @@ function bootstrap(): void {
       // place the user will come back to when they want to change one.
       onOnboardingComplete: () => {
         openSettings();
+        onboardingWindow?.close();
+      },
+      onWelcomeTourComplete: () => {
         onboardingWindow?.close();
       },
       shortcutState: () => shortcutResolution,

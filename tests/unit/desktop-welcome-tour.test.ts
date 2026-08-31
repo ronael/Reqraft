@@ -10,15 +10,15 @@ import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js"
 import { PROVIDER_DEFINITIONS } from "@/providers/catalog.js";
 
 describe("welcome tour desktop", () => {
-  it("n'apparaît que lorsqu'aucune configuration n'existe", () => {
-    expect(shouldShowWelcomeTour("config_missing", false)).toBe(true);
-    expect(shouldShowWelcomeTour("provider_incomplete", false)).toBe(false);
-    expect(shouldShowWelcomeTour("credential_missing", false)).toBe(false);
-    expect(shouldShowWelcomeTour(undefined, false)).toBe(false);
+  it("apparaît une fois, y compris sur une installation déjà configurée", () => {
+    expect(shouldShowWelcomeTour(true, false)).toBe(true);
+    expect(shouldShowWelcomeTour(false, false)).toBe(false);
+    expect(shouldShowWelcomeTour(false, false, true)).toBe(true);
   });
 
   it("reste masqué après le passage vers la configuration", () => {
-    expect(shouldShowWelcomeTour("config_missing", true)).toBe(false);
+    expect(shouldShowWelcomeTour(true, true)).toBe(false);
+    expect(shouldShowWelcomeTour(false, true, true)).toBe(false);
   });
 
   it("présente six cas d'usage traduits et distincts", () => {

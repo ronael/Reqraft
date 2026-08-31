@@ -161,8 +161,10 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       localeRead: "locale:read",
       capsulePending: "capsule:pending",
       windowOpenSettings: "window:open-settings",
+      windowOpenWelcomeTour: "window:open-welcome-tour",
       shortcutsState: "shortcuts:state",
       onboardingState: "onboarding:state",
+      onboardingTourComplete: "onboarding:tour-complete",
       onboardingComplete: "onboarding:complete",
       credentialSave: "credential:save",
       credentialDelete: "credential:delete",
@@ -174,7 +176,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(27);
+    expect(REQUEST_CHANNELS).toHaveLength(29);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 

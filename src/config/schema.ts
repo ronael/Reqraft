@@ -61,6 +61,8 @@ export const ConfigSchema = z
         input: z.string().trim().min(1).optional(),
       })
       .optional(),
+    /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */
+    desktopWelcomeTourVersion: z.number().int().nonnegative().optional(),
   })
   .passthrough();
 

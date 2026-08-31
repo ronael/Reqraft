@@ -41,6 +41,7 @@ export const IPC_CHANNELS = {
   // ouverte, au montage.
   capsulePending: "capsule:pending",
   windowOpenSettings: "window:open-settings",
+  windowOpenWelcomeTour: "window:open-welcome-tour",
   shortcutsState: "shortcuts:state",
   // Desktop onboarding: someone who installed only the application must be
   // able to configure it without the CLI. `onboarding:state` reports whether
@@ -49,6 +50,7 @@ export const IPC_CHANNELS = {
   // hold one; `onboarding:complete` persists the result through the shared
   // configuration domain.
   onboardingState: "onboarding:state",
+  onboardingTourComplete: "onboarding:tour-complete",
   onboardingComplete: "onboarding:complete",
   credentialSave: "credential:save",
   // Managing providers after setup. Configuring one only during onboarding
@@ -91,8 +93,10 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.localeRead,
   IPC_CHANNELS.capsulePending,
   IPC_CHANNELS.windowOpenSettings,
+  IPC_CHANNELS.windowOpenWelcomeTour,
   IPC_CHANNELS.shortcutsState,
   IPC_CHANNELS.onboardingState,
+  IPC_CHANNELS.onboardingTourComplete,
   IPC_CHANNELS.onboardingComplete,
   IPC_CHANNELS.credentialSave,
   IPC_CHANNELS.credentialDelete,

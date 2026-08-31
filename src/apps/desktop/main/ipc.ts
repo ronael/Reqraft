@@ -40,6 +40,7 @@ import {
 import { duplicateProfile, exportProfile } from "@/profiles/transfer.js";
 import {
   ConfigWriteRequestSchema,
+  CURRENT_WELCOME_TOUR_VERSION,
   CredentialDeleteRequestSchema,
   CredentialSaveRequestSchema,
   EmptyRequestSchema,
@@ -115,6 +116,8 @@ export interface DesktopIpcDependencies {
   requestAccessibility?: () => void;
   /** Lot 4: opens the settings window (from the popover or the capsule). */
   openSettings?: () => void;
+  /** Opens the welcome tour explicitly from Settings. */
+  openWelcomeTour?: () => void;
   /** Pourquoi la capsule est ouverte, pour qu'elle puisse le demander. */
   capsulePending?: () => CapsuleOpenedPayload | null;
   /**
@@ -174,6 +177,8 @@ export interface DesktopIpcDependencies {
   ) => Promise<void>;
   /** Called once onboarding leaves the installation in a usable state. */
   onOnboardingComplete?: () => void;
+  /** Called when a configured installation has finished or skipped its tour. */
+  onWelcomeTourComplete?: () => void;
   /** Removes a provider credential. Defaults to the shared `auth` service. */
   removeCredential?: (provider: CredentialProvider) => Promise<void>;
 }
@@ -275,6 +280,22 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.onboardingState, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     return await onboardingState();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.onboardingTourComplete, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    const current = await loadUser();
+    await save(
+      ConfigSchema.parse({
+        ...current,
+        desktopWelcomeTourVersion: CURRENT_WELCOME_TOUR_VERSION,
+      }),
+    );
+    const state = await onboardingState();
+    if (!state.required) {
+      dependencies.onWelcomeTourComplete?.();
+    }
+    return state;
   });
 
   ipcMain.handle(IPC_CHANNELS.credentialSave, async (_event, payload) => {
@@ -405,6 +426,11 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     dependencies.openSettings?.();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.windowOpenWelcomeTour, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    dependencies.openWelcomeTour?.();
   });
 
   ipcMain.handle(IPC_CHANNELS.shortcutsState, (_event, payload) => {
@@ -783,6 +809,7 @@ export async function buildOnboardingState(
 
   return {
     required: !state.usable,
+    welcomeTourRequired: config.desktopWelcomeTourVersion !== CURRENT_WELCOME_TOUR_VERSION,
     ...(state.blocker === undefined ? {} : { blocker: state.blocker }),
     providers,
     suggested: {

@@ -123,6 +123,7 @@ export function OnboardingApp(): React.JSX.Element {
   const { locale, previewLocale } = useLocale();
   const [chosenLocale, setChosenLocale] = useState<"en" | "fr" | null>(null);
   const [tourDismissed, setTourDismissed] = useState(false);
+  const forceWelcomeTour = new URLSearchParams(window.location.search).get("tour") === "1";
 
   const refresh = useCallback(async (): Promise<OnboardingStateResponse> => {
     const next = await window.reqraft.onboardingState();
@@ -190,11 +191,19 @@ export function OnboardingApp(): React.JSX.Element {
   const problem = findOnboardingProblem(form, provider, t);
   const needsKey = provider?.requiresApiKey === true && !provider.credentialConfigured;
 
-  if (shouldShowWelcomeTour(state.blocker, tourDismissed)) {
+  if (shouldShowWelcomeTour(state.welcomeTourRequired, tourDismissed, forceWelcomeTour)) {
     return (
       <WelcomeTour
         onContinue={() => {
-          setTourDismissed(true);
+          void window.reqraft
+            .completeWelcomeTour()
+            .then((next) => {
+              setState(next);
+              setTourDismissed(true);
+            })
+            .catch((cause) => {
+              setError(messageOf(cause));
+            });
         }}
       />
     );

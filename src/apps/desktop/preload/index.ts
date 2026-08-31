@@ -49,8 +49,10 @@ const bridge: ReqraftBridge = {
     ipcRenderer.invoke(IPC_CHANNELS.localeRead, locale === undefined ? undefined : { locale }),
   capsulePending: () => ipcRenderer.invoke(IPC_CHANNELS.capsulePending),
   openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
+  openWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenWelcomeTour),
   shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),
   onboardingState: () => ipcRenderer.invoke(IPC_CHANNELS.onboardingState),
+  completeWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.onboardingTourComplete),
   // The one call that carries a secret. It goes one way: the main process
   // stores it and answers with statuses, never with the value.
   saveCredential: (request) => ipcRenderer.invoke(IPC_CHANNELS.credentialSave, request),

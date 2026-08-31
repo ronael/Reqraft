@@ -20,7 +20,6 @@ import {
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
-import type { SetupBlocker } from "@/apps/desktop/shared/ipc-contract.js";
 import { version } from "@/version.js";
 
 export const WELCOME_TOUR_SLIDES = [
@@ -77,10 +76,11 @@ interface WelcomeTourProps {
 }
 
 export function shouldShowWelcomeTour(
-  blocker: SetupBlocker | undefined,
+  required: boolean,
   dismissed: boolean,
+  forced = false,
 ): boolean {
-  return blocker === "config_missing" && !dismissed;
+  return (required || forced) && !dismissed;
 }
 
 export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.JSX.Element {

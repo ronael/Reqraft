@@ -191,6 +191,9 @@ export function SettingsApp(): React.JSX.Element {
                 onChooseLanguage={(preference) => {
                   patchConfig({ uiLocale: preference });
                 }}
+                onOpenWelcomeTour={() => {
+                  void window.reqraft.openWelcomeTour();
+                }}
               />
             )}
 

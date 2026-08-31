@@ -1,3 +1,4 @@
+import { RotateCcw } from "lucide-react";
 import { useT } from "../shared/i18n.js";
 import { SHORTCUT_PRESETS } from "@/apps/desktop/shared/ipc-contract.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
@@ -17,6 +18,7 @@ export interface PreferencesTabProps {
   onAskPermissions: () => void;
   uiLocale: UiLocalePreference;
   onChooseLanguage(preference: UiLocalePreference): void;
+  onOpenWelcomeTour(): void;
 }
 
 /** Onglet Réglages (R4) : raccourcis et conflits (§5.5), langue, permissions. */
@@ -58,6 +60,15 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
       {/* Après les avertissements de raccourcis, pas au milieu : une alerte
           séparée de la ligne qu'elle concerne ne se rattache plus à rien. */}
       <LanguageRow chosen={props.uiLocale} onChoose={props.onChooseLanguage} />
+      <div className="settings-row">
+        <div>
+          <div className="settings-row-title">{t("settings.welcomeTour")}</div>
+          <div className="settings-row-detail">{t("settings.welcomeTourDetail")}</div>
+        </div>
+        <button type="button" className="chip" onClick={props.onOpenWelcomeTour}>
+          <RotateCcw size={12} aria-hidden /> {t("settings.welcomeTourReplay")}
+        </button>
+      </div>
       <div className="settings-row">
         <div>
           <div className="settings-row-title">{t("settings.macosPermissions")}</div>

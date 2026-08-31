@@ -382,6 +382,9 @@ export interface ProviderMutationResponse {
 
 // --- Onboarding ----------------------------------------------------------------
 
+/** Increment only when every installation should see a materially new tour. */
+export const CURRENT_WELCOME_TOUR_VERSION = 1;
+
 /**
  * Why the desktop opened its onboarding instead of going straight to work.
  *
@@ -437,6 +440,8 @@ export interface OnboardingProviderOption {
 export interface OnboardingStateResponse {
   /** True when the application cannot be used as it stands. */
   required: boolean;
+  /** True until this version of the Desktop welcome tour has been completed once. */
+  welcomeTourRequired: boolean;
   blocker?: SetupBlocker;
   providers: OnboardingProviderOption[];
   /** What the form starts on: the current configuration, or the defaults. */
@@ -630,8 +635,10 @@ export interface ReqraftBridge {
   readLocale(locale?: "en" | "fr"): Promise<LocaleResponse>;
   capsulePending(): Promise<CapsulePendingResponse>;
   openSettings(): Promise<void>;
+  openWelcomeTour(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
   onboardingState(): Promise<OnboardingStateResponse>;
+  completeWelcomeTour(): Promise<OnboardingStateResponse>;
   saveCredential(request: CredentialSaveRequest): Promise<CredentialSaveResponse>;
   deleteCredential(request: CredentialDeleteRequest): Promise<CredentialSaveResponse>;
   saveProvider(request: ProviderSaveRequest): Promise<ProviderMutationResponse>;
