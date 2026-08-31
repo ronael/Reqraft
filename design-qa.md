@@ -2,13 +2,14 @@
 
 ## Evidence
 
-- Source visual truth: left panel of
-  `docs/design/welcome-tour-option-3-comparison.webp`, derived from the selected
-  ImageGen option 3. The right panel records the earlier three-slide pass.
-- Product-surface references:
+- Source visual truth: the production Electron renderer at this commit,
+  captured in its real capsule input/result, popover, Profiles and Providers
+  states. Component structure and metrics come from `CapsuleApp`, `PopoverApp`,
+  `SettingsApp` and `desktop.css`.
+- Secondary composition references:
   `docs/design/reqraft-native-ui-v2-repo-aligned.html` and
-  `docs/design/reqraft-native-ui.html`, specifically their Mail, code, profile
-  picker, provider settings and no-selection capsule states.
+  `docs/design/reqraft-native-ui.html`. They inform the host Mail, ChatGPT and
+  code contexts, but no longer define Reqraft's own controls.
 - Current implementation slides 1 to 6:
   `docs/design/welcome-tour-rendered-states.webp`, in reading order.
 - CSS viewport: 680 x 600 macOS Electron window, dark mode, French locale.
@@ -17,10 +18,11 @@
 
 ## Full-View Comparison
 
-The implementation preserves the selected direction while grounding each slide
-in a concrete product surface: Mail, ChatGPT, a code editor, profile settings,
-provider settings and the privacy state. Daily actions use the same anchored
-Reqraft capsule; rare configuration actions use the settings window. No raster
+Each slide is grounded in a concrete product surface: Mail, ChatGPT, a code
+editor, profile settings, provider settings and the privacy state. Selection
+flows reproduce the shipped result capsule, ChatGPT uses the shipped
+no-selection popover hierarchy, and configuration reproduces the vertical
+settings sidebar, context panel, cards, rows and statusbar. No raster
 illustration is needed because the visual content is product UI with the Lucide
 icons already used by the desktop app.
 
@@ -55,12 +57,15 @@ icons already used by the desktop app.
    checked against the product catalogues by a unit test.
 4. Progress targets keep a 24 px centre-to-centre spacing while their visual
    dots remain compact. The last active dot stays clear of the final action.
-5. Post-fix captures show no remaining P0, P1 or P2 mismatch. Every slide
+5. A fidelity review against the running product replaced the invented
+   sparkle mark, horizontal settings tabs, simplified result cards and privacy
+   columns with the real `rq` capsule, popover controls and vertical settings
+   shell. DeepSeek was restored to the built-in provider list.
+6. Post-fix captures show no remaining P0, P1 or P2 mismatch. Every slide
    measures 680 x 600 with no document overflow, and every scene ends before
    the footer.
-6. The three densest slides were also rendered at the supported 560 x 520
-   minimum viewport. Their content and footer remain visible without document
-   overflow.
+7. The densest slides were also rendered at the supported 560 x 520 minimum
+   viewport. Their content and footer remain visible without document overflow.
 
 ## Residual Checks
 

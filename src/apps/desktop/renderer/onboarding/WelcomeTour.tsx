@@ -2,25 +2,25 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
-  CheckCircle2,
   Code2,
-  Command,
+  Cpu,
   FileText,
   KeyRound,
   LockKeyhole,
   Mail,
-  Menu,
   MessageSquareText,
   Plus,
   RotateCcw,
-  Search,
   ShieldCheck,
-  Sparkles,
+  SlidersHorizontal,
+  Stethoscope,
   UserPlus,
+  UserRound,
+  Waypoints,
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
 import type { SetupBlocker } from "@/apps/desktop/shared/ipc-contract.js";
+import { version } from "@/version.js";
 
 export const WELCOME_TOUR_SLIDES = [
   {
@@ -65,6 +65,7 @@ export const WELCOME_TOUR_PROFILE_IDS = ["auto", "clean", "code", "writing"] as 
 export const WELCOME_TOUR_PROVIDERS = [
   { id: "anthropic", initials: "A", name: "Anthropic" },
   { id: "openai", initials: "O", name: "OpenAI" },
+  { id: "deepseek", initials: "D", name: "DeepSeek" },
   { id: "mistral", initials: "M", name: "Mistral" },
 ] as const;
 
@@ -253,9 +254,7 @@ function WindowControls(): React.JSX.Element {
 function TourShortcut({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <div className="tour-shortcut">
-      <span className="tour-shortcut-brand">
-        <Sparkles size={12} />
-      </span>
+      <b className="tour-shortcut-brand">rq</b>
       <kbd>⌘</kbd>
       <kbd>⌃</kbd>
       <kbd>R</kbd>
@@ -264,48 +263,79 @@ function TourShortcut({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   );
 }
 
-function CapsuleHeader({ children }: Readonly<{ children?: React.ReactNode }>): React.JSX.Element {
-  return (
-    <div className="tour-demo-capsule-header">
-      <span className="tour-demo-brand">
-        <Sparkles size={12} />
-      </span>
-      <strong>Reqraft</strong>
-      {children}
-    </div>
-  );
-}
-
-function ResultCapsule({
+function ProductCapsule({
   t,
   profile,
   sourceKey,
   resultKey,
+  sourceApp,
   className = "",
 }: Readonly<{
   t: Translate;
   profile: string;
   sourceKey: Parameters<Translate>[0];
   resultKey: Parameters<Translate>[0];
+  sourceApp?: string;
   className?: string;
 }>): React.JSX.Element {
   return (
-    <div className={`tour-demo-capsule ${className}`}>
-      <CapsuleHeader>
-        <span className="tour-demo-profile tour-demo-profile-active">{profile}</span>
-      </CapsuleHeader>
-      <div className="tour-demo-source">
-        <span>{t("onboarding.tour.capture.selection")}</span>
-        <p>{t(sourceKey)}</p>
+    <div className={`tour-product-capsule ${className}`}>
+      <div className="tour-product-capsule-band">
+        <b>rq</b>
+        <span>
+          {sourceApp === undefined
+            ? t("capsule.newReformulation")
+            : t("capsule.selectionFrom", { app: sourceApp })}
+        </span>
+        <em>
+          {t("capsule.profile")} <strong>{profile}</strong>
+        </em>
       </div>
-      <div className="tour-demo-result">
-        <span>{t("onboarding.tour.capture.result")}</span>
-        <p>{t(resultKey)}</p>
+      <div className="tour-product-capsule-body">
+        <p className="tour-product-capsule-source">
+          <span>{t("capsule.before")}</span> <i>{t(sourceKey)}</i>
+        </p>
+        <p className="tour-product-capsule-result">{t(resultKey)}</p>
       </div>
-      <div className="tour-demo-verdict">
-        <CheckCircle2 size={14} />
-        <span>{t("onboarding.tour.control.fidelity")}</span>
-        <i />
+      <div className="tour-product-capsule-quality">
+        <strong>{t("capsule.qualityGood")}</strong>
+        <span>{t("capsule.noInvention")}</span>
+        <em>{t("profiles.levelMeta", { level: "standard" })} · claude-sonnet-5 · 0.8 s</em>
+      </div>
+      <div className="tour-product-capsule-actions">
+        <b>{profile}</b>
+        <span>
+          <kbd>↵</kbd>
+          {t("capsule.replace")}
+        </span>
+        <span>
+          <kbd>⌥</kbd>
+          {t("capsule.compare")}
+        </span>
+        <span>
+          <kbd>⌘C</kbd>
+          {t("capsule.copy")}
+        </span>
+        <span>
+          <kbd>esc</kbd>
+          {t("capsule.close")}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function ProductPopover({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  return (
+    <div className="tour-product-popover">
+      <p>{t("onboarding.tour.chat.rewritten")}</p>
+      <div className="tour-product-popover-controls">
+        <b>auto</b>
+        <span>standard</span>
+      </div>
+      <div className="tour-product-popover-footer">
+        <strong>⌘↵ {t("capsule.reformulate")}</strong>
+        <span>{t("popover.settings")}</span>
       </div>
     </div>
   );
@@ -336,12 +366,13 @@ function MailVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
         </div>
       </div>
       <TourShortcut t={t} />
-      <ResultCapsule
+      <ProductCapsule
         t={t}
         profile="writing"
         sourceKey="onboarding.tour.mail.original"
         resultKey="onboarding.tour.mail.rewritten"
-        className="tour-demo-capsule-mail"
+        sourceApp="Mail"
+        className="tour-product-capsule-mail"
       />
     </>
   );
@@ -363,13 +394,7 @@ function ChatVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
           <p className="tour-chat-user">{t("onboarding.tour.chat.original")}</p>
         </div>
       </div>
-      <ResultCapsule
-        t={t}
-        profile="auto"
-        sourceKey="onboarding.tour.chat.original"
-        resultKey="onboarding.tour.chat.rewritten"
-        className="tour-demo-capsule-chat"
-      />
+      <ProductPopover t={t} />
     </>
   );
 }
@@ -397,18 +422,19 @@ function CodeVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
           <code>&nbsp;&nbsp;)</code>
         </div>
       </div>
-      <ResultCapsule
+      <ProductCapsule
         t={t}
         profile="code"
         sourceKey="onboarding.tour.code.original"
         resultKey="onboarding.tour.code.rewritten"
-        className="tour-demo-capsule-code"
+        sourceApp="Code"
+        className="tour-product-capsule-code"
       />
     </>
   );
 }
 
-function SettingsFrame({
+function ProductSettingsFrame({
   t,
   activeTab,
   children,
@@ -417,100 +443,177 @@ function SettingsFrame({
   activeTab: "profiles" | "providers";
   children: React.ReactNode;
 }>): React.JSX.Element {
+  const nav = [
+    ["profiles", UserRound, "settings.nav.profiles"],
+    ["providers", Waypoints, "settings.nav.providers"],
+    ["models", Cpu, "settings.nav.models"],
+    ["preferences", SlidersHorizontal, "settings.nav.preferences"],
+    ["diagnostic", Stethoscope, "settings.nav.diagnostic"],
+  ] as const;
+
   return (
-    <div className="tour-settings-window">
-      <div className="tour-app-titlebar">
+    <div className="tour-product-settings">
+      <div className="tour-product-settings-titlebar">
         <WindowControls />
-        <span>{t("onboarding.tour.settings.title")}</span>
+        <strong>Reqraft</strong>
+        <em>{t("settings.ready")}</em>
       </div>
-      <div className="tour-settings-tabs">
-        <span>{t("onboarding.tour.settings.shortcuts")}</span>
-        <span className={activeTab === "providers" ? "active" : undefined}>
-          {t("onboarding.tour.settings.providers")}
-        </span>
-        <span>{t("onboarding.tour.settings.models")}</span>
-        <span className={activeTab === "profiles" ? "active" : undefined}>
-          {t("onboarding.tour.settings.profiles")}
-        </span>
+      <div className="tour-product-settings-shell">
+        <aside className="tour-product-settings-sidebar">
+          <div className="tour-product-settings-brand">
+            <strong>reqraft</strong>
+            <small>{version}</small>
+            <p>{t("settings.tagline")}</p>
+          </div>
+          <nav>
+            {nav.map(([id, Icon, key]) => (
+              <span key={id} className={activeTab === id ? "active" : undefined}>
+                <Icon size={10} /> {t(key)}
+              </span>
+            ))}
+          </nav>
+          <div className="tour-product-settings-context">
+            <b>{t("settings.context")}</b>
+            <span>
+              <i>{t("settings.context.provider")}</i>
+              <em>anthropic</em>
+            </span>
+            <span>
+              <i>{t("settings.context.profile")}</i>
+              <em>auto</em>
+            </span>
+            <span>
+              <i>{t("settings.context.level")}</i>
+              <em>standard</em>
+            </span>
+          </div>
+        </aside>
+        <section className="tour-product-settings-main">
+          <header>
+            <h2>
+              {t(activeTab === "profiles" ? "settings.nav.profiles" : "settings.nav.providers")}
+            </h2>
+            <p>
+              {t(
+                activeTab === "profiles" ? "settings.profiles.detail" : "settings.providers.detail",
+              )}
+            </p>
+          </header>
+          <div className="tour-product-settings-content">{children}</div>
+          <footer>
+            <span>{t("settings.footer")}</span>
+            <em>⌘,</em>
+          </footer>
+        </section>
       </div>
-      {children}
     </div>
   );
 }
 
 function ProfilesVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  const builtinLabel = t("profiles.builtin");
   return (
-    <SettingsFrame t={t} activeTab="profiles">
-      <div className="tour-settings-content tour-profile-content">
-        <div className="tour-settings-section-title">
-          <span>{t("onboarding.tour.profiles.available")}</span>
-        </div>
-        <div className="tour-profile-search">
-          <Search size={12} />
-          <span>{t("onboarding.tour.profiles.search")}</span>
-        </div>
-        <ProfileRow name="auto" detail={t("onboarding.tour.profiles.detects")} active />
-        <ProfileRow name="clean" detail={t("onboarding.tour.profiles.clarify")} />
-        <ProfileRow name="code" detail={t("onboarding.tour.profiles.agents")} />
-        <div className="tour-profile-add">
+    <ProductSettingsFrame t={t} activeTab="profiles">
+      <div className="tour-product-profile-toolbar">
+        <p>{t("profiles.intro")}</p>
+        <span>
           <Plus size={13} />
-          <span>{t("onboarding.tour.profiles.add")}</span>
-        </div>
+          {t("profiles.new")}
+        </span>
       </div>
-    </SettingsFrame>
+      <div className="tour-product-profile-grid">
+        <ProductProfileCard
+          name="Auto"
+          id="auto"
+          detail={t("onboarding.tour.profiles.detects")}
+          origin={builtinLabel}
+          active
+        />
+        <ProductProfileCard
+          name="Writing"
+          id="writing"
+          detail={t("onboarding.tour.profiles.clarify")}
+          origin={builtinLabel}
+        />
+        <ProductProfileCard
+          name="Code"
+          id="code"
+          detail={t("onboarding.tour.profiles.agents")}
+          origin={builtinLabel}
+        />
+        <ProductProfileCard
+          name="Clean"
+          id="clean"
+          detail={t("onboarding.tour.profiles.clarify")}
+          origin={builtinLabel}
+        />
+      </div>
+    </ProductSettingsFrame>
   );
 }
 
-function ProfileRow({
+function ProductProfileCard({
   name,
+  id,
   detail,
+  origin,
   active = false,
-}: Readonly<{ name: string; detail: string; active?: boolean }>): React.JSX.Element {
+}: Readonly<{
+  name: string;
+  id: string;
+  detail: string;
+  origin: string;
+  active?: boolean;
+}>): React.JSX.Element {
   return (
-    <div className={active ? "tour-profile-row active" : "tour-profile-row"}>
-      <i />
-      <code>{name}</code>
-      <span>{detail}</span>
-      {active ? <Check size={13} /> : null}
+    <div className={active ? "tour-product-profile-card active" : "tour-product-profile-card"}>
+      <p>
+        <strong>{name}</strong>
+        <span>{origin}</span>
+      </p>
+      <small>{detail}</small>
+      <em>standard · {id}</em>
     </div>
   );
 }
 
 function ProvidersVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
-    <SettingsFrame t={t} activeTab="providers">
-      <div className="tour-settings-content tour-provider-content">
-        <div className="tour-settings-section-title">
-          <span>{t("onboarding.tour.providers.builtIn")}</span>
-        </div>
+    <ProductSettingsFrame t={t} activeTab="providers">
+      <h3 className="tour-product-settings-subhead">{t("settings.builtinProviders")}</h3>
+      <div className="tour-product-provider-list">
         {WELCOME_TOUR_PROVIDERS.map((provider) => (
-          <ProviderRow
+          <ProductProviderRow
             key={provider.id}
             initials={provider.initials}
             name={provider.name}
-            status={t("onboarding.tour.providers.addKey")}
+            status={t("settings.addKey")}
           />
         ))}
-        <div className="tour-provider-add">
-          <Plus size={13} />
-          <span>{t("onboarding.tour.providers.compatible")}</span>
-        </div>
-        <div className="tour-keychain-note">
-          <LockKeyhole size={12} />
-          <span>{t("onboarding.tour.providers.keychain")}</span>
-        </div>
       </div>
-    </SettingsFrame>
+      <div className="tour-product-compatible-row">
+        <span>
+          <b>{t("settings.compatibleProviders")}</b>
+          <small>{t("settings.noCustomProvider")}</small>
+        </span>
+        <em>
+          <Plus size={10} /> {t("settings.addProvider")}
+        </em>
+      </div>
+      <p className="tour-product-key-note">
+        <LockKeyhole size={10} /> {t("settings.keysNote")}
+      </p>
+    </ProductSettingsFrame>
   );
 }
 
-function ProviderRow({
+function ProductProviderRow({
   initials,
   name,
   status,
 }: Readonly<{ initials: string; name: string; status: string }>): React.JSX.Element {
   return (
-    <div className="tour-provider-row">
+    <div className="tour-product-provider-row">
       <b>{initials}</b>
       <span>{name}</span>
       <em>{status}</em>
@@ -535,33 +638,21 @@ function PrivacyVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
           <span />
         </div>
       </div>
-      <div className="tour-demo-capsule tour-demo-capsule-privacy">
-        <CapsuleHeader>
-          <span className="tour-private-status">
-            <LockKeyhole size={11} /> {t("onboarding.tour.privacy.private")}
-          </span>
-        </CapsuleHeader>
-        <p className="tour-privacy-result">{t("onboarding.tour.privacy.example")}</p>
-        <div className="tour-privacy-signals">
-          <span>
-            <ShieldCheck size={15} />
-            <b>{t("onboarding.tour.privacy.ephemeral")}</b>
-          </span>
-          <span>
-            <KeyRound size={15} />
-            <b>{t("onboarding.tour.privacy.keychain")}</b>
-          </span>
-          <span>
-            <Menu size={15} />
-            <b>{t("onboarding.tour.privacy.available")}</b>
-          </span>
-        </div>
-        <div className="tour-private-footer">
-          <Command size={13} />
-          <span>{t("onboarding.tour.privacy.telemetry")}</span>
-          <CheckCircle2 size={13} />
-        </div>
+      <div className="tour-product-privacy-note">
+        <ShieldCheck size={12} />
+        <span>{t("settings.footer")}</span>
+        <em>
+          <LockKeyhole size={10} /> {t("onboarding.tour.privacy.keychain")}
+        </em>
       </div>
+      <ProductCapsule
+        t={t}
+        profile="auto"
+        sourceKey="onboarding.tour.privacy.example"
+        resultKey="onboarding.tour.privacy.example"
+        sourceApp="TextEdit"
+        className="tour-product-capsule-privacy"
+      />
     </>
   );
 }
