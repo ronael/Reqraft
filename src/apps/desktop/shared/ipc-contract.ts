@@ -170,6 +170,16 @@ export interface ProviderStatus {
   envName?: string;
 }
 
+export type DesktopUpdateStatus = "idle" | "checking" | "up-to-date" | "available" | "error";
+
+export interface DesktopUpdateState {
+  status: DesktopUpdateStatus;
+  currentVersion: string;
+  latestVersion?: string;
+  checkedAt?: string;
+  publishedAt?: string;
+}
+
 export interface DoctorCheck {
   id: string;
   ok: boolean;
@@ -463,6 +473,8 @@ export const CredentialSaveRequestSchema = z
   .object({
     provider: z.enum(BUILTIN_PROVIDER_IDS),
     secret: z.string().min(1),
+    /** Make the Desktop use this stored key even if its launch environment has one. */
+    preferKeychain: z.boolean().optional(),
   })
   .strict();
 export type CredentialSaveRequest = z.infer<typeof CredentialSaveRequestSchema>;
@@ -625,6 +637,9 @@ export interface ReqraftBridge {
   runDoctor(): Promise<DoctorReport>;
   permissionsState(): Promise<PermissionsState>;
   requestPermissions(): Promise<PermissionsRequestResult>;
+  updatesState(): Promise<DesktopUpdateState>;
+  checkForUpdates(): Promise<DesktopUpdateState>;
+  openUpdateDownload(): Promise<void>;
   listProfiles(): Promise<ProfileSummary[]>;
   profileCatalog(): Promise<ProfileCatalogResponse>;
   readProfile(id: string): Promise<ProfileDetail>;

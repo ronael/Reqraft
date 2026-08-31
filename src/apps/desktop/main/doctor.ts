@@ -61,7 +61,10 @@ export async function buildDoctorReport(
   await hydrate(env);
 
   const ids =
-    dependencies.providerIds ?? listProviderDefinitions().map((definition) => definition.id);
+    dependencies.providerIds ??
+    listProviderDefinitions()
+      .filter((definition) => !definition.isTest)
+      .map((definition) => definition.id);
   for (const id of ids) {
     checks.push(await checkProvider(id, env, config, create));
   }

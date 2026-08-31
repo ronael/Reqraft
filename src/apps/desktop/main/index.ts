@@ -9,11 +9,19 @@ import {
   dialog,
   globalShortcut,
   ipcMain,
+  Notification,
   screen,
+  shell,
   systemPreferences,
 } from "electron";
 import { executeReprompt } from "@/application/reprompt.js";
-import { configPath, loadConfig as loadLayeredConfig } from "@/config/loader.js";
+import {
+  configPath,
+  loadConfig as loadLayeredConfig,
+  loadUserConfig,
+  saveConfig,
+} from "@/config/loader.js";
+import { ConfigSchema } from "@/config/schema.js";
 
 /**
  * La configuration vue par le desktop : celle de la personne, sans couche
@@ -43,7 +51,10 @@ import type { CapsuleOpenedPayload } from "@/apps/desktop/shared/ipc-contract.js
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
 import { createOnboardingWindow } from "./windows/onboarding.js";
-import { createTray } from "./tray.js";
+import { createTray, type TrayController } from "./tray.js";
+import { DesktopUpdateService } from "./update-service.js";
+import { createDesktopCredentialEnvironment } from "./credential-environment.js";
+import { version } from "@/version.js";
 import type { TrayState } from "./tray-icon.js";
 import { createCapsuleWindow, type CapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow } from "./windows/popover.js";
@@ -238,6 +249,80 @@ function createShortcutRegistrar(): (accelerator: string, handler: () => void) =
   return (accelerator, handler) => globalShortcut.register(accelerator, handler);
 }
 
+function createDesktopUpdateController(tray: TrayController): {
+  service: DesktopUpdateService;
+  check: () => ReturnType<DesktopUpdateService["check"]>;
+  openDownload: () => Promise<void>;
+  checkAtStartup: () => void;
+} {
+  const service = new DesktopUpdateService(version);
+  const openDownload = async (): Promise<void> => {
+    const url = service.downloadUrl();
+    if (url !== null) await shell.openExternal(url);
+  };
+  const check = async () => {
+    const state = await service.check();
+    if (state.status === "available" && state.latestVersion !== undefined) {
+      tray.setAvailableUpdate(state.latestVersion, () => {
+        void openDownload();
+      });
+    }
+    return state;
+  };
+  const checkAtStartup = (): void => {
+    if (!app.isPackaged && process.env.REQRAFT_DESKTOP_UPDATE_CHECK !== "1") return;
+    void check()
+      .then(async (state) => {
+        if (
+          state.status !== "available" ||
+          state.latestVersion === undefined ||
+          !Notification.isSupported()
+        ) {
+          return;
+        }
+        const current = await loadUserConfig();
+        if (current.desktopNotifiedUpdateVersion === state.latestVersion) return;
+        const notification = new Notification({
+          title: t("main.updateTitle"),
+          body: t("main.updateBody", { version: state.latestVersion }),
+        });
+        notification.on("click", () => {
+          void openDownload();
+        });
+        notification.show();
+        await saveConfig(
+          ConfigSchema.parse({
+            ...current,
+            desktopNotifiedUpdateVersion: state.latestVersion,
+          }),
+        );
+      })
+      .catch((error: unknown) => {
+        console.error("Reqraft: could not announce the available update:", error);
+      });
+  };
+  return { service, check, openDownload, checkAtStartup };
+}
+
+function reportRejectedShortcuts(resolution: ShortcutResolution): void {
+  if (resolution.registered.length > 0) return;
+  console.error(
+    `Reqraft: no global shortcut available (rejected: ${resolution.rejected.join(", ")})`,
+  );
+}
+
+function createMainTray(
+  popover: ReturnType<typeof createPopoverWindow>,
+  openSettings: () => void,
+): TrayController {
+  return createTray({
+    onTogglePopover: (bounds) => {
+      popover.toggle(bounds);
+    },
+    onOpenSettings: openSettings,
+  });
+}
+
 function devServerSurfaceUrl(
   devServerUrl: string | undefined,
   surface?: "popover" | "settings" | "onboarding",
@@ -331,6 +416,9 @@ function bootstrap(): void {
     await applyConfiguredLocale();
 
     await preloadProfileCatalog();
+
+    const initialConfig = await loadConfig();
+    const desktopEnv = await createDesktopCredentialEnvironment(process.env, initialConfig);
 
     const relaunchApp = createRelauncher();
     const bridge = createMacosBridge(createOsascriptRunner());
@@ -430,17 +518,10 @@ function bootstrap(): void {
       }
     };
 
-    // The menu-bar tray mirrors run lifecycle: busy while a run is in
-    // flight, error on failure, back to rest otherwise (lot 4).
-    const tray = createTray({
-      onTogglePopover: (bounds) => {
-        popover.toggle(bounds);
-      },
-      onOpenSettings: openSettings,
-    });
+    const tray = createMainTray(popover, openSettings);
 
-    // Nommés parce qu'ils servent deux fois : à l'enregistrement initial, et à
-    // chaque fois qu'un réglage change une combinaison.
+    const updates = createDesktopUpdateController(tray);
+
     const ouvertures = createOuvertureTracker();
 
     const shortcutHandlers = createShortcutHandlers({
@@ -452,7 +533,7 @@ function bootstrap(): void {
     const repromptService = new RepromptService({
       executeReprompt,
       loadConfig,
-      env: process.env,
+      env: desktopEnv,
       onRunEvent: (event) => {
         tray.setState(trayStateFor(event));
       },
@@ -461,8 +542,15 @@ function bootstrap(): void {
     registerIpcHandlers({
       ipcMain,
       clipboard,
+      env: desktopEnv,
+      loadConfig,
+      loadUserConfig,
+      saveConfig,
       captureService,
       service: repromptService,
+      updateState: () => updates.service.state(),
+      checkForUpdates: updates.check,
+      openUpdateDownload: updates.openDownload,
       probePermissions: async () => await probePermissions(permissionsProbe),
       requestAccessibility: () => {
         requestAccessibility(systemPreferences);
@@ -513,7 +601,7 @@ function bootstrap(): void {
     });
 
     try {
-      await openStartupWindow({ env: process.env, openOnboarding, openSettings });
+      await openStartupWindow({ env: desktopEnv, openOnboarding, openSettings });
     } catch (error) {
       console.error("Reqraft: could not determine the setup state:", error);
     }
@@ -539,13 +627,9 @@ function bootstrap(): void {
     );
     shortcutResolution = resolution;
 
-    if (resolution.registered.length === 0) {
-      // §5.5: never silent. The settings window (lot 5) will surface this;
-      // until then the failure is at least on record.
-      console.error(
-        `Reqraft: no global shortcut available (rejected: ${resolution.rejected.join(", ")})`,
-      );
-    }
+    updates.checkAtStartup();
+
+    reportRejectedShortcuts(resolution);
 
     app.on("will-quit", () => {
       globalShortcut.unregisterAll();

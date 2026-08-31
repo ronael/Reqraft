@@ -201,7 +201,7 @@ export function OnboardingApp(): React.JSX.Element {
               setState(next);
               setTourDismissed(true);
             })
-            .catch((cause) => {
+            .catch((cause: unknown) => {
               setError(messageOf(cause));
             });
         }}

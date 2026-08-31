@@ -245,6 +245,46 @@ describe("credential:delete", () => {
   });
 });
 
+describe("credential:save from the Desktop", () => {
+  it("can replace a launch-environment key with the verified keychain value", async () => {
+    const localIpc = new FakeIpcMain();
+    const env = { ANTHROPIC_API_KEY: "launch-key" };
+    let current = { ...DEFAULT_CONFIG };
+    const storeCredential = vi.fn(() => Promise.resolve());
+    const hydrateCredentials = vi.fn((target: NodeJS.ProcessEnv) => {
+      target.ANTHROPIC_API_KEY ??= "stored-key";
+      return Promise.resolve();
+    });
+    registerIpcHandlers({
+      ipcMain: localIpc,
+      clipboard: { writeText: vi.fn() },
+      env,
+      loadConfig: () => Promise.resolve(current),
+      loadUserConfig: () => Promise.resolve(current),
+      saveConfig: (next) => {
+        current = next;
+        return Promise.resolve();
+      },
+      hydrateCredentials,
+      storeCredential,
+      configFileExists: () => true,
+    });
+
+    const response = (await localIpc.invoke(IPC_CHANNELS.credentialSave, {
+      provider: "anthropic",
+      secret: "replacement-key",
+      preferKeychain: true,
+    })) as { providers: { id: string; source: string }[] };
+
+    expect(storeCredential).toHaveBeenCalledWith("anthropic", "replacement-key", env);
+    expect(current.desktopKeychainProviders).toContain("anthropic");
+    expect(env.ANTHROPIC_API_KEY).toBe("stored-key");
+    expect(response.providers.find((provider) => provider.id === "anthropic")?.source).toBe(
+      "keychain",
+    );
+  });
+});
+
 describe("ce que les statuts disent aux réglages", () => {
   it("dit quels fournisseurs réclament une clé, et laquelle", async () => {
     const providers = (await ipcMain.invoke(IPC_CHANNELS.providersStatus)) as {

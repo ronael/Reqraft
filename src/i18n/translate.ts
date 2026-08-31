@@ -66,6 +66,7 @@ export interface MessageParameters {
   "cli.help.options": undefined;
   "cli.help.commands": undefined;
   "cli.description": undefined;
+  "cli.update.available": { current: string; latest: string };
   "cli.argument.text": undefined;
   "cli.option.profile": undefined;
   "cli.option.level": undefined;

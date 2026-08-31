@@ -148,6 +148,9 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       configRead: "config:read",
       configWrite: "config:write",
       providersStatus: "providers:status",
+      updatesState: "updates:state",
+      updatesCheck: "updates:check",
+      updatesOpenDownload: "updates:open-download",
       doctorRun: "doctor:run",
       permissionsState: "permissions:state",
       permissionsRequest: "permissions:request",
@@ -176,7 +179,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(29);
+    expect(REQUEST_CHANNELS).toHaveLength(32);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
@@ -529,7 +532,7 @@ describe("providers:status", () => {
       configured: false,
       source: "not_configured",
     });
-    expect(byId.get("mock")).toMatchObject({ id: "mock", configured: true, source: "builtin" });
+    expect(byId.has("mock")).toBe(false);
     expect(JSON.stringify(statuses)).not.toContain("never-leaks");
   });
 });

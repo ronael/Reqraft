@@ -56,6 +56,7 @@ import {
   RepromptStartRequestSchema,
   ResultAcceptRequestSchema,
   type DoctorReport,
+  type DesktopUpdateState,
   type ProfileCatalogResponse,
   type ProfileDetail,
   type CapsuleOpenedPayload,
@@ -70,6 +71,7 @@ import { buildDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
 import { mainLocale, resolveMainLocale, t } from "./i18n.js";
+import { version } from "@/version.js";
 
 /**
  * IPC handlers — registration only (DESKTOP.md §8.1). Channel names and
@@ -114,6 +116,9 @@ export interface DesktopIpcDependencies {
   probePermissions?: () => Promise<PermissionsReport>;
   /** Lot 2: triggers the macOS Accessibility prompt (explicit action only). */
   requestAccessibility?: () => void;
+  updateState?: () => DesktopUpdateState;
+  checkForUpdates?: () => Promise<DesktopUpdateState>;
+  openUpdateDownload?: () => Promise<void>;
   /** Lot 4: opens the settings window (from the popover or the capsule). */
   openSettings?: () => void;
   /** Opens the welcome tour explicitly from Settings. */
@@ -192,7 +197,6 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   const service =
     dependencies.service ?? new RepromptService({ executeReprompt, loadConfig: load, env });
   const { ipcMain, clipboard } = dependencies;
-
   ipcMain.handle(IPC_CHANNELS.repromptStart, (event, payload) => {
     const request = RepromptStartRequestSchema.parse(payload);
     return service.start(request, event.sender);
@@ -266,10 +270,9 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     return sanitizeConfigForRenderer(merged);
   });
 
-  ipcMain.handle(IPC_CHANNELS.providersStatus, async (_event, payload) => {
-    EmptyRequestSchema.parse(payload);
-    return listProviderStatuses(env, hydrate, load);
-  });
+  registerProviderStatusHandler(ipcMain, env, hydrate, load);
+
+  registerUpdateHandlers(dependencies);
 
   const configExists = dependencies.configFileExists ?? (() => existsSync(configPath()));
   const storeCredential = dependencies.storeCredential ?? defaultStoreCredential;
@@ -298,16 +301,14 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     return state;
   });
 
-  ipcMain.handle(IPC_CHANNELS.credentialSave, async (_event, payload) => {
-    const request = CredentialSaveRequestSchema.parse(payload);
-    if (!isCredentialProvider(request.provider)) {
-      throw new Error(t("main.errorProviderNotStorable", { provider: request.provider }));
-    }
-    // The secret stops here. `login` checks it is not a placeholder, calls the
-    // provider to confirm it works, then writes it to the OS keychain — the
-    // same path `rp auth login` takes, not a second implementation of it.
-    await storeCredential(request.provider, request.secret, env);
-    return { providers: await listProviderStatuses(env, hydrate, load) };
+  registerCredentialSaveHandler({
+    ipcMain,
+    env,
+    load,
+    loadUser,
+    save,
+    hydrate,
+    storeCredential,
   });
 
   registerProviderManagementHandlers({
@@ -615,6 +616,8 @@ async function listProviderStatuses(
   // each credential stays distinguishable. Values never leave the main.
   const hydrated = { ...env };
   await hydrate(hydrated);
+  const config = await load();
+  const preferredKeychainProviders = new Set(config.desktopKeychainProviders ?? []);
 
   const statuses: ProviderStatus[] = listCredentialProviders().map((definition) => {
     const envName = getProviderEnvName(definition.id);
@@ -626,6 +629,9 @@ async function listProviderStatuses(
       supportsSecureAuth: true,
       envName,
     };
+    if (preferredKeychainProviders.has(definition.id) && env[envName]) {
+      return { ...shared, configured: true, source: "keychain" as const };
+    }
     if (env[envName]) {
       return { ...shared, configured: true, source: "environment" as const };
     }
@@ -635,7 +641,6 @@ async function listProviderStatuses(
     return { ...shared, configured: false, source: "not_configured" as const };
   });
 
-  const config = await load();
   const customProviders = config.providers ?? {};
   const hasCustom = Object.keys(customProviders).length > 0;
   statuses.push({
@@ -645,15 +650,6 @@ async function listProviderStatuses(
     source: hasCustom ? "config" : "not_configured",
     // A custom endpoint publishes no catalogue: its model is typed in.
     models: [],
-    requiresApiKey: false,
-    supportsSecureAuth: false,
-  });
-  statuses.push({
-    id: "mock",
-    label: getProviderDefinition("mock").label,
-    configured: true,
-    source: "builtin",
-    models: modelsForProvider("mock"),
     requiresApiKey: false,
     supportsSecureAuth: false,
   });
@@ -856,4 +852,62 @@ async function defaultStoreCredential(
  */
 async function defaultWriteExport(path: string, contents: string): Promise<void> {
   await writeFile(path, contents, "utf8");
+}
+
+function registerUpdateHandlers(dependencies: DesktopIpcDependencies): void {
+  dependencies.ipcMain.handle(IPC_CHANNELS.updatesState, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return dependencies.updateState?.() ?? { status: "idle", currentVersion: version };
+  });
+  dependencies.ipcMain.handle(IPC_CHANNELS.updatesCheck, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return (await dependencies.checkForUpdates?.()) ?? { status: "idle", currentVersion: version };
+  });
+  dependencies.ipcMain.handle(IPC_CHANNELS.updatesOpenDownload, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    await dependencies.openUpdateDownload?.();
+  });
+}
+
+function registerProviderStatusHandler(
+  ipcMain: IpcMainLike,
+  env: NodeJS.ProcessEnv,
+  hydrate: (env: NodeJS.ProcessEnv) => Promise<void>,
+  load: () => Promise<Config>,
+): void {
+  ipcMain.handle(IPC_CHANNELS.providersStatus, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return listProviderStatuses(env, hydrate, load);
+  });
+}
+
+function registerCredentialSaveHandler(options: {
+  ipcMain: IpcMainLike;
+  env: NodeJS.ProcessEnv;
+  load: () => Promise<Config>;
+  loadUser: () => Promise<Config>;
+  save: (config: Config) => Promise<void>;
+  hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
+  storeCredential: NonNullable<DesktopIpcDependencies["storeCredential"]>;
+}): void {
+  options.ipcMain.handle(IPC_CHANNELS.credentialSave, async (_event, payload) => {
+    const request = CredentialSaveRequestSchema.parse(payload);
+    if (!isCredentialProvider(request.provider)) {
+      throw new Error(t("main.errorProviderNotStorable", { provider: request.provider }));
+    }
+    await options.storeCredential(request.provider, request.secret, options.env);
+    if (request.preferKeychain === true) {
+      const current = await options.loadUser();
+      const preferred = new Set(current.desktopKeychainProviders ?? []);
+      preferred.add(request.provider);
+      await options.save(
+        ConfigSchema.parse({ ...current, desktopKeychainProviders: [...preferred] }),
+      );
+      Reflect.deleteProperty(options.env, getProviderEnvName(request.provider));
+      await options.hydrate(options.env);
+    }
+    return {
+      providers: await listProviderStatuses(options.env, options.hydrate, options.load),
+    };
+  });
 }

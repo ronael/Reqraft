@@ -13,6 +13,8 @@ export const fr = {
   "cli.help.options": () => "Options",
   "cli.help.commands": () => "Commandes",
   "cli.description": () => "Transforme une demande brute en un prompt clair et exploitable.",
+  "cli.update.available": ({ current, latest }) =>
+    `Reqraft ${latest} est disponible (installée : ${current}). Mettez à jour avec npm install -g @reqraft/cli@latest.`,
   "cli.argument.text": () => "Texte à reformuler",
   "cli.option.profile": () => "Profil de reformulation",
   "cli.option.level": () => "Niveau de transformation (minimal, standard, complete)",

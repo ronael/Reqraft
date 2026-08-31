@@ -16,24 +16,36 @@ export interface TrayActions {
 
 export interface TrayController {
   setState(state: TrayState): void;
+  setAvailableUpdate(version: string, onOpen: () => void): void;
   getState(): TrayState;
   destroy(): void;
 }
 
 export function createTray(actions: TrayActions): TrayController {
   let state: TrayState = "repos";
+  let availableUpdate: { version: string; onOpen: () => void } | null = null;
   const tray = new Tray(nativeImage.createFromBuffer(trayIconPng(state)));
 
-  const contextMenu = Menu.buildFromTemplate([
-    { label: t("main.traySettings"), click: actions.onOpenSettings },
-    { type: "separator" },
-    {
-      label: t("main.trayQuit"),
-      click: () => {
-        app.quit();
+  const contextMenu = (): Electron.Menu =>
+    Menu.buildFromTemplate([
+      ...(availableUpdate === null
+        ? []
+        : [
+            {
+              label: t("main.trayUpdateAvailable", { version: availableUpdate.version }),
+              click: availableUpdate.onOpen,
+            },
+            { type: "separator" as const },
+          ]),
+      { label: t("main.traySettings"), click: actions.onOpenSettings },
+      { type: "separator" },
+      {
+        label: t("main.trayQuit"),
+        click: () => {
+          app.quit();
+        },
       },
-    },
-  ]);
+    ]);
 
   function applyState(next: TrayState): void {
     state = next;
@@ -46,11 +58,14 @@ export function createTray(actions: TrayActions): TrayController {
     actions.onTogglePopover(bounds);
   });
   tray.on("right-click", () => {
-    tray.popUpContextMenu(contextMenu);
+    tray.popUpContextMenu(contextMenu());
   });
 
   return {
     setState: applyState,
+    setAvailableUpdate: (version, onOpen) => {
+      availableUpdate = { version, onOpen };
+    },
     getState: () => state,
     destroy: () => {
       tray.destroy();

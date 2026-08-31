@@ -1,7 +1,16 @@
 import { type ComponentType, useCallback, useEffect, useState } from "react";
-import { Cpu, Plus, SlidersHorizontal, Stethoscope, UserRound, Waypoints } from "lucide-react";
+import {
+  CircleArrowUp,
+  Cpu,
+  Plus,
+  SlidersHorizontal,
+  Stethoscope,
+  UserRound,
+  Waypoints,
+} from "lucide-react";
 import {
   REPROMPT_LEVEL_IDS,
+  type DesktopUpdateState,
   type DoctorReport,
   type PermissionsState,
   type ProviderStatus,
@@ -12,9 +21,10 @@ import {
 import { ProfilesTab } from "./ProfilesTab.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { PreferencesTab } from "./PreferencesTab.js";
+import { UpdatesTab } from "./UpdatesTab.js";
 import { version } from "@/version.js";
 
-const TABS = ["profiles", "providers", "models", "preferences", "diagnostic"] as const;
+const TABS = ["profiles", "providers", "models", "preferences", "updates", "diagnostic"] as const;
 type Tab = (typeof TABS)[number];
 
 export function initialSettingsTab(search: string = window.location.search): Tab {
@@ -50,6 +60,11 @@ const TAB_META: Record<
     titleKey: "settings.nav.preferences",
     detailKey: "settings.preferences.detail",
   },
+  updates: {
+    icon: CircleArrowUp,
+    titleKey: "settings.nav.updates",
+    detailKey: "settings.updates.detail",
+  },
   diagnostic: {
     icon: Stethoscope,
     titleKey: "settings.nav.diagnostic",
@@ -72,12 +87,14 @@ export function SettingsApp(): React.JSX.Element {
   const [permissions, setPermissions] = useState<PermissionsState | null>(null);
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [doctorRunning, setDoctorRunning] = useState(false);
+  const [updates, setUpdates] = useState<DesktopUpdateState | null>(null);
 
   useEffect(() => {
     void window.reqraft.readConfig().then(setConfig);
     void window.reqraft.providersStatus().then(setProviders);
     void window.reqraft.shortcutsState().then(setShortcuts);
     void window.reqraft.permissionsState().then(setPermissions);
+    void window.reqraft.updatesState().then(setUpdates);
   }, []);
 
   const runDoctor = useCallback(() => {
@@ -99,6 +116,14 @@ export function SettingsApp(): React.JSX.Element {
       .requestPermissions()
       .then(() => window.reqraft.permissionsState())
       .then(setPermissions);
+  }, []);
+
+  const checkForUpdates = useCallback(() => {
+    setUpdates((current) => ({
+      status: "checking",
+      currentVersion: current?.currentVersion ?? version,
+    }));
+    void window.reqraft.checkForUpdates().then(setUpdates);
   }, []);
 
   // The raw accelerator, not the main process's label: the row compares it to
@@ -151,6 +176,9 @@ export function SettingsApp(): React.JSX.Element {
                   setTab(label);
                   if (label === "diagnostic" && doctor === null && !doctorRunning) {
                     runDoctor();
+                  }
+                  if (label === "updates" && (updates === null || updates.status === "idle")) {
+                    checkForUpdates();
                   }
                 }}
               />
@@ -225,6 +253,16 @@ export function SettingsApp(): React.JSX.Element {
             {tab === "diagnostic" && (
               <DiagnosticTab doctor={doctor} running={doctorRunning} onRunDoctor={runDoctor} />
             )}
+
+            {tab === "updates" && (
+              <UpdatesTab
+                state={updates}
+                onCheck={checkForUpdates}
+                onOpenDownload={() => {
+                  void window.reqraft.openUpdateDownload();
+                }}
+              />
+            )}
           </div>
         </section>
       </div>
@@ -232,7 +270,7 @@ export function SettingsApp(): React.JSX.Element {
       <footer className="settings-statusbar">
         <span>
           {config === null
-            ? "configuration en lecture"
+            ? t("settings.loadingConfig")
             : `${config.defaultProvider} · ${config.defaultModel}`}
         </span>
         <span>{t("settings.footer")}</span>
@@ -404,7 +442,11 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
 
   const saveKey = (provider: ProviderStatus): void => {
     run(async () => {
-      const response = await window.reqraft.saveCredential({ provider: provider.id, secret });
+      const response = await window.reqraft.saveCredential({
+        provider: provider.id,
+        secret,
+        preferKeychain: provider.source === "environment",
+      });
       // Cleared at once: a key left in a rendered field is a key on screen.
       setSecret("");
       setEditing(null);
@@ -628,7 +670,7 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
         <span className="settings-row-title">{provider.label}</span>
         <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
         {provider.source === "environment" && (
-          <span className="settings-row-detail">{t("settings.envWinsOverKeychain")}</span>
+          <span className="settings-row-detail">{t("settings.replaceEnvInApp")}</span>
         )}
         {props.confirming && (
           <span className="settings-row-detail provider-confirm">

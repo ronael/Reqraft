@@ -13,6 +13,8 @@ export const en = {
   "cli.help.options": () => "Options",
   "cli.help.commands": () => "Commands",
   "cli.description": () => "Turn a rough request into a clear, actionable prompt.",
+  "cli.update.available": ({ current, latest }) =>
+    `Reqraft ${latest} is available (installed: ${current}). Update with npm install -g @reqraft/cli@latest.`,
   "cli.argument.text": () => "Text to rewrite",
   "cli.option.profile": () => "Rewriting profile",
   "cli.option.level": () => "Transformation level (minimal, standard, complete)",

@@ -6,6 +6,7 @@ import { DEFAULT_MODEL_ID } from "@/models/presets.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import {
   BUILTIN_PROVIDER_IDS,
+  CREDENTIAL_PROVIDER_IDS,
   DEFAULT_PROVIDER_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@/providers/catalog.js";
@@ -63,6 +64,10 @@ export const ConfigSchema = z
       .optional(),
     /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */
     desktopWelcomeTourVersion: z.number().int().nonnegative().optional(),
+    /** Dernière version Desktop déjà annoncée par une notification native. */
+    desktopNotifiedUpdateVersion: z.string().optional(),
+    /** Fournisseurs pour lesquels le Desktop préfère explicitement le trousseau. */
+    desktopKeychainProviders: z.array(z.enum(CREDENTIAL_PROVIDER_IDS)).optional(),
   })
   .passthrough();
 
