@@ -325,6 +325,12 @@ export const DESKTOP_EN = {
   "onboarding.tour.chat.body":
     "In ChatGPT or another chat, Reqraft turns a rough idea into a structured, verifiable request.",
   "onboarding.tour.chat.newChat": "New chat",
+  "onboarding.tour.chat.workspace": "AI workspace",
+  "onboarding.tour.chat.recent": "Recent",
+  "onboarding.tour.chat.threadOne": "Launch plan",
+  "onboarding.tour.chat.threadTwo": "Homepage copy",
+  "onboarding.tour.chat.availableModels": "Available AI assistants",
+  "onboarding.tour.chat.placeholder": "Message ChatGPT",
   "onboarding.tour.chat.assistant": "How can I help?",
   "onboarding.tour.chat.original": "make me a plan to launch the site without forgetting anything",
   "onboarding.tour.chat.rewritten":

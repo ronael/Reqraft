@@ -1593,12 +1593,159 @@ kbd {
   background: #101016;
 }
 
+.tour-chat-shell {
+  display: grid;
+  grid-template-columns: 94px minmax(0, 1fr);
+  height: calc(100% - 31px);
+}
+
+.tour-chat-sidebar {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 4px;
+  padding: 9px 7px;
+  border-right: 1px solid rgba(255, 255, 255, 0.055);
+  background: #0c0c11;
+}
+
+.tour-chat-new,
+.tour-chat-thread {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 4px;
+  color: #62626d;
+  font-size: 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-chat-new {
+  gap: 4px;
+  min-height: 22px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #a1a1aa;
+}
+
+.tour-chat-sidebar > small {
+  margin: 5px 4px 1px;
+  color: #3f3f48;
+  font-size: 6px;
+  text-transform: uppercase;
+}
+
+.tour-chat-thread {
+  min-height: 20px;
+  padding: 0 5px;
+}
+
+.tour-chat-thread.active {
+  background: rgba(255, 255, 255, 0.045);
+  color: #8b8b96;
+}
+
+.tour-chat-conversation {
+  position: relative;
+  display: grid;
+  min-width: 0;
+  grid-template-rows: 35px minmax(0, 1fr) 34px;
+}
+
+.tour-chat-model-header {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+}
+
+.tour-chat-model-logo,
+.tour-chat-avatar,
+.tour-chat-brand-stack > span {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  background: var(--tour-brand-color);
+}
+
+.tour-chat-model-logo {
+  width: 20px;
+  height: 20px;
+  border-radius: 5px;
+}
+
+.tour-chat-model-logo img,
+.tour-chat-avatar img {
+  display: block;
+  width: 11px;
+  height: 11px;
+}
+
+.tour-chat-model-name {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+
+.tour-chat-model-name b {
+  color: #c7c7cf;
+  font-size: 7px;
+  font-weight: 600;
+}
+
+.tour-chat-model-name small {
+  color: #4f4f59;
+  font-size: 5px;
+}
+
+.tour-chat-model-header > svg {
+  color: #45454f;
+}
+
+.tour-chat-brand-stack {
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+  padding-right: 1px;
+}
+
+.tour-chat-brand-stack > span {
+  width: 20px;
+  height: 20px;
+  margin-left: -6px;
+  border: 2px solid #101016;
+  border-radius: 6px;
+  box-shadow: 0 2px 7px rgba(0, 0, 0, 0.28);
+  animation: tour-ai-logo-in 320ms calc(260ms + (var(--tour-brand-index) * 60ms))
+    cubic-bezier(0.2, 0.72, 0.3, 1.2) both;
+}
+
+.tour-chat-brand-stack > span:first-child {
+  margin-left: 0;
+}
+
+.tour-chat-brand-stack img {
+  display: block;
+  width: 10px;
+  height: 10px;
+  object-fit: contain;
+}
+
+.tour-chat-brand-stack img.is-inverted {
+  filter: invert(1);
+}
+
 .tour-chat-body {
   display: grid;
   grid-template-columns: 24px minmax(0, 1fr);
   align-content: start;
   gap: 8px;
-  padding: 14px;
+  padding: 11px 13px 4px;
   font-size: 9px;
   line-height: 14px;
 }
@@ -1608,15 +1755,9 @@ kbd {
 }
 
 .tour-chat-avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 22px;
   height: 22px;
-  border: 1px solid rgba(52, 211, 153, 0.18);
   border-radius: 5px;
-  color: #6ee7b7;
-  font-size: 7px;
 }
 
 .tour-chat-body p.tour-chat-user {
@@ -1629,6 +1770,33 @@ kbd {
   border-radius: 7px;
   background: rgba(255, 255, 255, 0.035);
   color: #92929d;
+}
+
+.tour-chat-composer {
+  display: flex;
+  align-self: center;
+  min-width: 0;
+  height: 25px;
+  align-items: center;
+  gap: 6px;
+  margin: 0 11px 8px;
+  padding: 0 7px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #42424c;
+  font-size: 7px;
+}
+
+.tour-chat-composer span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-chat-composer svg {
+  margin-left: auto;
+  color: #686873;
 }
 
 .tour-code-window {
@@ -2581,6 +2749,7 @@ kbd {
   .tour-product-settings,
   .tour-product-ai-ecosystem,
   .tour-product-ai-stack > span,
+  .tour-chat-brand-stack > span,
   .tour-product-profile-card,
   .tour-product-provider-row,
   .tour-product-profile-toolbar,

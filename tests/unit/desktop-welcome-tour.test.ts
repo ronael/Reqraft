@@ -37,6 +37,10 @@ describe("welcome tour desktop", () => {
     const interactionKeys = [
       "onboarding.tour.replay",
       "onboarding.tour.mail.rewritten",
+      "onboarding.tour.chat.workspace",
+      "onboarding.tour.chat.recent",
+      "onboarding.tour.chat.availableModels",
+      "onboarding.tour.chat.placeholder",
       "onboarding.tour.chat.rewritten",
       "onboarding.tour.code.rewritten",
       "onboarding.tour.profiles.add",

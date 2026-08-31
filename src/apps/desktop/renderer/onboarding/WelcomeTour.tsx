@@ -2,6 +2,7 @@ import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  ChevronDown,
   Code2,
   Cpu,
   FileText,
@@ -11,6 +12,7 @@ import {
   MessageSquareText,
   Plus,
   RotateCcw,
+  SendHorizontal,
   ShieldCheck,
   SlidersHorizontal,
   Stethoscope,
@@ -62,6 +64,7 @@ export const WELCOME_TOUR_SLIDES = [
 ] as const;
 
 export const WELCOME_TOUR_PROFILE_IDS = ["auto", "clean", "code", "writing"] as const;
+const INVERTED_BRAND_CLASS = "is-inverted";
 const AI_BRAND_LOGOS = {
   openai: new URL("../assets/ai-brands/openai.svg", import.meta.url).href,
   anthropic: new URL("../assets/ai-brands/anthropic.svg", import.meta.url).href,
@@ -437,19 +440,79 @@ function MailVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
 }
 
 function ChatVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  const activeBrand = WELCOME_TOUR_AI_BRANDS[0];
+
   return (
     <>
       <div className="tour-app-window tour-chat-window">
         <div className="tour-app-titlebar">
           <WindowControls />
           <MessageSquareText size={12} />
-          <span>ChatGPT</span>
+          <span>{t("onboarding.tour.chat.workspace")}</span>
           <em>{t("onboarding.tour.chat.newChat")}</em>
         </div>
-        <div className="tour-chat-body">
-          <span className="tour-chat-avatar">AI</span>
-          <p>{t("onboarding.tour.chat.assistant")}</p>
-          <p className="tour-chat-user">{t("onboarding.tour.chat.original")}</p>
+        <div className="tour-chat-shell">
+          <aside className="tour-chat-sidebar">
+            <span className="tour-chat-new">
+              <Plus size={9} />
+              {t("onboarding.tour.chat.newChat")}
+            </span>
+            <small>{t("onboarding.tour.chat.recent")}</small>
+            <span className="tour-chat-thread active">{t("onboarding.tour.chat.threadOne")}</span>
+            <span className="tour-chat-thread">{t("onboarding.tour.chat.threadTwo")}</span>
+          </aside>
+          <section className="tour-chat-conversation">
+            <header className="tour-chat-model-header">
+              <span
+                className="tour-chat-model-logo"
+                style={{ "--tour-brand-color": activeBrand.color } as CSSProperties}
+              >
+                <img src={activeBrand.logo} alt="" />
+              </span>
+              <span className="tour-chat-model-name">
+                <b>{activeBrand.name}</b>
+                <small>GPT-5.1</small>
+              </span>
+              <ChevronDown size={10} />
+              <div
+                className="tour-chat-brand-stack"
+                aria-label={t("onboarding.tour.chat.availableModels")}
+              >
+                {WELCOME_TOUR_AI_BRANDS.map((brand, index) => (
+                  <span
+                    key={brand.id}
+                    title={brand.name}
+                    style={
+                      {
+                        "--tour-brand-index": index,
+                        "--tour-brand-color": brand.color,
+                      } as CSSProperties
+                    }
+                  >
+                    <img
+                      className={brand.invert ? INVERTED_BRAND_CLASS : undefined}
+                      src={brand.logo}
+                      alt={brand.name}
+                    />
+                  </span>
+                ))}
+              </div>
+            </header>
+            <div className="tour-chat-body">
+              <span
+                className="tour-chat-avatar"
+                style={{ "--tour-brand-color": activeBrand.color } as CSSProperties}
+              >
+                <img src={activeBrand.logo} alt="" />
+              </span>
+              <p>{t("onboarding.tour.chat.assistant")}</p>
+              <p className="tour-chat-user">{t("onboarding.tour.chat.original")}</p>
+            </div>
+            <div className="tour-chat-composer">
+              <span>{t("onboarding.tour.chat.placeholder")}</span>
+              <SendHorizontal size={10} />
+            </div>
+          </section>
         </div>
       </div>
       <ProductPopover t={t} />
@@ -652,7 +715,7 @@ function ProvidersVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
               }
             >
               <img
-                className={brand.invert ? "is-inverted" : undefined}
+                className={brand.invert ? INVERTED_BRAND_CLASS : undefined}
                 src={brand.logo}
                 alt={brand.name}
               />
@@ -709,7 +772,7 @@ function ProductProviderRow({
   return (
     <div className="tour-product-provider-row">
       <b style={{ "--tour-brand-color": color } as CSSProperties}>
-        <img className={invert ? "is-inverted" : undefined} src={logo} alt="" />
+        <img className={invert ? INVERTED_BRAND_CLASS : undefined} src={logo} alt="" />
       </b>
       <span>{name}</span>
       <em>{status}</em>
