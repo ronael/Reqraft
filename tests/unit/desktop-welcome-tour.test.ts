@@ -21,11 +21,22 @@ describe("welcome tour desktop", () => {
     expect(WELCOME_TOUR_SLIDES).toHaveLength(3);
     expect(new Set(WELCOME_TOUR_SLIDES.map(({ visual }) => visual)).size).toBe(3);
 
+    const interactionKeys = [
+      "onboarding.tour.replay",
+      "onboarding.tour.control.levelMinimal",
+      "onboarding.tour.control.levelStandard",
+      "onboarding.tour.control.levelComplete",
+      "onboarding.tour.privacy.telemetry",
+    ] as const;
+
     for (const locale of ["fr", "en"] as const) {
       const t = createDesktopTranslator(locale);
       for (const slide of WELCOME_TOUR_SLIDES) {
         expect(t(slide.title)).not.toBe(slide.title);
         expect(t(slide.body)).not.toBe(slide.body);
+      }
+      for (const key of interactionKeys) {
+        expect(t(key)).not.toBe(key);
       }
     }
   });

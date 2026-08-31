@@ -4,7 +4,11 @@ import {
   ArrowRight,
   CheckCircle2,
   Command,
+  FileText,
   KeyRound,
+  LockKeyhole,
+  Menu,
+  RotateCcw,
   ScanText,
   ShieldCheck,
   SlidersHorizontal,
@@ -34,6 +38,9 @@ export const WELCOME_TOUR_SLIDES = [
   },
 ] as const;
 
+type TourDirection = "forward" | "backward";
+const REWRITTEN_COPY_KEY = "onboarding.tour.capture.rewritten";
+
 interface WelcomeTourProps {
   onContinue(): void;
 }
@@ -48,20 +55,32 @@ export function shouldShowWelcomeTour(
 export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.JSX.Element {
   const t = useT();
   const [index, setIndex] = useState(0);
+  const [direction, setDirection] = useState<TourDirection>("forward");
+  const [animationRun, setAnimationRun] = useState(0);
   const slide = WELCOME_TOUR_SLIDES[index] ?? WELCOME_TOUR_SLIDES[0];
   const isLast = index === WELCOME_TOUR_SLIDES.length - 1;
+
+  const goTo = useCallback(
+    (nextIndex: number) => {
+      const bounded = Math.max(0, Math.min(nextIndex, WELCOME_TOUR_SLIDES.length - 1));
+      setDirection(bounded < index ? "backward" : "forward");
+      setIndex(bounded);
+      setAnimationRun((run) => run + 1);
+    },
+    [index],
+  );
 
   const advance = useCallback(() => {
     if (isLast) {
       onContinue();
       return;
     }
-    setIndex((current) => Math.min(current + 1, WELCOME_TOUR_SLIDES.length - 1));
-  }, [isLast, onContinue]);
+    goTo(index + 1);
+  }, [goTo, index, isLast, onContinue]);
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "ArrowLeft") setIndex((current) => Math.max(0, current - 1));
+      if (event.key === "ArrowLeft") goTo(index - 1);
       if (event.key === "ArrowRight") advance();
       if (event.key === "Enter" && !(event.target instanceof HTMLButtonElement)) advance();
     };
@@ -69,7 +88,7 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [advance]);
+  }, [advance, goTo, index]);
 
   const SlideIcon = slide.icon;
   return (
@@ -80,22 +99,33 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
         <span className="onboarding-badge">{t("onboarding.tour.badge")}</span>
       </div>
 
-      <section className="onboarding-tour" aria-live="polite">
-        <header className="onboarding-tour-header">
-          <span className="onboarding-tour-icon" aria-hidden>
-            <SlideIcon size={21} />
-          </span>
-          <p className="onboarding-tour-step">
-            {t("onboarding.tour.step", {
-              current: String(index + 1),
-              total: String(WELCOME_TOUR_SLIDES.length),
-            })}
-          </p>
-          <h1>{t(slide.title)}</h1>
-          <p>{t(slide.body)}</p>
-        </header>
+      <section className="onboarding-tour" aria-live="polite" aria-atomic="true">
+        <div
+          key={`${slide.visual}-${String(animationRun)}`}
+          className={`onboarding-tour-content onboarding-tour-content-${direction}`}
+        >
+          <header className="onboarding-tour-header">
+            <span className="onboarding-tour-icon" aria-hidden>
+              <SlideIcon size={19} />
+            </span>
+            <p className="onboarding-tour-step">
+              {t("onboarding.tour.step", {
+                current: String(index + 1),
+                total: String(WELCOME_TOUR_SLIDES.length),
+              })}
+            </p>
+            <h1>{t(slide.title)}</h1>
+            <p>{t(slide.body)}</p>
+          </header>
 
-        <TourVisual visual={slide.visual} t={t} />
+          <TourVisual
+            visual={slide.visual}
+            t={t}
+            onReplay={() => {
+              setAnimationRun((run) => run + 1);
+            }}
+          />
+        </div>
       </section>
 
       <footer className="onboarding-footer onboarding-tour-footer">
@@ -115,7 +145,7 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
                 aria-label={t("onboarding.tour.goTo", { step: String(slideIndex + 1) })}
                 aria-current={slideIndex === index ? "step" : undefined}
                 onClick={() => {
-                  setIndex(slideIndex);
+                  goTo(slideIndex);
                 }}
               />
             ))}
@@ -127,7 +157,7 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
               className="button-secondary"
               disabled={index === 0}
               onClick={() => {
-                setIndex((current) => Math.max(0, current - 1));
+                goTo(index - 1);
               }}
             >
               <ArrowLeft size={14} aria-hidden />
@@ -147,117 +177,183 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
 function TourVisual({
   visual,
   t,
+  onReplay,
 }: Readonly<{
   visual: (typeof WELCOME_TOUR_SLIDES)[number]["visual"];
   t: Translate;
+  onReplay(): void;
 }>): React.JSX.Element {
-  switch (visual) {
-    case "capture":
-      return <CaptureVisual t={t} />;
-    case "control":
-      return <ControlVisual t={t} />;
-    case "privacy":
-      return <PrivacyVisual t={t} />;
-  }
+  return (
+    <div className={`onboarding-tour-scene onboarding-tour-${visual}`}>
+      <button
+        type="button"
+        className="icon-button onboarding-tour-replay"
+        aria-label={t("onboarding.tour.replay")}
+        title={t("onboarding.tour.replay")}
+        onClick={onReplay}
+      >
+        <RotateCcw size={14} aria-hidden />
+      </button>
+      <div className="onboarding-tour-scene-content" aria-hidden>
+        {visual === "capture" ? <CaptureVisual t={t} /> : null}
+        {visual === "control" ? <ControlVisual t={t} /> : null}
+        {visual === "privacy" ? <PrivacyVisual t={t} /> : null}
+      </div>
+    </div>
+  );
+}
+
+function HostEditor({
+  t,
+  mode = "writing",
+}: Readonly<{
+  t: Translate;
+  mode?: "writing" | "code";
+}>): React.JSX.Element {
+  return (
+    <div className={`tour-host-editor tour-host-editor-${mode}`}>
+      <div className="tour-host-bar">
+        <FileText size={12} />
+        <span>{mode === "code" ? "specification.md" : t("onboarding.tour.capture.document")}</span>
+        <span className="tour-host-state">{t("onboarding.tour.capture.editing")}</span>
+      </div>
+      <div className="tour-editor-body">
+        <span className="tour-editor-line-number">30</span>
+        <span className="tour-editor-line tour-editor-line-muted">
+          {t("onboarding.tour.capture.contextBefore")}
+        </span>
+        <span className="tour-editor-line-number tour-editor-selected-number">31</span>
+        <span className="tour-editor-line tour-editor-selected">
+          {t("onboarding.tour.capture.original")}
+        </span>
+        <span className="tour-editor-line-number">32</span>
+        <span className="tour-editor-line tour-editor-line-muted">
+          {t("onboarding.tour.capture.contextAfter")}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function TourShortcut({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  return (
+    <div className="tour-shortcut">
+      <span className="tour-shortcut-brand">
+        <Sparkles size={12} />
+      </span>
+      <kbd>⌘</kbd>
+      <kbd>⌃</kbd>
+      <kbd>R</kbd>
+      <span>{t("onboarding.tour.capture.shortcut")}</span>
+    </div>
+  );
+}
+
+function CapsuleHeader({ children }: Readonly<{ children?: React.ReactNode }>): React.JSX.Element {
+  return (
+    <div className="tour-demo-capsule-header">
+      <span className="tour-demo-brand">
+        <Sparkles size={12} />
+      </span>
+      <strong>Reqraft</strong>
+      {children}
+    </div>
+  );
 }
 
 function CaptureVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
-    <div className="onboarding-tour-visual onboarding-tour-capture" aria-hidden>
-      <div className="tour-capsule-bar">
-        <span className="tour-brand-mark" />
-        <span>Reqraft</span>
-        <span className="tour-profile">clean</span>
+    <>
+      <HostEditor t={t} mode="code" />
+      <TourShortcut t={t} />
+      <div className="tour-demo-capsule tour-demo-capsule-capture">
+        <CapsuleHeader>
+          <span className="tour-demo-profile">clean</span>
+        </CapsuleHeader>
+        <div className="tour-demo-source">
+          <span>{t("onboarding.tour.capture.selection")}</span>
+          <p>{t("onboarding.tour.capture.original")}</p>
+        </div>
+        <div className="tour-demo-result">
+          <span>{t("onboarding.tour.capture.result")}</span>
+          <p>{t(REWRITTEN_COPY_KEY)}</p>
+        </div>
+        <div className="tour-demo-verdict">
+          <CheckCircle2 size={14} />
+          <span>{t("onboarding.tour.control.fidelity")}</span>
+          <i />
+        </div>
       </div>
-      <div className="tour-selection">
-        <span className="tour-visual-label">
-          <ScanText size={13} /> {t("onboarding.tour.capture.selection")}
-        </span>
-        <p>{t("onboarding.tour.capture.original")}</p>
-      </div>
-      <div className="tour-result">
-        <span className="tour-visual-label">
-          <Sparkles size={13} /> {t("onboarding.tour.capture.result")}
-        </span>
-        <p>{t("onboarding.tour.capture.rewritten")}</p>
-      </div>
-      <div className="tour-capsule-footer">
-        <span>
-          <kbd>⌘⌃R</kbd> {t("onboarding.tour.capture.shortcut")}
-        </span>
-        <span className="tour-ready">
-          <CheckCircle2 size={12} /> {t("capsule.qualityGood")}
-        </span>
-      </div>
-    </div>
+    </>
   );
 }
 
 function ControlVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
-    <div className="onboarding-tour-visual onboarding-tour-control" aria-hidden>
-      <div className="tour-control-row">
-        <span>{t("onboarding.tour.control.profile")}</span>
-        <div className="tour-segmented">
-          <span className="active">clean</span>
-          <span>code</span>
-          <span>writing</span>
+    <>
+      <HostEditor t={t} />
+      <div className="tour-demo-capsule tour-demo-capsule-control">
+        <CapsuleHeader>
+          <span className="tour-demo-profile tour-demo-profile-active">clean</span>
+        </CapsuleHeader>
+        <p className="tour-control-result">{t(REWRITTEN_COPY_KEY)}</p>
+        <div className="tour-control-choice">
+          <span>{t("onboarding.tour.control.profile")}</span>
+          <div className="tour-control-options">
+            <b className="active">clean</b>
+            <b>code</b>
+            <b>writing</b>
+          </div>
+        </div>
+        <div className="tour-control-choice tour-control-choice-level">
+          <span>{t("onboarding.tour.control.level")}</span>
+          <div className="tour-control-options">
+            <b>{t("onboarding.tour.control.levelMinimal")}</b>
+            <b className="active">{t("onboarding.tour.control.levelStandard")}</b>
+            <b>{t("onboarding.tour.control.levelComplete")}</b>
+          </div>
+        </div>
+        <div className="tour-demo-verdict">
+          <ShieldCheck size={14} />
+          <span>{t("onboarding.tour.control.fidelityDetail")}</span>
+          <CheckCircle2 size={14} />
         </div>
       </div>
-      <div className="tour-control-row">
-        <span>{t("onboarding.tour.control.level")}</span>
-        <div className="tour-levels">
-          <span>{t("onboarding.levelMinimal")}</span>
-          <span className="active">{t("onboarding.levelStandard")}</span>
-          <span>{t("onboarding.levelComplete")}</span>
-        </div>
-      </div>
-      <div className="tour-quality-row">
-        <ShieldCheck size={18} />
-        <span>
-          <strong>{t("onboarding.tour.control.fidelity")}</strong>
-          <small>{t("onboarding.tour.control.fidelityDetail")}</small>
-        </span>
-        <CheckCircle2 size={16} className="tour-quality-check" />
-      </div>
-    </div>
+    </>
   );
 }
 
 function PrivacyVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
-  const items = [
-    {
-      icon: ShieldCheck,
-      title: "onboarding.tour.privacy.ephemeral",
-      detail: "onboarding.tour.privacy.ephemeralDetail",
-    },
-    {
-      icon: KeyRound,
-      title: "onboarding.tour.privacy.keychain",
-      detail: "onboarding.tour.privacy.keychainDetail",
-    },
-    {
-      icon: Command,
-      title: "onboarding.tour.privacy.available",
-      detail: "onboarding.tour.privacy.availableDetail",
-    },
-  ] as const;
   return (
-    <div className="onboarding-tour-visual onboarding-tour-privacy" aria-hidden>
-      {items.map((item) => {
-        const ItemIcon = item.icon;
-        return (
-          <div key={item.title} className="tour-privacy-row">
-            <span className="tour-privacy-icon">
-              <ItemIcon size={18} />
-            </span>
-            <span>
-              <strong>{t(item.title)}</strong>
-              <small>{t(item.detail)}</small>
-            </span>
-          </div>
-        );
-      })}
-    </div>
+    <>
+      <HostEditor t={t} mode="code" />
+      <div className="tour-demo-capsule tour-demo-capsule-privacy">
+        <CapsuleHeader>
+          <span className="tour-private-status">
+            <LockKeyhole size={11} /> {t("onboarding.tour.privacy.private")}
+          </span>
+        </CapsuleHeader>
+        <p className="tour-privacy-result">{t(REWRITTEN_COPY_KEY)}</p>
+        <div className="tour-privacy-signals">
+          <span>
+            <ShieldCheck size={15} />
+            <b>{t("onboarding.tour.privacy.ephemeral")}</b>
+          </span>
+          <span>
+            <KeyRound size={15} />
+            <b>{t("onboarding.tour.privacy.keychain")}</b>
+          </span>
+          <span>
+            <Menu size={15} />
+            <b>{t("onboarding.tour.privacy.available")}</b>
+          </span>
+        </div>
+        <div className="tour-private-footer">
+          <Command size={13} />
+          <span>{t("onboarding.tour.privacy.telemetry")}</span>
+          <CheckCircle2 size={13} />
+        </div>
+      </div>
+    </>
   );
 }
