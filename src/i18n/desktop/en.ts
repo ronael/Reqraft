@@ -348,6 +348,8 @@ export const DESKTOP_EN = {
   "onboarding.tour.providers.body":
     "Configure a built-in provider or a compatible endpoint, then switch without changing your workflow.",
   "onboarding.tour.providers.builtIn": "Built-in providers",
+  "onboarding.tour.providers.ecosystemTitle": "Your AIs, one interface",
+  "onboarding.tour.providers.ecosystemDetail": "Native providers and OpenAI-compatible endpoints",
   "onboarding.tour.providers.addKey": "Add a key",
   "onboarding.tour.providers.compatible": "Add an OpenAI-compatible endpoint",
   "onboarding.tour.providers.keychain": "Keys are protected by the macOS Keychain",

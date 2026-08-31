@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   shouldShowWelcomeTour,
+  WELCOME_TOUR_AI_BRANDS,
   WELCOME_TOUR_PROFILE_IDS,
   WELCOME_TOUR_PROVIDERS,
   WELCOME_TOUR_SLIDES,
@@ -69,5 +70,15 @@ describe("welcome tour desktop", () => {
       expect(provider?.visibleInInit).toBe(true);
       expect(provider?.isTest).toBe(false);
     }
+  });
+
+  it("présente les principaux écosystèmes IA avec un asset distinct", () => {
+    expect(WELCOME_TOUR_AI_BRANDS.map(({ name }) => name)).toEqual([
+      "ChatGPT",
+      "Claude",
+      "DeepSeek",
+      "Kimi",
+    ]);
+    expect(new Set(WELCOME_TOUR_AI_BRANDS.map(({ logo }) => logo)).size).toBe(4);
   });
 });

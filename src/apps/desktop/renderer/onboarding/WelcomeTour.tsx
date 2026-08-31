@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
@@ -62,11 +62,68 @@ export const WELCOME_TOUR_SLIDES = [
 ] as const;
 
 export const WELCOME_TOUR_PROFILE_IDS = ["auto", "clean", "code", "writing"] as const;
+const AI_BRAND_LOGOS = {
+  openai: new URL("../assets/ai-brands/openai.svg", import.meta.url).href,
+  anthropic: new URL("../assets/ai-brands/anthropic.svg", import.meta.url).href,
+  deepseek: new URL("../assets/ai-brands/deepseek.svg", import.meta.url).href,
+  kimi: new URL("../assets/ai-brands/kimi.svg", import.meta.url).href,
+  mistral: new URL("../assets/ai-brands/mistralai.svg", import.meta.url).href,
+} as const;
+
+export const WELCOME_TOUR_AI_BRANDS = [
+  {
+    id: "chatgpt",
+    name: "ChatGPT",
+    logo: AI_BRAND_LOGOS.openai,
+    color: "#1f2937",
+    invert: false,
+  },
+  {
+    id: "claude",
+    name: "Claude",
+    logo: AI_BRAND_LOGOS.anthropic,
+    color: "#d7a87f",
+    invert: false,
+  },
+  {
+    id: "deepseek",
+    name: "DeepSeek",
+    logo: AI_BRAND_LOGOS.deepseek,
+    color: "#4f6bff",
+    invert: true,
+  },
+  { id: "kimi", name: "Kimi", logo: AI_BRAND_LOGOS.kimi, color: "#171717", invert: true },
+] as const;
+
 export const WELCOME_TOUR_PROVIDERS = [
-  { id: "anthropic", initials: "A", name: "Anthropic" },
-  { id: "openai", initials: "O", name: "OpenAI" },
-  { id: "deepseek", initials: "D", name: "DeepSeek" },
-  { id: "mistral", initials: "M", name: "Mistral" },
+  {
+    id: "anthropic",
+    logo: AI_BRAND_LOGOS.anthropic,
+    name: "Anthropic",
+    color: "#d7a87f",
+    invert: false,
+  },
+  {
+    id: "openai",
+    logo: AI_BRAND_LOGOS.openai,
+    name: "OpenAI",
+    color: "#1f2937",
+    invert: false,
+  },
+  {
+    id: "deepseek",
+    logo: AI_BRAND_LOGOS.deepseek,
+    name: "DeepSeek",
+    color: "#4f6bff",
+    invert: true,
+  },
+  {
+    id: "mistral",
+    logo: AI_BRAND_LOGOS.mistral,
+    name: "Mistral",
+    color: "#f2a51a",
+    invert: false,
+  },
 ] as const;
 
 type TourDirection = "forward" | "backward";
@@ -581,12 +638,40 @@ function ProductProfileCard({
 function ProvidersVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <ProductSettingsFrame t={t} activeTab="providers">
+      <div className="tour-product-ai-ecosystem">
+        <div className="tour-product-ai-stack">
+          {WELCOME_TOUR_AI_BRANDS.map((brand, index) => (
+            <span
+              key={brand.id}
+              title={brand.name}
+              style={
+                {
+                  "--tour-brand-index": index,
+                  "--tour-brand-color": brand.color,
+                } as CSSProperties
+              }
+            >
+              <img
+                className={brand.invert ? "is-inverted" : undefined}
+                src={brand.logo}
+                alt={brand.name}
+              />
+            </span>
+          ))}
+        </div>
+        <span>
+          <b>{t("onboarding.tour.providers.ecosystemTitle")}</b>
+          <small>{t("onboarding.tour.providers.ecosystemDetail")}</small>
+        </span>
+      </div>
       <h3 className="tour-product-settings-subhead">{t("settings.builtinProviders")}</h3>
       <div className="tour-product-provider-list">
         {WELCOME_TOUR_PROVIDERS.map((provider) => (
           <ProductProviderRow
             key={provider.id}
-            initials={provider.initials}
+            logo={provider.logo}
+            color={provider.color}
+            invert={provider.invert}
             name={provider.name}
             status={t("settings.addKey")}
           />
@@ -609,13 +694,23 @@ function ProvidersVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
 }
 
 function ProductProviderRow({
-  initials,
+  logo,
+  color,
+  invert,
   name,
   status,
-}: Readonly<{ initials: string; name: string; status: string }>): React.JSX.Element {
+}: Readonly<{
+  logo: string;
+  color: string;
+  invert: boolean;
+  name: string;
+  status: string;
+}>): React.JSX.Element {
   return (
     <div className="tour-product-provider-row">
-      <b>{initials}</b>
+      <b style={{ "--tour-brand-color": color } as CSSProperties}>
+        <img className={invert ? "is-inverted" : undefined} src={logo} alt="" />
+      </b>
       <span>{name}</span>
       <em>{status}</em>
     </div>

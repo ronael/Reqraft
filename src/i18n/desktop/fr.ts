@@ -344,6 +344,9 @@ export const DESKTOP_FR = {
   "onboarding.tour.providers.body":
     "Configurez un fournisseur intégré ou compatible, puis changez-en sans modifier votre workflow.",
   "onboarding.tour.providers.builtIn": "Fournisseurs intégrés",
+  "onboarding.tour.providers.ecosystemTitle": "Vos IA, une seule interface",
+  "onboarding.tour.providers.ecosystemDetail":
+    "Fournisseurs natifs et endpoints compatibles OpenAI",
   "onboarding.tour.providers.addKey": "Ajouter une clé",
   "onboarding.tour.providers.compatible": "Ajouter un fournisseur compatible OpenAI",
   "onboarding.tour.providers.keychain": "Les clés sont protégées par le trousseau macOS",
