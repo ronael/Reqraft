@@ -1673,9 +1673,10 @@ kbd {
   background: var(--tour-brand-color);
 }
 
-.tour-chat-model-logo {
-  width: 20px;
-  height: 20px;
+.tour-chat-model-logo,
+.tour-chat-avatar {
+  width: 22px;
+  height: 22px;
   border-radius: 5px;
 }
 
@@ -1752,12 +1753,6 @@ kbd {
 
 .tour-chat-body p {
   margin: 0;
-}
-
-.tour-chat-avatar {
-  width: 22px;
-  height: 22px;
-  border-radius: 5px;
 }
 
 .tour-chat-body p.tour-chat-user {
