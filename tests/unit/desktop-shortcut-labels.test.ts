@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAccelerator } from "@/apps/desktop/renderer/settings/shortcut-labels.js";
+import { formatAccelerator } from "@/apps/desktop/renderer/shared/shortcut-labels.js";
 import { createDesktopTranslator } from "@/i18n/desktop/index.js";
 import { SHORTCUT_PRESETS } from "@/apps/desktop/shared/ipc-contract.js";
 import { prettyAccelerator } from "@/apps/desktop/main/shortcuts.js";

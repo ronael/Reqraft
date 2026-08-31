@@ -1716,14 +1716,14 @@ kbd {
   z-index: 4;
   display: flex;
   align-items: center;
-  gap: 4px;
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid rgba(167, 139, 250, 0.22);
-  border-radius: 7px;
-  background: #181721;
+  gap: 6px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: #14141b;
   color: #777782;
-  font-size: 8px;
+  font-size: 7px;
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.3);
   animation: tour-shortcut-in 260ms 480ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
@@ -1731,15 +1731,19 @@ kbd {
 .tour-shortcut-brand {
   display: inline-flex;
   color: #a78bfa;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 8px;
 }
 
 .tour-shortcut kbd {
-  min-width: 20px;
-  padding: 2px 4px;
+  min-width: 0;
+  padding: 1px 5px;
   border-color: rgba(255, 255, 255, 0.12);
-  background: rgba(255, 255, 255, 0.055);
-  color: #e4e4e7;
+  background: rgba(255, 255, 255, 0.07);
+  color: #d4d4d8;
+  font-size: 7px;
   text-align: center;
+  white-space: nowrap;
 }
 
 @keyframes tour-shortcut-in {
@@ -1898,6 +1902,7 @@ kbd {
   background: rgba(0, 0, 0, 0.18);
   color: #74747f;
   font-size: 7px;
+  animation: tour-detail-in 260ms 1660ms ease-out both;
 }
 
 .tour-product-capsule-actions > b {
@@ -1948,6 +1953,7 @@ kbd {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 9px;
   line-height: 14px;
+  animation: tour-result-reveal 300ms 1060ms ease-out both;
 }
 
 .tour-product-popover-controls {
@@ -1957,6 +1963,7 @@ kbd {
   padding: 0 11px 9px;
   color: #71717a;
   font-size: 8px;
+  animation: tour-detail-in 240ms 1240ms ease-out both;
 }
 
 .tour-product-popover-controls b {
@@ -1982,6 +1989,7 @@ kbd {
   border-top: 1px solid rgba(255, 255, 255, 0.08);
   color: #676773;
   font-size: 8px;
+  animation: tour-detail-in 240ms 1380ms ease-out both;
 }
 
 .tour-product-popover-footer strong {
@@ -2088,6 +2096,7 @@ kbd {
   border-color: rgba(167, 139, 250, 0.22);
   background: rgba(139, 92, 246, 0.14);
   color: #ddd6fe;
+  animation: tour-detail-in 240ms 300ms ease-out both;
 }
 
 .tour-product-settings-sidebar nav span.active svg {
@@ -2179,6 +2188,7 @@ kbd {
   justify-content: space-between;
   gap: 8px;
   margin-bottom: 6px;
+  animation: tour-detail-in 240ms 320ms ease-out both;
 }
 
 .tour-product-profile-toolbar p {
@@ -2218,6 +2228,22 @@ kbd {
   border-radius: 5px;
   background: rgba(255, 255, 255, 0.02);
   animation: tour-settings-row-in 260ms ease-out both;
+}
+
+.tour-product-profile-card:nth-child(1) {
+  animation-delay: 430ms;
+}
+
+.tour-product-profile-card:nth-child(2) {
+  animation-delay: 510ms;
+}
+
+.tour-product-profile-card:nth-child(3) {
+  animation-delay: 590ms;
+}
+
+.tour-product-profile-card:nth-child(4) {
+  animation-delay: 670ms;
 }
 
 .tour-product-profile-card.active {
@@ -2261,6 +2287,7 @@ kbd {
   font-size: 6px;
   font-weight: 600;
   text-transform: uppercase;
+  animation: tour-detail-in 220ms 320ms ease-out both;
 }
 
 .tour-product-provider-list {
@@ -2276,6 +2303,22 @@ kbd {
   padding: 0 5px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
   animation: tour-settings-row-in 260ms ease-out both;
+}
+
+.tour-product-provider-row:nth-child(1) {
+  animation-delay: 400ms;
+}
+
+.tour-product-provider-row:nth-child(2) {
+  animation-delay: 470ms;
+}
+
+.tour-product-provider-row:nth-child(3) {
+  animation-delay: 540ms;
+}
+
+.tour-product-provider-row:nth-child(4) {
+  animation-delay: 610ms;
 }
 
 .tour-product-provider-row > b {
@@ -2310,6 +2353,7 @@ kbd {
   justify-content: space-between;
   gap: 6px;
   margin-top: 5px;
+  animation: tour-detail-in 240ms 700ms ease-out both;
 }
 
 .tour-product-compatible-row > span {
@@ -2354,6 +2398,18 @@ kbd {
   font-size: 5px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  animation: tour-detail-in 240ms 780ms ease-out both;
+}
+
+@keyframes tour-detail-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 .tour-product-privacy-note {
@@ -2401,6 +2457,15 @@ kbd {
   .tour-product-settings,
   .tour-product-profile-card,
   .tour-product-provider-row,
+  .tour-product-profile-toolbar,
+  .tour-product-settings-subhead,
+  .tour-product-compatible-row,
+  .tour-product-key-note,
+  .tour-product-capsule-actions,
+  .tour-product-popover > p,
+  .tour-product-popover-controls,
+  .tour-product-popover-footer,
+  .tour-product-settings-sidebar nav span.active,
   .tour-product-privacy-note {
     animation: none;
   }
@@ -2450,12 +2515,48 @@ kbd {
   border-radius: 50%;
   background: #3f3f46;
   content: "";
+  transition:
+    width 220ms cubic-bezier(0.2, 0.75, 0.3, 1),
+    border-radius 220ms ease,
+    background-color 180ms ease,
+    transform 180ms ease;
+}
+
+.onboarding-tour-dot:hover::after {
+  background: #62626d;
+  transform: scale(1.15);
 }
 
 .onboarding-tour-dot.active::after {
   width: 14px;
   border-radius: 4px;
   background: #a78bfa;
+  transform: scale(1);
+  animation: tour-dot-arrive 260ms cubic-bezier(0.2, 0.75, 0.3, 1);
+}
+
+@keyframes tour-dot-arrive {
+  0% {
+    opacity: 0.55;
+    transform: scaleX(0.45);
+  }
+  70% {
+    opacity: 1;
+    transform: scaleX(1.12);
+  }
+  100% {
+    transform: scaleX(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .onboarding-tour-dot::after {
+    transition: none;
+  }
+
+  .onboarding-tour-dot.active::after {
+    animation: none;
+  }
 }
 
 .onboarding-tour-actions button:focus-visible,

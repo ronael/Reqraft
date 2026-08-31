@@ -1,6 +1,6 @@
 import { useT } from "../shared/i18n.js";
 import { SHORTCUT_PRESETS } from "@/apps/desktop/shared/ipc-contract.js";
-import { formatAccelerator } from "./shortcut-labels.js";
+import { formatAccelerator } from "../shared/shortcut-labels.js";
 
 /** Le choix de langue tel qu'il est enregistré : « auto » en fait partie. */
 export type UiLocalePreference = "auto" | "en" | "fr";

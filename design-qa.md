@@ -36,7 +36,9 @@ icons already used by the desktop app.
 - Colors: neutral dark surfaces, violet selection/focus and green fidelity
   states match the source direction without turning the whole screen purple.
 - Motion: selection, shortcut, capsule, result and verdict enter in sequence.
-  Motion runs once, can be replayed, and is removed by
+  Profile cards, provider rows and secondary controls are staggered; the active
+  progress bullet visibly stretches while the previous one contracts. Motion
+  runs once, can be replayed, and is removed by
   `prefers-reduced-motion: reduce`.
 - Copy: French and English keys exist for every visible label. The tour names
   only supported providers and profiles, and keeps setup details out of the
@@ -66,6 +68,9 @@ icons already used by the desktop app.
    the footer.
 7. The densest slides were also rendered at the supported 560 x 520 minimum
    viewport. Their content and footer remain visible without document overflow.
+8. The Mail shortcut now uses the same shared accelerator formatter as
+   Settings. One compact `Cmd + Ctrl + R` key replaces three oversized keycaps;
+   the full hint shrank from 192 px to 101 px without losing the Reqraft mark.
 
 ## Residual Checks
 

@@ -19,6 +19,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
+import { formatAccelerator } from "../shared/shortcut-labels.js";
 import type { SetupBlocker } from "@/apps/desktop/shared/ipc-contract.js";
 import { version } from "@/version.js";
 
@@ -255,10 +256,7 @@ function TourShortcut({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <div className="tour-shortcut">
       <b className="tour-shortcut-brand">rq</b>
-      <kbd>⌘</kbd>
-      <kbd>⌃</kbd>
-      <kbd>R</kbd>
-      <span>{t("onboarding.tour.capture.shortcut")}</span>
+      <kbd>{formatAccelerator("Command+Control+R", t)}</kbd>
     </div>
   );
 }
