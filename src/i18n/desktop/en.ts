@@ -6,6 +6,8 @@
  * source of truth the CLI already owns. Placeholders are `{name}` and are
  * filled on the other side.
  */
+const SETTINGS_TITLE = "Reqraft — Settings";
+
 export const DESKTOP_EN = {
   "capsule.newReformulation": "new reformulation",
   "capsule.selectionFrom": "selection · {app}",
@@ -43,7 +45,7 @@ export const DESKTOP_EN = {
   "capsule.noInvention": "nothing invented",
   "capsule.lowerLevel": "lower the level",
 
-  "settings.title": "Reqraft — Settings",
+  "settings.title": SETTINGS_TITLE,
   "settings.ready": "ready",
   "settings.tagline": "Shape the request. Keep the intent.",
   "settings.nav.profiles": "Profiles",
@@ -207,7 +209,7 @@ export const DESKTOP_EN = {
   "main.trayIdle": "Reqraft — ready",
   "main.trayBusy": "Reqraft — rewriting…",
   "main.trayError": "Reqraft — something went wrong",
-  "main.settingsTitle": "Reqraft — Settings",
+  "main.settingsTitle": SETTINGS_TITLE,
   "main.onboardingTitle": "Reqraft — Setup",
   "main.profileFileType": "Reqraft profile",
   "main.permissionsGranted": "Accessibility and Automation granted.",
@@ -283,32 +285,65 @@ export const DESKTOP_EN = {
   "onboarding.tour.next": "Continue",
   "onboarding.tour.configure": "Set up Reqraft",
   "onboarding.tour.replay": "Replay the demonstration",
-  "onboarding.tour.capture.title": "Reqraft appears when you need it",
-  "onboarding.tour.capture.body": "Your text stays in context. Only its wording changes.",
-  "onboarding.tour.capture.document": "Untitled draft",
+  "onboarding.tour.mail.title": "Clear emails without leaving Mail",
+  "onboarding.tour.mail.body":
+    "Select a draft, run Reqraft and replace it with a version that is ready to send.",
+  "onboarding.tour.mail.compose": "New message",
+  "onboarding.tour.mail.draft": "Draft",
+  "onboarding.tour.mail.to": "To",
+  "onboarding.tour.mail.subject": "Subject",
+  "onboarding.tour.mail.subjectValue": "Project follow-up",
+  "onboarding.tour.mail.hello": "Hello,",
+  "onboarding.tour.mail.original": "hi, is the project file ready thanks",
+  "onboarding.tour.mail.rewritten":
+    "Hello, could you please confirm whether the project file is ready? Thank you.",
+  "onboarding.tour.mail.signoff": "Have a good day.",
+  "onboarding.tour.chat.title": "Prepare prompts before sending them",
+  "onboarding.tour.chat.body":
+    "In ChatGPT or another chat, Reqraft turns a rough idea into a structured, verifiable request.",
+  "onboarding.tour.chat.newChat": "New chat",
+  "onboarding.tour.chat.assistant": "How can I help?",
+  "onboarding.tour.chat.original": "make me a plan to launch the site without forgetting anything",
+  "onboarding.tour.chat.rewritten":
+    "Create a site launch plan with prerequisites, steps, owners and validation criteria.",
+  "onboarding.tour.code.title": "Keep every technical constraint",
+  "onboarding.tour.code.body":
+    "The code profile preserves components, paths and important terms instead of simplifying them.",
+  "onboarding.tour.code.original": "{/* add a red button here but do not touch navigation */}",
+  "onboarding.tour.code.rewritten":
+    "Add a red button before <Navigation /> without changing that component or its behavior.",
+  "onboarding.tour.profiles.title": "A profile for every writing style",
+  "onboarding.tour.profiles.body":
+    "Let Reqraft detect the context, choose a built-in profile or add your own.",
+  "onboarding.tour.profiles.available": "Available profiles",
+  "onboarding.tour.profiles.search": "Search profiles…",
+  "onboarding.tour.profiles.detects": "detects context",
+  "onboarding.tour.profiles.clarify": "clarify",
+  "onboarding.tour.profiles.agents": "coding agents",
+  "onboarding.tour.profiles.add": "Add a custom profile",
+  "onboarding.tour.providers.title": "Choose the provider that suits you",
+  "onboarding.tour.providers.body":
+    "Configure a built-in provider or a compatible endpoint, then switch without changing your workflow.",
+  "onboarding.tour.providers.builtIn": "Built-in providers",
+  "onboarding.tour.providers.addKey": "Add a key",
+  "onboarding.tour.providers.compatible": "Add an OpenAI-compatible endpoint",
+  "onboarding.tour.providers.keychain": "Keys are protected by the macOS Keychain",
+  "onboarding.tour.settings.title": SETTINGS_TITLE,
+  "onboarding.tour.settings.shortcuts": "Shortcuts",
+  "onboarding.tour.settings.providers": "Providers",
+  "onboarding.tour.settings.models": "Models",
+  "onboarding.tour.settings.profiles": "Profiles",
   "onboarding.tour.capture.editing": "editing",
-  "onboarding.tour.capture.contextBefore": "The wording should remain simple and precise.",
-  "onboarding.tour.capture.contextAfter": "The original meaning must not change.",
   "onboarding.tour.capture.selection": "selection",
-  "onboarding.tour.capture.original": "can you make this message clearer",
   "onboarding.tour.capture.result": "result ready",
-  "onboarding.tour.capture.rewritten":
-    "Could you clarify this message while preserving its intent?",
   "onboarding.tour.capture.shortcut": "rewrite the selection",
-  "onboarding.tour.control.title": "Stay in control of every rewrite",
-  "onboarding.tour.control.body":
-    "Choose a profile and level of detail. Reqraft flags additions, missing terms and results worth reviewing.",
-  "onboarding.tour.control.profile": "Profile",
-  "onboarding.tour.control.level": "Level",
-  "onboarding.tour.control.levelMinimal": "Minimal",
-  "onboarding.tour.control.levelStandard": "Standard",
-  "onboarding.tour.control.levelComplete": "Complete",
   "onboarding.tour.control.fidelity": "Intent preserved",
-  "onboarding.tour.control.fidelityDetail": "No additions or missing technical terms",
   "onboarding.tour.privacy.title": "Your requests remain ephemeral",
   "onboarding.tour.privacy.body":
     "Reqraft does not retain your prompts. You choose the provider and keys stay in the system keychain.",
   "onboarding.tour.privacy.private": "private",
+  "onboarding.tour.privacy.example":
+    "Clarify this request without adding features or losing any constraint.",
   "onboarding.tour.privacy.telemetry": "Telemetry off · content not retained",
   "onboarding.tour.privacy.ephemeral": "No prompt stored",
   "onboarding.tour.privacy.ephemeralDetail": "Text exists only for the duration of the rewrite.",

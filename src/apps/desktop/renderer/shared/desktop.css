@@ -1466,75 +1466,409 @@ kbd {
   color: #8b8b96;
 }
 
-.tour-host-editor {
+.tour-app-window,
+.tour-settings-window {
   position: absolute;
-  inset: 22px 112px 30px 22px;
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.075);
   border-radius: 7px;
   background: #111117;
   color: #71717a;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  animation: tour-window-in 320ms 80ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
 }
 
-.tour-host-bar {
+@keyframes tour-window-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px) scale(0.99);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.tour-app-titlebar {
   display: flex;
   align-items: center;
   gap: 7px;
-  height: 32px;
-  padding: 0 11px;
+  height: 31px;
+  padding: 0 10px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.055);
   color: #686873;
   font-size: 9px;
 }
 
-.tour-host-state {
+.tour-app-titlebar > em {
   margin-left: auto;
-  color: #3f3f46;
+  color: #43434c;
+  font-size: 8px;
+  font-style: normal;
 }
 
-.tour-editor-body {
+.tour-window-controls {
+  display: inline-flex;
+  gap: 4px;
+  margin-right: 2px;
+}
+
+.tour-window-controls i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #52525b;
+}
+
+.tour-window-controls i:first-child {
+  background: #ff5f57;
+}
+
+.tour-mail-window,
+.tour-chat-window,
+.tour-code-window,
+.tour-privacy-backdrop {
+  inset: 18px 100px 24px 22px;
+}
+
+.tour-mail-fields {
   display: grid;
-  grid-template-columns: 24px minmax(0, 1fr);
-  align-content: center;
-  gap: 13px 8px;
-  height: calc(100% - 32px);
-  padding: 15px 16px 18px 11px;
-  font-size: 10px;
-  line-height: 16px;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 4px 8px;
+  margin: 0 14px;
+  padding: 9px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  font-size: 8px;
 }
 
-.tour-editor-line-number {
-  color: #34343d;
-  text-align: right;
+.tour-mail-fields span {
+  color: #484852;
 }
 
-.tour-editor-line {
-  width: max-content;
-  max-width: 92%;
+.tour-mail-fields b {
   overflow: hidden;
+  color: #858590;
+  font-weight: 400;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
-.tour-editor-line-muted {
-  color: #45454f;
+.tour-mail-copy {
+  padding: 7px 14px;
+  color: #696974;
+  font-size: 9px;
+  line-height: 14px;
 }
 
-.tour-editor-selected-number {
-  color: #8b5cf6;
-  animation: tour-selection-number 280ms 180ms ease-out both;
+.tour-mail-copy p {
+  margin: 0 0 6px;
 }
 
-.tour-editor-selected {
-  padding: 2px 5px;
+.tour-inline-selection,
+.tour-code-selection {
+  padding: 2px 4px;
   border-radius: 3px;
+  background: rgba(124, 58, 237, 0.24);
   color: #ddd6fe;
-  background: rgba(124, 58, 237, 0.22);
   box-shadow: inset 0 0 0 1px rgba(167, 139, 250, 0.12);
   transform-origin: left center;
-  animation: tour-selection 340ms 140ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+  animation: tour-selection 340ms 220ms cubic-bezier(0.2, 0.7, 0.3, 1) both;
+}
+
+.tour-demo-capsule-mail,
+.tour-demo-capsule-chat,
+.tour-demo-capsule-code {
+  width: 364px;
+}
+
+.onboarding-tour-mail .tour-shortcut {
+  top: 76px;
+}
+
+.tour-chat-window {
+  right: 76px;
+  background: #101016;
+}
+
+.tour-chat-body {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: start;
+  gap: 8px;
+  padding: 14px;
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.tour-chat-body p {
+  margin: 0;
+}
+
+.tour-chat-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border: 1px solid rgba(52, 211, 153, 0.18);
+  border-radius: 5px;
+  color: #6ee7b7;
+  font-size: 7px;
+}
+
+.tour-chat-body p.tour-chat-user {
+  grid-column: 2;
+  justify-self: end;
+  max-width: 82%;
+  margin-top: 12px;
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+  color: #92929d;
+}
+
+.tour-demo-capsule-chat {
+  right: 28px;
+  bottom: 15px;
+}
+
+.tour-code-window {
+  right: 72px;
+  background: #0c0d12;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+.tour-code-body {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  align-content: center;
+  gap: 6px 8px;
+  height: calc(100% - 31px);
+  padding: 10px 13px 13px 8px;
+  color: #72727c;
+  font-size: 8px;
+  line-height: 12px;
+}
+
+.tour-code-body > span {
+  color: #34343d;
+  text-align: right;
+}
+
+.tour-code-body > span.active {
+  color: #a78bfa;
+}
+
+.tour-code-body code {
+  overflow: hidden;
+  color: #70707a;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-code-body .tour-code-selection {
+  width: max-content;
+  max-width: 100%;
+  color: #ddd6fe;
+}
+
+.tour-settings-window {
+  inset: 14px 44px;
+  background: #101015;
+}
+
+.tour-settings-tabs {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 31px;
+  padding: 0 9px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.055);
+  font-size: 8px;
+}
+
+.tour-settings-tabs span {
+  padding: 4px 7px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #555560;
+}
+
+.tour-settings-tabs span.active {
+  border-color: rgba(167, 139, 250, 0.17);
+  background: rgba(124, 58, 237, 0.11);
+  color: #ddd6fe;
+}
+
+.tour-settings-content {
+  padding: 7px 10px 8px;
+}
+
+.tour-settings-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 18px;
+  color: #777782;
+  font-size: 8px;
+}
+
+.tour-settings-section-title b {
+  color: #4d4d57;
+  font-size: 7px;
+  font-weight: 500;
+}
+
+.tour-profile-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 25px;
+  margin: 2px 0 4px;
+  padding: 0 8px;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.16);
+  color: #4f4f5a;
+  font-size: 8px;
+}
+
+.tour-profile-row,
+.tour-provider-row {
+  display: grid;
+  align-items: center;
+  min-width: 0;
+  min-height: 27px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.045);
+  animation: tour-settings-row-in 260ms ease-out both;
+}
+
+.tour-profile-row {
+  grid-template-columns: 8px 68px minmax(0, 1fr) 14px;
+  gap: 6px;
+  padding: 0 7px;
+  font-size: 8px;
+}
+
+.tour-profile-row.active {
+  border-radius: 5px;
+  background: rgba(124, 58, 237, 0.1);
+  color: #c4b5fd;
+}
+
+.tour-profile-row i {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: #4b4b55;
+}
+
+.tour-profile-row.active i {
+  background: #a78bfa;
+}
+
+.tour-profile-row code {
+  color: #a1a1aa;
+}
+
+.tour-profile-row span {
+  overflow: hidden;
+  color: #555560;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tour-profile-add,
+.tour-provider-add {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 27px;
+  padding: 0 7px;
+  color: #a78bfa;
+  font-size: 8px;
+  animation: tour-settings-row-in 260ms 940ms ease-out both;
+}
+
+.tour-provider-row {
+  grid-template-columns: 23px minmax(0, 1fr) auto;
+  gap: 7px;
+  padding: 2px 7px;
+}
+
+.tour-provider-row > b {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #a1a1aa;
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.tour-provider-row > span {
+  color: #a1a1aa;
+  font-size: 8px;
+}
+
+.tour-provider-row > em {
+  color: #62626d;
+  font-size: 7px;
+  font-style: normal;
+}
+
+.tour-keychain-note {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 25px;
+  padding: 0 7px;
+  border-top: 1px solid rgba(45, 212, 191, 0.09);
+  color: #5eead4;
+  font-size: 7px;
+  animation: tour-settings-row-in 260ms 1060ms ease-out both;
+}
+
+@keyframes tour-settings-row-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tour-privacy-backdrop {
+  right: 78px;
+  opacity: 0.48;
+}
+
+.tour-privacy-document {
+  display: grid;
+  gap: 10px;
+  padding: 21px 20px;
+}
+
+.tour-privacy-document span {
+  width: 72%;
+  height: 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.055);
+}
+
+.tour-privacy-document span:nth-child(2) {
+  width: 88%;
+}
+
+.tour-privacy-document span:nth-child(3) {
+  width: 62%;
 }
 
 @keyframes tour-selection {
@@ -1545,15 +1879,6 @@ kbd {
   to {
     opacity: 1;
     transform: scaleX(1);
-  }
-}
-
-@keyframes tour-selection-number {
-  from {
-    opacity: 0.35;
-  }
-  to {
-    opacity: 1;
   }
 }
 
@@ -1801,18 +2126,10 @@ kbd {
   }
 }
 
-.onboarding-tour-control .tour-host-editor,
-.onboarding-tour-privacy .tour-host-editor {
-  right: 78px;
-  opacity: 0.52;
-}
-
-.tour-demo-capsule-control,
 .tour-demo-capsule-privacy {
   width: 392px;
 }
 
-.tour-control-result,
 .tour-privacy-result {
   margin: 0;
   padding: 9px 11px;
@@ -1820,62 +2137,6 @@ kbd {
   color: #f4f4f5;
   font-size: 10px;
   line-height: 15px;
-}
-
-.tour-control-choice {
-  display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
-  align-items: center;
-  gap: 8px;
-  padding: 6px 11px;
-  color: #71717a;
-  font-size: 8px;
-}
-
-.tour-control-choice-level {
-  padding-top: 0;
-}
-
-.tour-control-options {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 4px;
-}
-
-.tour-control-options b {
-  min-width: 0;
-  overflow: hidden;
-  padding: 4px 5px;
-  border: 1px solid rgba(255, 255, 255, 0.07);
-  border-radius: 5px;
-  color: #686873;
-  font-size: 8px;
-  font-weight: 500;
-  text-align: center;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.tour-control-options b.active {
-  border-color: rgba(167, 139, 250, 0.32);
-  background: rgba(124, 58, 237, 0.12);
-  color: #ddd6fe;
-  animation: tour-choice-in 300ms 1160ms ease-out both;
-}
-
-@keyframes tour-choice-in {
-  from {
-    opacity: 0.5;
-    box-shadow: 0 0 0 0 rgba(167, 139, 250, 0);
-  }
-  to {
-    opacity: 1;
-    box-shadow: 0 0 0 1px rgba(167, 139, 250, 0.08);
-  }
-}
-
-.tour-demo-capsule-control .tour-demo-verdict {
-  animation-delay: 1380ms;
 }
 
 .tour-private-status {
@@ -1952,15 +2213,21 @@ kbd {
 
 @media (prefers-reduced-motion: reduce) {
   .onboarding-tour-content,
-  .tour-editor-selected-number,
-  .tour-editor-selected,
+  .tour-app-window,
+  .tour-settings-window,
+  .tour-inline-selection,
+  .tour-code-selection,
+  .tour-profile-row,
+  .tour-provider-row,
+  .tour-profile-add,
+  .tour-provider-add,
+  .tour-keychain-note,
   .tour-shortcut,
   .tour-demo-capsule,
   .tour-demo-result::after,
   .tour-demo-result p,
   .tour-demo-verdict,
   .tour-demo-verdict i::after,
-  .tour-control-options b.active,
   .tour-privacy-signals > span,
   .tour-private-footer {
     animation: none;
@@ -1974,7 +2241,7 @@ kbd {
 
 .onboarding-tour-actions {
   display: grid;
-  grid-template-columns: minmax(76px, 1fr) auto minmax(220px, 1fr);
+  grid-template-columns: minmax(70px, 1fr) auto minmax(254px, 1fr);
   align-items: center;
   gap: 12px;
   width: 100%;
@@ -1989,12 +2256,12 @@ kbd {
 .onboarding-tour-dots {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 4px;
 }
 
 .onboarding-tour-dot {
   position: relative;
-  width: 18px;
+  width: 20px;
   height: 30px;
   min-height: 30px;
   padding: 0;
@@ -2004,15 +2271,17 @@ kbd {
 }
 
 .onboarding-tour-dot::after {
-  width: 7px;
-  height: 7px;
+  display: block;
+  width: 6px;
+  height: 6px;
+  margin: 0 auto;
   border-radius: 50%;
   background: #3f3f46;
   content: "";
 }
 
 .onboarding-tour-dot.active::after {
-  width: 18px;
+  width: 14px;
   border-radius: 4px;
   background: #a78bfa;
 }
@@ -2031,21 +2300,51 @@ kbd {
 
 @media (max-height: 560px) {
   .onboarding-tour {
-    grid-template-rows: auto minmax(190px, 1fr);
-    gap: 12px;
-    padding-top: 14px;
-    padding-bottom: 12px;
+    padding-top: 10px;
+    padding-bottom: 8px;
+  }
+
+  .onboarding-tour-content {
+    grid-template-rows: auto minmax(220px, 1fr);
+    gap: 8px;
+  }
+
+  .onboarding-tour-scene,
+  .onboarding-tour-scene-content {
+    min-height: 220px;
   }
 
   .onboarding-tour-icon {
-    width: 34px;
-    height: 34px;
-    margin-bottom: 4px;
+    width: 30px;
+    height: 30px;
+    margin-bottom: 2px;
   }
 
   .onboarding-tour-header h1 {
-    font-size: 21px;
-    line-height: 26px;
+    font-size: 19px;
+    line-height: 23px;
+  }
+
+  .onboarding-tour-header > p:last-child {
+    margin-top: 3px;
+    line-height: 15px;
+  }
+
+  .tour-settings-window {
+    inset: 6px 36px;
+  }
+
+  .tour-profile-row,
+  .tour-provider-row,
+  .tour-profile-add,
+  .tour-provider-add {
+    min-height: 25px;
+  }
+
+  .tour-profile-search,
+  .tour-keychain-note {
+    min-height: 23px;
+    height: 23px;
   }
 }
 

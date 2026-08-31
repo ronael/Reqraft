@@ -1,4 +1,6 @@
 /** Chaînes de l'interface desktop, en français. Voir `en.ts` pour le contrat. */
+const SETTINGS_TITLE = "Reqraft — Réglages";
+
 export const DESKTOP_FR = {
   "capsule.newReformulation": "nouvelle reformulation",
   "capsule.selectionFrom": "sélection · {app}",
@@ -36,7 +38,7 @@ export const DESKTOP_FR = {
   "capsule.noInvention": "aucune invention détectée",
   "capsule.lowerLevel": "baisser le niveau",
 
-  "settings.title": "Reqraft — Réglages",
+  "settings.title": SETTINGS_TITLE,
   "settings.ready": "prêt",
   "settings.tagline": "Shape the request. Keep the intent.",
   "settings.nav.profiles": "Profils",
@@ -201,7 +203,7 @@ export const DESKTOP_FR = {
   "main.trayIdle": "Reqraft — prêt",
   "main.trayBusy": "Reqraft — reformulation en cours…",
   "main.trayError": "Reqraft — une erreur est survenue",
-  "main.settingsTitle": "Reqraft — Réglages",
+  "main.settingsTitle": SETTINGS_TITLE,
   "main.onboardingTitle": "Reqraft — Configuration",
   "main.profileFileType": "Profil Reqraft",
   "main.permissionsGranted": "Accessibilité et Automatisation accordées.",
@@ -279,33 +281,65 @@ export const DESKTOP_FR = {
   "onboarding.tour.next": "Continuer",
   "onboarding.tour.configure": "Configurer Reqraft",
   "onboarding.tour.replay": "Rejouer la démonstration",
-  "onboarding.tour.capture.title": "Reqraft apparaît quand vous en avez besoin",
-  "onboarding.tour.capture.body":
-    "Votre texte reste dans son contexte. Seule sa formulation change.",
-  "onboarding.tour.capture.document": "Brouillon sans titre",
+  "onboarding.tour.mail.title": "Des e-mails clairs sans quitter Mail",
+  "onboarding.tour.mail.body":
+    "Sélectionnez un brouillon, lancez Reqraft et remplacez-le par une version prête à envoyer.",
+  "onboarding.tour.mail.compose": "Nouveau message",
+  "onboarding.tour.mail.draft": "Brouillon",
+  "onboarding.tour.mail.to": "À",
+  "onboarding.tour.mail.subject": "Objet",
+  "onboarding.tour.mail.subjectValue": "Suivi du dossier",
+  "onboarding.tour.mail.hello": "Bonjour,",
+  "onboarding.tour.mail.original": "salut, est-ce que le dossier est prêt merci",
+  "onboarding.tour.mail.rewritten":
+    "Bonjour, pourriez-vous me confirmer que le dossier est prêt ? Merci.",
+  "onboarding.tour.mail.signoff": "Bonne journée.",
+  "onboarding.tour.chat.title": "Préparez vos prompts avant de les envoyer",
+  "onboarding.tour.chat.body":
+    "Dans ChatGPT ou un autre chat, Reqraft transforme une idée brute en demande structurée et vérifiable.",
+  "onboarding.tour.chat.newChat": "Nouveau chat",
+  "onboarding.tour.chat.assistant": "Que puis-je faire pour vous ?",
+  "onboarding.tour.chat.original": "fais moi un plan pour lancer le site sans rien oublier",
+  "onboarding.tour.chat.rewritten":
+    "Crée un plan de lancement du site avec prérequis, étapes, responsables et critères de validation.",
+  "onboarding.tour.code.title": "Conservez chaque contrainte technique",
+  "onboarding.tour.code.body":
+    "Le profil code préserve les composants, chemins et termes importants au lieu de les simplifier.",
+  "onboarding.tour.code.original": "{/* add a red button here but do not touch navigation */}",
+  "onboarding.tour.code.rewritten":
+    "Ajoute un bouton rouge avant <Navigation />, sans modifier ce composant ni son comportement.",
+  "onboarding.tour.profiles.title": "Un profil pour chaque manière d'écrire",
+  "onboarding.tour.profiles.body":
+    "Laissez Reqraft détecter le contexte, choisissez un profil intégré ou ajoutez le vôtre.",
+  "onboarding.tour.profiles.available": "Profils disponibles",
+  "onboarding.tour.profiles.search": "Rechercher un profil…",
+  "onboarding.tour.profiles.detects": "détecte le contexte",
+  "onboarding.tour.profiles.clarify": "clarifier",
+  "onboarding.tour.profiles.agents": "agents de code",
+  "onboarding.tour.profiles.add": "Ajouter un profil personnalisé",
+  "onboarding.tour.providers.title": "Choisissez votre fournisseur",
+  "onboarding.tour.providers.body":
+    "Configurez un fournisseur intégré ou compatible, puis changez-en sans modifier votre workflow.",
+  "onboarding.tour.providers.builtIn": "Fournisseurs intégrés",
+  "onboarding.tour.providers.addKey": "Ajouter une clé",
+  "onboarding.tour.providers.compatible": "Ajouter un fournisseur compatible OpenAI",
+  "onboarding.tour.providers.keychain": "Les clés sont protégées par le trousseau macOS",
+  "onboarding.tour.settings.title": SETTINGS_TITLE,
+  "onboarding.tour.settings.shortcuts": "Raccourcis",
+  "onboarding.tour.settings.providers": "Providers",
+  "onboarding.tour.settings.models": "Modèles",
+  "onboarding.tour.settings.profiles": "Profils",
   "onboarding.tour.capture.editing": "modification",
-  "onboarding.tour.capture.contextBefore": "La formulation doit rester simple et précise.",
-  "onboarding.tour.capture.contextAfter": "Le sens initial ne doit pas changer.",
   "onboarding.tour.capture.selection": "sélection",
-  "onboarding.tour.capture.original": "peux tu rendre ce message plus clair",
   "onboarding.tour.capture.result": "résultat prêt",
-  "onboarding.tour.capture.rewritten":
-    "Peux-tu clarifier ce message tout en conservant son intention ?",
   "onboarding.tour.capture.shortcut": "reformuler la sélection",
-  "onboarding.tour.control.title": "Gardez la main sur chaque réécriture",
-  "onboarding.tour.control.body":
-    "Choisissez un profil et un niveau de détail. Reqraft signale les ajouts, les termes perdus et les résultats à relire.",
-  "onboarding.tour.control.profile": "Profil",
-  "onboarding.tour.control.level": "Niveau",
-  "onboarding.tour.control.levelMinimal": "Minimale",
-  "onboarding.tour.control.levelStandard": "Standard",
-  "onboarding.tour.control.levelComplete": "Complète",
   "onboarding.tour.control.fidelity": "Intention préservée",
-  "onboarding.tour.control.fidelityDetail": "Aucun ajout ni terme technique perdu",
   "onboarding.tour.privacy.title": "Vos demandes restent éphémères",
   "onboarding.tour.privacy.body":
     "Reqraft ne conserve pas vos prompts. Vous choisissez le fournisseur et les clés restent dans le trousseau du système.",
   "onboarding.tour.privacy.private": "privé",
+  "onboarding.tour.privacy.example":
+    "Clarifie cette demande sans ajouter de fonctionnalité ni perdre de contrainte.",
   "onboarding.tour.privacy.telemetry": "Télémétrie désactivée · contenu non conservé",
   "onboarding.tour.privacy.ephemeral": "Aucun prompt enregistré",
   "onboarding.tour.privacy.ephemeralDetail":

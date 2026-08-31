@@ -2,33 +2,56 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   CheckCircle2,
+  Code2,
   Command,
   FileText,
   KeyRound,
   LockKeyhole,
+  Mail,
   Menu,
+  MessageSquareText,
+  Plus,
   RotateCcw,
-  ScanText,
+  Search,
   ShieldCheck,
-  SlidersHorizontal,
   Sparkles,
+  UserPlus,
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
 import type { SetupBlocker } from "@/apps/desktop/shared/ipc-contract.js";
 
 export const WELCOME_TOUR_SLIDES = [
   {
-    title: "onboarding.tour.capture.title",
-    body: "onboarding.tour.capture.body",
-    visual: "capture",
-    icon: ScanText,
+    title: "onboarding.tour.mail.title",
+    body: "onboarding.tour.mail.body",
+    visual: "mail",
+    icon: Mail,
   },
   {
-    title: "onboarding.tour.control.title",
-    body: "onboarding.tour.control.body",
-    visual: "control",
-    icon: SlidersHorizontal,
+    title: "onboarding.tour.chat.title",
+    body: "onboarding.tour.chat.body",
+    visual: "chat",
+    icon: MessageSquareText,
+  },
+  {
+    title: "onboarding.tour.code.title",
+    body: "onboarding.tour.code.body",
+    visual: "code",
+    icon: Code2,
+  },
+  {
+    title: "onboarding.tour.profiles.title",
+    body: "onboarding.tour.profiles.body",
+    visual: "profiles",
+    icon: UserPlus,
+  },
+  {
+    title: "onboarding.tour.providers.title",
+    body: "onboarding.tour.providers.body",
+    visual: "providers",
+    icon: KeyRound,
   },
   {
     title: "onboarding.tour.privacy.title",
@@ -38,8 +61,14 @@ export const WELCOME_TOUR_SLIDES = [
   },
 ] as const;
 
+export const WELCOME_TOUR_PROFILE_IDS = ["auto", "clean", "code", "writing"] as const;
+export const WELCOME_TOUR_PROVIDERS = [
+  { id: "anthropic", initials: "A", name: "Anthropic" },
+  { id: "openai", initials: "O", name: "OpenAI" },
+  { id: "mistral", initials: "M", name: "Mistral" },
+] as const;
+
 type TourDirection = "forward" | "backward";
-const REWRITTEN_COPY_KEY = "onboarding.tour.capture.rewritten";
 
 interface WelcomeTourProps {
   onContinue(): void;
@@ -101,7 +130,7 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
 
       <section className="onboarding-tour" aria-live="polite" aria-atomic="true">
         <div
-          key={`${slide.visual}-${String(animationRun)}`}
+          key={slide.visual}
           className={`onboarding-tour-content onboarding-tour-content-${direction}`}
         >
           <header className="onboarding-tour-header">
@@ -120,6 +149,7 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
 
           <TourVisual
             visual={slide.visual}
+            animationRun={animationRun}
             t={t}
             onReplay={() => {
               setAnimationRun((run) => run + 1);
@@ -133,7 +163,6 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
           <button type="button" className="button-secondary" onClick={onContinue}>
             {t("onboarding.tour.skip")}
           </button>
-
           <div className="onboarding-tour-dots" aria-label={t("onboarding.tour.progress")}>
             {WELCOME_TOUR_SLIDES.map((entry, slideIndex) => (
               <button
@@ -150,7 +179,6 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
               />
             ))}
           </div>
-
           <div className="onboarding-tour-navigation">
             <button
               type="button"
@@ -176,10 +204,12 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
 
 function TourVisual({
   visual,
+  animationRun,
   t,
   onReplay,
 }: Readonly<{
   visual: (typeof WELCOME_TOUR_SLIDES)[number]["visual"];
+  animationRun: number;
   t: Translate;
   onReplay(): void;
 }>): React.JSX.Element {
@@ -194,44 +224,29 @@ function TourVisual({
       >
         <RotateCcw size={14} aria-hidden />
       </button>
-      <div className="onboarding-tour-scene-content" aria-hidden>
-        {visual === "capture" ? <CaptureVisual t={t} /> : null}
-        {visual === "control" ? <ControlVisual t={t} /> : null}
+      <div
+        key={`${visual}-${String(animationRun)}`}
+        className="onboarding-tour-scene-content"
+        aria-hidden
+      >
+        {visual === "mail" ? <MailVisual t={t} /> : null}
+        {visual === "chat" ? <ChatVisual t={t} /> : null}
+        {visual === "code" ? <CodeVisual t={t} /> : null}
+        {visual === "profiles" ? <ProfilesVisual t={t} /> : null}
+        {visual === "providers" ? <ProvidersVisual t={t} /> : null}
         {visual === "privacy" ? <PrivacyVisual t={t} /> : null}
       </div>
     </div>
   );
 }
 
-function HostEditor({
-  t,
-  mode = "writing",
-}: Readonly<{
-  t: Translate;
-  mode?: "writing" | "code";
-}>): React.JSX.Element {
+function WindowControls(): React.JSX.Element {
   return (
-    <div className={`tour-host-editor tour-host-editor-${mode}`}>
-      <div className="tour-host-bar">
-        <FileText size={12} />
-        <span>{mode === "code" ? "specification.md" : t("onboarding.tour.capture.document")}</span>
-        <span className="tour-host-state">{t("onboarding.tour.capture.editing")}</span>
-      </div>
-      <div className="tour-editor-body">
-        <span className="tour-editor-line-number">30</span>
-        <span className="tour-editor-line tour-editor-line-muted">
-          {t("onboarding.tour.capture.contextBefore")}
-        </span>
-        <span className="tour-editor-line-number tour-editor-selected-number">31</span>
-        <span className="tour-editor-line tour-editor-selected">
-          {t("onboarding.tour.capture.original")}
-        </span>
-        <span className="tour-editor-line-number">32</span>
-        <span className="tour-editor-line tour-editor-line-muted">
-          {t("onboarding.tour.capture.contextAfter")}
-        </span>
-      </div>
-    </div>
+    <span className="tour-window-controls">
+      <i />
+      <i />
+      <i />
+    </span>
   );
 }
 
@@ -261,79 +276,272 @@ function CapsuleHeader({ children }: Readonly<{ children?: React.ReactNode }>): 
   );
 }
 
-function CaptureVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function ResultCapsule({
+  t,
+  profile,
+  sourceKey,
+  resultKey,
+  className = "",
+}: Readonly<{
+  t: Translate;
+  profile: string;
+  sourceKey: Parameters<Translate>[0];
+  resultKey: Parameters<Translate>[0];
+  className?: string;
+}>): React.JSX.Element {
+  return (
+    <div className={`tour-demo-capsule ${className}`}>
+      <CapsuleHeader>
+        <span className="tour-demo-profile tour-demo-profile-active">{profile}</span>
+      </CapsuleHeader>
+      <div className="tour-demo-source">
+        <span>{t("onboarding.tour.capture.selection")}</span>
+        <p>{t(sourceKey)}</p>
+      </div>
+      <div className="tour-demo-result">
+        <span>{t("onboarding.tour.capture.result")}</span>
+        <p>{t(resultKey)}</p>
+      </div>
+      <div className="tour-demo-verdict">
+        <CheckCircle2 size={14} />
+        <span>{t("onboarding.tour.control.fidelity")}</span>
+        <i />
+      </div>
+    </div>
+  );
+}
+
+function MailVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <>
-      <HostEditor t={t} mode="code" />
-      <TourShortcut t={t} />
-      <div className="tour-demo-capsule tour-demo-capsule-capture">
-        <CapsuleHeader>
-          <span className="tour-demo-profile">clean</span>
-        </CapsuleHeader>
-        <div className="tour-demo-source">
-          <span>{t("onboarding.tour.capture.selection")}</span>
-          <p>{t("onboarding.tour.capture.original")}</p>
+      <div className="tour-app-window tour-mail-window">
+        <div className="tour-app-titlebar">
+          <WindowControls />
+          <Mail size={12} />
+          <span>{t("onboarding.tour.mail.compose")}</span>
+          <em>{t("onboarding.tour.mail.draft")}</em>
         </div>
-        <div className="tour-demo-result">
-          <span>{t("onboarding.tour.capture.result")}</span>
-          <p>{t(REWRITTEN_COPY_KEY)}</p>
+        <div className="tour-mail-fields">
+          <span>{t("onboarding.tour.mail.to")}</span>
+          <b>team@studio.example</b>
+          <span>{t("onboarding.tour.mail.subject")}</span>
+          <b>{t("onboarding.tour.mail.subjectValue")}</b>
         </div>
-        <div className="tour-demo-verdict">
-          <CheckCircle2 size={14} />
-          <span>{t("onboarding.tour.control.fidelity")}</span>
-          <i />
+        <div className="tour-mail-copy">
+          <p>{t("onboarding.tour.mail.hello")}</p>
+          <p>
+            <span className="tour-inline-selection">{t("onboarding.tour.mail.original")}</span>
+          </p>
+          <p>{t("onboarding.tour.mail.signoff")}</p>
         </div>
       </div>
+      <TourShortcut t={t} />
+      <ResultCapsule
+        t={t}
+        profile="writing"
+        sourceKey="onboarding.tour.mail.original"
+        resultKey="onboarding.tour.mail.rewritten"
+        className="tour-demo-capsule-mail"
+      />
     </>
   );
 }
 
-function ControlVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function ChatVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <>
-      <HostEditor t={t} />
-      <div className="tour-demo-capsule tour-demo-capsule-control">
-        <CapsuleHeader>
-          <span className="tour-demo-profile tour-demo-profile-active">clean</span>
-        </CapsuleHeader>
-        <p className="tour-control-result">{t(REWRITTEN_COPY_KEY)}</p>
-        <div className="tour-control-choice">
-          <span>{t("onboarding.tour.control.profile")}</span>
-          <div className="tour-control-options">
-            <b className="active">clean</b>
-            <b>code</b>
-            <b>writing</b>
-          </div>
+      <div className="tour-app-window tour-chat-window">
+        <div className="tour-app-titlebar">
+          <WindowControls />
+          <MessageSquareText size={12} />
+          <span>ChatGPT</span>
+          <em>{t("onboarding.tour.chat.newChat")}</em>
         </div>
-        <div className="tour-control-choice tour-control-choice-level">
-          <span>{t("onboarding.tour.control.level")}</span>
-          <div className="tour-control-options">
-            <b>{t("onboarding.tour.control.levelMinimal")}</b>
-            <b className="active">{t("onboarding.tour.control.levelStandard")}</b>
-            <b>{t("onboarding.tour.control.levelComplete")}</b>
-          </div>
-        </div>
-        <div className="tour-demo-verdict">
-          <ShieldCheck size={14} />
-          <span>{t("onboarding.tour.control.fidelityDetail")}</span>
-          <CheckCircle2 size={14} />
+        <div className="tour-chat-body">
+          <span className="tour-chat-avatar">AI</span>
+          <p>{t("onboarding.tour.chat.assistant")}</p>
+          <p className="tour-chat-user">{t("onboarding.tour.chat.original")}</p>
         </div>
       </div>
+      <ResultCapsule
+        t={t}
+        profile="auto"
+        sourceKey="onboarding.tour.chat.original"
+        resultKey="onboarding.tour.chat.rewritten"
+        className="tour-demo-capsule-chat"
+      />
     </>
+  );
+}
+
+function CodeVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  return (
+    <>
+      <div className="tour-app-window tour-code-window">
+        <div className="tour-app-titlebar">
+          <WindowControls />
+          <Code2 size={12} />
+          <span>Header.tsx</span>
+          <em>TypeScript React</em>
+        </div>
+        <div className="tour-code-body">
+          <span>12</span>
+          <code>export function Header() &#123;</code>
+          <span>13</span>
+          <code>&nbsp;&nbsp;return (</code>
+          <span className="active">14</span>
+          <code className="tour-code-selection">{t("onboarding.tour.code.original")}</code>
+          <span>15</span>
+          <code>&nbsp;&nbsp;&nbsp;&nbsp;&lt;Navigation /&gt;</code>
+          <span>16</span>
+          <code>&nbsp;&nbsp;)</code>
+        </div>
+      </div>
+      <ResultCapsule
+        t={t}
+        profile="code"
+        sourceKey="onboarding.tour.code.original"
+        resultKey="onboarding.tour.code.rewritten"
+        className="tour-demo-capsule-code"
+      />
+    </>
+  );
+}
+
+function SettingsFrame({
+  t,
+  activeTab,
+  children,
+}: Readonly<{
+  t: Translate;
+  activeTab: "profiles" | "providers";
+  children: React.ReactNode;
+}>): React.JSX.Element {
+  return (
+    <div className="tour-settings-window">
+      <div className="tour-app-titlebar">
+        <WindowControls />
+        <span>{t("onboarding.tour.settings.title")}</span>
+      </div>
+      <div className="tour-settings-tabs">
+        <span>{t("onboarding.tour.settings.shortcuts")}</span>
+        <span className={activeTab === "providers" ? "active" : undefined}>
+          {t("onboarding.tour.settings.providers")}
+        </span>
+        <span>{t("onboarding.tour.settings.models")}</span>
+        <span className={activeTab === "profiles" ? "active" : undefined}>
+          {t("onboarding.tour.settings.profiles")}
+        </span>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function ProfilesVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  return (
+    <SettingsFrame t={t} activeTab="profiles">
+      <div className="tour-settings-content tour-profile-content">
+        <div className="tour-settings-section-title">
+          <span>{t("onboarding.tour.profiles.available")}</span>
+        </div>
+        <div className="tour-profile-search">
+          <Search size={12} />
+          <span>{t("onboarding.tour.profiles.search")}</span>
+        </div>
+        <ProfileRow name="auto" detail={t("onboarding.tour.profiles.detects")} active />
+        <ProfileRow name="clean" detail={t("onboarding.tour.profiles.clarify")} />
+        <ProfileRow name="code" detail={t("onboarding.tour.profiles.agents")} />
+        <div className="tour-profile-add">
+          <Plus size={13} />
+          <span>{t("onboarding.tour.profiles.add")}</span>
+        </div>
+      </div>
+    </SettingsFrame>
+  );
+}
+
+function ProfileRow({
+  name,
+  detail,
+  active = false,
+}: Readonly<{ name: string; detail: string; active?: boolean }>): React.JSX.Element {
+  return (
+    <div className={active ? "tour-profile-row active" : "tour-profile-row"}>
+      <i />
+      <code>{name}</code>
+      <span>{detail}</span>
+      {active ? <Check size={13} /> : null}
+    </div>
+  );
+}
+
+function ProvidersVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  return (
+    <SettingsFrame t={t} activeTab="providers">
+      <div className="tour-settings-content tour-provider-content">
+        <div className="tour-settings-section-title">
+          <span>{t("onboarding.tour.providers.builtIn")}</span>
+        </div>
+        {WELCOME_TOUR_PROVIDERS.map((provider) => (
+          <ProviderRow
+            key={provider.id}
+            initials={provider.initials}
+            name={provider.name}
+            status={t("onboarding.tour.providers.addKey")}
+          />
+        ))}
+        <div className="tour-provider-add">
+          <Plus size={13} />
+          <span>{t("onboarding.tour.providers.compatible")}</span>
+        </div>
+        <div className="tour-keychain-note">
+          <LockKeyhole size={12} />
+          <span>{t("onboarding.tour.providers.keychain")}</span>
+        </div>
+      </div>
+    </SettingsFrame>
+  );
+}
+
+function ProviderRow({
+  initials,
+  name,
+  status,
+}: Readonly<{ initials: string; name: string; status: string }>): React.JSX.Element {
+  return (
+    <div className="tour-provider-row">
+      <b>{initials}</b>
+      <span>{name}</span>
+      <em>{status}</em>
+    </div>
   );
 }
 
 function PrivacyVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <>
-      <HostEditor t={t} mode="code" />
+      <div className="tour-app-window tour-privacy-backdrop">
+        <div className="tour-app-titlebar">
+          <WindowControls />
+          <FileText size={12} />
+          <span>specification.md</span>
+          <em>{t("onboarding.tour.capture.editing")}</em>
+        </div>
+        <div className="tour-privacy-document">
+          <span />
+          <span />
+          <span />
+          <span />
+        </div>
+      </div>
       <div className="tour-demo-capsule tour-demo-capsule-privacy">
         <CapsuleHeader>
           <span className="tour-private-status">
             <LockKeyhole size={11} /> {t("onboarding.tour.privacy.private")}
           </span>
         </CapsuleHeader>
-        <p className="tour-privacy-result">{t(REWRITTEN_COPY_KEY)}</p>
+        <p className="tour-privacy-result">{t("onboarding.tour.privacy.example")}</p>
         <div className="tour-privacy-signals">
           <span>
             <ShieldCheck size={15} />
