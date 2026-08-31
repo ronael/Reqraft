@@ -42,8 +42,10 @@ et le TUI.
 
 - Onboarding desktop natif : une installation sans configuration ouvre une
   présentation de découverte en six écrans, puis une fenêtre de configuration
-  au démarrage, sans CLI ni `rp init`. Une installation existante qui perd une
-  clé arrive directement à la réparation et ne revoit pas la présentation.
+  au démarrage, sans CLI ni `rp init`. La présentation est vue une fois par
+  installation, y compris par une personne déjà configurée, puis reste
+  accessible depuis les réglages. Une installation qui perd une clé arrive
+  directement à la réparation sans rejouer automatiquement la présentation.
 - Paramètres modifiables depuis le desktop : provider, modèle, niveau et
   profil, dans l'onboarding, les réglages, le popover et la capsule.
 - Préférences desktop : raccourcis globaux configurables avec ré-enregistrement
@@ -55,6 +57,10 @@ et le TUI.
   le desktop construisent le même fichier par le même constructeur.
 - Credentials traités par le processus principal seul, à travers le service
   `auth` existant ; le renderer ne reçoit jamais de valeur.
+- Mises à jour visibles sans installation silencieuse : le desktop vérifie la
+  dernière GitHub Release, l'annonce une fois par version par notification
+  native et l'expose dans le tray et les réglages ; le paquet npm vérifie le
+  registre après une commande interactive réussie, sur stderr et avec cache.
 - Robustesse de surface : capsule recréée si détruite, fenêtre persistante
   cachée plutôt que fermée, seconde instance qui remet une fenêtre existante au
   premier plan et version affichée depuis `src/version.ts`.
@@ -144,8 +150,10 @@ d'une demande sans dégrader son intention.
 
 ## Later — distribution desktop
 
-- Signature et notarisation macOS, puis auto-update lorsque le canal de
-  distribution est stabilisé.
+- Signature et notarisation macOS, puis téléchargement et installation
+  automatiques. La détection et le lien vers la release sont déjà livrés ; le
+  remplacement automatique du binaire attend un paquet signé et un canal de
+  publication compatible avec l'updater.
 - Évaluer Windows et Linux selon une demande réelle ; ne pas confondre un
   installateur expérimental avec une plateforme pleinement supportée.
 

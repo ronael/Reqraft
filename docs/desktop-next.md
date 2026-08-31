@@ -94,10 +94,10 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Robustesse (avant toute nouvelle feature)
 
-1. **Tests E2E Playwright** — exigés par DESKTOP.md §8, pas encore écrits :
-   démarrage, ouverture capsule, cycle complet avec provider `mock`, chemins
-   d'échec (permission refusée, raccourci pris, provider en erreur, presse-
-   papiers image, seconde instance). Le chemin heureux seul ne prouve rien.
+1. ~~**Tests E2E Electron**~~ — en place pour le démarrage, l'ouverture de la
+   capsule, le cycle complet avec provider `mock`, le raccourci pris et la
+   seconde instance. Les permissions OS et le presse-papiers image restent
+   manuels pour ne pas modifier la machine qui exécute la suite.
 2. **Message Wayland dans la capsule** — la détection existe (mode plancher)
    mais la capsule ne l'affiche pas encore à l'ouverture.
 
@@ -118,8 +118,10 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 7. **Mode démo** (`REQRAFT_DEMO=1` avec captures PNG) porté du POC — utile
    pour la landing page et les tests visuels.
-8. **Canal de mise à jour** : la config packaging le prévoit (désactivé) ;
-   brancher `electron-updater` quand un serveur de release existera.
+8. **Canal de mise à jour** : la détection GitHub Release, la notification
+   native, le tray et l'onglet Réglages sont branchés. Ajouter
+   `electron-updater` après signature/notarisation et publication des métadonnées
+   nécessaires ; jusque-là le téléchargement reste explicite.
 9. **Icônes tray/template** : les points colorés actuels sont des placeholders
     générés — une vraie icône template (monochrome, s'adapte au thème clair de
     la menu bar) serait plus native.
