@@ -302,19 +302,19 @@ function ProductCapsule({
       </div>
       <div className="tour-product-capsule-actions">
         <b>{profile}</b>
-        <span>
+        <span className="capsule-key key-primary">
           <kbd>↵</kbd>
           {t("capsule.replace")}
         </span>
-        <span>
+        <span className="capsule-key">
           <kbd>⌥</kbd>
           {t("capsule.compare")}
         </span>
-        <span>
+        <span className="capsule-key">
           <kbd>⌘C</kbd>
           {t("capsule.copy")}
         </span>
-        <span>
+        <span className="capsule-key key-close">
           <kbd>esc</kbd>
           {t("capsule.close")}
         </span>
@@ -332,7 +332,10 @@ function ProductPopover({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
         <span>standard</span>
       </div>
       <div className="tour-product-popover-footer">
-        <strong>⌘↵ {t("capsule.reformulate")}</strong>
+        <strong className="capsule-key key-primary">
+          <kbd>⌘↵</kbd>
+          {t("capsule.reformulate")}
+        </strong>
         <span>{t("popover.settings")}</span>
       </div>
     </div>
@@ -500,7 +503,7 @@ function ProductSettingsFrame({
           <div className="tour-product-settings-content">{children}</div>
           <footer>
             <span>{t("settings.footer")}</span>
-            <em>⌘,</em>
+            <kbd>⌘,</kbd>
           </footer>
         </section>
       </div>

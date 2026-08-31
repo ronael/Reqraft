@@ -1895,7 +1895,7 @@ kbd {
 .tour-product-capsule-actions {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 8px;
   min-height: 28px;
   padding: 0 10px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -1914,21 +1914,33 @@ kbd {
   font-size: 8px;
 }
 
-.tour-product-capsule-actions span {
-  display: inline-flex;
-  align-items: center;
+.tour-product-capsule-actions .capsule-key {
   gap: 3px;
-  white-space: nowrap;
+  min-height: 0;
+  border-radius: 3px;
+  color: #74747f;
+  font-size: 7px;
+  line-height: 1;
 }
 
 .tour-product-capsule-actions kbd {
-  min-width: 19px;
+  min-width: 0;
   padding: 1px 3px;
   border-color: rgba(255, 255, 255, 0.14);
-  border-radius: 4px;
+  border-radius: 3px;
   background: rgba(255, 255, 255, 0.055);
   color: #d4d4d8;
+  font-size: 7px;
+  line-height: 10px;
   text-align: center;
+}
+
+.tour-product-capsule-actions .key-primary {
+  color: #a1a1aa;
+}
+
+.tour-product-capsule-actions .key-close {
+  margin-left: auto;
 }
 
 .tour-product-popover {
@@ -1995,6 +2007,20 @@ kbd {
 .tour-product-popover-footer strong {
   color: #e4e4e7;
   font-weight: 500;
+}
+
+.tour-product-popover-footer .capsule-key {
+  gap: 3px;
+  min-height: 0;
+  font-size: 8px;
+}
+
+.tour-product-popover-footer kbd,
+.tour-product-settings-main > footer kbd {
+  padding: 1px 3px;
+  border-radius: 3px;
+  font-size: 7px;
+  line-height: 10px;
 }
 
 .tour-product-settings {
@@ -2180,6 +2206,10 @@ kbd {
   background: rgba(0, 0, 0, 0.2);
   color: #484852;
   font-size: 6px;
+}
+
+.tour-product-settings-main > footer kbd {
+  color: #71717a;
 }
 
 .tour-product-profile-toolbar {
