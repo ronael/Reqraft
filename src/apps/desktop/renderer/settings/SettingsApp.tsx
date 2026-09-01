@@ -108,7 +108,12 @@ export function SettingsApp(): React.JSX.Element {
   }, []);
 
   const patchConfig = useCallback((patch: Parameters<typeof window.reqraft.writeConfig>[0]) => {
-    void window.reqraft.writeConfig(patch).then(setConfig);
+    void window.reqraft.writeConfig(patch).then(async (nextConfig) => {
+      setConfig(nextConfig);
+      if (patch.desktopShortcuts !== undefined) {
+        setShortcuts(await window.reqraft.shortcutsState());
+      }
+    });
   }, []);
 
   const askPermissions = useCallback(() => {
@@ -133,7 +138,10 @@ export function SettingsApp(): React.JSX.Element {
     shortcuts?.registered.find((entry) => entry.intent === "capture")?.accelerator ?? "";
   const inputShortcut =
     shortcuts?.registered.find((entry) => entry.intent === "input")?.accelerator ?? "";
+  const popoverShortcut =
+    shortcuts?.registered.find((entry) => entry.intent === "popover")?.accelerator ?? "";
   const rejectedShortcuts = shortcuts?.rejected ?? [];
+  const conflictingShortcuts = shortcuts?.conflicts ?? [];
   const hasNoShortcut = shortcuts !== null && shortcuts.registered.length === 0;
   const configuredProviderCount = providers.filter((provider) => provider.configured).length;
   const activeTab = TAB_META[tab];
@@ -201,7 +209,9 @@ export function SettingsApp(): React.JSX.Element {
               <PreferencesTab
                 captureShortcut={captureShortcut}
                 inputShortcut={inputShortcut}
+                popoverShortcut={popoverShortcut}
                 rejectedShortcuts={rejectedShortcuts}
+                conflictingShortcuts={conflictingShortcuts}
                 hasNoShortcut={hasNoShortcut}
                 permissionDetail={permissionDetail()}
                 canReplace={permissions?.canReplace ?? null}

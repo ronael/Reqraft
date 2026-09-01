@@ -93,6 +93,8 @@ Tester dans **trois applications différentes** (ex. Safari, Notes, VS Code).
 ## 6. Popover
 
 - [ ] Clic sur l'icône tray → le popover s'ouvre, ancré au tray.
+- [ ] `⌘⌃O` ouvre le même popover sans clic, au même emplacement ; un second
+      appui le referme. `⌘⌃T` prend le relais si la combinaison est occupée.
 - [ ] Saisie / collage de texte, choix provider, modèle, niveau, profil.
 - [ ] `⌘⏎` lance la reformulation ; le dernier résultat reste visible.
 - [ ] Ouverture des réglages depuis le popover.
@@ -100,10 +102,13 @@ Tester dans **trois applications différentes** (ex. Safari, Notes, VS Code).
 
 ## 7. Raccourcis configurés
 
-- [ ] Les deux raccourcis globaux par défaut se déclenchent (avec sélection /
-      saisie libre centrée).
+- [ ] Les trois raccourcis globaux par défaut se déclenchent (avec sélection,
+      saisie libre centrée et popover).
 - [ ] Changer un raccourci dans les réglages → ré-enregistrement à chaud, le
       nouveau raccourci marche sans relance.
+- [ ] Donner la même combinaison à deux commandes → le doublon est signalé
+      comme conflit Reqraft, la première commande reste active et la seconde
+      reçoit un repli distinct.
 - [ ] Choisir un raccourci déjà pris → l'échec est affiché, un repli est
       proposé ; jamais silencieux (DESKTOP.md §5.5).
 - [ ] Choisir un raccourci intercepté par macOS (ex. `⌘Espace`) → `register()`

@@ -23,32 +23,51 @@ function registrarTaking(...accepted: string[]): {
   };
 }
 
-const handlers = { onCapture: () => undefined, onInput: () => undefined };
+const handlers = {
+  onCapture: () => undefined,
+  onInput: () => undefined,
+  onPopover: () => undefined,
+};
 
 describe("registerShortcuts (DESKTOP.md §5.5)", () => {
   it("enregistre un raccourci par intention, dans l'ordre des candidats", () => {
-    const { register } = registrarTaking("Command+Control+R", "Command+Control+N");
+    const { register } = registrarTaking(
+      "Command+Control+R",
+      "Command+Control+N",
+      "Command+Control+O",
+    );
 
     const resolution = registerShortcuts(register, handlers);
 
     expect(resolution.registered).toEqual([
       { accelerator: "Command+Control+R", label: "⌘⌃R", intent: "capture" },
       { accelerator: "Command+Control+N", label: "⌘⌃N", intent: "input" },
+      { accelerator: "Command+Control+O", label: "⌘⌃O", intent: "popover" },
     ]);
     expect(resolution.rejected).toEqual([]);
+    expect(resolution.conflicts).toEqual([]);
   });
 
   it("un raccourci pris est visible et le suivant est essayé", () => {
     // Une autre application détient ⌃⌥R et ⌃⇧R : le booléen le dit, et la
     // liste continue plutôt que de laisser l'intention sans raccourci.
-    const { register } = registrarTaking("Command+Control+J", "Command+Control+K");
+    const { register } = registrarTaking(
+      "Command+Control+J",
+      "Command+Control+K",
+      "Command+Control+T",
+    );
 
     const resolution = registerShortcuts(register, handlers);
 
-    expect(resolution.rejected).toEqual(["Command+Control+R", "Command+Control+N"]);
+    expect(resolution.rejected).toEqual([
+      "Command+Control+R",
+      "Command+Control+N",
+      "Command+Control+O",
+    ]);
     expect(resolution.registered.map((entry) => entry.accelerator)).toEqual([
       "Command+Control+J",
       "Command+Control+K",
+      "Command+Control+T",
     ]);
   });
 
@@ -127,12 +146,14 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
     const resolution = registerShortcuts(registrar, {
       onCapture: () => undefined,
       onInput: () => undefined,
+      onPopover: () => undefined,
     });
-    // Set rather than sorted list: what matters is that both intents are
+    // Set rather than sorted list: what matters is that all intents are
     // covered, not the order the candidate list happened to produce.
     const intents = new Set(resolution.registered.map((entry) => entry.intent));
     expect(intents.has("capture")).toBe(true);
     expect(intents.has("input")).toBe(true);
+    expect(intents.has("popover")).toBe(true);
   });
 
   it("aucun candidat n'est une combinaison exclue", () => {
@@ -158,7 +179,7 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
         tried.push(accelerator);
         return true;
       },
-      { onCapture: () => undefined, onInput: () => undefined },
+      handlers,
       undefined,
       { capture: "Command+Alt+K", input: "Command+Alt+Shift+K" },
     );
@@ -174,7 +195,7 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
     // repli vaut mieux qu'un raccourci mort.
     const resolution = registerShortcuts(
       (accelerator) => accelerator !== "Command+Alt+K",
-      { onCapture: () => undefined, onInput: () => undefined },
+      handlers,
       undefined,
       { capture: "Command+Alt+K" },
     );
@@ -185,6 +206,25 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
     );
   });
 
+  it("ne retente pas un choix préféré identique au premier défaut", () => {
+    const tried: string[] = [];
+    const resolution = registerShortcuts(
+      (accelerator) => {
+        tried.push(accelerator);
+        return accelerator !== "Command+Control+R";
+      },
+      handlers,
+      undefined,
+      { capture: "Command+Control+R" },
+    );
+
+    expect(tried.filter((accelerator) => accelerator === "Command+Control+R")).toHaveLength(1);
+    expect(resolution.rejected).toEqual(["Command+Control+R"]);
+    expect(resolution.registered.find((entry) => entry.intent === "capture")?.accelerator).toBe(
+      "Command+Control+J",
+    );
+  });
+
   it("ignore un choix inutilisable au lieu de l'enregistrer", () => {
     const tried: string[] = [];
     registerShortcuts(
@@ -192,7 +232,7 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
         tried.push(accelerator);
         return true;
       },
-      { onCapture: () => undefined, onInput: () => undefined },
+      handlers,
       undefined,
       { capture: "Alt+Space" },
     );
@@ -201,8 +241,38 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
   });
 
   it("les choix proposés dans les réglages sont tous utilisables", () => {
-    for (const accelerator of [...SHORTCUT_PRESETS.capture, ...SHORTCUT_PRESETS.input]) {
+    for (const accelerator of [
+      ...SHORTCUT_PRESETS.capture,
+      ...SHORTCUT_PRESETS.input,
+      ...SHORTCUT_PRESETS.popover,
+    ]) {
       expect(isUsableAccelerator(accelerator)).toBe(true);
     }
+  });
+
+  it("refuse un doublon interne sans remplacer le premier handler", () => {
+    const calls: string[] = [];
+    const resolution = registerShortcuts(
+      (accelerator) => {
+        calls.push(accelerator);
+        return true;
+      },
+      handlers,
+      undefined,
+      {
+        capture: "Command+Alt+K",
+        input: "Command+Alt+K",
+        popover: "Command+Alt+P",
+      },
+    );
+
+    expect(calls.filter((accelerator) => accelerator === "Command+Alt+K")).toHaveLength(1);
+    expect(resolution.conflicts).toEqual(["Command+Alt+K"]);
+    expect(resolution.registered.find((entry) => entry.intent === "capture")?.accelerator).toBe(
+      "Command+Alt+K",
+    );
+    expect(resolution.registered.find((entry) => entry.intent === "input")?.accelerator).toBe(
+      "Command+Control+N",
+    );
   });
 });

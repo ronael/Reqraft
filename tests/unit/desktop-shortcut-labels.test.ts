@@ -37,7 +37,11 @@ describe("formatAccelerator", () => {
   });
 
   it("writes every offered preset without leaving a raw token", () => {
-    for (const accelerator of [...SHORTCUT_PRESETS.capture, ...SHORTCUT_PRESETS.input]) {
+    for (const accelerator of [
+      ...SHORTCUT_PRESETS.capture,
+      ...SHORTCUT_PRESETS.input,
+      ...SHORTCUT_PRESETS.popover,
+    ]) {
       const label = formatAccelerator(accelerator, t);
       expect(label).not.toContain("Command");
       expect(label).not.toContain("Control");
@@ -61,17 +65,23 @@ describe("plus de combinaisons à quatre touches", () => {
   it("n'offre aucun raccourci avec Option", () => {
     // Cmd+Ctrl+Option+N demande quatre doigts, et c'est celui qui gagnait
     // systématiquement comme repli.
-    for (const accelerator of [...SHORTCUT_PRESETS.capture, ...SHORTCUT_PRESETS.input]) {
+    for (const accelerator of [
+      ...SHORTCUT_PRESETS.capture,
+      ...SHORTCUT_PRESETS.input,
+      ...SHORTCUT_PRESETS.popover,
+    ]) {
       expect(accelerator, `${accelerator} contient Option`).not.toContain("Alt");
     }
   });
 
-  it("garde des combinaisons distinctes entre capture et saisie", () => {
+  it("garde des combinaisons distinctes entre les trois intentions", () => {
     // Deux intentions ne peuvent pas partager une touche : la seconde
     // enregistrée gagnerait sans que rien ne le dise.
-    const overlap = SHORTCUT_PRESETS.capture.filter((a) =>
-      (SHORTCUT_PRESETS.input as readonly string[]).includes(a),
-    );
-    expect(overlap).toEqual([]);
+    const all = [
+      ...SHORTCUT_PRESETS.capture,
+      ...SHORTCUT_PRESETS.input,
+      ...SHORTCUT_PRESETS.popover,
+    ];
+    expect(new Set(all).size).toBe(all.length);
   });
 });

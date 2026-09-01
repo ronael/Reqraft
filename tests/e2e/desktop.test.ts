@@ -34,8 +34,13 @@ interface DesktopE2ePayload {
   windowCount: number;
   windows: { surface: string; destroyed: boolean; visible: boolean }[];
   shortcuts: {
-    registered: { accelerator: string; label: string; intent: "capture" | "input" }[];
+    registered: {
+      accelerator: string;
+      label: string;
+      intent: "capture" | "input" | "popover";
+    }[];
     rejected: string[];
+    conflicts: string[];
   };
   permissions: {
     accessibility: boolean;
@@ -48,6 +53,8 @@ interface DesktopE2ePayload {
     name: string;
     capsuleVisible?: boolean;
     capsuleMode?: string;
+    popoverVisible?: boolean;
+    popoverHidden?: boolean;
     run?: { rewritten: string; model: string; profile: string };
     error?: string;
   };
@@ -247,8 +254,21 @@ describeElectron("desktop Electron smoke", () => {
         payload.shortcuts.registered
           .map((shortcut) => shortcut.intent)
           .sort((a, b) => a.localeCompare(b)),
-      ).toEqual(["capture", "input"]);
+      ).toEqual(["capture", "input", "popover"]);
+      expect(payload.shortcuts.conflicts).toEqual([]);
       expect(payload.permissions.message.length).toBeGreaterThan(0);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "toggles the popover through its global shortcut handler",
+    async () => {
+      const payload = await runDesktopProbe({ REQRAFT_DESKTOP_E2E_SCENARIO: "popover" });
+
+      expect(payload.scenario?.error).toBeUndefined();
+      expect(payload.scenario?.popoverVisible).toBe(true);
+      expect(payload.scenario?.popoverHidden).toBe(true);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );
@@ -349,9 +369,12 @@ describeElectron("desktop Electron smoke", () => {
       expect(payload.shortcuts.rejected).toEqual([
         "Command+Control+R",
         "Command+Control+N",
+        "Command+Control+O",
         "Command+Control+J",
         "Command+Control+K",
+        "Command+Control+T",
       ]);
+      expect(payload.shortcuts.conflicts).toEqual([]);
       expect(payload.windowCount).toBeGreaterThanOrEqual(2);
     },
     ELECTRON_TEST_TIMEOUT_MS,

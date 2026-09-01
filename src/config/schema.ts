@@ -60,6 +60,7 @@ export const ConfigSchema = z
       .object({
         capture: z.string().trim().min(1).optional(),
         input: z.string().trim().min(1).optional(),
+        popover: z.string().trim().min(1).optional(),
       })
       .optional(),
     /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */

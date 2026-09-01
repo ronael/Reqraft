@@ -18,6 +18,13 @@ export interface TrayController {
   setState(state: TrayState): void;
   setAvailableUpdate(version: string, onOpen: () => void): void;
   getState(): TrayState;
+  /**
+   * The icon rectangle, so a keyboard trigger anchors the popover exactly where
+   * a click would. Only the click event carries these bounds, and the global
+   * shortcut has no event — without this the two ways in would open the same
+   * panel in two different places.
+   */
+  getBounds(): Electron.Rectangle;
   destroy(): void;
 }
 
@@ -67,6 +74,7 @@ export function createTray(actions: TrayActions): TrayController {
       availableUpdate = { version, onOpen };
     },
     getState: () => state,
+    getBounds: () => tray.getBounds(),
     destroy: () => {
       tray.destroy();
     },

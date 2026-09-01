@@ -96,8 +96,10 @@ describe("buildDoctorReport (lot 5)", () => {
         registered: [
           { accelerator: "Control+Alt+R", label: "⌃⌥R", intent: "capture" },
           { accelerator: "Control+Shift+R", label: "⌃⇧R", intent: "input" },
+          { accelerator: "Command+Control+O", label: "⌘⌃O", intent: "popover" },
         ],
         rejected: ["Alt+Space"],
+        conflicts: ["Command+Alt+K"],
       },
     });
 
@@ -113,9 +115,14 @@ describe("buildDoctorReport (lot 5)", () => {
       detail: "⌃⌥R (Control+Alt+R)",
     });
     expect(byId.get("shortcuts:input")).toMatchObject({ ok: true });
+    expect(byId.get("shortcuts:popover")).toMatchObject({ ok: true });
     expect(byId.get("shortcuts:rejected")).toMatchObject({
       ok: false,
       detail: "rejected by the system: Alt+Space",
+    });
+    expect(byId.get("shortcuts:conflicts")).toMatchObject({
+      ok: false,
+      detail: "already used by another Reqraft command: Command+Alt+K",
     });
     expect(JSON.stringify(report)).not.toContain("sk-ne-jamais-afficher");
   });

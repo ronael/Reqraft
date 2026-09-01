@@ -1,4 +1,5 @@
 import type { RepromptService } from "./reprompt-service.js";
+import type { ShortcutHandlers } from "./shortcuts.js";
 import type { CapsuleOpenedPayload, RepromptResult } from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
@@ -23,15 +24,19 @@ export const DESKTOP_E2E_HOLD = "REQRAFT_DESKTOP_E2E_HOLD";
 
 export interface E2eScenarioTargets {
   repromptService: RepromptService;
-  shortcutHandlers: { onCapture: () => void; onInput: () => void };
+  shortcutHandlers: ShortcutHandlers;
   capsuleVisible: () => boolean;
   capsulePending: () => CapsuleOpenedPayload | null;
+  popoverVisible: () => boolean;
 }
 
 export interface E2eScenarioReport {
   name: string;
   capsuleVisible?: boolean;
   capsuleMode?: string;
+  /** Le popover après le premier appui, puis après le second : une bascule. */
+  popoverVisible?: boolean;
+  popoverHidden?: boolean;
   run?: { rewritten: string; model: string; profile: string };
   error?: string;
 }
@@ -71,6 +76,8 @@ export async function runE2eScenario(
     switch (name) {
       case "capsule":
         return await capsuleScenario(name, targets);
+      case "popover":
+        return await popoverScenario(name, targets);
       case "run":
         return await runScenario(name, targets);
       default:
@@ -94,6 +101,27 @@ async function capsuleScenario(
     capsuleVisible: targets.capsuleVisible(),
     capsuleMode: targets.capsulePending()?.mode,
   };
+}
+
+/**
+ * Le raccourci du popover ouvre la vraie fenêtre, puis la referme.
+ *
+ * Les deux mesures comptent : sans la seconde, un handler qui n'aurait su
+ * qu'ouvrir passerait le test, et le raccourci ne serait plus une bascule mais
+ * une porte à sens unique — l'icône du tray restant le seul moyen de refermer.
+ */
+async function popoverScenario(
+  name: string,
+  targets: E2eScenarioTargets,
+): Promise<E2eScenarioReport> {
+  targets.shortcutHandlers.onPopover();
+  await waitUntil(() => targets.popoverVisible());
+  const opened = targets.popoverVisible();
+
+  targets.shortcutHandlers.onPopover();
+  await waitUntil(() => !targets.popoverVisible());
+
+  return { name, popoverVisible: opened, popoverHidden: !targets.popoverVisible() };
 }
 
 /** Un run complet, du démarrage au résultat, à travers le service réel. */

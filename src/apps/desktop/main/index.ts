@@ -49,7 +49,7 @@ import { RepromptService } from "./reprompt-service.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type { CapsuleOpenedPayload } from "@/apps/desktop/shared/ipc-contract.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
-import { registerShortcuts, type ShortcutResolution } from "./shortcuts.js";
+import { registerShortcuts, type ShortcutHandlers, type ShortcutResolution } from "./shortcuts.js";
 import { createOnboardingWindow } from "./windows/onboarding.js";
 import { createTray, type TrayController } from "./tray.js";
 import { DesktopUpdateService } from "./update-service.js";
@@ -57,7 +57,7 @@ import { createDesktopCredentialEnvironment } from "./credential-environment.js"
 import { version } from "@/version.js";
 import type { TrayState } from "./tray-icon.js";
 import { createCapsuleWindow, type CapsuleWindow } from "./windows/capsule.js";
-import { createPopoverWindow } from "./windows/popover.js";
+import { createPopoverWindow, type PopoverWindow } from "./windows/popover.js";
 import { createSettingsWindow } from "./windows/settings.js";
 import { revealExistingWindow } from "./windows/reveal.js";
 import { resolveMainLocale, setMainLocale, t } from "./i18n.js";
@@ -358,7 +358,7 @@ async function openStartupWindow(options: {
 }
 
 /**
- * Ce que font les deux raccourcis globaux.
+ * Ce que font les trois raccourcis globaux.
  *
  * Extraits du démarrage parce qu'ils servent trois fois : à l'enregistrement
  * initial, à chaque ré-enregistrement quand un réglage change une combinaison,
@@ -369,7 +369,9 @@ function createShortcutHandlers(deps: {
   captureService: CaptureService;
   liveCapsule: () => CapsuleWindow;
   ouvertures: ReturnType<typeof createOuvertureTracker>;
-}): { onCapture: () => void; onInput: () => void } {
+  popover: PopoverWindow;
+  trayBounds: () => Electron.Rectangle;
+}): ShortcutHandlers {
   return {
     onCapture: () => {
       // Record the source app and capture BEFORE the capsule takes the focus
@@ -401,6 +403,13 @@ function createShortcutHandlers(deps: {
       const target = deps.liveCapsule();
       target.show({ kind: "centered" });
       deps.ouvertures.annonce(target, "input");
+    },
+    // La vraie fenêtre popover, la même que celle du clic sur l'icône : deux
+    // chemins vers deux fenêtres se seraient répondu en double, et le panneau
+    // n'a qu'un état visible à tenir. Bascule et non ouverture, pour que le
+    // même raccourci referme ce qu'il vient d'ouvrir.
+    onPopover: () => {
+      deps.popover.toggle(deps.trayBounds());
     },
   };
 }
@@ -474,10 +483,9 @@ function bootstrap(): void {
 
     // Filled by registerShortcuts below; read through IPC by the settings
     // Shortcuts tab (§5.5: a taken shortcut is visible, never silent).
-    let shortcutResolution: ShortcutResolution = { registered: [], rejected: [] };
+    let shortcutResolution: ShortcutResolution = { registered: [], rejected: [], conflicts: [] };
     const registerGlobalShortcut = createShortcutRegistrar();
 
-    // Settings window: created on demand, recreated if the user closed it.
     let settingsWindow: Electron.BrowserWindow | null = null;
     const openSettings = (tab?: string): void => {
       const params: Record<string, string> = {};
@@ -528,6 +536,8 @@ function bootstrap(): void {
       captureService,
       liveCapsule,
       ouvertures,
+      popover,
+      trayBounds: () => tray.getBounds(),
     });
 
     const repromptService = new RepromptService({
@@ -606,9 +616,9 @@ function bootstrap(): void {
       console.error("Reqraft: could not determine the setup state:", error);
     }
 
-    // Read once, here: the candidate chain is walked at start-up and a change
-    // takes effect on the next launch, which is also when the OS lets us claim
-    // a combination another application has since released.
+    // Initial registration. Settings changes reuse the same chain above after
+    // unregistering the previous choices, so the displayed runtime state stays
+    // aligned with what the OS actually accepted.
     const configuredShortcuts = (await loadConfig()).desktopShortcuts;
 
     // Registered here rather than in `bootstrap()`: the answer to a second
@@ -619,17 +629,16 @@ function bootstrap(): void {
       revealExistingWindow([settingsWindow, popover.window, capsule.window], openSettings);
     });
 
-    const resolution = registerShortcuts(
+    shortcutResolution = registerShortcuts(
       registerGlobalShortcut,
       shortcutHandlers,
       process.env.REQRAFT_SHORTCUT,
       configuredShortcuts,
     );
-    shortcutResolution = resolution;
 
     updates.checkAtStartup();
 
-    reportRejectedShortcuts(resolution);
+    reportRejectedShortcuts(shortcutResolution);
 
     app.on("will-quit", () => {
       globalShortcut.unregisterAll();
@@ -649,6 +658,7 @@ function bootstrap(): void {
           shortcutHandlers,
           capsuleVisible: () => !capsule.window.isDestroyed() && capsule.window.isVisible(),
           capsulePending: () => ouvertures.pending(),
+          popoverVisible: () => !popover.window.isDestroyed() && popover.window.isVisible(),
         },
       });
     }

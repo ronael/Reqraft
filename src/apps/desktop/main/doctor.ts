@@ -8,6 +8,7 @@ import { listProviderDefinitions, type BuiltinProvider } from "@/providers/catal
 import type {
   DoctorCheck,
   DoctorReport,
+  ShortcutIntent,
   ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import type { PermissionsReport } from "./permissions.js";
@@ -127,6 +128,7 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
   const checks: DoctorCheck[] = [
     checkShortcutIntent(state, "capture"),
     checkShortcutIntent(state, "input"),
+    checkShortcutIntent(state, "popover"),
   ];
 
   checks.push({
@@ -138,13 +140,22 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
         : t("main.doctorRejectedBySystem", { list: state.rejected.join(", ") }),
   });
 
+  // Séparé du refus système : ici personne d'autre ne tient la combinaison,
+  // c'est Reqraft qui l'a demandée deux fois. Envoyer vers les Réglages système
+  // pour la libérer ne mènerait nulle part.
+  checks.push({
+    id: "shortcuts:conflicts",
+    ok: state.conflicts.length === 0,
+    detail:
+      state.conflicts.length === 0
+        ? t("main.doctorNoConflict")
+        : t("main.doctorConflictingShortcuts", { list: state.conflicts.join(", ") }),
+  });
+
   return checks;
 }
 
-function checkShortcutIntent(
-  state: ShortcutStateInfo,
-  intent: ShortcutStateInfo["registered"][number]["intent"],
-): DoctorCheck {
+function checkShortcutIntent(state: ShortcutStateInfo, intent: ShortcutIntent): DoctorCheck {
   const active = state.registered.find((entry) => entry.intent === intent);
   return {
     id: `shortcuts:${intent}`,

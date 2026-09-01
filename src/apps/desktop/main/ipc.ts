@@ -437,7 +437,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.shortcutsState, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     // Without a wired source (tests), report the honest empty state.
-    return dependencies.shortcutState?.() ?? { registered: [], rejected: [] };
+    return dependencies.shortcutState?.() ?? { registered: [], rejected: [], conflicts: [] };
   });
 }
 

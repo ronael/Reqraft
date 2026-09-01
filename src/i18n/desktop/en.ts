@@ -119,6 +119,7 @@ export const DESKTOP_EN = {
   "settings.diagnosticRunning": "Diagnostic running…",
   "settings.captureShortcut": "Reformulate the selection",
   "settings.inputShortcut": "Open without a selection",
+  "settings.popoverShortcut": "Open the popover",
   "settings.identifier": "Identifier",
   "settings.identifierTaken": "This identifier is already taken.",
   "settings.identifierFormat": "The identifier only accepts lowercase letters, digits and hyphens.",
@@ -130,7 +131,7 @@ export const DESKTOP_EN = {
   "settings.keysNote":
     "Keys are verified with the provider then stored in your system keychain. They are never written to your configuration, nor shown here.",
   "settings.shortcutRestart":
-    "A change takes effect on the next start: a global shortcut is claimed from the system at launch.",
+    "Changes take effect immediately. If a combination is unavailable, Reqraft activates a fallback.",
   "settings.replaceEnvInApp":
     "This key comes from the launch environment. Replace it here to make the app use the keychain instead.",
   "profiles.intro":
@@ -259,6 +260,8 @@ export const DESKTOP_EN = {
   "main.doctorPermissionGranted": "granted",
   "main.doctorNoRejection": "none rejected",
   "main.doctorRejectedBySystem": "rejected by the system: {list}",
+  "main.doctorNoConflict": "no duplicate",
+  "main.doctorConflictingShortcuts": "already used by another Reqraft command: {list}",
   "main.doctorNoShortcut": "no active shortcut",
   "main.autoProfileName": "Auto",
   "main.autoProfileSummary": "Local profile detection",
@@ -283,11 +286,14 @@ export const DESKTOP_EN = {
   "settings.endpointKeyEnvDetail": "Optional: the name of the environment variable to read.",
   "settings.captureShortcutDetail": "Capsule anchored to the cursor",
   "settings.inputShortcutDetail": "Capsule centred, free input",
+  "settings.popoverShortcutDetail": "Menu-bar panel, without going through the icon",
   "settings.shortcutsTaken":
     "Shortcuts already taken by another application: {list}. A fallback was registered — change the competing shortcut to use your preferred one.",
   "settings.shortcutsNone":
     "No global shortcut available. Reqraft cannot be triggered from the keyboard — free one up, then restart the application.",
   "settings.shortcutUnavailable": "Choice unavailable: {accelerator} is active instead.",
+  "settings.shortcutsConflicting":
+    "Shortcuts Reqraft asked for twice: {list}. Only one command can answer a combination — a fallback was registered for the other, give it a distinct combination.",
   "settings.language": "Interface language",
   "settings.languageDetail": "Reqraft restarts automatically when this changes.",
   "settings.welcomeTour": "Reqraft introduction",

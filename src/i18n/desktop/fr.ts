@@ -112,6 +112,7 @@ export const DESKTOP_FR = {
   "settings.diagnosticRunning": "Diagnostic en cours…",
   "settings.captureShortcut": "Reformuler la sélection",
   "settings.inputShortcut": "Ouvrir sans sélection",
+  "settings.popoverShortcut": "Ouvrir le popover",
   "settings.identifier": "Identifiant",
   "settings.identifierTaken": "Cet identifiant est déjà pris.",
   "settings.identifierFormat":
@@ -124,7 +125,7 @@ export const DESKTOP_FR = {
   "settings.keysNote":
     "Les clés sont vérifiées auprès du fournisseur puis rangées dans le trousseau de votre système. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.",
   "settings.shortcutRestart":
-    "Un changement prend effet au prochain démarrage : un raccourci global se réserve auprès du système au lancement.",
+    "Les changements s'appliquent immédiatement. Si une combinaison est indisponible, Reqraft active un repli.",
   "settings.replaceEnvInApp":
     "Cette clé vient de l'environnement de lancement. Remplacez-la ici pour que l'application utilise plutôt le trousseau.",
   "profiles.intro":
@@ -253,6 +254,8 @@ export const DESKTOP_FR = {
   "main.doctorPermissionGranted": "accordée",
   "main.doctorNoRejection": "aucun refus",
   "main.doctorRejectedBySystem": "refusés par le système : {list}",
+  "main.doctorNoConflict": "aucun doublon",
+  "main.doctorConflictingShortcuts": "déjà utilisés par une autre commande Reqraft : {list}",
   "main.doctorNoShortcut": "aucun raccourci actif",
   "main.autoProfileName": "Auto",
   "main.autoProfileSummary": "Détection locale du profil",
@@ -279,11 +282,14 @@ export const DESKTOP_FR = {
   "settings.endpointKeyEnvDetail": "Facultatif : le nom de la variable d'environnement à lire.",
   "settings.captureShortcutDetail": "Capsule ancrée au curseur",
   "settings.inputShortcutDetail": "Capsule centrée, saisie libre",
+  "settings.popoverShortcutDetail": "Panneau de la barre de menus, sans passer par l'icône",
   "settings.shortcutsTaken":
     "Raccourcis déjà pris par une autre application : {list}. Un repli a été enregistré — modifiez le raccourci concurrent pour utiliser votre choix préféré.",
   "settings.shortcutsNone":
     "Aucun raccourci global disponible. Reqraft ne peut pas se déclencher au clavier — libérez-en un, puis relancez l'application.",
   "settings.shortcutUnavailable": "Choix non disponible : {accelerator} est actif à la place.",
+  "settings.shortcutsConflicting":
+    "Raccourcis demandés deux fois par Reqraft : {list}. Une seule commande peut répondre à une combinaison — un repli a été enregistré pour l'autre, choisissez-lui une combinaison distincte.",
   "settings.language": "Langue de l'interface",
   "settings.languageDetail": "Reqraft redémarre automatiquement quand ce choix change.",
   "settings.welcomeTour": "Présentation de Reqraft",

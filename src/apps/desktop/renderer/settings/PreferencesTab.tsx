@@ -1,17 +1,19 @@
 import { RotateCcw } from "lucide-react";
 import { useT } from "../shared/i18n.js";
-import { SHORTCUT_PRESETS } from "@/apps/desktop/shared/ipc-contract.js";
+import { SHORTCUT_PRESETS, type ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
 
 /** Le choix de langue tel qu'il est enregistré : « auto » en fait partie. */
 export type UiLocalePreference = "auto" | "en" | "fr";
 
 export interface PreferencesTabProps {
-  chosen: { capture?: string; input?: string };
-  onChoose(intent: "capture" | "input", accelerator: string): void;
+  chosen: Partial<Record<ShortcutIntent, string>>;
+  onChoose(intent: ShortcutIntent, accelerator: string): void;
   captureShortcut: string;
   inputShortcut: string;
+  popoverShortcut: string;
   rejectedShortcuts: string[];
+  conflictingShortcuts: string[];
   hasNoShortcut: boolean;
   permissionDetail: string;
   canReplace: boolean | null;
@@ -46,6 +48,16 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
           props.onChoose("input", accelerator);
         }}
       />
+      <ShortcutRow
+        title={t("settings.popoverShortcut")}
+        detail={t("settings.popoverShortcutDetail")}
+        active={props.popoverShortcut}
+        presets={SHORTCUT_PRESETS.popover}
+        chosen={props.chosen.popover ?? ""}
+        onChoose={(accelerator) => {
+          props.onChoose("popover", accelerator);
+        }}
+      />
       <p className="settings-note muted">{t("settings.shortcutRestart")}</p>
       {props.rejectedShortcuts.length > 0 && (
         <div className="settings-warning" role="alert">
@@ -55,6 +67,11 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
       {props.hasNoShortcut && (
         <div className="settings-warning" role="alert">
           ! {t("settings.shortcutsNone")}
+        </div>
+      )}
+      {props.conflictingShortcuts.length > 0 && (
+        <div className="settings-warning" role="alert">
+          ! {t("settings.shortcutsConflicting", { list: props.conflictingShortcuts.join(", ") })}
         </div>
       )}
       {/* Après les avertissements de raccourcis, pas au milieu : une alerte
@@ -135,7 +152,7 @@ interface ShortcutRowProps {
 /**
  * One shortcut: what is in force, and what may be chosen instead.
  *
- * The two are shown separately on purpose. "Automatique" does not mean "none":
+ * The two values are shown separately on purpose. "Automatique" does not mean "none":
  * it means the application walks its own list, and the combination that came
  * out of it is the one displayed beside it. Merging them would hide the case
  * where a preferred choice was refused and something else is answering.

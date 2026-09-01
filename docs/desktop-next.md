@@ -11,8 +11,9 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 | Où | Touche | Action |
 |---|---|---|
-| Global | `⌥Espace` (replis `⌃⌥R`…) | capture la sélection → capsule |
-| Global | `⌥⇧Espace` (repli `⌃⇧R`) | capsule en saisie libre, centrée |
+| Global | `⌘⌃R` (repli `⌘⌃J`) | capture la sélection → capsule |
+| Global | `⌘⌃N` (repli `⌘⌃K`) | capsule en saisie libre, centrée |
+| Global | `⌘⌃O` (repli `⌘⌃T`) | ouvrir ou fermer le popover |
 | Capsule | `⏎` | remplacer (copie en mode plancher) |
 | Capsule | `⌥` maintenu | comparaison avant/après, le temps de l'appui |
 | Capsule | `⌘D` | comparaison avant/après épinglée (bascule) |
@@ -24,13 +25,11 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 | Capsule | `esc` | fermer |
 | Saisie libre | `⌘⏎` | valider |
 | Popover | `⌘⏎` | reformuler |
-| Réglages | menus déroulants | changer les deux raccourcis globaux |
+| Réglages | menus déroulants | changer les trois raccourcis globaux, à chaud |
 
 ### Manquants (par ordre de valeur)
 
-1. **Raccourci global pour le popover** — il ne s'ouvre qu'au clic sur l'icône
-   tray. Un `⌥⇧R` (ou configurable) pour les utilisateurs 100 % clavier.
-2. **Désactivation temporaire du raccourci global** (présentations, partage
+1. **Désactivation temporaire des raccourcis globaux** (présentations, partage
    d'écran) via le menu tray — « Suspendre les raccourcis ».
 
 ### Livrés depuis
@@ -44,6 +43,12 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
   que l'« avant » affiché n'est plus celui du résultat montré — nouvelle
   capture, nouvelle génération (`⌘R`, `⇥`, changement de profil), fermeture ou
   remplacement appliqué.
+
+- **Raccourci global du popover** — `⌘⌃O` ouvre et referme le même panneau que
+  l'icône de la barre de menus, avec `⌘⌃T` en repli. Le choix est configurable
+  dans Préférences et réenregistré immédiatement. Les collisions entre deux
+  commandes Reqraft sont distinguées des raccourcis détenus par une autre app,
+  pour ne pas envoyer l'utilisateur vers le mauvais correctif.
 
   Les règles vivent dans `src/apps/desktop/renderer/capsule/keyboard.ts`, un
   module pur au même titre que `capsule-machine.ts` : la suite tourne sous Node
@@ -63,7 +68,7 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ## 2. Réglages — pistes d'amélioration
 
-### Raccourcis (prioritaire)
+### Raccourcis
 
 - Bouton « Réinitialiser par défaut » pour revenir aux raccourcis automatiques.
 - Bouton « Retester l'enregistrement » après avoir libéré un raccourci pris
@@ -93,8 +98,8 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Diagnostic
 
-- Y inclure l'état des permissions (les deux, nommées) et des raccourcis —
-  aujourd'hui seulement config + providers.
+- L'état des permissions et des trois raccourcis est inclus ; il reste à
+  améliorer l'action corrective depuis chaque échec.
 - Bouton « Copier le rapport » (pour les issues GitHub) — vérifier qu'aucune
   clé/valeur sensible ne s'y trouve par construction (le rapport est déjà
   sanitizé).

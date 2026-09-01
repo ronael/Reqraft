@@ -139,7 +139,7 @@ export type SafeConfig = Pick<Config, ConfigKey> & {
    * `rp config set desktopShortcuts` would mean nothing. Named here instead,
    * the way `providers` is.
    */
-  desktopShortcuts?: { capture?: string; input?: string };
+  desktopShortcuts?: { capture?: string; input?: string; popover?: string };
 };
 
 export type ProviderCredentialSource =
@@ -332,13 +332,34 @@ export interface ProfileMutationResponse {
 export const SHORTCUT_PRESETS = {
   capture: ["Command+Control+R", "Command+Control+J", "Command+Control+G", "Command+Control+B"],
   input: ["Command+Control+N", "Command+Control+K", "Command+Control+M", "Command+Control+P"],
+  popover: ["Command+Control+O", "Command+Control+T", "Command+Control+U", "Command+Control+Y"],
 } as const;
+
+/**
+ * What a global shortcut opens.
+ *
+ * `popover` is the third one: the menu-bar panel used to be reachable by
+ * clicking the tray icon alone, which leaves someone working entirely from the
+ * keyboard without any way in. The three lists above are disjoint by
+ * construction — the settings must never offer the same combination for two
+ * intents, because only one of them could answer.
+ */
+export type ShortcutIntent = keyof typeof SHORTCUT_PRESETS;
 
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
 export interface ShortcutStateInfo {
-  registered: { accelerator: string; label: string; intent: "capture" | "input" }[];
+  registered: { accelerator: string; label: string; intent: ShortcutIntent }[];
   /** Accelerators whose registration returned false — already taken (§5.5). */
   rejected: string[];
+  /**
+   * Accelerators refused because another Reqraft intent already holds them.
+   *
+   * Kept apart from `rejected`: that list means "another application owns it",
+   * and the answer is to free it up elsewhere. This one means the two choices
+   * collide inside Reqraft, and the answer is to change one of them here — the
+   * same message for both would send the user to the wrong place.
+   */
+  conflicts: string[];
 }
 
 /**
