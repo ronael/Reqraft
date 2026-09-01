@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { Copy } from "lucide-react";
 import type { DoctorReport } from "@/apps/desktop/shared/ipc-contract.js";
 import { useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
 
 /**
  * L'onglet Diagnostic, extrait de `SettingsApp.tsx`.
@@ -73,24 +74,18 @@ export function DiagnosticTab({
         {/* Le libellé ne change pas avec l'état : un bouton qui se renomme
             « Copié » change de largeur, et les deux actions voisines cessent
             d'être alignées. L'issue de la copie est annoncée à côté. */}
-        <button
-          type="button"
-          className="button-secondary"
+        <Button
+          variant="neutral"
           onClick={copyReport}
           disabled={!hasReport || running || copyStatus === "copying"}
           aria-busy={copyStatus === "copying"}
         >
           <Copy size={13} aria-hidden />
           {t("settings.copyReport")}
-        </button>
-        <button
-          type="button"
-          className="button-secondary"
-          onClick={rerunDiagnostic}
-          disabled={running}
-        >
+        </Button>
+        <Button variant="neutral" onClick={rerunDiagnostic} disabled={running}>
           {t("settings.rerunDiagnostic")}
-        </button>
+        </Button>
       </div>
       {/* Toujours monté, même vide : une zone live ajoutée en même temps que
           son message n'est pas annoncée par un lecteur d'écran. */}

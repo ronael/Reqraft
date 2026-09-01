@@ -5,10 +5,10 @@ import { describe, expect, it } from "vitest";
  * One box for every button (AGENTS.md, §UI).
  *
  * Two buttons side by side being different sizes is the first thing anyone
- * notices, and it happened here: `.chip` set its own padding and font size, and
- * `.button-secondary` added a border where `.button-primary` had none. The rule
- * is that geometry is declared once on `button`, and variants change colour and
- * weight only — this fails if a variant starts setting its own again.
+ * notices, and it happened here: `.chip` set its own padding and font size,
+ * while violet actions used incompatible border treatments. The rule is that
+ * geometry is declared once on `button`, and variants change colour and weight
+ * only — this fails if a variant starts setting its own again.
  */
 
 const STYLESHEET = "src/apps/desktop/renderer/shared/desktop.css";
@@ -41,10 +41,9 @@ describe("métrique partagée des boutons", () => {
   });
 
   for (const variant of [
-    ".button-primary",
-    ".button-secondary",
+    ".design-button-violet",
+    ".design-button-neutral",
     ".chip",
-    ".chip-active",
     ".chip-danger",
   ]) {
     it(`${variant} ne redéfinit aucune géométrie`, async () => {

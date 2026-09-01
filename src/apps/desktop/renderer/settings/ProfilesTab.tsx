@@ -19,6 +19,7 @@ import {
   type ProfileSaveRequest,
   type SafeConfig,
 } from "@/apps/desktop/shared/ipc-contract.js";
+import { Button } from "../shared/Button.js";
 
 /**
  * Settings → Profils.
@@ -249,9 +250,8 @@ export function ProfilesTab({
 
       <div className="profile-toolbar">
         <p className="profile-intro">{t("profiles.intro")}</p>
-        <button
-          type="button"
-          className="button-primary profile-new"
+        <Button
+          className="profile-new"
           onClick={() => {
             setError(null);
             setForm({ ...EMPTY_FORM });
@@ -259,7 +259,7 @@ export function ProfilesTab({
         >
           <Plus size={15} aria-hidden />
           {t("profiles.new")}
-        </button>
+        </Button>
       </div>
 
       {locals.length === 0 && <p className="settings-note muted">{t("profiles.empty")}</p>}
@@ -636,9 +636,9 @@ function ProfileForm({
         <button type="button" onClick={onCancel}>
           {t("settings.cancel")}
         </button>
-        <button type="button" className="button-primary" disabled={busy} onClick={onSubmit}>
+        <Button disabled={busy} onClick={onSubmit}>
           {busy ? t("settings.saving") : t("settings.save")}
-        </button>
+        </Button>
       </div>
     </>
   );

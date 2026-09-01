@@ -2,6 +2,7 @@ import { RefreshCw, RotateCcw } from "lucide-react";
 import { useT } from "../shared/i18n.js";
 import { SHORTCUT_PRESETS, type ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
+import { Button } from "../shared/Button.js";
 
 /** Le choix de langue tel qu'il est enregistré : « auto » en fait partie. */
 export type UiLocalePreference = "auto" | "en" | "fr";
@@ -63,12 +64,12 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
       />
       <p className="settings-note muted">{t("settings.shortcutRestart")}</p>
       <div className="settings-actions shortcut-actions">
-        <button type="button" className="button-secondary" onClick={props.onResetShortcuts}>
+        <Button variant="neutral" onClick={props.onResetShortcuts}>
           <RotateCcw size={13} aria-hidden /> {t("settings.shortcutsReset")}
-        </button>
-        <button type="button" className="button-secondary" onClick={props.onRetestShortcuts}>
+        </Button>
+        <Button variant="neutral" onClick={props.onRetestShortcuts}>
           <RefreshCw size={13} aria-hidden /> {t("settings.shortcutsRetest")}
-        </button>
+        </Button>
       </div>
       {props.rejectedShortcuts.length > 0 && (
         <div className="settings-warning" role="alert">
@@ -98,9 +99,9 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
           <div className="settings-row-title">{t("settings.welcomeTour")}</div>
           <div className="settings-row-detail">{t("settings.welcomeTourDetail")}</div>
         </div>
-        <button type="button" className="chip" onClick={props.onOpenWelcomeTour}>
+        <Button variant="neutral" onClick={props.onOpenWelcomeTour}>
           <RotateCcw size={12} aria-hidden /> {t("settings.welcomeTourReplay")}
-        </button>
+        </Button>
       </div>
       <div className="settings-row">
         <div>
@@ -108,9 +109,7 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
           <div className="settings-row-detail">{props.permissionDetail}</div>
         </div>
         {props.canReplace === false && (
-          <button type="button" className="chip chip-active" onClick={props.onAskPermissions}>
-            {t("settings.allow")}
-          </button>
+          <Button onClick={props.onAskPermissions}>{t("settings.allow")}</Button>
         )}
       </div>
     </>

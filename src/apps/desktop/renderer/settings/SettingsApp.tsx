@@ -32,6 +32,7 @@ import {
   findDefaultProviderRow,
 } from "./ProviderRow.js";
 import { useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
 import { PreferencesTab } from "./PreferencesTab.js";
 import { UpdatesTab } from "./UpdatesTab.js";
 import { version } from "@/version.js";
@@ -636,9 +637,8 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                     }}
                   />
                 )}
-                <button
-                  type="button"
-                  className="chip chip-active"
+                <Button
+                  variant="neutral"
                   onClick={() => {
                     setError(null);
                     setForm({
@@ -651,7 +651,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                   }}
                 >
                   {t("settings.edit")}
-                </button>
+                </Button>
                 {confirming === `endpoint:${id}` ? (
                   <>
                     <button
@@ -709,9 +709,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         />
       ) : (
         <div className="settings-actions">
-          <button
-            type="button"
-            className="button-secondary"
+          <Button
             onClick={() => {
               setError(null);
               setForm({
@@ -724,7 +722,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
             }}
           >
             <Plus size={13} aria-hidden /> {t("settings.addProvider")}
-          </button>
+          </Button>
         </div>
       )}
 
@@ -811,14 +809,9 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
         <button type="button" className="chip" onClick={props.onCancel}>
           {t(CANCEL_KEY)}
         </button>
-        <button
-          type="button"
-          className="button-primary"
-          disabled={props.problem !== undefined || props.busy}
-          onClick={props.onSave}
-        >
+        <Button disabled={props.problem !== undefined || props.busy} onClick={props.onSave}>
           {t("settings.save")}
-        </button>
+        </Button>
       </div>
     </div>
   );

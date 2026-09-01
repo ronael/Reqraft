@@ -1,6 +1,7 @@
 import { CircleAlert, CircleCheck, ExternalLink, RefreshCw } from "lucide-react";
 import type { DesktopUpdateState } from "@/apps/desktop/shared/ipc-contract.js";
 import { useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
 
 export interface UpdatesTabProps {
   state: DesktopUpdateState | null;
@@ -45,19 +46,14 @@ export function UpdatesTab(props: Readonly<UpdatesTabProps>): React.JSX.Element 
       )}
 
       <div className="settings-actions">
-        <button
-          type="button"
-          className="button-secondary"
-          disabled={checking}
-          onClick={props.onCheck}
-        >
+        <Button variant="neutral" disabled={checking} onClick={props.onCheck}>
           <RefreshCw size={13} className={checking ? "pulse" : undefined} aria-hidden />
           {checking ? t("settings.updates.checking") : t("settings.updates.check")}
-        </button>
+        </Button>
         {available && (
-          <button type="button" className="button-primary" onClick={props.onOpenDownload}>
+          <Button onClick={props.onOpenDownload}>
             <ExternalLink size={13} aria-hidden /> {t("settings.updates.download")}
-          </button>
+          </Button>
         )}
       </div>
       <p className="settings-note muted">{t("settings.updates.startupNote")}</p>

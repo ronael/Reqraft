@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
 import { CheckCircle2, KeyRound, Loader2, TriangleAlert } from "lucide-react";
 import { groupProfiles } from "../shared/profiles.js";
 import { shouldShowWelcomeTour, WelcomeTour } from "./WelcomeTour.js";
@@ -399,9 +400,8 @@ export function OnboardingApp(): React.JSX.Element {
                     setSecret(event.target.value);
                   }}
                 />
-                <button
-                  type="button"
-                  className="button-secondary"
+                <Button
+                  variant="neutral"
                   disabled={secret.trim() === "" || busy !== null}
                   onClick={() => {
                     void onSaveCredential();
@@ -413,7 +413,7 @@ export function OnboardingApp(): React.JSX.Element {
                     <KeyRound size={13} aria-hidden />
                   )}
                   {t("onboarding.verifyAndSave")}
-                </button>
+                </Button>
               </span>
             </label>
           )}
@@ -526,9 +526,7 @@ export function OnboardingApp(): React.JSX.Element {
       <footer className="onboarding-footer">
         <div className="onboarding-footer-inner">
           <span className="onboarding-hint">{problem ?? t("onboarding.ready")}</span>
-          <button
-            type="button"
-            className="button-primary"
+          <Button
             disabled={problem !== undefined || busy !== null}
             onClick={() => {
               void onFinish();
@@ -536,7 +534,7 @@ export function OnboardingApp(): React.JSX.Element {
           >
             {busy === "finish" && <Loader2 size={13} className="pulse" aria-hidden />}
             {t("onboarding.finish")}
-          </button>
+          </Button>
         </div>
       </footer>
     </main>

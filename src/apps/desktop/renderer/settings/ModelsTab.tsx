@@ -11,6 +11,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 
 import { useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
 
 interface ModelsTabProps {
   config: SafeConfig;
@@ -185,9 +186,8 @@ export function ModelsTab({
             ))}
             <option value={CUSTOM_MODEL_OPTION}>{t("settings.otherModel")}</option>
           </select>
-          <button
-            type="button"
-            className="button-secondary"
+          <Button
+            variant="neutral"
             onClick={loadCatalog}
             disabled={catalog.status === "loading"}
             aria-label={t("settings.refreshModels")}
@@ -195,7 +195,7 @@ export function ModelsTab({
           >
             <RefreshCw size={13} aria-hidden />
             {t("settings.refresh")}
-          </button>
+          </Button>
         </span>
       </label>
 

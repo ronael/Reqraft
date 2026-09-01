@@ -236,9 +236,8 @@ body {
  * Two buttons sitting side by side must be the same size — that is not a
  * preference, it is the first thing anyone notices. It used to depend on which
  * class each one happened to carry: `.chip` set its own padding and font size,
- * and `.button-secondary` added a border where `.button-primary` had none,
- * making the pair two pixels apart. Variants now change colour and weight
- * only; the geometry lives here, once.
+ * while violet actions used incompatible border treatments. Variants now
+ * change colour and weight only; the geometry lives here, once.
  *
  * The transparent border is what makes that work: every variant reserves the
  * same border box, so adding a visible border never changes the height.
@@ -265,9 +264,74 @@ button:disabled {
   cursor: default;
 }
 
-.button-primary {
-  background: var(--rq-accent-strong);
+.design-button-violet {
+  border-color: rgba(167, 139, 250, 0.35);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.18), rgba(139, 92, 246, 0.09));
+  color: #e9e4ff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 1px 2px rgba(0, 0, 0, 0.18);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 120ms ease;
+}
+
+.design-button-violet:hover:not(:disabled) {
+  border-color: rgba(167, 139, 250, 0.6);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.25), rgba(139, 92, 246, 0.13));
   color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.06),
+    0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+.design-button-violet:active:not(:disabled) {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, rgba(139, 92, 246, 0.12), rgba(139, 92, 246, 0.2));
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.24);
+}
+
+.design-button-violet:focus-visible {
+  outline: 2px solid rgba(196, 181, 253, 0.72);
+  outline-offset: 2px;
+}
+
+.design-button-neutral {
+  border-color: rgba(255, 255, 255, 0.11);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.075), rgba(255, 255, 255, 0.035));
+  color: rgba(244, 244, 245, 0.84);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.035),
+    0 1px 2px rgba(0, 0, 0, 0.16);
+  transition:
+    border-color 160ms ease,
+    background 160ms ease,
+    box-shadow 160ms ease,
+    color 160ms ease,
+    transform 120ms ease;
+}
+
+.design-button-neutral:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.055));
+  color: #ffffff;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.05),
+    0 2px 6px rgba(0, 0, 0, 0.18);
+}
+
+.design-button-neutral:active:not(:disabled) {
+  transform: translateY(1px);
+  background: rgba(255, 255, 255, 0.055);
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.22);
+}
+
+.design-button-neutral:focus-visible {
+  outline: 2px solid rgba(212, 212, 216, 0.56);
+  outline-offset: 2px;
 }
 
 .capsule-diff {
@@ -536,12 +600,6 @@ kbd {
 
 .chip:hover {
   background: rgba(255, 255, 255, 0.05);
-}
-
-.chip-active {
-  border-color: rgba(167, 139, 250, 0.3);
-  background: rgba(139, 92, 246, 0.2);
-  color: var(--rq-accent);
 }
 
 .popover-section {
@@ -937,12 +995,6 @@ kbd {
   justify-content: flex-end;
   gap: 8px;
   padding: 12px 0 0;
-}
-
-.button-secondary {
-  border-color: rgba(167, 139, 250, 0.3);
-  background: rgba(139, 92, 246, 0.15);
-  color: #ddd6fe;
 }
 
 .provider-table {
@@ -2841,7 +2893,7 @@ kbd {
   margin: 0 auto;
 }
 
-.onboarding-tour-actions > .button-secondary {
+.onboarding-tour-actions > .design-button {
   justify-self: start;
 }
 

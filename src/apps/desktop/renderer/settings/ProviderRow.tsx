@@ -8,6 +8,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 
 import { useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
 
 /**
  * Ce qu'une ligne de fournisseur dit, et ce qu'elle propose.
@@ -259,14 +260,13 @@ export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): Re
               props.onSecretChange(event.target.value);
             }}
           />
-          <button
-            type="button"
-            className="button-secondary"
+          <Button
+            variant="neutral"
             disabled={props.secret.trim() === "" || props.busy}
             onClick={props.onSave}
           >
             {t("settings.verify")}
-          </button>
+          </Button>
           <button type="button" className="chip" onClick={props.onCancel}>
             {t(CANCEL_KEY)}
           </button>
@@ -296,9 +296,9 @@ export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): Re
                   onTest={props.onTest}
                 />
               )}
-              <button type="button" className="chip chip-active" onClick={props.onStartEdit}>
+              <Button variant="neutral" onClick={props.onStartEdit}>
                 {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
-              </button>
+              </Button>
               {provider.source === "keychain" && (
                 <button
                   type="button"

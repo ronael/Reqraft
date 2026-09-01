@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
 import { CAPSULE_COMPARE_KEY, formatAccelerator } from "../shared/shortcut-labels.js";
+import { Button } from "../shared/Button.js";
 import { version } from "@/version.js";
 
 export const WELCOME_TOUR_SLIDES = [
@@ -245,9 +246,9 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
 
       <footer className="onboarding-footer onboarding-tour-footer">
         <div className="onboarding-tour-actions">
-          <button type="button" className="button-secondary" onClick={onContinue}>
+          <Button variant="neutral" onClick={onContinue}>
             {t("onboarding.tour.skip")}
-          </button>
+          </Button>
           <div className="onboarding-tour-dots" aria-label={t("onboarding.tour.progress")}>
             {WELCOME_TOUR_SLIDES.map((entry, slideIndex) => (
               <button
@@ -265,9 +266,8 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
             ))}
           </div>
           <div className="onboarding-tour-navigation">
-            <button
-              type="button"
-              className="button-secondary"
+            <Button
+              variant="neutral"
               disabled={index === 0}
               onClick={() => {
                 goTo(index - 1);
@@ -275,11 +275,11 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
             >
               <ArrowLeft size={14} aria-hidden />
               {t("onboarding.tour.back")}
-            </button>
-            <button type="button" className="button-primary" onClick={advance}>
+            </Button>
+            <Button onClick={advance}>
               {t(isLast ? "onboarding.tour.configure" : "onboarding.tour.next")}
               <ArrowRight size={14} aria-hidden />
-            </button>
+            </Button>
           </div>
         </div>
       </footer>
