@@ -262,9 +262,9 @@ export function ProfilesTab({
         </Button>
       </div>
 
-      {locals.length === 0 && <p className="settings-note muted">{t("profiles.empty")}</p>}
+      {locals.length === 0 && <p className="profile-empty-note">{t("profiles.empty")}</p>}
 
-      <div className="profile-list">
+      <div className="profile-list" role="list">
         {entries.map((entry) => (
           <ProfileRow
             key={entry.id}
@@ -346,20 +346,18 @@ function ProfileRow({
   const t = useT();
   const isLocal = entry.origin === "local";
   const isAuto = entry.origin === "auto";
+  const meta = profileMeta(entry, isDefault, t);
 
   return (
-    <div className={isDefault ? "profile-row profile-row-active" : "profile-row"}>
+    <div className={isDefault ? "profile-row profile-row-active" : "profile-row"} role="listitem">
       <div className="profile-identity">
-        <div className="settings-row-title">
-          {entry.name}
-          <span className="profile-origin">{profileOriginLabel(entry.origin, t)}</span>
+        <div className="profile-card-head">
+          <div className="settings-row-title profile-name">
+            <span className="profile-name-text">{entry.name}</span>
+            <span className="profile-origin">{profileOriginLabel(entry.origin, t)}</span>
+          </div>
         </div>
         <div className="settings-row-detail profile-description">{entry.description}</div>
-        {entry.defaultLevel !== undefined && (
-          <div className="settings-row-detail profile-meta">
-            {t("profiles.levelMeta", { level: entry.defaultLevel })}
-          </div>
-        )}
         {confirming && (
           <div className="settings-row-detail profile-confirm">
             {t("profiles.confirmDeleteQuestion", { id: entry.id })}
@@ -367,25 +365,28 @@ function ProfileRow({
         )}
       </div>
 
-      <div className="profile-actions">
-        {confirming ? (
-          <DeleteConfirmationActions
-            busy={busy}
-            onCancel={onCancelDelete}
-            onConfirm={onConfirmDelete}
-          />
-        ) : (
-          <ProfileRowActions
-            isAuto={isAuto}
-            isDefault={isDefault}
-            isLocal={isLocal}
-            onDuplicate={onDuplicate}
-            onEdit={onEdit}
-            onExport={onExport}
-            onSelectDefault={onSelectDefault}
-            onStartDelete={onStartDelete}
-          />
-        )}
+      <div className="profile-row-footer">
+        <div className="settings-row-detail profile-meta">{meta}</div>
+        <div className="profile-actions">
+          {confirming ? (
+            <DeleteConfirmationActions
+              busy={busy}
+              onCancel={onCancelDelete}
+              onConfirm={onConfirmDelete}
+            />
+          ) : (
+            <ProfileRowActions
+              isAuto={isAuto}
+              isDefault={isDefault}
+              isLocal={isLocal}
+              onDuplicate={onDuplicate}
+              onEdit={onEdit}
+              onExport={onExport}
+              onSelectDefault={onSelectDefault}
+              onStartDelete={onStartDelete}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -400,6 +401,18 @@ function profileOriginLabel(
   if (origin === "auto") return "Auto";
   if (origin === "local") return "Local";
   return t("profiles.builtin");
+}
+
+function profileMeta(
+  entry: ProfileCatalogEntry,
+  isDefault: boolean,
+  t: Translate = (key) => key,
+): string {
+  if (entry.defaultLevel !== undefined) {
+    return t("profiles.levelMeta", { level: entry.defaultLevel });
+  }
+  if (isDefault) return t("profiles.tooltipInUse");
+  return entry.id;
 }
 
 interface DeleteConfirmationActionsProps {
@@ -464,35 +477,26 @@ function ProfileRowActions({
       >
         {isDefault ? <CircleDot size={15} aria-hidden /> : <Circle size={15} aria-hidden />}
       </IconButton>
-      <IconButton
-        label={isLocal ? t("settings.edit") : t("profiles.builtinNotEditable")}
-        disabled={!isLocal}
-        onClick={onEdit}
-      >
-        <Pencil size={15} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={isAuto ? t("profiles.tooltipAutoNoDuplicate") : t("profiles.duplicate")}
-        disabled={isAuto}
-        onClick={onDuplicate}
-      >
-        <CopyPlus size={15} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={isAuto ? t("profiles.tooltipAutoNoExport") : t("profiles.export")}
-        disabled={isAuto}
-        onClick={onExport}
-      >
-        <Download size={15} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={isLocal ? t("settings.delete") : t("profiles.builtinNotDeletable")}
-        tone="danger"
-        disabled={!isLocal}
-        onClick={onStartDelete}
-      >
-        <Trash2 size={15} aria-hidden />
-      </IconButton>
+      {isLocal && (
+        <IconButton label={t("settings.edit")} onClick={onEdit}>
+          <Pencil size={15} aria-hidden />
+        </IconButton>
+      )}
+      {!isAuto && (
+        <IconButton label={t("profiles.duplicate")} onClick={onDuplicate}>
+          <CopyPlus size={15} aria-hidden />
+        </IconButton>
+      )}
+      {!isAuto && (
+        <IconButton label={t("profiles.export")} onClick={onExport}>
+          <Download size={15} aria-hidden />
+        </IconButton>
+      )}
+      {isLocal && (
+        <IconButton label={t("settings.delete")} tone="danger" onClick={onStartDelete}>
+          <Trash2 size={15} aria-hidden />
+        </IconButton>
+      )}
     </>
   );
 }
@@ -525,122 +529,124 @@ function ProfileForm({
   const duplicate = form.mode === "duplicate";
 
   return (
-    <>
-      <div className="settings-row">
-        <div className="settings-row-title">
+    <div className="profile-form">
+      <header className="profile-form-head">
+        <div className="profile-form-title">
           {form.mode === "update" && `Modifier « ${form.sourceId ?? ""} »`}
           {form.mode === "duplicate" && `Dupliquer « ${form.sourceId ?? ""} »`}
           {form.mode === "create" && "Nouveau profil local"}
         </div>
-      </div>
+      </header>
 
       {duplicate && <p className="settings-note muted">{t("profiles.duplicateNote")}</p>}
 
       {problem !== undefined && <p className="settings-warning">{problem}</p>}
       {error !== null && <p className="settings-warning">{error}</p>}
 
-      <label className="settings-row">
-        <span className="settings-row-title">{t("profiles.name")}</span>
-        <input
-          className="settings-input"
-          value={form.name}
-          onChange={(event) => {
-            const name = event.target.value;
-            // The id follows the name until the user types one of their own.
-            const follows = form.mode !== "update" && form.id === suggestId(form.name);
-            setField(follows ? { name, id: suggestId(name) } : { name });
-          }}
-        />
-      </label>
+      <div className="profile-form-grid">
+        <label className="profile-field">
+          <span>{t("profiles.name")}</span>
+          <input
+            className="settings-input"
+            value={form.name}
+            onChange={(event) => {
+              const name = event.target.value;
+              // The id follows the name until the user types one of their own.
+              const follows = form.mode !== "update" && form.id === suggestId(form.name);
+              setField(follows ? { name, id: suggestId(name) } : { name });
+            }}
+          />
+        </label>
 
-      <label className="settings-row">
-        <span className="settings-row-title">
-          Identifiant
-          {form.mode === "update" && (
-            <span className="profile-origin">{t("profiles.notEditableTag")}</span>
-          )}
-        </span>
-        <input
-          className="settings-input"
-          value={form.id}
-          disabled={form.mode === "update"}
-          onChange={(event) => {
-            setField({ id: event.target.value });
-          }}
-        />
-      </label>
+        <label className="profile-field">
+          <span>
+            Identifiant
+            {form.mode === "update" && (
+              <span className="profile-origin">{t("profiles.notEditableTag")}</span>
+            )}
+          </span>
+          <input
+            className="settings-input"
+            value={form.id}
+            disabled={form.mode === "update"}
+            onChange={(event) => {
+              setField({ id: event.target.value });
+            }}
+          />
+        </label>
 
-      {!duplicate && (
-        <>
-          <label className="settings-row">
-            <span className="settings-row-title">{t("profiles.description")}</span>
-            <input
-              className="settings-input"
-              value={form.description}
-              onChange={(event) => {
-                setField({ description: event.target.value });
-              }}
-            />
-          </label>
+        {!duplicate && (
+          <>
+            <label className="profile-field profile-field-wide">
+              <span>{t("profiles.description")}</span>
+              <input
+                className="settings-input"
+                value={form.description}
+                onChange={(event) => {
+                  setField({ description: event.target.value });
+                }}
+              />
+            </label>
 
-          <label className="settings-row">
-            <span className="settings-row-title">{t("profiles.base")}</span>
-            <select
-              className="settings-select"
-              value={form.extends}
-              onChange={(event) => {
-                setField({ extends: event.target.value });
-              }}
-            >
-              <option value="">{t("profiles.noneLevel")}</option>
-              {bases.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="profile-field">
+              <span>{t("profiles.base")}</span>
+              <select
+                className="settings-select"
+                value={form.extends}
+                onChange={(event) => {
+                  setField({ extends: event.target.value });
+                }}
+              >
+                <option value="">{t("profiles.noneLevel")}</option>
+                {bases.map((id) => (
+                  <option key={id} value={id}>
+                    {id}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <label className="settings-row">
-            <span className="settings-row-title">{t("profiles.defaultLevel")}</span>
-            <select
-              className="settings-select"
-              value={form.defaultLevel}
-              onChange={(event) => {
-                setField({ defaultLevel: event.target.value as FormState["defaultLevel"] });
-              }}
-            >
-              {REPROMPT_LEVEL_IDS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </select>
-          </label>
+            <label className="profile-field">
+              <span>{t("profiles.defaultLevel")}</span>
+              <select
+                className="settings-select"
+                value={form.defaultLevel}
+                onChange={(event) => {
+                  setField({ defaultLevel: event.target.value as FormState["defaultLevel"] });
+                }}
+              >
+                {REPROMPT_LEVEL_IDS.map((level) => (
+                  <option key={level} value={level}>
+                    {level}
+                  </option>
+                ))}
+              </select>
+            </label>
 
-          <div className="settings-row profile-instructions">
-            <span className="settings-row-title">{t("profiles.instructions")}</span>
-            <textarea
-              className="settings-input profile-textarea"
-              rows={6}
-              value={form.instructions}
-              onChange={(event) => {
-                setField({ instructions: event.target.value });
-              }}
-            />
-          </div>
-        </>
-      )}
+            <label className="profile-field profile-field-wide profile-instructions">
+              <span>{t("profiles.instructions")}</span>
+              <textarea
+                className="settings-input profile-textarea"
+                rows={6}
+                value={form.instructions}
+                onChange={(event) => {
+                  setField({ instructions: event.target.value });
+                }}
+              />
+            </label>
+          </>
+        )}
+      </div>
 
       <div className="settings-actions profile-form-actions">
-        <button type="button" onClick={onCancel}>
+        <Button variant="neutral" onClick={onCancel}>
           {t("settings.cancel")}
-        </button>
+        </Button>
         <Button disabled={busy} onClick={onSubmit}>
           {busy ? t("settings.saving") : t("settings.save")}
         </Button>
       </div>
-    </>
+    </div>
   );
 }
 
