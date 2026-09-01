@@ -110,7 +110,14 @@ Tester dans **trois applications différentes** (ex. Safari, Notes, VS Code).
       peut renvoyer `true` mais le raccourci ne se déclenche pas ; la
       confirmation par l'usage doit le détecter.
 - [ ] Raccourcis de la capsule : `⌥` maintenu (comparaison), `⌘C`, `⌘R`, `⇥`
-      (niveau suivant), `⌘.` (interrompre), `esc` (fermer).
+      (niveau suivant), `⇧⇥` (niveau précédent), `⌘.` (interrompre), `esc`
+      (fermer).
+- [ ] `⌘D` épingle la comparaison : elle reste après le relâchement de `⌥`, la
+      commande du pied s'allume, `⌘D` la referme. `⌘D` ne pose pas de signet
+      dans la fenêtre, et `⇥` ne déplace pas le focus.
+- [ ] L'épinglage tombe tout seul : `⌘D` puis `⌘R` (ou `⇥`, ou un changement de
+      profil) doit rendre un résultat nu, pas une comparaison rouverte sur
+      l'ancien « avant ».
 
 ## 8. Relance après changement de langue
 

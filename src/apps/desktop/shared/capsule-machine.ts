@@ -97,7 +97,14 @@ const TRANSITIONS: Readonly<
   // `rerun` aussi : ⌘R, ⇥ et le choix d'un profil restent actifs pendant la
   // comparaison, et sans cette ligne ils repartaient sans jamais quitter
   // `comparison`.
-  comparison: { "compare-end": "ready", rerun: "analysis" },
+  //
+  // `accept` aussi, depuis que ⌘D épingle la comparaison : lire la comparaison
+  // puis remplacer devient le trajet normal, et non plus un accident du
+  // maintien de ⌥. Sans cette ligne, ⏎ partait bien vers le processus
+  // principal mais la machine restait sur `comparison` — donc la sortie
+  // d'échec `applying → ready` était injoignable, et un remplacement refusé
+  // n'avait aucun état où retomber.
+  comparison: { "compare-end": "ready", accept: "applying", rerun: "analysis" },
   // `failed` ramène au résultat, qui est toujours là.
   //
   // Sans cette sortie, `applying` était un cul-de-sac : un remplacement refusé

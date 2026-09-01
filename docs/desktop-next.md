@@ -14,10 +14,12 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 | Global | `⌥Espace` (replis `⌃⌥R`…) | capture la sélection → capsule |
 | Global | `⌥⇧Espace` (repli `⌃⇧R`) | capsule en saisie libre, centrée |
 | Capsule | `⏎` | remplacer (copie en mode plancher) |
-| Capsule | `⌥` maintenu | comparaison avant/après |
+| Capsule | `⌥` maintenu | comparaison avant/après, le temps de l'appui |
+| Capsule | `⌘D` | comparaison avant/après épinglée (bascule) |
 | Capsule | `⌘C` | copier le résultat |
 | Capsule | `⌘R` | relancer la génération |
 | Capsule | `⇥` | niveau suivant (minimal → standard → complete) |
+| Capsule | `⇧⇥` | niveau précédent |
 | Capsule | `⌘.` | interrompre |
 | Capsule | `esc` | fermer |
 | Saisie libre | `⌘⏎` | valider |
@@ -26,14 +28,29 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Manquants (par ordre de valeur)
 
-1. **`⇧⇥` pour reculer dans les niveaux** — le cycle `⇥` ne tourne que dans un
-   sens ; quand on dépasse son niveau on refait le tour. Une ligne de code.
-2. **Raccourci global pour le popover** — il ne s'ouvre qu'au clic sur l'icône
+1. **Raccourci global pour le popover** — il ne s'ouvre qu'au clic sur l'icône
    tray. Un `⌥⇧R` (ou configurable) pour les utilisateurs 100 % clavier.
-3. **`⌘D` : comparaison épinglée** — `⌥` exige de maintenir ; une bascule
-   persistante aide pour les longs textes.
-4. **Désactivation temporaire du raccourci global** (présentations, partage
+2. **Désactivation temporaire du raccourci global** (présentations, partage
    d'écran) via le menu tray — « Suspendre les raccourcis ».
+
+### Livrés depuis
+
+- **`⇧⇥` pour reculer dans les niveaux** — le cycle `⇥` tourne dans les deux
+  sens ; l'infobulle de la commande `⇥` du pied annonce les deux.
+- **`⌘D` : comparaison épinglée** — `⌥` exige de maintenir, ce qui ne tient pas
+  sur un long texte. `⌘D` bascule la même comparaison, mains libres ; le pied
+  montre la commande enclenchée. Les deux voies coexistent et sont tenues
+  séparément : relâcher `⌥` ne défait pas un épinglage. L'épinglage tombe dès
+  que l'« avant » affiché n'est plus celui du résultat montré — nouvelle
+  capture, nouvelle génération (`⌘R`, `⇥`, changement de profil), fermeture ou
+  remplacement appliqué.
+
+  Les règles vivent dans `src/apps/desktop/renderer/capsule/keyboard.ts`, un
+  module pur au même titre que `capsule-machine.ts` : la suite tourne sous Node
+  sans DOM, donc une règle laissée dans un `onKeyDown` n'était vérifiable qu'en
+  relisant la source. La table §8.2 gagne au passage `comparison + accept →
+  applying` : remplacer depuis une comparaison épinglée est le trajet normal,
+  et sans cette sortie un remplacement refusé n'avait aucun état où retomber.
 
 ### Non prévus volontairement
 

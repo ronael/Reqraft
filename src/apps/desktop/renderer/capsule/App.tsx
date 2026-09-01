@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { useT } from "../shared/i18n.js";
+import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
 import { describeQualityFinding } from "../shared/quality.js";
 import {
   AUTO_PROFILE_ID,
@@ -11,6 +12,17 @@ import {
   type UiError,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { transition, type CapsuleState } from "@/apps/desktop/shared/capsule-machine.js";
+import {
+  comparisonEvent,
+  keepsComparison,
+  NO_COMPARISON,
+  preventsBrowserDefault,
+  reduceComparison,
+  resolveCapsuleKeyDown,
+  resolveCapsuleKeyUp,
+  wantsComparison,
+  type CapsuleIntent,
+} from "./keyboard.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
 const GENERATING = "generating";
@@ -76,6 +88,9 @@ function CapsuleKey(
     touche: string;
     children: React.ReactNode;
     className?: string;
+    /** Pour une commande qui reste enclenchée — ⌘D. Absent = pas une bascule. */
+    pressed?: boolean;
+    title?: string;
     onClick(): void;
   }>,
 ): React.JSX.Element {
@@ -83,6 +98,8 @@ function CapsuleKey(
     <button
       type="button"
       className={props.className === undefined ? "capsule-key" : `capsule-key ${props.className}`}
+      aria-pressed={props.pressed}
+      title={props.title}
       onClick={props.onClick}
     >
       <kbd>{props.touche}</kbd> {props.children}
@@ -138,6 +155,8 @@ function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
 interface CapsuleFooterProps {
   state: CapsuleState;
   expansion: boolean;
+  /** La comparaison est-elle épinglée (⌘D), plutôt que maintenue (⌥) ? */
+  comparisonPinned: boolean;
   running: boolean;
   elapsedMs: number;
   finalResult: RepromptResult | null;
@@ -231,7 +250,15 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                 <CapsuleKey touche="⏎" className="key-primary" onClick={props.onAccept}>
                   {t("capsule.replace")}
                 </CapsuleKey>
-                <CapsuleKey touche="⌥" onClick={props.onCompare}>
+                {/* La touche annoncée est celle qui bascule : un clic ne se
+                    maintient pas, ⌥ non plus une fois la souris partie. Le
+                    maintien de ⌥ reste actif, et l'infobulle le dit. */}
+                <CapsuleKey
+                  touche={CAPSULE_COMPARE_KEY}
+                  pressed={props.comparisonPinned}
+                  title={t("capsule.compareTitle")}
+                  onClick={props.onCompare}
+                >
                   {t("capsule.compare")}
                 </CapsuleKey>
                 <CapsuleKey touche="⌘C" onClick={props.onCopy}>
@@ -240,7 +267,7 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                 <CapsuleKey touche="⌘R" onClick={props.onRerun}>
                   {t("capsule.rerun")}
                 </CapsuleKey>
-                <CapsuleKey touche="⇥" onClick={props.onLevel}>
+                <CapsuleKey touche="⇥" title={t("capsule.levelCycleTitle")} onClick={props.onLevel}>
                   {t("capsule.level")}
                 </CapsuleKey>
               </>
@@ -299,7 +326,15 @@ export function App(): React.JSX.Element {
    */
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const activeRunId = useRef<string | null>(null);
-  const comparing = useRef(false);
+  /**
+   * Ce qui demande la comparaison : `⌥` maintenu, `⌘D` épinglé, ou les deux.
+   *
+   * Un état plutôt qu'une référence : la machine est réalignée par un effet à
+   * partir de cette intention, ce qui rend l'ordre des deux touches sans
+   * importance — relâcher `⌥` sur une comparaison épinglée ne la referme pas,
+   * et `⌘D` pendant un maintien ne laisse pas la capsule sans issue.
+   */
+  const [comparison, setComparison] = useState(NO_COMPARISON);
   /** Mirror of `streamed` readable from event callbacks. */
   const streamedRef = useRef("");
   const setStreamedBoth = useCallback((update: (previous: string) => string): void => {
@@ -548,7 +583,6 @@ export function App(): React.JSX.Element {
     }
   }, []);
 
-  /** Keys handled in ready/comparison: ⏎ ⌘C ⌘R ⇥. */
   /**
    * Relance en imposant un profil.
    *
@@ -594,11 +628,15 @@ export function App(): React.JSX.Element {
     startRun(input, level);
   }, [input, level, startRun]);
 
-  const changerNiveau = useCallback(() => {
-    const next = cycleRepromptLevel(level, 1);
-    setLevel(next);
-    startRun(input, next);
-  }, [input, level, startRun]);
+  /** ⇥ monte d'un niveau, ⇧⇥ redescend ; le clic n'a pas de modificateur. */
+  const changerNiveau = useCallback(
+    (direction: 1 | -1) => {
+      const next = cycleRepromptLevel(level, direction);
+      setLevel(next);
+      startRun(input, next);
+    },
+    [input, level, startRun],
+  );
 
   const fermer = useCallback(() => {
     cancelRun();
@@ -606,64 +644,50 @@ export function App(): React.JSX.Element {
     window.close();
   }, [cancelRun]);
 
-  /** Le clic bascule ce que ⌥ maintient : on ne peut pas « garder » un clic. */
+  /** Le clic fait ce que ⌘D fait : épingler. Un clic ne se maintient pas. */
   const basculerComparaison = useCallback(() => {
-    comparing.current = !comparing.current;
-    dispatch(comparing.current ? "compare" : "compare-end");
-  }, [dispatch]);
+    setComparison((current) => reduceComparison(current, "pin-comparison"));
+  }, []);
 
-  const handleReadyKey = useCallback(
-    (event: KeyboardEvent): void => {
-      if (event.key === "Enter" && !event.metaKey) {
-        accept();
-        return;
-      }
-      if (event.key === "c" && event.metaKey) {
-        copier();
-        return;
-      }
-      if (event.key === "r" && event.metaKey) {
-        event.preventDefault();
-        relancer();
-        return;
-      }
-      if (event.key === "Tab") {
-        event.preventDefault();
-        // ⇧⇥ descend d'un niveau : le clic n'a pas de modificateur, il monte.
-        const next = cycleRepromptLevel(level, event.shiftKey ? -1 : 1);
-        setLevel(next);
-        startRun(input, next);
-      }
-    },
-    [accept, copier, relancer, input, level, startRun],
-  );
-
-  // Keyboard: ⏎ remplacer, ⌥ comparer (maintenu), ⌘C copier, ⌘R relancer,
-  // ⇥ niveau, esc fermer, ⌘. interrompre.
+  // Keyboard: ⏎ remplacer, ⌥ comparer (maintenu), ⌘D comparer (épinglé),
+  // ⌘C copier, ⌘R relancer, ⇥/⇧⇥ niveau, esc fermer, ⌘. interrompre.
+  //
+  // Quelle frappe fait quoi est décidé dans `keyboard.ts`, hors du DOM : c'est
+  // la seule forme sous laquelle la règle est testable ici, la suite tournant
+  // sans environnement DOM.
   useEffect(() => {
+    const executer: Record<CapsuleIntent, () => void> = {
+      close: fermer,
+      cancel: cancelRun,
+      accept,
+      copy: copier,
+      rerun: relancer,
+      "level-next": () => {
+        changerNiveau(1);
+      },
+      "level-previous": () => {
+        changerNiveau(-1);
+      },
+      // Les trois commandes de comparaison ne dispatchent rien elles-mêmes :
+      // elles ne font qu'écrire l'intention, qu'un effet aligne sur la machine.
+      "hold-comparison": () => {
+        setComparison((current) => reduceComparison(current, "hold-comparison"));
+      },
+      "release-comparison": () => {
+        setComparison((current) => reduceComparison(current, "release-comparison"));
+      },
+      "pin-comparison": basculerComparaison,
+    };
     const onKeyDown = (event: KeyboardEvent): void => {
-      if (event.key === "Alt" && state === "ready" && !comparing.current) {
-        comparing.current = true;
-        dispatch("compare");
-        return;
-      }
-      if (event.key === "Escape") {
-        fermer();
-        return;
-      }
-      if (event.key === "." && event.metaKey) {
-        cancelRun();
-        return;
-      }
-      if (state === "ready" || state === "comparison") {
-        handleReadyKey(event);
-      }
+      // Couper le navigateur d'abord, et sur la frappe : une répétition de ⌘D
+      // n'a plus de commande à exécuter mais reste une frappe de la capsule.
+      if (preventsBrowserDefault(event, state)) event.preventDefault();
+      const intent = resolveCapsuleKeyDown(event, state);
+      if (intent !== null) executer[intent]();
     };
     const onKeyUp = (event: KeyboardEvent): void => {
-      if (event.key === "Alt" && comparing.current) {
-        comparing.current = false;
-        dispatch("compare-end");
-      }
+      const intent = resolveCapsuleKeyUp(event);
+      if (intent !== null) executer[intent]();
     };
     window.addEventListener("keydown", onKeyDown);
     window.addEventListener("keyup", onKeyUp);
@@ -671,7 +695,25 @@ export function App(): React.JSX.Element {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [state, cancelRun, dispatch, fermer, handleReadyKey]);
+  }, [state, accept, basculerComparaison, cancelRun, changerNiveau, copier, fermer, relancer]);
+
+  /**
+   * La machine suit l'intention de comparaison, et l'intention suit la machine.
+   *
+   * Le second sens est celui qui manquait à `⌘D` : une comparaison épinglée
+   * n'est vraie que tant que l'« avant » affiché est l'entrée du résultat
+   * montré. Une nouvelle capture, une nouvelle génération, une fermeture ou un
+   * remplacement appliqué font sortir de ces états — et l'épinglage part avec,
+   * au lieu de rouvrir la comparaison sur le run suivant.
+   */
+  useEffect(() => {
+    if (!keepsComparison(state)) {
+      setComparison(NO_COMPARISON);
+      return;
+    }
+    const event = comparisonEvent(state, wantsComparison(comparison));
+    if (event !== null) dispatch(event);
+  }, [state, comparison, dispatch]);
 
   // Choisir un profil a un sens avant de lancer, et devant un résultat qu'on
   // peut relancer autrement. Pendant le travail, non.
@@ -839,6 +881,7 @@ export function App(): React.JSX.Element {
       <CapsuleFooter
         state={state}
         expansion={expansion === true}
+        comparisonPinned={comparison.pinned}
         running={running}
         elapsedMs={elapsedMs}
         finalResult={finalResult}
@@ -862,7 +905,9 @@ export function App(): React.JSX.Element {
         onCompare={basculerComparaison}
         onCopy={copier}
         onRerun={relancer}
-        onLevel={changerNiveau}
+        onLevel={() => {
+          changerNiveau(1);
+        }}
         onCancel={cancelRun}
         onClose={fermer}
       />

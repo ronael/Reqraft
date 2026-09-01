@@ -21,7 +21,7 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
-import { formatAccelerator } from "../shared/shortcut-labels.js";
+import { CAPSULE_COMPARE_KEY, formatAccelerator } from "../shared/shortcut-labels.js";
 import { version } from "@/version.js";
 
 export const WELCOME_TOUR_SLIDES = [
@@ -97,6 +97,29 @@ export const WELCOME_TOUR_AI_BRANDS = [
   },
   { id: "kimi", name: "Kimi", logo: AI_BRAND_LOGOS.kimi, color: "#171717", invert: true },
 ] as const;
+
+/**
+ * Le pied de la capsule, rejoué en maquette.
+ *
+ * En données plutôt qu'en JSX répété, pour deux raisons. La maquette et le
+ * vrai pied ont déjà divergé sans que rien ne le dise — elle annonçait `⌥`
+ * quand la capsule était passée à `⌘D` — et la présentation est justement
+ * l'endroit où une touche fausse coûte le plus cher : c'est la première, et
+ * parfois la seule, fois qu'on la lit. Un test lit maintenant cette liste, et
+ * la touche de comparaison vient de la même constante que le pied réel.
+ *
+ * Le balisage rendu est inchangé : mêmes classes, même ordre.
+ */
+export const WELCOME_TOUR_CAPSULE_KEYS: readonly {
+  readonly touche: string;
+  readonly label: string;
+  readonly variant?: string;
+}[] = [
+  { touche: "↵", label: "capsule.replace", variant: "key-primary" },
+  { touche: CAPSULE_COMPARE_KEY, label: "capsule.compare" },
+  { touche: "⌘C", label: "capsule.copy" },
+  { touche: "esc", label: "capsule.close", variant: "key-close" },
+];
 
 export const WELCOME_TOUR_PROVIDERS = [
   {
@@ -362,22 +385,15 @@ function ProductCapsule({
       </div>
       <div className="tour-product-capsule-actions">
         <b>{profile}</b>
-        <span className="capsule-key key-primary">
-          <kbd>↵</kbd>
-          {t("capsule.replace")}
-        </span>
-        <span className="capsule-key">
-          <kbd>⌥</kbd>
-          {t("capsule.compare")}
-        </span>
-        <span className="capsule-key">
-          <kbd>⌘C</kbd>
-          {t("capsule.copy")}
-        </span>
-        <span className="capsule-key key-close">
-          <kbd>esc</kbd>
-          {t("capsule.close")}
-        </span>
+        {WELCOME_TOUR_CAPSULE_KEYS.map(({ touche, label, variant }) => (
+          <span
+            key={label}
+            className={variant === undefined ? "capsule-key" : `capsule-key ${variant}`}
+          >
+            <kbd>{touche}</kbd>
+            {t(label)}
+          </span>
+        ))}
       </div>
     </div>
   );

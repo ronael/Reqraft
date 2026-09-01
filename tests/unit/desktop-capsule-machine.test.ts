@@ -28,6 +28,7 @@ describe("machine à états de la capsule (DESKTOP.md §8.2)", () => {
     ["ready", "compare", "comparison"],
     ["comparison", "compare-end", "ready"],
     ["comparison", "rerun", "analysis"],
+    ["comparison", "accept", "applying"],
     ["ready", "accept", "applying"],
     ["applying", "applied", "closed"],
     ["applying", "failed", "ready"],
@@ -48,6 +49,14 @@ describe("machine à états de la capsule (DESKTOP.md §8.2)", () => {
     for (const state of ["analysis", "generating", "streaming", "applying"] as const) {
       expect(transition(state, "failed"), `${state} n'a pas de sortie d'échec`).not.toBeNull();
     }
+  });
+
+  it("on peut remplacer depuis une comparaison, pas seulement depuis le résultat", () => {
+    // Depuis que ⌘D épingle la comparaison, lire l'avant/après puis appuyer
+    // sur ⏎ est le trajet normal — plus un accident du maintien de ⌥. Sans
+    // cette sortie, `applying → failed → ready` était injoignable depuis là :
+    // un remplacement refusé n'avait aucun état où retomber.
+    expect(transition("comparison", "accept")).toBe("applying");
   });
 
   it("un remplacement refusé rend la main au lieu de bloquer la capsule", () => {

@@ -423,6 +423,23 @@ button:disabled {
   color: #ddd6fe;
 }
 
+/*
+ * ⌘D enclenché : la seule commande du pied qui reste allumée.
+ *
+ * Couleur uniquement. La géométrie de la rangée est déclarée une fois sur
+ * `.capsule-key` ; une bordure ou un fond ajouté ici décalerait la commande
+ * de ses voisines dès qu'on l'active.
+ */
+.capsule-key[aria-pressed="true"] {
+  color: #ddd6fe;
+}
+
+.capsule-key[aria-pressed="true"] kbd {
+  background: rgba(167, 139, 250, 0.18);
+  border-color: rgba(167, 139, 250, 0.45);
+  color: #ede9fe;
+}
+
 .key-primary {
   color: #d4d4d8;
 }
