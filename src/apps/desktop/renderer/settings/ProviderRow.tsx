@@ -19,7 +19,9 @@ import { useT, type Translate } from "../shared/i18n.js";
  * bouton et la ligne de résultat qui vont avec.
  *
  * Sorti de `SettingsApp.tsx` parce que c'est une histoire complète, et parce
- * que l'onglet est déjà long.
+ * que l'onglet est déjà long. `BuiltinProviderRow` a suivi : la ligne intégrée
+ * n'utilise plus rien de l'onglet, et `SettingsApp.tsx` était revenu au plafond
+ * de 1000 lignes que `sonarjs/max-lines` fait respecter.
  */
 
 /** How a credential's origin reads, and whether the settings can change it. */
@@ -36,6 +38,69 @@ export function describeProviderSource(
     default:
       return t("settings.noKeyStored");
   }
+}
+
+/**
+ * `openai-compatible` names a family, not one endpoint.
+ *
+ * Kept as a literal here, the way `OnboardingApp.tsx` already does: the
+ * renderer never imports `@/providers/`, so a catalogue identifier travels to
+ * this side as a plain string.
+ */
+const COMPATIBLE_PROVIDER_ID = "openai-compatible";
+
+/** The single row `config.defaultProvider` designates, built-in or endpoint. */
+export type DefaultProviderRow =
+  { kind: "builtin"; id: CatalogProviderId } | { kind: "endpoint"; id: string };
+
+/**
+ * Which row is the one actually used, given the default and the endpoints.
+ *
+ * A built-in identifier is a row by itself. `openai-compatible` is not: it
+ * picks the family, and the registry then builds the endpoint from
+ * `Object.values(config.providers)[0]` — the first declared entry, whatever
+ * the others say. Marking every endpoint would announce a choice the registry
+ * never makes, and marking none would hide the one it does; so the first entry
+ * is marked and the rest are not, which is what runs today.
+ *
+ * `undefined` when nothing on screen can be marked: `openai-compatible` with
+ * an empty catalogue names a provider no row describes.
+ */
+export function findDefaultProviderRow(
+  defaultProvider: CatalogProviderId,
+  endpointIds: readonly string[],
+): DefaultProviderRow | undefined {
+  if (defaultProvider !== COMPATIBLE_PROVIDER_ID) {
+    return { kind: "builtin", id: defaultProvider };
+  }
+  const [first] = endpointIds;
+  return first === undefined ? undefined : { kind: "endpoint", id: first };
+}
+
+/**
+ * The mark saying this row is the one the app will use.
+ *
+ * A word, not a control: the default is chosen in the Models tab, and anything
+ * that looked pressable here would promise an action this tab does not have.
+ * `title` carries what "Default" cannot say on its own — on an endpoint the
+ * row is used because it is declared first, not because it was picked.
+ */
+export function DefaultProviderBadge(
+  props: Readonly<{ kind: DefaultProviderRow["kind"] }>,
+): React.JSX.Element {
+  const t = useT();
+  return (
+    <span
+      className="provider-default-badge"
+      title={
+        props.kind === "endpoint"
+          ? t("settings.defaultBadgeEndpointTitle")
+          : t("settings.defaultBadgeTitle")
+      }
+    >
+      {t("settings.defaultBadge")}
+    </span>
+  );
 }
 
 /**
@@ -128,5 +193,126 @@ export function ProviderTestResult(
     >
       {describeProviderTest(props.result, t)}
     </span>
+  );
+}
+
+/** Nommée parce qu'elle sert dans quatre boutons différents. */
+export const CANCEL_KEY = "settings.cancel";
+
+interface BuiltinProviderRowProps {
+  provider: ProviderStatus;
+  /** This is the provider the capsule and the popover will actually use. */
+  isDefault: boolean;
+  editing: boolean;
+  confirming: boolean;
+  secret: string;
+  busy: boolean;
+  /** This row's own check is running. */
+  testing: boolean;
+  /** Some check is running, this row's or another's. */
+  testsBlocked: boolean;
+  result: ProviderTestResponse | undefined;
+  /** Absent when there is nothing worth checking on this row. */
+  onTest: (() => void) | undefined;
+  onSecretChange(value: string): void;
+  onStartEdit(): void;
+  onCancel(): void;
+  onSave(): void;
+  onStartRemove(): void;
+  onCancelRemove(): void;
+  onRemove(): void;
+}
+
+export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX.Element {
+  const t = useT();
+  const { provider } = props;
+  return (
+    <div className="settings-row">
+      <span>
+        <span className="settings-row-title">
+          {provider.label}
+          {props.isDefault && <DefaultProviderBadge kind="builtin" />}
+        </span>
+        <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
+        {provider.source === "environment" && (
+          <span className="settings-row-detail">{t("settings.replaceEnvInApp")}</span>
+        )}
+        {props.result !== undefined && !props.testing && (
+          <ProviderTestResult result={props.result} />
+        )}
+        {props.confirming && (
+          <span className="settings-row-detail provider-confirm">
+            {t("settings.confirmDeleteKey", { provider: provider.label })}
+          </span>
+        )}
+      </span>
+      {props.editing ? (
+        <span className="provider-key-control">
+          <input
+            className="settings-input mono"
+            type="password"
+            value={props.secret}
+            placeholder={t("settings.pasteKey")}
+            autoComplete="off"
+            spellCheck={false}
+            onChange={(event) => {
+              props.onSecretChange(event.target.value);
+            }}
+          />
+          <button
+            type="button"
+            className="button-secondary"
+            disabled={props.secret.trim() === "" || props.busy}
+            onClick={props.onSave}
+          >
+            {t("settings.verify")}
+          </button>
+          <button type="button" className="chip" onClick={props.onCancel}>
+            {t(CANCEL_KEY)}
+          </button>
+        </span>
+      ) : (
+        <span className="provider-key-control">
+          {props.confirming ? (
+            <>
+              <button
+                type="button"
+                className="chip chip-danger"
+                disabled={props.busy}
+                onClick={props.onRemove}
+              >
+                {t("settings.deleteForever")}
+              </button>
+              <button type="button" className="chip" onClick={props.onCancelRemove}>
+                {t(CANCEL_KEY)}
+              </button>
+            </>
+          ) : (
+            <>
+              {props.onTest !== undefined && (
+                <ProviderTestButton
+                  running={props.testing}
+                  blocked={props.testsBlocked || props.busy}
+                  onTest={props.onTest}
+                />
+              )}
+              <button type="button" className="chip chip-active" onClick={props.onStartEdit}>
+                {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
+              </button>
+              {provider.source === "keychain" && (
+                <button
+                  type="button"
+                  className="chip"
+                  disabled={props.busy}
+                  onClick={props.onStartRemove}
+                >
+                  {t("settings.remove")}
+                </button>
+              )}
+            </>
+          )}
+        </span>
+      )}
+    </div>
   );
 }

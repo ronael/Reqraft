@@ -16,6 +16,7 @@ import { findEndpointProblem } from "@/apps/desktop/renderer/settings/SettingsAp
 import {
   describeProviderSource,
   describeProviderTest,
+  findDefaultProviderRow,
 } from "@/apps/desktop/renderer/settings/ProviderRow.js";
 import { createDesktopTranslator } from "@/i18n/desktop/index.js";
 
@@ -393,6 +394,55 @@ describe("ce que la ligne d'un fournisseur annonce", () => {
     expect(
       describeProviderSource({ ...provider, configured: false, source: "not_configured" }, t),
     ).toContain("Aucune clé enregistrée");
+  });
+});
+
+describe("quelle ligne porte le fournisseur par défaut", () => {
+  it("désigne la ligne intégrée qui porte l'identifiant par défaut", () => {
+    expect(findDefaultProviderRow("anthropic", ["local", "labo"])).toEqual({
+      kind: "builtin",
+      id: "anthropic",
+    });
+  });
+
+  it("désigne le premier endpoint quand le défaut est openai-compatible", () => {
+    // C'est la règle du registre : `Object.values(config.providers)[0]`.
+    // L'indicateur suit ce que l'application fait, pas ce qu'elle devrait faire.
+    expect(findDefaultProviderRow("openai-compatible", ["local", "labo"])).toEqual({
+      kind: "endpoint",
+      id: "local",
+    });
+  });
+
+  it("ne désigne aucun autre endpoint que le premier", () => {
+    const row = findDefaultProviderRow("openai-compatible", ["local", "labo", "prod"]);
+
+    expect(row).not.toEqual({ kind: "endpoint", id: "labo" });
+    expect(row).not.toEqual({ kind: "endpoint", id: "prod" });
+  });
+
+  it("ne désigne rien quand openai-compatible n'a aucun endpoint déclaré", () => {
+    expect(findDefaultProviderRow("openai-compatible", [])).toBeUndefined();
+  });
+
+  it("ne marque aucun endpoint quand le défaut est un fournisseur intégré", () => {
+    // Sinon la ligne « local » se dirait utilisée alors que c'est Mistral qui
+    // répond : un indicateur faux est pire que pas d'indicateur du tout.
+    expect(findDefaultProviderRow("mistral", ["local", "labo"])).toEqual({
+      kind: "builtin",
+      id: "mistral",
+    });
+  });
+
+  it("annonce le défaut dans les deux langues, sans clé brute", () => {
+    for (const translate of [t, tEn]) {
+      const label = translate("settings.defaultBadge");
+      expect(label).not.toContain("settings.");
+      expect(translate("settings.defaultBadgeEndpointTitle")).toContain("endpoint");
+    }
+
+    expect(t("settings.defaultBadge")).toBe("Par défaut");
+    expect(tEn("settings.defaultBadge")).toBe("Default");
   });
 });
 

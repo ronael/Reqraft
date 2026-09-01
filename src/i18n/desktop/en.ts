@@ -114,6 +114,10 @@ export const DESKTOP_EN = {
   "settings.keyFromEnv": "Key read from {envName}.",
   "settings.defaultProvider": "Default provider",
   "settings.defaultProviderDetail": "Used by the capsule and the popover.",
+  "settings.defaultBadge": "Default",
+  "settings.defaultBadgeTitle": "The provider the capsule and the popover use.",
+  "settings.defaultBadgeEndpointTitle":
+    "First declared endpoint: the one used for OpenAI-compatible requests.",
   "settings.defaultModel": "Default model",
   "settings.defaultModelDetail": "The models this provider supports, or your own.",
   "settings.modelId": "Model identifier",

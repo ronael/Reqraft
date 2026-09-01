@@ -2991,6 +2991,31 @@ kbd {
 }
 
 /*
+ * The row the application will actually use.
+ *
+ * Inside the title rather than beside the buttons: it names the row, it is not
+ * something to press, and the controls column is a pair of chips whose geometry
+ * is declared once — a fifth control there would move them.
+ *
+ * Its `line-height` is what decides whether a marked row is taller than its
+ * neighbours: on an inline box the padding and the border paint without
+ * counting, only the line-height does. 14px stays under the 19.5px the 13px
+ * title already occupies at the body's 1.5, so the row keeps its height.
+ */
+.provider-default-badge {
+  margin-left: 8px;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #a1a1aa;
+  font-size: 10px;
+  line-height: 14px;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+
+/*
  * The verdict of a provider check.
  *
  * Colour only, on top of `.settings-row-detail`: the answer belongs on the

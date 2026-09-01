@@ -95,7 +95,16 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
   d'adaptateur. Pour un endpoint compatible OpenAI, une variable de clé
   déclarée mais absente est signalée. Ce test valide la configuration locale ;
   il ne prétend pas que le service distant a répondu.
-- Indiquer quel provider est le défaut (aujourd'hui seulement dans Modèles).
+- **Livré :** l'onglet marque « Par défaut » la ligne réellement utilisée, à
+  côté du titre, en lecture seule — le choix reste dans Modèles. La règle vit
+  dans `findDefaultProviderRow` (`ProviderRow.tsx`) : un identifiant intégré
+  désigne sa propre ligne, tandis que `openai-compatible` désigne uniquement le
+  **premier** endpoint déclaré, parce que le registre construit le provider à
+  partir de `Object.values(config.providers)[0]`
+  (`src/providers/registry.ts`). Les autres endpoints ne sont donc pas marqués,
+  et rien ne l'est quand le catalogue est vide. C'est une limite honnête, pas
+  un choix produit : le jour où l'endpoint utilisé sera nommé explicitement
+  dans la configuration, l'indicateur suivra sans changer de forme.
 
 ### Modèles
 

@@ -22,10 +22,13 @@ import {
 
 import { ProfilesTab } from "./ProfilesTab.js";
 import {
+  BuiltinProviderRow,
+  CANCEL_KEY,
+  DefaultProviderBadge,
   ProviderTestButton,
   ProviderTestResult,
   builtinTestRequest,
-  describeProviderSource,
+  findDefaultProviderRow,
 } from "./ProviderRow.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { PreferencesTab } from "./PreferencesTab.js";
@@ -448,6 +451,11 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
 
   const endpoints = Object.entries(props.config.providers ?? {});
   const keyProviders = props.providers.filter((provider) => provider.requiresApiKey);
+  // One row at most: the tab says which provider is used, it does not choose it.
+  const defaultRow = findDefaultProviderRow(
+    props.config.defaultProvider,
+    endpoints.map(([id]) => id),
+  );
 
   function run(action: () => Promise<void>): void {
     setBusy(true);
@@ -541,6 +549,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
           <BuiltinProviderRow
             key={provider.id}
             provider={provider}
+            isDefault={defaultRow?.kind === "builtin" && defaultRow.id === provider.id}
             editing={editing === provider.id}
             confirming={confirming === provider.id}
             secret={secret}
@@ -587,7 +596,12 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
           return (
             <div key={id} className="settings-row">
               <span>
-                <span className="settings-row-title">{endpoint.name ?? id}</span>
+                <span className="settings-row-title">
+                  {endpoint.name ?? id}
+                  {defaultRow?.kind === "endpoint" && defaultRow.id === id && (
+                    <DefaultProviderBadge kind="endpoint" />
+                  )}
+                </span>
                 <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
                 <span className="settings-row-detail">
                   {endpoint.apiKeyEnv === undefined
@@ -721,119 +735,6 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
   );
 }
 
-interface BuiltinProviderRowProps {
-  provider: ProviderStatus;
-  editing: boolean;
-  confirming: boolean;
-  secret: string;
-  busy: boolean;
-  /** This row's own check is running. */
-  testing: boolean;
-  /** Some check is running, this row's or another's. */
-  testsBlocked: boolean;
-  result: ProviderTestResponse | undefined;
-  /** Absent when there is nothing worth checking on this row. */
-  onTest: (() => void) | undefined;
-  onSecretChange(value: string): void;
-  onStartEdit(): void;
-  onCancel(): void;
-  onSave(): void;
-  onStartRemove(): void;
-  onCancelRemove(): void;
-  onRemove(): void;
-}
-
-function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX.Element {
-  const t = useT();
-  const { provider } = props;
-  return (
-    <div className="settings-row">
-      <span>
-        <span className="settings-row-title">{provider.label}</span>
-        <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
-        {provider.source === "environment" && (
-          <span className="settings-row-detail">{t("settings.replaceEnvInApp")}</span>
-        )}
-        {props.result !== undefined && !props.testing && (
-          <ProviderTestResult result={props.result} />
-        )}
-        {props.confirming && (
-          <span className="settings-row-detail provider-confirm">
-            {t("settings.confirmDeleteKey", { provider: provider.label })}
-          </span>
-        )}
-      </span>
-      {props.editing ? (
-        <span className="provider-key-control">
-          <input
-            className="settings-input mono"
-            type="password"
-            value={props.secret}
-            placeholder={t("settings.pasteKey")}
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => {
-              props.onSecretChange(event.target.value);
-            }}
-          />
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={props.secret.trim() === "" || props.busy}
-            onClick={props.onSave}
-          >
-            {t("settings.verify")}
-          </button>
-          <button type="button" className="chip" onClick={props.onCancel}>
-            {t(CANCEL_KEY)}
-          </button>
-        </span>
-      ) : (
-        <span className="provider-key-control">
-          {props.confirming ? (
-            <>
-              <button
-                type="button"
-                className="chip chip-danger"
-                disabled={props.busy}
-                onClick={props.onRemove}
-              >
-                {t("settings.deleteForever")}
-              </button>
-              <button type="button" className="chip" onClick={props.onCancelRemove}>
-                {t(CANCEL_KEY)}
-              </button>
-            </>
-          ) : (
-            <>
-              {props.onTest !== undefined && (
-                <ProviderTestButton
-                  running={props.testing}
-                  blocked={props.testsBlocked || props.busy}
-                  onTest={props.onTest}
-                />
-              )}
-              <button type="button" className="chip chip-active" onClick={props.onStartEdit}>
-                {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
-              </button>
-              {provider.source === "keychain" && (
-                <button
-                  type="button"
-                  className="chip"
-                  disabled={props.busy}
-                  onClick={props.onStartRemove}
-                >
-                  {t("settings.remove")}
-                </button>
-              )}
-            </>
-          )}
-        </span>
-      )}
-    </div>
-  );
-}
-
 interface EndpointFormProps {
   form: EndpointForm;
   problem: string | undefined;
@@ -931,9 +832,6 @@ interface ModelsTabProps {
 
 /** Sentinel for the "type your own identifier" entry in the model list. */
 const CUSTOM_MODEL_OPTION = "__custom__";
-
-/** Nommée parce qu'elle sert dans quatre boutons différents. */
-const CANCEL_KEY = "settings.cancel";
 
 /**
  * The model that should follow a change of provider.
