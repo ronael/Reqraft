@@ -190,6 +190,17 @@ export interface DoctorReport {
   checks: DoctorCheck[];
 }
 
+/**
+ * Réponse de `doctor:copy` : la copie a eu lieu, rien d'autre.
+ *
+ * Le rapport lui-même n'y figure pas — le renderer l'a déjà par `doctor:run`,
+ * et le renvoyer ferait exister deux copies d'un même texte dont une seule est
+ * celle qui a été écrite dans le presse-papiers.
+ */
+export interface DoctorCopyResponse {
+  copied: true;
+}
+
 export interface PermissionsState {
   accessibility: boolean;
   canReplace: boolean;
@@ -726,6 +737,7 @@ export interface ReqraftBridge {
   writeConfig(patch: ConfigWriteRequest): Promise<SafeConfig>;
   providersStatus(): Promise<ProviderStatus[]>;
   runDoctor(): Promise<DoctorReport>;
+  copyDoctorReport(): Promise<DoctorCopyResponse>;
   permissionsState(): Promise<PermissionsState>;
   requestPermissions(): Promise<PermissionsRequestResult>;
   updatesState(): Promise<DesktopUpdateState>;

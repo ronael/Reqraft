@@ -36,6 +36,10 @@ const bridge: ReqraftBridge = {
   writeConfig: (patch) => ipcRenderer.invoke(IPC_CHANNELS.configWrite, patch),
   providersStatus: () => ipcRenderer.invoke(IPC_CHANNELS.providersStatus),
   runDoctor: () => ipcRenderer.invoke(IPC_CHANNELS.doctorRun),
+  // Aucun argument, par contrat : le main reconstruit le rapport et le formate
+  // lui-même. Rien de ce que le renderer contient ne peut atteindre le
+  // presse-papiers par ce chemin.
+  copyDoctorReport: () => ipcRenderer.invoke(IPC_CHANNELS.doctorCopy),
   permissionsState: () => ipcRenderer.invoke(IPC_CHANNELS.permissionsState),
   requestPermissions: () => ipcRenderer.invoke(IPC_CHANNELS.permissionsRequest),
   updatesState: () => ipcRenderer.invoke(IPC_CHANNELS.updatesState),

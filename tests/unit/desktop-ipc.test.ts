@@ -1,3 +1,4 @@
+import process from "node:process";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecuteRepromptInput, ExecuteRepromptResult } from "@/application/reprompt.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
@@ -10,6 +11,7 @@ import {
   type IpcEventLike,
   type IpcMainLike,
 } from "@/apps/desktop/main/ipc.js";
+import { formatDoctorReport } from "@/apps/desktop/main/doctor.js";
 import { RepromptService, type RunEventSender } from "@/apps/desktop/main/reprompt-service.js";
 import {
   IPC_CHANNELS,
@@ -18,8 +20,10 @@ import {
 } from "@/apps/desktop/shared/ipc-channels.js";
 import { mainLocale, setMainLocale } from "@/apps/desktop/main/i18n.js";
 import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
+import { version } from "@/version.js";
 import {
   REPROMPT_LEVEL_IDS,
+  type DoctorReport,
   type RepromptStartResponse,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
@@ -165,6 +169,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       updatesCheck: "updates:check",
       updatesOpenDownload: "updates:open-download",
       doctorRun: "doctor:run",
+      doctorCopy: "doctor:copy",
       permissionsState: "permissions:state",
       permissionsRequest: "permissions:request",
       profilesList: "profiles:list",
@@ -193,7 +198,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(33);
+    expect(REQUEST_CHANNELS).toHaveLength(34);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
@@ -718,6 +723,102 @@ describe("canaux capture et permissions (lot 2)", () => {
       conflicts: [],
       suspended: false,
     });
+  });
+});
+
+/**
+ * Le rapport partagé dans une issue GitHub.
+ *
+ * Le canal existe précisément pour que le renderer n'ait jamais à formater ni
+ * à transmettre le texte : il demande une copie, le processus principal
+ * reconstruit le rapport et l'écrit lui-même.
+ */
+describe("doctor:copy", () => {
+  it("copie le rapport reconstruit par le main, sur la même source que doctor:run", async () => {
+    const harness = setup({});
+    const runDoctorReport = vi.fn(() =>
+      Promise.resolve({
+        checks: [
+          { id: "config:file", ok: true, detail: "/Users/prenom.nom/.config/reqraft/config.json" },
+          { id: "provider:openai", ok: false, detail: "OPENAI_API_KEY" },
+        ],
+      }),
+    );
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      runDoctorReport,
+      homeDir: () => "/Users/prenom.nom",
+    });
+
+    const shown = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.doctorRun,
+      undefined,
+      harness.sender,
+    )) as DoctorReport;
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.doctorCopy,
+      undefined,
+      harness.sender,
+    );
+
+    expect(response).toEqual({ copied: true });
+    // Une seule construction pour les deux canaux : le texte partagé décrit
+    // exactement ce que l'onglet affiche.
+    expect(runDoctorReport).toHaveBeenCalledTimes(2);
+    const copied = harness.clipboard.writeText.mock.calls[0]?.[0] ?? "";
+    for (const check of shown.checks) expect(copied).toContain(check.id);
+    expect(copied).toContain("- [ok] config:file: ~/.config/reqraft/config.json");
+    expect(copied).toContain("- [fail] provider:openai: OPENAI_API_KEY");
+    // Le dossier personnel ne part pas dans une issue publique.
+    expect(copied).not.toContain("prenom.nom");
+  });
+
+  it("refuse toute charge utile : le renderer ne dicte jamais ce qui est copié", async () => {
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      runDoctorReport: () => Promise.resolve({ checks: [] }),
+    });
+
+    for (const payload of ["texte-arbitraire", { text: "texte-arbitraire" }, null]) {
+      await expect(
+        harness.ipcMain.invoke(IPC_CHANNELS.doctorCopy, payload, harness.sender),
+      ).rejects.toThrow();
+    }
+    expect(harness.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it("n'écrit rien d'autre que le rapport formaté, sentinelles d'environnement comprises", async () => {
+    const env = {
+      OPENAI_API_KEY: "sk-sentinelle-de-cle",
+      REQRAFT_CUSTOM_HEADER: "x-sentinelle-header",
+    };
+    const harness = setup({ env });
+    const report = { checks: [{ id: "provider:openai", ok: false, detail: "OPENAI_API_KEY" }] };
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      env,
+      runDoctorReport: () => Promise.resolve(report),
+      homeDir: () => "/Users/prenom.nom",
+    });
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.doctorCopy, undefined, harness.sender);
+
+    // Égalité stricte avec la fonction pure : le main n'ajoute rien au texte,
+    // donc rien de l'environnement ne peut s'y glisser par un autre chemin.
+    const copied = harness.clipboard.writeText.mock.calls[0]?.[0] ?? "";
+    expect(copied).toBe(
+      formatDoctorReport(report, {
+        version,
+        platform: process.platform,
+        homeDir: "/Users/prenom.nom",
+      }),
+    );
+    for (const value of Object.values(env)) expect(copied).not.toContain(value);
+    expect(copied).toContain("OPENAI_API_KEY");
   });
 });
 

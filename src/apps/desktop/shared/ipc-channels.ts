@@ -16,6 +16,12 @@ export const IPC_CHANNELS = {
   configWrite: "config:write",
   providersStatus: "providers:status",
   doctorRun: "doctor:run",
+  // Partager un diagnostic dans une issue GitHub. Volontairement distinct de
+  // `doctor:run` et sans charge utile : le renderer demande une copie, il ne
+  // fournit jamais le texte. Il n'existe aucun canal presse-papiers générique
+  // — accepter une chaîne du renderer reviendrait à lui donner le presse-
+  // papiers de l'utilisateur.
+  doctorCopy: "doctor:copy",
   permissionsState: "permissions:state",
   permissionsRequest: "permissions:request",
   updatesState: "updates:state",
@@ -89,6 +95,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.configWrite,
   IPC_CHANNELS.providersStatus,
   IPC_CHANNELS.doctorRun,
+  IPC_CHANNELS.doctorCopy,
   IPC_CHANNELS.permissionsState,
   IPC_CHANNELS.permissionsRequest,
   IPC_CHANNELS.updatesState,

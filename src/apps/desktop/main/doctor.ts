@@ -169,3 +169,78 @@ function checkShortcutIntent(state: ShortcutStateInfo, intent: ShortcutIntent): 
     detail: active ? `${active.label} (${active.accelerator})` : t("main.doctorNoShortcut"),
   };
 }
+
+/**
+ * Ce que le rapport copié peut dire de la machine, en plus des vérifications.
+ *
+ * Tout est optionnel et fourni par l'appelant : la fonction de formatage reste
+ * pure, donc testable sans `process`, sans `os` et sans Electron.
+ */
+export interface DoctorReportContext {
+  /** Version applicative, déjà disponible dans le main (`@/version.js`). */
+  version?: string;
+  /** `process.platform`, jamais l'identité de la machine. */
+  platform?: string;
+  /**
+   * Le dossier personnel, uniquement pour le retirer du texte.
+   *
+   * Un rapport part dans une issue GitHub : `/Users/prenom.nom/...` y publie
+   * un nom d'utilisateur que personne n'a l'intention de partager. Il est
+   * remplacé par `~`, comme un shell l'écrit.
+   */
+  homeDir?: string;
+}
+
+/** Au-delà, un détail est tronqué : un rapport reste lisible dans une issue. */
+const MAX_DETAIL_LENGTH = 200;
+
+/**
+ * Le rapport en texte brut, pour le presse-papiers (roadmap Diagnostic).
+ *
+ * Pure et sans traduction : ce texte est destiné à une issue publique, où une
+ * sortie stable en anglais se compare d'une machine à l'autre, alors qu'un
+ * rapport localisé ne se compare plus du tout. La sanitization est acquise par
+ * construction — `DoctorCheck.detail` ne porte que des libellés du catalogue,
+ * des identifiants de configuration et des noms de variables manquantes, et
+ * jamais une valeur d'environnement ni un message d'exception (voir
+ * `checkProvider`). Ce qui est fait ici est le dernier filet : le dossier
+ * personnel disparaît, les caractères de contrôle aussi, et un détail
+ * anormalement long est tronqué.
+ */
+export function formatDoctorReport(
+  report: DoctorReport,
+  context: DoctorReportContext = {},
+): string {
+  const lines = ["Reqraft diagnostic"];
+  if (context.version !== undefined && context.version !== "") {
+    lines.push(`version: ${context.version}`);
+  }
+  if (context.platform !== undefined && context.platform !== "") {
+    lines.push(`platform: ${context.platform}`);
+  }
+  lines.push("");
+
+  for (const check of report.checks) {
+    const status = check.ok ? "ok" : "fail";
+    const detail = sanitizeDetail(check.detail, context.homeDir);
+    lines.push(
+      detail === "" ? `- [${status}] ${check.id}` : `- [${status}] ${check.id}: ${detail}`,
+    );
+  }
+
+  // Fin de ligne unique et saut final : le texte reste identique quelle que
+  // soit la plateforme, et se colle proprement à la suite d'un paragraphe.
+  return `${lines.join("\n")}\n`;
+}
+
+function sanitizeDetail(detail: string | undefined, homeDir: string | undefined): string {
+  if (detail === undefined) return "";
+  // Les caractères de contrôle d'abord : ils casseraient la liste à puces, et
+  // un détail sur deux lignes ne se relit plus dans une issue.
+  let value = detail.replaceAll(/[\p{Cc}\p{Cf}]/gu, " ");
+  if (homeDir !== undefined && homeDir.length > 1) {
+    value = value.split(homeDir).join("~");
+  }
+  value = value.replaceAll(/\s+/g, " ").trim();
+  return value.length > MAX_DETAIL_LENGTH ? `${value.slice(0, MAX_DETAIL_LENGTH)}…` : value;
+}

@@ -1,4 +1,5 @@
 import process from "node:process";
+import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { executeReprompt } from "@/application/reprompt.js";
@@ -74,7 +75,7 @@ import {
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
-import { buildDoctorReport } from "./doctor.js";
+import { buildDoctorReport, formatDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
 import { mainLocale, resolveMainLocale, t } from "./i18n.js";
@@ -147,6 +148,13 @@ export interface DesktopIpcDependencies {
   showCapsule?: () => void;
   /** Lot 5: structured doctor report (settings Diagnostic tab). */
   runDoctorReport?: () => Promise<DoctorReport>;
+  /**
+   * Le dossier personnel retiré du rapport copié.
+   *
+   * Injecté pour la même raison que le reste : un test doit pouvoir décrire
+   * une machine dont le home n'est pas celui qui exécute la suite.
+   */
+  homeDir?: () => string;
   /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
   shortcutState?: () => ShortcutStateInfo;
   /**
@@ -381,17 +389,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     return { config: sanitizeConfigForRenderer(config), state };
   });
 
-  ipcMain.handle(IPC_CHANNELS.doctorRun, async (_event, payload) => {
-    EmptyRequestSchema.parse(payload);
-    if (dependencies.runDoctorReport) {
-      return await dependencies.runDoctorReport();
-    }
-    const permissions = dependencies.probePermissions
-      ? await dependencies.probePermissions()
-      : undefined;
-    const shortcuts = dependencies.shortcutState?.();
-    return await buildDoctorReport({ env, permissions, shortcuts });
-  });
+  registerDoctorHandlers(dependencies, env);
 
   ipcMain.handle(IPC_CHANNELS.permissionsState, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
@@ -799,6 +797,51 @@ interface ProviderTestContext {
   load: () => Promise<Config>;
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
   create: NonNullable<DesktopIpcDependencies["createProvider"]>;
+}
+
+/**
+ * Les deux canaux du diagnostic, enregistrés ensemble.
+ *
+ * `doctor:run` affiche le rapport, `doctor:copy` le copie : ils partagent une
+ * seule construction, sinon le texte partagé dans une issue finirait par ne
+ * plus décrire ce que l'utilisateur a sous les yeux.
+ */
+function registerDoctorHandlers(
+  dependencies: DesktopIpcDependencies,
+  env: NodeJS.ProcessEnv,
+): void {
+  const { ipcMain, clipboard } = dependencies;
+
+  const doctorReport = async (): Promise<DoctorReport> => {
+    if (dependencies.runDoctorReport) {
+      return await dependencies.runDoctorReport();
+    }
+    const permissions = dependencies.probePermissions
+      ? await dependencies.probePermissions()
+      : undefined;
+    const shortcuts = dependencies.shortcutState?.();
+    return await buildDoctorReport({ env, permissions, shortcuts });
+  };
+
+  ipcMain.handle(IPC_CHANNELS.doctorRun, async (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    return await doctorReport();
+  });
+
+  ipcMain.handle(IPC_CHANNELS.doctorCopy, async (_event, payload) => {
+    // Charge utile strictement vide : le renderer déclenche une copie, il ne
+    // choisit jamais son contenu, et aucune chaîne venue de lui n'atteint le
+    // presse-papiers par ce chemin.
+    EmptyRequestSchema.parse(payload);
+    clipboard.writeText(
+      formatDoctorReport(await doctorReport(), {
+        version,
+        platform: process.platform,
+        homeDir: dependencies.homeDir?.() ?? homedir(),
+      }),
+    );
+    return { copied: true };
+  });
 }
 
 /**

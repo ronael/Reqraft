@@ -1,4 +1,4 @@
-import { type ComponentType, useCallback, useEffect, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
 import {
   CircleArrowUp,
   Cpu,
@@ -20,6 +20,7 @@ import {
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
+import { DiagnosticTab } from "./DiagnosticTab.js";
 import { ProfilesTab } from "./ProfilesTab.js";
 import {
   BuiltinProviderRow,
@@ -98,6 +99,7 @@ export function SettingsApp(): React.JSX.Element {
   const [permissions, setPermissions] = useState<PermissionsState | null>(null);
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [doctorRunning, setDoctorRunning] = useState(false);
+  const doctorRequested = useRef(false);
   const [updates, setUpdates] = useState<DesktopUpdateState | null>(null);
 
   useEffect(() => {
@@ -116,6 +118,7 @@ export function SettingsApp(): React.JSX.Element {
   }, []);
 
   const runDoctor = useCallback(() => {
+    doctorRequested.current = true;
     setDoctorRunning(true);
     void window.reqraft
       .runDoctor()
@@ -124,6 +127,12 @@ export function SettingsApp(): React.JSX.Element {
         setDoctorRunning(false);
       });
   }, []);
+
+  useEffect(() => {
+    if (tab === "diagnostic" && !doctorRequested.current) {
+      runDoctor();
+    }
+  }, [runDoctor, tab]);
 
   const patchConfig = useCallback((patch: Parameters<typeof window.reqraft.writeConfig>[0]) => {
     void window.reqraft.writeConfig(patch).then(async (nextConfig) => {
@@ -200,9 +209,6 @@ export function SettingsApp(): React.JSX.Element {
                 meta={TAB_META[label]}
                 onClick={() => {
                   setTab(label);
-                  if (label === "diagnostic" && doctor === null && !doctorRunning) {
-                    runDoctor();
-                  }
                   if (label === "updates" && (updates === null || updates.status === "idle")) {
                     checkForUpdates();
                   }
@@ -956,45 +962,5 @@ function ModelsTab({
         </select>
       </label>
     </div>
-  );
-}
-
-interface DiagnosticTabProps {
-  doctor: DoctorReport | null;
-  running: boolean;
-  onRunDoctor(): void;
-}
-
-function DiagnosticTab({
-  doctor,
-  running,
-  onRunDoctor,
-}: Readonly<DiagnosticTabProps>): React.JSX.Element {
-  const t = useT();
-  return (
-    <>
-      {running && <p className="muted">{t("settings.diagnosticRunning")}</p>}
-      <div className="diagnostic-list">
-        {doctor?.checks.map((check) => (
-          <div
-            key={check.id}
-            className={check.ok ? "diagnostic-row" : "diagnostic-row diagnostic-row-risk"}
-          >
-            <span className={check.ok ? "verdict-good" : "verdict-risky"}>
-              {check.ok ? "✓" : "!"}
-            </span>
-            <span className="diagnostic-name">{check.id}</span>
-            {check.detail !== undefined && (
-              <span className="diagnostic-detail">{check.detail}</span>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="settings-actions">
-        <button type="button" className="button-secondary" onClick={onRunDoctor} disabled={running}>
-          {t("settings.rerunDiagnostic")}
-        </button>
-      </div>
-    </>
   );
 }

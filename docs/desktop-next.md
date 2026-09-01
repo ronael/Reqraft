@@ -123,9 +123,25 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 - L'état des permissions et des trois raccourcis est inclus ; il reste à
   améliorer l'action corrective depuis chaque échec.
-- Bouton « Copier le rapport » (pour les issues GitHub) — vérifier qu'aucune
-  clé/valeur sensible ne s'y trouve par construction (le rapport est déjà
-  sanitizé).
+- ~~Bouton « Copier le rapport » (pour les issues GitHub)~~ — livré. Les
+  garanties, dans l'ordre où elles tiennent :
+  - le renderer ne formate ni ne transmet rien. `doctor:copy` a une charge
+    utile strictement vide (`EmptyRequestSchema`), et il n'existe aucun canal
+    presse-papiers générique : une chaîne venue du renderer ne peut pas
+    atteindre le presse-papiers de l'utilisateur par ce chemin ;
+  - le processus principal reconstruit le rapport avec la même fonction que
+    `doctor:run` (`registerDoctorHandlers`), donc le texte partagé décrit
+    exactement ce que l'onglet affiche ;
+  - `formatDoctorReport` est pure et testée : entête, `version`, `platform`,
+    puis une ligne `- [ok|fail] <id>[: <détail>]` par vérification, en LF avec
+    un saut final. Elle n'est pas traduite — un rapport d'issue se compare
+    d'une machine à l'autre ;
+  - la sanitization reste acquise par construction (`DoctorCheck.detail` ne
+    porte que des libellés du catalogue, des identifiants de configuration et
+    des noms de variables manquantes, jamais une valeur d'environnement ni un
+    message d'exception). Le formatage ajoute un dernier filet : le dossier
+    personnel devient `~`, les caractères de contrôle sont aplatis et un
+    détail anormalement long est tronqué.
 
 ### Général
 
