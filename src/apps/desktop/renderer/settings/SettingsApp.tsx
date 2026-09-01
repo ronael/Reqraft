@@ -14,11 +14,19 @@ import {
   type DoctorReport,
   type PermissionsState,
   type ProviderStatus,
+  type ProviderTestRequest,
+  type ProviderTestResponse,
   type SafeConfig,
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
 import { ProfilesTab } from "./ProfilesTab.js";
+import {
+  ProviderTestButton,
+  ProviderTestResult,
+  builtinTestRequest,
+  describeProviderSource,
+} from "./ProviderRow.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { PreferencesTab } from "./PreferencesTab.js";
 import { UpdatesTab } from "./UpdatesTab.js";
@@ -421,22 +429,6 @@ export function findEndpointProblem(
   return undefined;
 }
 
-/** How a credential's origin reads, and whether the settings can change it. */
-export function describeProviderSource(
-  provider: ProviderStatus,
-  t: Translate = (key) => key,
-): string {
-  if (!provider.requiresApiKey) return t("settings.keyNotNeeded");
-  switch (provider.source) {
-    case "environment":
-      return t("settings.keyFromEnv", { envName: provider.envName ?? "" });
-    case "keychain":
-      return t("settings.keyInKeychain");
-    default:
-      return t("settings.noKeyStored");
-  }
-}
-
 function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
   const t = useT();
   const [editing, setEditing] = useState<string | null>(null);
@@ -448,6 +440,11 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
   const [form, setForm] = useState<EndpointForm | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // One check at a time, and only ever the one that was asked for. Two running
+  // together would race their results onto the same rows, and a second click on
+  // a row already running would test the same thing twice for one answer.
+  const [testing, setTesting] = useState<string | null>(null);
+  const [results, setResults] = useState<Record<string, ProviderTestResponse>>({});
 
   const endpoints = Object.entries(props.config.providers ?? {});
   const keyProviders = props.providers.filter((provider) => provider.requiresApiKey);
@@ -455,6 +452,10 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
   function run(action: () => Promise<void>): void {
     setBusy(true);
     setError(null);
+    // Anything that changes a key or an endpoint invalidates every verdict on
+    // screen: a result kept next to the row it no longer describes is worse
+    // than no result at all.
+    setResults({});
     void action()
       .catch((cause: unknown) => {
         setError(messageOfIpc(cause));
@@ -500,6 +501,31 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
     });
   };
 
+  const runTest = (key: string, request: ProviderTestRequest): void => {
+    if (testing !== null) return;
+    setTesting(key);
+    setError(null);
+    void window.reqraft
+      .testProvider(request)
+      .then((result) => {
+        setResults((current) => ({ ...current, [key]: result }));
+      })
+      .catch((cause: unknown) => {
+        setError(messageOfIpc(cause));
+      })
+      .finally(() => {
+        setTesting(null);
+      });
+  };
+
+  const builtinTest = (provider: ProviderStatus): (() => void) | undefined => {
+    const request = builtinTestRequest(provider);
+    if (!request) return undefined;
+    return () => {
+      runTest(`builtin:${request.id}`, request);
+    };
+  };
+
   const problem = form
     ? findEndpointProblem(
         form,
@@ -519,6 +545,10 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
             confirming={confirming === provider.id}
             secret={secret}
             busy={busy}
+            testing={testing === `builtin:${provider.id}`}
+            testsBlocked={testing !== null}
+            result={results[`builtin:${provider.id}`]}
+            onTest={builtinTest(provider)}
             onSecretChange={setSecret}
             onStartEdit={() => {
               setSecret("");
@@ -551,79 +581,98 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         {endpoints.length === 0 && !form && (
           <p className="settings-note muted">{t("settings.noCustomProvider")}</p>
         )}
-        {endpoints.map(([id, endpoint]) => (
-          <div key={id} className="settings-row">
-            <span>
-              <span className="settings-row-title">{endpoint.name ?? id}</span>
-              <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
-              <span className="settings-row-detail">
-                {endpoint.apiKeyEnv === undefined
-                  ? t("settings.endpointNoKey")
-                  : t("settings.keyFromEnv", { envName: endpoint.apiKeyEnv })}
-              </span>
-              {confirming === `endpoint:${id}` && (
-                <span className="settings-row-detail provider-confirm">
-                  Retirer « {id} » de votre configuration ?
+        {endpoints.map(([id, endpoint]) => {
+          const testKey = `endpoint:${id}`;
+          const testResult = results[testKey];
+          return (
+            <div key={id} className="settings-row">
+              <span>
+                <span className="settings-row-title">{endpoint.name ?? id}</span>
+                <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
+                <span className="settings-row-detail">
+                  {endpoint.apiKeyEnv === undefined
+                    ? t("settings.endpointNoKey")
+                    : t("settings.keyFromEnv", { envName: endpoint.apiKeyEnv })}
                 </span>
-              )}
-            </span>
-            <span className="provider-key-control">
-              <button
-                type="button"
-                className="chip chip-active"
-                onClick={() => {
-                  setError(null);
-                  setForm({
-                    mode: "update",
-                    id,
-                    name: endpoint.name ?? "",
-                    baseUrl: endpoint.baseUrl,
-                    apiKeyEnv: endpoint.apiKeyEnv ?? "",
-                  });
-                }}
-              >
-                {t("settings.edit")}
-              </button>
-              {confirming === `endpoint:${id}` ? (
-                <>
-                  <button
-                    type="button"
-                    className="chip chip-danger"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(null);
-                      run(async () => {
-                        props.onChanged(await window.reqraft.deleteProvider(id));
-                      });
+                {testResult !== undefined && testing !== testKey && (
+                  <ProviderTestResult result={testResult} />
+                )}
+                {confirming === `endpoint:${id}` && (
+                  <span className="settings-row-detail provider-confirm">
+                    Retirer « {id} » de votre configuration ?
+                  </span>
+                )}
+              </span>
+              <span className="provider-key-control">
+                {/* Pas pendant une confirmation de suppression : la ligne pose
+                    une question, et un troisième bouton à côté de la réponse
+                    invite à cliquer ailleurs qu'où elle attend. */}
+                {confirming !== `endpoint:${id}` && (
+                  <ProviderTestButton
+                    running={testing === testKey}
+                    blocked={testing !== null || busy}
+                    onTest={() => {
+                      runTest(testKey, { kind: "endpoint", id });
                     }}
-                  >
-                    {t("settings.confirm")}
-                  </button>
+                  />
+                )}
+                <button
+                  type="button"
+                  className="chip chip-active"
+                  onClick={() => {
+                    setError(null);
+                    setForm({
+                      mode: "update",
+                      id,
+                      name: endpoint.name ?? "",
+                      baseUrl: endpoint.baseUrl,
+                      apiKeyEnv: endpoint.apiKeyEnv ?? "",
+                    });
+                  }}
+                >
+                  {t("settings.edit")}
+                </button>
+                {confirming === `endpoint:${id}` ? (
+                  <>
+                    <button
+                      type="button"
+                      className="chip chip-danger"
+                      disabled={busy}
+                      onClick={() => {
+                        setConfirming(null);
+                        run(async () => {
+                          props.onChanged(await window.reqraft.deleteProvider(id));
+                        });
+                      }}
+                    >
+                      {t("settings.confirm")}
+                    </button>
+                    <button
+                      type="button"
+                      className="chip"
+                      onClick={() => {
+                        setConfirming(null);
+                      }}
+                    >
+                      {t(CANCEL_KEY)}
+                    </button>
+                  </>
+                ) : (
                   <button
                     type="button"
                     className="chip"
+                    disabled={busy}
                     onClick={() => {
-                      setConfirming(null);
+                      setConfirming(`endpoint:${id}`);
                     }}
                   >
-                    {t(CANCEL_KEY)}
+                    {t("settings.delete")}
                   </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="chip"
-                  disabled={busy}
-                  onClick={() => {
-                    setConfirming(`endpoint:${id}`);
-                  }}
-                >
-                  {t("settings.delete")}
-                </button>
-              )}
-            </span>
-          </div>
-        ))}
+                )}
+              </span>
+            </div>
+          );
+        })}
       </div>
 
       {form ? (
@@ -665,6 +714,8 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         </div>
       )}
 
+      <p className="settings-note muted">{t("settings.providerTestNote")}</p>
+
       <p className="settings-warning settings-soft-warning">{t("settings.keysNote")}</p>
     </>
   );
@@ -676,6 +727,13 @@ interface BuiltinProviderRowProps {
   confirming: boolean;
   secret: string;
   busy: boolean;
+  /** This row's own check is running. */
+  testing: boolean;
+  /** Some check is running, this row's or another's. */
+  testsBlocked: boolean;
+  result: ProviderTestResponse | undefined;
+  /** Absent when there is nothing worth checking on this row. */
+  onTest: (() => void) | undefined;
   onSecretChange(value: string): void;
   onStartEdit(): void;
   onCancel(): void;
@@ -695,6 +753,9 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
         <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
         {provider.source === "environment" && (
           <span className="settings-row-detail">{t("settings.replaceEnvInApp")}</span>
+        )}
+        {props.result !== undefined && !props.testing && (
+          <ProviderTestResult result={props.result} />
         )}
         {props.confirming && (
           <span className="settings-row-detail provider-confirm">
@@ -745,6 +806,13 @@ function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX
             </>
           ) : (
             <>
+              {props.onTest !== undefined && (
+                <ProviderTestButton
+                  running={props.testing}
+                  blocked={props.testsBlocked || props.busy}
+                  onTest={props.onTest}
+                />
+              )}
               <button type="button" className="chip chip-active" onClick={props.onStartEdit}>
                 {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
               </button>

@@ -88,8 +88,13 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Providers
 
-- Bouton **« Tester »** par provider (appelle `validateConfiguration()` — la
-  primitive existe déjà dans `doctor.ts`) plutôt que le seul statut passif.
+- **Livré :** bouton « Tester » par provider. Le processus principal hydrate
+  les credentials, construit uniquement le provider demandé et appelle
+  `validateConfiguration()` derrière un contrat IPC strict. Le renderer ne
+  reçoit qu'un verdict localisé, jamais une clé, un header ou un message brut
+  d'adaptateur. Pour un endpoint compatible OpenAI, une variable de clé
+  déclarée mais absente est signalée. Ce test valide la configuration locale ;
+  il ne prétend pas que le service distant a répondu.
 - Indiquer quel provider est le défaut (aujourd'hui seulement dans Modèles).
 
 ### Modèles

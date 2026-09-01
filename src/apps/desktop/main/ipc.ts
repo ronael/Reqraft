@@ -22,9 +22,12 @@ import {
   listProviderDefinitions,
   DEFAULT_PROVIDER_ID,
   OPENAI_COMPATIBLE_PROVIDER_ID,
+  type BuiltinProvider,
   type CredentialProvider,
   type InitProvider,
 } from "@/providers/catalog.js";
+import { createProvider } from "@/providers/registry.js";
+import type { ProviderAdapter, ProviderHealth } from "@/core/types.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { listProfiles } from "@/profiles/registry.js";
@@ -48,6 +51,7 @@ import {
   OnboardingCompleteRequestSchema,
   ProviderDeleteRequestSchema,
   ProviderSaveRequestSchema,
+  ProviderTestRequestSchema,
   ProfileDuplicateRequestSchema,
   ProfileExportRequestSchema,
   ProfileIdRequestSchema,
@@ -63,6 +67,9 @@ import {
   type OnboardingStateResponse,
   type ProviderModelOption,
   type ProviderStatus,
+  type ProviderTestOutcome,
+  type ProviderTestRequest,
+  type ProviderTestResponse,
   type SafeConfig,
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
@@ -186,6 +193,19 @@ export interface DesktopIpcDependencies {
   onWelcomeTourComplete?: () => void;
   /** Removes a provider credential. Defaults to the shared `auth` service. */
   removeCredential?: (provider: CredentialProvider) => Promise<void>;
+  /**
+   * Builds a provider adapter for `providers:test`.
+   *
+   * Injected for the same reason `doctor.ts` injects it: a check that reached
+   * the real registry could only be exercised against real credentials, and
+   * the failure paths — an adapter that throws, a health with an unknown code
+   * — would never be covered at all.
+   */
+  createProvider?: (
+    id: BuiltinProvider,
+    env: NodeJS.ProcessEnv,
+    config?: Config,
+  ) => ProviderAdapter;
 }
 
 const EMPTY_SHORTCUT_STATE: ShortcutStateInfo = {
@@ -325,6 +345,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     save,
     hydrate,
     removeCredential,
+    create: dependencies.createProvider ?? createProvider,
   });
 
   ipcMain.handle(IPC_CHANNELS.onboardingComplete, async (_event, payload) => {
@@ -670,6 +691,7 @@ interface ProviderHandlerDependencies {
   save: (config: Config) => Promise<void>;
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
   removeCredential: (provider: CredentialProvider) => Promise<void>;
+  create: NonNullable<DesktopIpcDependencies["createProvider"]>;
 }
 
 /**
@@ -680,7 +702,12 @@ interface ProviderHandlerDependencies {
  * and because `registerIpcHandlers` is long enough already.
  */
 function registerProviderManagementHandlers(dependencies: ProviderHandlerDependencies): void {
-  const { ipcMain, env, load, save, hydrate, removeCredential } = dependencies;
+  const { ipcMain, env, load, save, hydrate, removeCredential, create } = dependencies;
+
+  ipcMain.handle(IPC_CHANNELS.providerTest, async (_event, payload) => {
+    const request = ProviderTestRequestSchema.parse(payload);
+    return await testProvider(request, { env, load, hydrate, create });
+  });
 
   ipcMain.handle(IPC_CHANNELS.credentialDelete, async (_event, payload) => {
     const { provider } = CredentialDeleteRequestSchema.parse(payload);
@@ -755,6 +782,122 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
       providers: await listProviderStatuses(env, hydrate, load),
     };
   });
+}
+
+/**
+ * Names a configuration entry may take before it is allowed across the bridge.
+ *
+ * `missingConfiguration` is written by the adapter, and the compatible one is
+ * pointed at an endpoint the user chose. Nothing today puts a value in that
+ * list, and this makes sure nothing ever starts: an environment variable name
+ * or `baseUrl` passes, a key or a URL does not.
+ */
+const CONFIGURATION_NAME_PATTERN = /^[A-Za-z0-9_.-]{1,64}$/;
+
+interface ProviderTestContext {
+  env: NodeJS.ProcessEnv;
+  load: () => Promise<Config>;
+  hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
+  create: NonNullable<DesktopIpcDependencies["createProvider"]>;
+}
+
+/**
+ * Checks one provider, the way `doctor.ts` checks all of them.
+ *
+ * Same three steps — hydrate into a throwaway environment, build the adapter,
+ * ask it to validate itself — so the settings and the diagnostic can never
+ * disagree about the same provider. What differs is the answer: the diagnostic
+ * prints a sentence, and this returns a verdict the renderer translates, so no
+ * string written by an adapter or returned by a remote endpoint crosses.
+ *
+ * The check is local. Every adapter's `validateConfiguration()` reads what is
+ * configured and returns; none of them opens a connection. A green result
+ * therefore means "this configuration holds together", not "the provider
+ * answered" — which is what the wording in the settings says.
+ */
+async function testProvider(
+  request: ProviderTestRequest,
+  context: ProviderTestContext,
+): Promise<ProviderTestResponse> {
+  // Hydration copies keychain entries into a throwaway environment, exactly as
+  // the statuses do. The values stay in this function.
+  const hydrated = { ...context.env };
+  await context.hydrate(hydrated);
+  const config = await context.load();
+
+  if (request.kind === "endpoint") {
+    // Refused before anything is built: an endpoint the configuration does not
+    // hold is a request the renderer had no way to produce, and answering it
+    // with a verdict would dress a contract violation up as a test result.
+    const endpoint = config.providers?.[request.id];
+    if (!endpoint) {
+      throw new Error(t("main.errorProviderUnknown", { id: request.id }));
+    }
+    if (endpoint.apiKeyEnv && !hydrated[endpoint.apiKeyEnv]) {
+      const missing = CONFIGURATION_NAME_PATTERN.test(endpoint.apiKeyEnv)
+        ? [endpoint.apiKeyEnv]
+        : undefined;
+      return {
+        id: request.id,
+        outcome: "missing_configuration",
+        ...(missing ? { missing } : {}),
+      };
+    }
+    // Narrowed to the requested endpoint: the registry builds the compatible
+    // provider from the FIRST entry of `providers`, so handing it the whole
+    // map would test the same one whichever row was clicked.
+    return await runValidation(request.id, () =>
+      context.create(OPENAI_COMPATIBLE_PROVIDER_ID, hydrated, {
+        ...config,
+        providers: { [request.id]: endpoint },
+      }),
+    );
+  }
+
+  return await runValidation(request.id, () => context.create(request.id, hydrated, config));
+}
+
+/** Builds the adapter and turns whatever comes back into a closed verdict. */
+async function runValidation(
+  id: string,
+  build: () => ProviderAdapter,
+): Promise<ProviderTestResponse> {
+  try {
+    const health = await build().validateConfiguration();
+    if (health.ok) {
+      return { id, outcome: "ok" };
+    }
+    const missing = (health.missingConfiguration ?? []).filter((name) =>
+      CONFIGURATION_NAME_PATTERN.test(name),
+    );
+    return {
+      id,
+      outcome: outcomeOfHealthCode(health.code),
+      ...(missing.length > 0 ? { missing } : {}),
+    };
+  } catch {
+    // Swallowed on purpose. A registry error carries a provider id, an adapter
+    // error can carry a URL, and a rejected fetch carries the host it tried —
+    // none of that belongs in a settings window, and the renderer already has
+    // wording for a check that did not conclude.
+    return { id, outcome: "error" };
+  }
+}
+
+/** `ProviderHealth.code` as the contract's closed list of outcomes. */
+function outcomeOfHealthCode(code: ProviderHealth["code"]): ProviderTestOutcome {
+  switch (code) {
+    case "missing_configuration":
+      return "missing_configuration";
+    case "invalid_configuration":
+      return "invalid_configuration";
+    case "unreachable":
+      return "unreachable";
+    default:
+      // Not ok, and no reason given: reported as a check that did not
+      // conclude rather than silently promoted to one of the known causes.
+      return "error";
+  }
 }
 
 /** The preset catalogue for one provider, in the shape the renderer reads. */

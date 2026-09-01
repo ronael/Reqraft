@@ -2991,6 +2991,22 @@ kbd {
 }
 
 /*
+ * The verdict of a provider check.
+ *
+ * Colour only, on top of `.settings-row-detail`: the answer belongs on the
+ * same line the row already uses for its description, at the same size. A
+ * badge here would be the loudest thing in a tab whose other states — key
+ * present, key absent — are a sentence in grey.
+ */
+.provider-test-ok {
+  color: #a7f3d0;
+}
+
+.provider-test-failed {
+  color: rgba(253, 230, 138, 0.9);
+}
+
+/*
  * A row being confirmed stacks.
  *
  * The warning has to say what will be destroyed, which is the longest text in

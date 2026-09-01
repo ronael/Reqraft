@@ -62,6 +62,11 @@ export const IPC_CHANNELS = {
   credentialDelete: "credential:delete",
   providerSave: "providers:save",
   providerDelete: "providers:delete",
+  // Checking a provider without leaving the settings. The passive status only
+  // says whether a key was found, never whether what is configured holds
+  // together — the answer used to require running the whole diagnostic, which
+  // tests every provider at once and reports none of them individually.
+  providerTest: "providers:test",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -108,6 +113,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.credentialDelete,
   IPC_CHANNELS.providerSave,
   IPC_CHANNELS.providerDelete,
+  IPC_CHANNELS.providerTest,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

@@ -9,7 +9,7 @@ import {
   isValidCustomProfileId,
 } from "@/profiles/custom.js";
 import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
-import { BUILTIN_PROVIDER_IDS } from "@/providers/catalog.js";
+import { BUILTIN_PROVIDER_IDS, CREDENTIAL_PROVIDER_IDS } from "@/providers/catalog.js";
 import type { SetupBlocker } from "@/config/setup.js";
 
 /**
@@ -256,6 +256,13 @@ export interface ProfileCatalogResponse {
   problems: ProfileCatalogProblemInfo[];
 }
 
+/**
+ * Same rule everywhere a provider identifier is accepted: it becomes a key in
+ * the configuration file, and a mixed-case one would not match the endpoint it
+ * was meant to name.
+ */
+const PROVIDER_ID_ERROR = "A provider identifier must be lowercase.";
+
 const PROFILE_ID_ERROR =
   "A profile identifier must be normalised: lowercase letters, digits and hyphens only.";
 
@@ -377,7 +384,7 @@ export const ProviderSaveRequestSchema = z
       .string()
       .trim()
       .min(1)
-      .regex(/^[a-z0-9-]+$/, "A provider identifier must be lowercase."),
+      .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
     name: z.string().trim().min(1).optional(),
     baseUrl: z
       .string()
@@ -396,6 +403,67 @@ export type ProviderSaveRequest = z.infer<typeof ProviderSaveRequestSchema>;
 
 export const ProviderDeleteRequestSchema = z.object({ id: z.string().trim().min(1) }).strict();
 export type ProviderDeleteRequest = z.infer<typeof ProviderDeleteRequestSchema>;
+
+/**
+ * Which provider the settings want checked.
+ *
+ * A discriminated union rather than a bare identifier: a built-in provider is
+ * one of a closed list, while a compatible endpoint is keyed by whatever the
+ * user named it — and nothing stops someone naming an endpoint `anthropic`.
+ * Without the discriminator the main process would have to guess which of the
+ * two a request meant, and would sometimes test the wrong one.
+ *
+ * `mock` is absent by construction: it answers `ok` unconditionally, so
+ * offering it would be a test that cannot fail. The compatible provider is
+ * absent too — it is a family, and each endpoint is addressed on its own.
+ */
+export const PROVIDER_TEST_BUILTIN_IDS = CREDENTIAL_PROVIDER_IDS;
+export type ProviderTestBuiltinId = (typeof PROVIDER_TEST_BUILTIN_IDS)[number];
+
+export const ProviderTestRequestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("builtin"), id: z.enum(PROVIDER_TEST_BUILTIN_IDS) }).strict(),
+  z
+    .object({
+      kind: z.literal("endpoint"),
+      id: z
+        .string()
+        .trim()
+        .min(1)
+        .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
+    })
+    .strict(),
+]);
+export type ProviderTestRequest = z.infer<typeof ProviderTestRequestSchema>;
+
+/**
+ * What a check can conclude.
+ *
+ * A closed list rather than a sentence: `ProviderHealth.detail` is written by
+ * the adapter and could carry anything a remote endpoint sent back, headers
+ * and URLs included. The renderer gets a verdict it can translate, and the
+ * wording stays in the locale catalogues where every other string lives.
+ */
+export const PROVIDER_TEST_OUTCOMES = [
+  "ok",
+  "missing_configuration",
+  "invalid_configuration",
+  "unreachable",
+  "error",
+] as const;
+export type ProviderTestOutcome = (typeof PROVIDER_TEST_OUTCOMES)[number];
+
+/**
+ * The whole answer: which provider, and how it went.
+ *
+ * `missing` names configuration entries — an environment variable, `baseUrl` —
+ * never their values, and the main process drops anything that does not look
+ * like an identifier before sending it.
+ */
+export interface ProviderTestResponse {
+  id: string;
+  outcome: ProviderTestOutcome;
+  missing?: string[];
+}
 
 export const CredentialDeleteRequestSchema = z
   .object({ provider: z.enum(BUILTIN_PROVIDER_IDS) })
@@ -526,7 +594,7 @@ export const OnboardingCompleteRequestSchema = z
           .string()
           .trim()
           .min(1)
-          .regex(/^[a-z0-9-]+$/, "A provider identifier must be lowercase."),
+          .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
         name: z.string().trim().min(1).optional(),
         // `.url()` alone is not enough: `localhost:11434` parses, with
         // `localhost:` as its protocol, and only fails when the first request
@@ -681,6 +749,7 @@ export interface ReqraftBridge {
   deleteCredential(request: CredentialDeleteRequest): Promise<CredentialSaveResponse>;
   saveProvider(request: ProviderSaveRequest): Promise<ProviderMutationResponse>;
   deleteProvider(id: string): Promise<ProviderMutationResponse>;
+  testProvider(request: ProviderTestRequest): Promise<ProviderTestResponse>;
   completeOnboarding(request: OnboardingCompleteRequest): Promise<OnboardingCompleteResponse>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;

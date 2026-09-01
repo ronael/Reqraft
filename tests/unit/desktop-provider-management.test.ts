@@ -7,14 +7,20 @@ import {
   type IpcMainLike,
 } from "@/apps/desktop/main/ipc.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
-import type { ProviderMutationResponse } from "@/apps/desktop/shared/ipc-contract.js";
+import type {
+  ProviderMutationResponse,
+  ProviderTestResponse,
+} from "@/apps/desktop/shared/ipc-contract.js";
+import type { ProviderAdapter, ProviderHealth } from "@/core/types.js";
+import { findEndpointProblem } from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import {
   describeProviderSource,
-  findEndpointProblem,
-} from "@/apps/desktop/renderer/settings/SettingsApp.js";
+  describeProviderTest,
+} from "@/apps/desktop/renderer/settings/ProviderRow.js";
 import { createDesktopTranslator } from "@/i18n/desktop/index.js";
 
 const t = createDesktopTranslator("fr");
+const tEn = createDesktopTranslator("en");
 
 /**
  * Managing providers from the settings.
@@ -401,5 +407,339 @@ describe("une suppression de clé se confirme avant d'agir", () => {
     await ipcMain.invoke(IPC_CHANNELS.credentialDelete, { provider: "anthropic" });
 
     expect(removed).toEqual(["anthropic"]);
+  });
+});
+
+/**
+ * `providers:test` — checking one provider from the settings.
+ *
+ * The primitive is `validateConfiguration()`, the same one the diagnostic
+ * calls. What is guarded here is the boundary around it: the request names a
+ * provider from a closed list, the answer is a verdict rather than a sentence
+ * an adapter wrote, and nothing that lives in the main process — a key from
+ * the environment, one hydrated from the keychain, a custom header — comes
+ * back with it.
+ */
+
+const KEYCHAIN_KEY = "sk-clé-du-trousseau-qui-ne-doit-pas-fuiter";
+const ENV_KEY = "sk-clé-d-environnement-qui-ne-doit-pas-fuiter";
+
+interface TestHarness {
+  ipcMain: FakeIpcMain;
+  /** Every `createProvider` call the handler made, in order. */
+  calls: { id: string; env: NodeJS.ProcessEnv; config?: Config }[];
+}
+
+function testHarness(options: {
+  health?: ProviderHealth | (() => Promise<ProviderHealth>);
+  config?: Partial<Config>;
+  env?: NodeJS.ProcessEnv;
+  throwOnCreate?: Error;
+}): TestHarness {
+  const localIpc = new FakeIpcMain();
+  const calls: TestHarness["calls"] = [];
+  const current: Config = { ...DEFAULT_CONFIG, ...options.config };
+
+  registerIpcHandlers({
+    ipcMain: localIpc,
+    clipboard: { writeText: vi.fn() },
+    env: options.env ?? {},
+    loadConfig: () => Promise.resolve(current),
+    saveConfig: () => Promise.resolve(),
+    // Stands in for the keychain: the handler must build its provider from the
+    // hydrated copy, not from the launch environment.
+    hydrateCredentials: (target: NodeJS.ProcessEnv) => {
+      target.ANTHROPIC_API_KEY ??= KEYCHAIN_KEY;
+      return Promise.resolve();
+    },
+    configFileExists: () => true,
+    createProvider: (id, env, config) => {
+      calls.push({ id, env, ...(config === undefined ? {} : { config }) });
+      if (options.throwOnCreate) throw options.throwOnCreate;
+      const health = options.health ?? { ok: true };
+      return {
+        id,
+        name: id,
+        generate: () => Promise.reject(new Error("jamais appelé")),
+        validateConfiguration: () =>
+          typeof health === "function" ? health() : Promise.resolve(health),
+      } satisfies ProviderAdapter;
+    },
+  });
+
+  return { ipcMain: localIpc, calls };
+}
+
+describe("providers:test", () => {
+  it("crée le provider après hydratation et rend un succès", async () => {
+    const harnessed = testHarness({ health: { ok: true } });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "builtin",
+      id: "anthropic",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({ id: "anthropic", outcome: "ok" });
+    expect(harnessed.calls).toHaveLength(1);
+    // La clé du trousseau doit être là où le provider la lit — et nulle part
+    // ailleurs : c'est tout l'intérêt de la copie jetable.
+    expect(harnessed.calls[0]?.env.ANTHROPIC_API_KEY).toBe(KEYCHAIN_KEY);
+  });
+
+  it("rend une configuration incomplète en nommant ce qui manque", async () => {
+    const harnessed = testHarness({
+      health: {
+        ok: false,
+        code: "missing_configuration",
+        missingConfiguration: ["ANTHROPIC_API_KEY"],
+      },
+    });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "builtin",
+      id: "anthropic",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({
+      id: "anthropic",
+      outcome: "missing_configuration",
+      missing: ["ANTHROPIC_API_KEY"],
+    });
+  });
+
+  it("distingue une configuration refusée d'un fournisseur injoignable", async () => {
+    for (const [code, outcome] of [
+      ["invalid_configuration", "invalid_configuration"],
+      ["unreachable", "unreachable"],
+    ] as const) {
+      const harnessed = testHarness({ health: { ok: false, code } });
+      const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+        kind: "builtin",
+        id: "openai",
+      })) as ProviderTestResponse;
+
+      expect(response.outcome).toBe(outcome);
+    }
+  });
+
+  it("rend un échec contrôlé quand le provider n'a rien conclu", async () => {
+    // `ok: false` sans code : rien ne permet de dire pourquoi, donc rien ne
+    // doit être promu en cause connue.
+    const harnessed = testHarness({ health: { ok: false } });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "builtin",
+      id: "mistral",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({ id: "mistral", outcome: "error" });
+  });
+
+  it("convertit une erreur du provider sans laisser fuiter son message", async () => {
+    const secretMessage = `ECONNREFUSED https://interne.test/v1 avec ${ENV_KEY}`;
+    const harnessed = testHarness({
+      health: () => Promise.reject(new Error(secretMessage)),
+    });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "builtin",
+      id: "deepseek",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({ id: "deepseek", outcome: "error" });
+    expect(JSON.stringify(response)).not.toContain("ECONNREFUSED");
+    expect(JSON.stringify(response)).not.toContain(ENV_KEY);
+  });
+
+  it("convertit aussi une construction de provider qui échoue", async () => {
+    const harnessed = testHarness({ throwOnCreate: new Error("provider.unsupported: anthropic") });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "builtin",
+      id: "anthropic",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({ id: "anthropic", outcome: "error" });
+  });
+
+  it("ne laisse passer que des noms d'entrées de configuration", async () => {
+    // `missingConfiguration` est écrit par l'adaptateur. Rien n'y met de valeur
+    // aujourd'hui ; ce filtre est là pour que rien ne commence.
+    const harnessed = testHarness({
+      health: {
+        ok: false,
+        code: "missing_configuration",
+        missingConfiguration: ["baseUrl", `Authorization: ${TOKEN}`],
+      },
+    });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "builtin",
+      id: "openai",
+    })) as ProviderTestResponse;
+
+    expect(response.missing).toEqual(["baseUrl"]);
+    expect(JSON.stringify(response)).not.toContain(TOKEN);
+  });
+
+  it("teste l'endpoint compatible demandé, pas le premier de la liste", async () => {
+    // Le registre construit le provider compatible à partir de la PREMIÈRE
+    // entrée de `providers` : lui passer la carte entière testerait toujours
+    // la même, quelle que soit la ligne cliquée.
+    const harnessed = testHarness({
+      config: {
+        providers: {
+          local: { type: "openai-compatible", baseUrl: "http://localhost:11434/v1" },
+          distant: { type: "openai-compatible", baseUrl: "https://exemple.test/v1" },
+        },
+      },
+    });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "endpoint",
+      id: "distant",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({ id: "distant", outcome: "ok" });
+    expect(harnessed.calls[0]?.id).toBe("openai-compatible");
+    expect(Object.keys(harnessed.calls[0]?.config?.providers ?? {})).toEqual(["distant"]);
+    expect(harnessed.calls[0]?.config?.providers?.distant?.baseUrl).toBe("https://exemple.test/v1");
+  });
+
+  it("signale la variable de clé absente d'un endpoint", async () => {
+    const harnessed = testHarness({
+      config: {
+        providers: {
+          distant: {
+            type: "openai-compatible",
+            baseUrl: "https://exemple.test/v1",
+            apiKeyEnv: "DISTANT_API_KEY",
+          },
+        },
+      },
+    });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+      kind: "endpoint",
+      id: "distant",
+    })) as ProviderTestResponse;
+
+    expect(response).toEqual({
+      id: "distant",
+      outcome: "missing_configuration",
+      missing: ["DISTANT_API_KEY"],
+    });
+    expect(harnessed.calls).toEqual([]);
+  });
+
+  it("refuse un endpoint que la configuration ne connaît pas", async () => {
+    const harnessed = testHarness({});
+
+    await expect(
+      harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, { kind: "endpoint", id: "fantome" }),
+    ).rejects.toThrow(/No custom provider/);
+    expect(harnessed.calls).toEqual([]);
+  });
+
+  it("refuse un payload hors contrat", async () => {
+    const harnessed = testHarness({});
+    const rejected = [
+      undefined,
+      { id: "anthropic" },
+      { kind: "builtin" },
+      { kind: "autre", id: "anthropic" },
+      // `mock` répond `ok` quoi qu'il arrive : un test qui ne peut pas échouer.
+      { kind: "builtin", id: "mock" },
+      // Une famille, pas un endpoint : chaque endpoint se teste sur sa ligne.
+      { kind: "builtin", id: "openai-compatible" },
+      { kind: "builtin", id: "anthropic", secret: "x" },
+      { kind: "endpoint", id: "Mon Serveur" },
+      { kind: "endpoint", id: "" },
+    ];
+
+    for (const payload of rejected) {
+      await expect(
+        harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, payload),
+        JSON.stringify(payload),
+      ).rejects.toThrow();
+    }
+    expect(harnessed.calls).toEqual([]);
+  });
+
+  it("ne renvoie ni clé ni en-tête, quelle que soit l'issue", async () => {
+    const harnessed = testHarness({
+      env: { ANTHROPIC_API_KEY: ENV_KEY },
+      config: {
+        providers: {
+          local: {
+            type: "openai-compatible",
+            baseUrl: "http://localhost:11434/v1",
+            customHeaders: { Authorization: TOKEN },
+          },
+        },
+      },
+    });
+
+    const responses = [
+      await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+        kind: "builtin",
+        id: "anthropic",
+      }),
+      await harnessed.ipcMain.invoke(IPC_CHANNELS.providerTest, {
+        kind: "endpoint",
+        id: "local",
+      }),
+    ];
+
+    // Le provider, lui, a bien reçu de quoi travailler — c'est la preuve que
+    // le filtrage porte sur ce qui traverse, pas sur ce qui est lu.
+    expect(harnessed.calls[1]?.config?.providers?.local?.customHeaders).toEqual({
+      Authorization: TOKEN,
+    });
+    const serialised = JSON.stringify(responses);
+    expect(serialised).not.toContain(ENV_KEY);
+    expect(serialised).not.toContain(KEYCHAIN_KEY);
+    expect(serialised).not.toContain(TOKEN);
+    expect(responses).toEqual([
+      { id: "anthropic", outcome: "ok" },
+      { id: "local", outcome: "ok" },
+    ]);
+  });
+});
+
+describe("ce que le résultat d'un test annonce, côté renderer", () => {
+  it("dit qu'une configuration locale est valide, dans les deux langues", () => {
+    const ok = { id: "anthropic", outcome: "ok" } as const;
+
+    expect(describeProviderTest(ok, t)).toContain("Configuration locale valide");
+    expect(describeProviderTest(ok, tEn)).toContain("Local configuration is valid");
+  });
+
+  it("nomme ce qui manque quand la configuration est incomplète", () => {
+    const result: ProviderTestResponse = {
+      id: "anthropic",
+      outcome: "missing_configuration",
+      missing: ["ANTHROPIC_API_KEY"],
+    };
+
+    expect(describeProviderTest(result, t)).toContain("ANTHROPIC_API_KEY");
+    expect(describeProviderTest(result, tEn)).toContain("ANTHROPIC_API_KEY");
+  });
+
+  it("reste lisible quand le provider n'a pas dit ce qui manque", () => {
+    // Sans cela la phrase se terminait par « : . », ce qui se lit comme un bug.
+    const phrase = describeProviderTest({ id: "anthropic", outcome: "missing_configuration" }, t);
+
+    expect(phrase).toBe("Configuration incomplète.");
+  });
+
+  it("distingue un échec d'un succès pour chaque issue", () => {
+    // Une issue traduite par sa propre clé afficherait `settings.providerTest…`
+    // à l'écran, sans que rien n'échoue au build.
+    for (const outcome of ["invalid_configuration", "unreachable", "error"] as const) {
+      const phrase = describeProviderTest({ id: "openai", outcome }, t);
+      expect(phrase, outcome).not.toContain("settings.");
+      expect(phrase, outcome).not.toBe(describeProviderTest({ id: "openai", outcome: "ok" }, t));
+    }
   });
 });
