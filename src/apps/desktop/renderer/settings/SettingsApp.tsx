@@ -9,7 +9,6 @@ import {
   Waypoints,
 } from "lucide-react";
 import {
-  REPROMPT_LEVEL_IDS,
   type DesktopUpdateState,
   type DoctorReport,
   type PermissionsState,
@@ -21,6 +20,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 
 import { DiagnosticTab } from "./DiagnosticTab.js";
+import { ModelsTab } from "./ModelsTab.js";
 import { ProfilesTab } from "./ProfilesTab.js";
 import {
   BuiltinProviderRow,
@@ -828,139 +828,4 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
 function messageOfIpc(cause: unknown): string {
   const raw = cause instanceof Error ? cause.message : String(cause);
   return raw.replace(/^Error invoking remote method '[^']+':\s*/, "").replace(/^Error:\s*/, "");
-}
-
-interface ModelsTabProps {
-  config: SafeConfig;
-  providers: ProviderStatus[];
-  onPatchConfig(patch: Parameters<typeof window.reqraft.writeConfig>[0]): void;
-}
-
-/** Sentinel for the "type your own identifier" entry in the model list. */
-const CUSTOM_MODEL_OPTION = "__custom__";
-
-/**
- * The model that should follow a change of provider.
- *
- * Keeping the previous one is how a configuration ends up naming an Anthropic
- * model with OpenAI selected — accepted by the form, rejected on the first run.
- * A model the new provider already publishes is kept; anything else falls back
- * to what that provider recommends.
- */
-export function modelForProvider(next: ProviderStatus | undefined, currentModel: string): string {
-  if (!next) return currentModel;
-  if (next.models.some((model) => model.id === currentModel)) return currentModel;
-  return (next.models.find((model) => model.recommended) ?? next.models[0])?.id ?? "";
-}
-
-function ModelsTab({
-  config,
-  providers,
-  onPatchConfig,
-}: Readonly<ModelsTabProps>): React.JSX.Element {
-  const t = useT();
-  const current = providers.find((provider) => provider.id === config.defaultProvider);
-  const models = current?.models ?? [];
-  const known = models.some((model) => model.id === config.defaultModel);
-  const [custom, setCustom] = useState(false);
-  // A provider with no catalogue — a custom endpoint — only has the free field.
-  const typing = custom || !known;
-
-  return (
-    <div className="settings-card-list">
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">{t("settings.defaultProvider")}</span>
-          <span className="settings-row-detail">{t("settings.defaultProviderDetail")}</span>
-        </span>
-        <select
-          className="settings-select"
-          value={config.defaultProvider}
-          onChange={(event) => {
-            const providerId = event.target.value as SafeConfig["defaultProvider"];
-            const next = providers.find((provider) => provider.id === providerId);
-            setCustom(false);
-            onPatchConfig({
-              defaultProvider: providerId,
-              defaultModel: modelForProvider(next, config.defaultModel),
-            });
-          }}
-        >
-          {providers.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.id}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">{t("settings.defaultModel")}</span>
-          <span className="settings-row-detail">{t("settings.defaultModelDetail")}</span>
-        </span>
-        <select
-          className="settings-select"
-          value={typing ? CUSTOM_MODEL_OPTION : config.defaultModel}
-          onChange={(event) => {
-            if (event.target.value === CUSTOM_MODEL_OPTION) {
-              setCustom(true);
-              return;
-            }
-            setCustom(false);
-            onPatchConfig({ defaultModel: event.target.value });
-          }}
-        >
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-              {model.recommended ? t("common.recommendedSuffix") : ""}
-            </option>
-          ))}
-          <option value={CUSTOM_MODEL_OPTION}>{t("settings.otherModel")}</option>
-        </select>
-      </label>
-
-      {typing && (
-        <label className="settings-row">
-          <span>
-            <span className="settings-row-title">{t("settings.modelId")}</span>
-            <span className="settings-row-detail">{t("settings.modelIdDetail")}</span>
-          </span>
-          <input
-            className="settings-input mono"
-            // Keyed on the provider: switching provider changes the value this
-            // field should show, and an uncontrolled input keeps the old one.
-            key={`${config.defaultProvider}:${config.defaultModel}`}
-            defaultValue={config.defaultModel}
-            onBlur={(event) => {
-              if (event.target.value !== config.defaultModel) {
-                onPatchConfig({ defaultModel: event.target.value });
-              }
-            }}
-          />
-        </label>
-      )}
-
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">{t("settings.defaultLevel")}</span>
-          <span className="settings-row-detail">{t("settings.defaultLevelDetail")}</span>
-        </span>
-        <select
-          className="settings-select"
-          value={config.defaultLevel}
-          onChange={(event) => {
-            onPatchConfig({ defaultLevel: event.target.value as SafeConfig["defaultLevel"] });
-          }}
-        >
-          {REPROMPT_LEVEL_IDS.map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
 }

@@ -108,9 +108,15 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Modèles
 
-- **Liste déroulante des modèles réels** via `listModels()` du provider au
-  lieu du champ texte libre (nécessite un canal `models:list`, la primitive
-  existe dans `ProviderAdapter`).
+- **Livré : catalogue réel des modèles.** `models:list` reçoit uniquement
+  l'identité d'un provider intégré ou d'un endpoint déjà déclaré. Le main
+  hydrate les credentials, valide la configuration, appelle `listModels()`
+  avec un timeout puis renvoie une liste nettoyée, dédupliquée et bornée à 200
+  entrées ; aucun message d'erreur d'adaptateur ne traverse l'IPC.
+- L'onglet charge ce catalogue à chaque changement de provider et permet de
+  l'actualiser. Une réponse obsolète est ignorée. Les catalogues absents, vides
+  ou en erreur gardent le champ d'identifiant manuel, et un modèle courant qui
+  n'apparaît pas dans la liste n'est jamais effacé automatiquement.
 - Exposer `timeoutMs`, `maxOutputTokens`, `fidelityMode`, `outputLanguage` —
   tous dans le schéma de config, aucun n'est éditable au desktop aujourd'hui.
 

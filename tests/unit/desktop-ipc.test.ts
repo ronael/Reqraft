@@ -192,13 +192,14 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       providerSave: "providers:save",
       providerDelete: "providers:delete",
       providerTest: "providers:test",
+      modelsList: "models:list",
       runDelta: "run:delta",
       runDone: "run:done",
       runError: "run:error",
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(34);
+    expect(REQUEST_CHANNELS).toHaveLength(35);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 

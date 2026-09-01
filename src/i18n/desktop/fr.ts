@@ -116,6 +116,20 @@ export const DESKTOP_FR = {
   "settings.modelId": "Identifiant du modèle",
   "settings.modelIdDetail": "Envoyé tel quel au provider choisi.",
   "settings.otherModel": "Autre identifiant…",
+  "settings.refresh": "Actualiser",
+  "settings.refreshModels": "Actualiser le catalogue de modèles",
+  "settings.modelCatalogLoading": "Chargement du catalogue du provider…",
+  "settings.modelCatalogReady": "{count} modèles disponibles.",
+  "settings.modelCatalogReadyTruncated": "{count} premiers modèles disponibles ; liste raccourcie.",
+  "settings.modelCatalogEmpty":
+    "Le provider a renvoyé un catalogue vide. Saisissez un identifiant.",
+  "settings.modelCatalogUnsupported":
+    "Ce provider n’expose pas de catalogue. Saisissez un identifiant.",
+  "settings.modelCatalogNoEndpoint": "Ajoutez un endpoint compatible pour charger son catalogue.",
+  "settings.modelCatalogMissing":
+    "Configuration manquante : {list}. Saisissez un identifiant si nécessaire.",
+  "settings.modelCatalogMissingUnknown": "La configuration du provider est incomplète.",
+  "settings.modelCatalogError": "Catalogue indisponible. L’identifiant actuel est conservé.",
   "settings.defaultLevel": "Niveau par défaut",
   "settings.defaultLevelDetail": "S'applique quand le profil ne force aucun niveau.",
   "settings.macosPermissions": "Permissions macOS",

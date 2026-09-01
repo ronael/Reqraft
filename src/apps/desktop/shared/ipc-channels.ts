@@ -73,6 +73,12 @@ export const IPC_CHANNELS = {
   // together — the answer used to require running the whole diagnostic, which
   // tests every provider at once and reports none of them individually.
   providerTest: "providers:test",
+  // Le catalogue réel d'un fournisseur, pour l'onglet Modèles. Distinct de
+  // `providers:status`, qui ne porte que les préréglages figés du dépôt : ceux-
+  // là vieillissent, et rien dans les réglages ne permettait de choisir un
+  // modèle sorti depuis. La requête ne nomme qu'un fournisseur ; les
+  // credentials restent hydratés et utilisés dans le processus principal.
+  modelsList: "models:list",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -121,6 +127,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.providerSave,
   IPC_CHANNELS.providerDelete,
   IPC_CHANNELS.providerTest,
+  IPC_CHANNELS.modelsList,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

@@ -889,6 +889,21 @@ kbd {
   width: min(260px, 42vw);
 }
 
+.model-catalog-status {
+  min-height: 16px;
+}
+
+.model-catalog-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.model-catalog-control .settings-select {
+  width: min(260px, 30vw);
+}
+
 .settings-actions {
   display: flex;
   justify-content: flex-end;

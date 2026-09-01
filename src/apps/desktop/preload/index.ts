@@ -67,6 +67,9 @@ const bridge: ReqraftBridge = {
   saveProvider: (request) => ipcRenderer.invoke(IPC_CHANNELS.providerSave, request),
   deleteProvider: (id) => ipcRenderer.invoke(IPC_CHANNELS.providerDelete, { id }),
   testProvider: (request) => ipcRenderer.invoke(IPC_CHANNELS.providerTest, request),
+  // Ne porte qu'une identité de fournisseur : la clé, l'URL de base et les
+  // en-têtes restent du côté qui les détient déjà.
+  listModels: (request) => ipcRenderer.invoke(IPC_CHANNELS.modelsList, request),
   completeOnboarding: (request) => ipcRenderer.invoke(IPC_CHANNELS.onboardingComplete, request),
   onRunDelta: (listener) =>
     subscribe(IPC_CHANNELS.runDelta, (payload) => {

@@ -3,15 +3,17 @@ import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import {
   registerIpcHandlers,
+  sanitizeModelCatalog,
   type IpcEventLike,
   type IpcMainLike,
 } from "@/apps/desktop/main/ipc.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
+  ModelsListResponse,
   ProviderMutationResponse,
   ProviderTestResponse,
 } from "@/apps/desktop/shared/ipc-contract.js";
-import type { ProviderAdapter, ProviderHealth } from "@/core/types.js";
+import type { ModelInfo, ProviderAdapter, ProviderHealth } from "@/core/types.js";
 import { findEndpointProblem } from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import {
   describeProviderSource,
@@ -482,6 +484,7 @@ interface TestHarness {
 
 function testHarness(options: {
   health?: ProviderHealth | (() => Promise<ProviderHealth>);
+  models?: ModelInfo[] | (() => Promise<ModelInfo[]>);
   config?: Partial<Config>;
   env?: NodeJS.ProcessEnv;
   throwOnCreate?: Error;
@@ -507,13 +510,20 @@ function testHarness(options: {
       calls.push({ id, env, ...(config === undefined ? {} : { config }) });
       if (options.throwOnCreate) throw options.throwOnCreate;
       const health = options.health ?? { ok: true };
-      return {
+      const adapter: ProviderAdapter = {
         id,
         name: id,
         generate: () => Promise.reject(new Error("jamais appelé")),
         validateConfiguration: () =>
           typeof health === "function" ? health() : Promise.resolve(health),
-      } satisfies ProviderAdapter;
+      };
+      if (options.models !== undefined) {
+        adapter.listModels = () =>
+          typeof options.models === "function"
+            ? options.models()
+            : Promise.resolve(options.models ?? []);
+      }
+      return adapter;
     },
   });
 
@@ -754,6 +764,152 @@ describe("providers:test", () => {
       { id: "anthropic", outcome: "ok" },
       { id: "local", outcome: "ok" },
     ]);
+  });
+});
+
+describe("models:list", () => {
+  it("hydrate, valide puis renvoie un catalogue nettoyé et dédupliqué", async () => {
+    const harnessed = testHarness({
+      models: [
+        { id: "gpt-5.1", name: " GPT 5.1\nLatest ", provider: "openai" },
+        { id: "gpt-5.1", name: "duplicate", provider: "openai" },
+        { id: "bad model", name: "ignored", provider: "openai" },
+        { id: "o3-mini", name: "", provider: "openai" },
+      ],
+    });
+
+    const response = (await harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, {
+      kind: "builtin",
+      id: "openai",
+    })) as ModelsListResponse;
+
+    expect(response).toEqual({
+      id: "openai",
+      outcome: "ok",
+      models: [
+        { id: "gpt-5.1", name: "GPT 5.1 Latest" },
+        { id: "o3-mini", name: "o3-mini" },
+      ],
+      truncated: false,
+    });
+    expect(harnessed.calls[0]?.env.ANTHROPIC_API_KEY).toBe(KEYCHAIN_KEY);
+  });
+
+  it("répond unsupported sans inventer de catalogue", async () => {
+    const harnessed = testHarness({ health: { ok: true } });
+
+    const response = await harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, {
+      kind: "builtin",
+      id: "mock",
+    });
+
+    expect(response).toEqual({ id: "mock", outcome: "unsupported", models: [], truncated: false });
+  });
+
+  it("ne contacte pas le catalogue quand la configuration est incomplète", async () => {
+    const listModels = vi.fn(() => Promise.resolve([]));
+    const harnessed = testHarness({
+      health: {
+        ok: false,
+        code: "missing_configuration",
+        missingConfiguration: ["OPENAI_API_KEY"],
+      },
+      models: listModels,
+    });
+
+    const response = await harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, {
+      kind: "builtin",
+      id: "openai",
+    });
+
+    expect(response).toEqual({
+      id: "openai",
+      outcome: "missing_configuration",
+      missing: ["OPENAI_API_KEY"],
+      models: [],
+      truncated: false,
+    });
+    expect(listModels).not.toHaveBeenCalled();
+  });
+
+  it("cible uniquement l'endpoint compatible demandé", async () => {
+    const harnessed = testHarness({
+      config: {
+        providers: {
+          local: { type: "openai-compatible", baseUrl: "http://localhost:11434/v1" },
+          distant: { type: "openai-compatible", baseUrl: "https://example.test/v1" },
+        },
+      },
+      models: [{ id: "local-model", name: "Local", provider: "openai-compatible" }],
+    });
+
+    await harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, {
+      kind: "endpoint",
+      id: "distant",
+    });
+
+    expect(Object.keys(harnessed.calls[0]?.config?.providers ?? {})).toEqual(["distant"]);
+  });
+
+  it("rend une erreur fermée sans message, URL ou secret", async () => {
+    const secret = "sk-secret-catalogue";
+    const harnessed = testHarness({
+      env: { OPENAI_API_KEY: secret },
+      models: () => Promise.reject(new Error(`ECONNREFUSED https://private.test avec ${secret}`)),
+    });
+
+    const response = await harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, {
+      kind: "builtin",
+      id: "openai",
+    });
+
+    expect(response).toEqual({ id: "openai", outcome: "error", models: [], truncated: false });
+    expect(JSON.stringify(response)).not.toContain(secret);
+    expect(JSON.stringify(response)).not.toContain("private.test");
+  });
+
+  it("ferme aussi l'erreur d'un endpoint valide mais absent de la configuration", async () => {
+    const harnessed = testHarness({ models: [] });
+
+    const response = await harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, {
+      kind: "endpoint",
+      id: "fantome",
+    });
+
+    expect(response).toEqual({ id: "fantome", outcome: "error", models: [], truncated: false });
+  });
+
+  it("refuse les identités ambiguës, inconnues ou enrichies", async () => {
+    const harnessed = testHarness({ models: [] });
+    const rejected = [
+      undefined,
+      { id: "openai" },
+      { kind: "builtin", id: "openai-compatible" },
+      { kind: "builtin", id: "openai", apiKey: "secret" },
+      { kind: "endpoint", id: "Unknown Endpoint" },
+    ];
+
+    for (const payload of rejected) {
+      await expect(
+        harnessed.ipcMain.invoke(IPC_CHANNELS.modelsList, payload),
+        JSON.stringify(payload),
+      ).rejects.toThrow();
+    }
+  });
+
+  it("borne un catalogue distant et indique la troncature", () => {
+    const remote: unknown[] = Array.from({ length: 205 }, (_, index) => ({
+      id: `model-${String(index)}`,
+      name: `Model ${String(index)}`,
+      provider: "test",
+    }));
+    remote.unshift(null, "not-a-model");
+
+    const result = sanitizeModelCatalog(remote);
+
+    expect(result.models).toHaveLength(200);
+    expect(result.truncated).toBe(true);
+    expect(result.models.at(-1)?.id).toBe("model-199");
   });
 });
 

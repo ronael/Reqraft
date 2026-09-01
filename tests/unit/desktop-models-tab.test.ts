@@ -1,10 +1,15 @@
 import { describe, expect, it } from "vitest";
+import { initialSettingsTab } from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import {
-  initialSettingsTab,
+  describeModelCatalog,
+  modelCatalogRequest,
   modelForProvider,
-} from "@/apps/desktop/renderer/settings/SettingsApp.js";
+} from "@/apps/desktop/renderer/settings/ModelsTab.js";
 import type { ProviderStatus } from "@/apps/desktop/shared/ipc-contract.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
+import { createDesktopTranslator } from "@/i18n/desktop/index.js";
+
+const t = createDesktopTranslator("fr");
 
 /**
  * Changing the provider in the settings.
@@ -58,8 +63,47 @@ describe("modelForProvider", () => {
     // A custom endpoint publishes nothing: whatever was typed is all there is,
     // and clearing it would silently discard the user's own model.
     const custom = provider("openai-compatible", []);
-    expect(modelForProvider(custom, "mon-modele-local")).toBe("");
+    expect(modelForProvider(custom, "mon-modele-local")).toBe("mon-modele-local");
     expect(modelForProvider(undefined, "mon-modele-local")).toBe("mon-modele-local");
+  });
+});
+
+describe("modelCatalogRequest", () => {
+  it("nomme directement un provider intégré", () => {
+    expect(modelCatalogRequest("anthropic", undefined)).toEqual({
+      kind: "builtin",
+      id: "anthropic",
+    });
+  });
+
+  it("nomme le premier endpoint réellement utilisé par openai-compatible", () => {
+    expect(modelCatalogRequest("openai-compatible", "local")).toEqual({
+      kind: "endpoint",
+      id: "local",
+    });
+    expect(modelCatalogRequest("openai-compatible", undefined)).toBeUndefined();
+  });
+
+  it("laisse le renderer traduire chaque issue sans reprendre un message distant", () => {
+    expect(describeModelCatalog({ status: "loading" }, t)).toContain("Chargement");
+    expect(describeModelCatalog({ status: "error" }, t)).toContain("indisponible");
+    expect(
+      describeModelCatalog(
+        {
+          status: "ready",
+          response: {
+            id: "openai",
+            outcome: "ok",
+            models: [
+              { id: "gpt-5.1", name: "GPT 5.1" },
+              { id: "o3", name: "o3" },
+            ],
+            truncated: false,
+          },
+        },
+        t,
+      ),
+    ).toBe("2 modèles disponibles.");
   });
 });
 

@@ -29,6 +29,7 @@ import {
 } from "@/providers/catalog.js";
 import { createProvider } from "@/providers/registry.js";
 import type { ProviderAdapter, ProviderHealth } from "@/core/types.js";
+import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { listProfiles } from "@/profiles/registry.js";
@@ -49,7 +50,9 @@ import {
   CredentialSaveRequestSchema,
   EmptyRequestSchema,
   LocaleReadRequestSchema,
+  ModelsListRequestSchema,
   OnboardingCompleteRequestSchema,
+  MODEL_CATALOG_LIMIT,
   ProviderDeleteRequestSchema,
   ProviderSaveRequestSchema,
   ProviderTestRequestSchema,
@@ -65,6 +68,9 @@ import {
   type ProfileCatalogResponse,
   type ProfileDetail,
   type CapsuleOpenedPayload,
+  type ModelCatalogEntry,
+  type ModelsListRequest,
+  type ModelsListResponse,
   type OnboardingStateResponse,
   type ProviderModelOption,
   type ProviderStatus,
@@ -707,6 +713,15 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
     return await testProvider(request, { env, load, hydrate, create });
   });
 
+  // Registered here rather than on its own: it needs exactly the same four
+  // dependencies, and it builds its adapter through the same resolution as the
+  // check above — the tab must never list one provider's models while the
+  // check reports on another.
+  ipcMain.handle(IPC_CHANNELS.modelsList, async (_event, payload) => {
+    const request = ModelsListRequestSchema.parse(payload);
+    return await listProviderModels(request, { env, load, hydrate, create });
+  });
+
   ipcMain.handle(IPC_CHANNELS.credentialDelete, async (_event, payload) => {
     const { provider } = CredentialDeleteRequestSchema.parse(payload);
     if (!isCredentialProvider(provider)) {
@@ -862,8 +877,40 @@ async function testProvider(
   request: ProviderTestRequest,
   context: ProviderTestContext,
 ): Promise<ProviderTestResponse> {
+  const resolved = await resolveProviderAdapter(request, context);
+  if ("verdict" in resolved) {
+    return { id: request.id, ...resolved.verdict };
+  }
+  return await runValidation(request.id, resolved.build);
+}
+
+/** A conclusion reached without ever building an adapter. */
+interface ProviderVerdict {
+  outcome: ProviderTestOutcome;
+  missing?: string[];
+}
+
+/** Either something to build, or a reason there is nothing worth building. */
+type ProviderResolution = { build: () => ProviderAdapter } | { verdict: ProviderVerdict };
+
+/**
+ * Turns a provider request into the adapter it names.
+ *
+ * Shared by `providers:test` and `models:list` rather than written twice: both
+ * hydrate the credentials into a throwaway environment, both have to narrow a
+ * compatible endpoint to the one that was asked for, and both must refuse an
+ * endpoint the configuration does not hold. Two copies of that would be two
+ * chances for one of them to test — or list — the wrong provider.
+ *
+ * Structurally typed on `kind`/`id` so each channel keeps its own, narrower
+ * request schema: the two accept different sets of built-in identifiers.
+ */
+async function resolveProviderAdapter(
+  request: { kind: "builtin"; id: BuiltinProvider } | { kind: "endpoint"; id: string },
+  context: ProviderTestContext,
+): Promise<ProviderResolution> {
   // Hydration copies keychain entries into a throwaway environment, exactly as
-  // the statuses do. The values stay in this function.
+  // the statuses do. The values stay on this side of the bridge.
   const hydrated = { ...context.env };
   await context.hydrate(hydrated);
   const config = await context.load();
@@ -881,23 +928,39 @@ async function testProvider(
         ? [endpoint.apiKeyEnv]
         : undefined;
       return {
-        id: request.id,
-        outcome: "missing_configuration",
-        ...(missing ? { missing } : {}),
+        verdict: {
+          outcome: "missing_configuration",
+          ...(missing ? { missing } : {}),
+        },
       };
     }
     // Narrowed to the requested endpoint: the registry builds the compatible
     // provider from the FIRST entry of `providers`, so handing it the whole
     // map would test the same one whichever row was clicked.
-    return await runValidation(request.id, () =>
-      context.create(OPENAI_COMPATIBLE_PROVIDER_ID, hydrated, {
-        ...config,
-        providers: { [request.id]: endpoint },
-      }),
-    );
+    return {
+      build: () =>
+        context.create(OPENAI_COMPATIBLE_PROVIDER_ID, hydrated, {
+          ...config,
+          providers: { [request.id]: endpoint },
+        }),
+    };
   }
 
-  return await runValidation(request.id, () => context.create(request.id, hydrated, config));
+  return { build: () => context.create(request.id, hydrated, config) };
+}
+
+/** `ProviderHealth` as the closed verdict the contract allows across. */
+function verdictOfHealth(health: ProviderHealth): ProviderVerdict {
+  if (health.ok) {
+    return { outcome: "ok" };
+  }
+  const missing = (health.missingConfiguration ?? []).filter((name) =>
+    CONFIGURATION_NAME_PATTERN.test(name),
+  );
+  return {
+    outcome: outcomeOfHealthCode(health.code),
+    ...(missing.length > 0 ? { missing } : {}),
+  };
 }
 
 /** Builds the adapter and turns whatever comes back into a closed verdict. */
@@ -906,24 +969,130 @@ async function runValidation(
   build: () => ProviderAdapter,
 ): Promise<ProviderTestResponse> {
   try {
-    const health = await build().validateConfiguration();
-    if (health.ok) {
-      return { id, outcome: "ok" };
-    }
-    const missing = (health.missingConfiguration ?? []).filter((name) =>
-      CONFIGURATION_NAME_PATTERN.test(name),
-    );
-    return {
-      id,
-      outcome: outcomeOfHealthCode(health.code),
-      ...(missing.length > 0 ? { missing } : {}),
-    };
+    return { id, ...verdictOfHealth(await build().validateConfiguration()) };
   } catch {
     // Swallowed on purpose. A registry error carries a provider id, an adapter
     // error can carry a URL, and a rejected fetch carries the host it tried —
     // none of that belongs in a settings window, and the renderer already has
     // wording for a check that did not conclude.
     return { id, outcome: "error" };
+  }
+}
+
+/**
+ * Names a model identifier may take before it is allowed across the bridge.
+ *
+ * A catalogue is remote data. Whatever an endpoint returns lands in a `<select>`
+ * and, once chosen, in the user's configuration file — so what crosses has to
+ * look like an identifier, not like a sentence, a URL or a newline. Anything
+ * that does not is dropped rather than repaired: a model whose id we had to fix
+ * is a model the provider would not have accepted back.
+ */
+const MODEL_ID_PATTERN = /^[A-Za-z0-9][\w./:@-]{0,127}$/;
+
+/** Longest display name kept. Past this it is prose, not a name. */
+const MODEL_NAME_MAX_LENGTH = 80;
+
+/**
+ * A catalogue, reduced to what may be shown.
+ *
+ * Exported for its own test: every rule here exists because the input is
+ * written by a remote endpoint. Ids that do not look like identifiers go, ids
+ * repeated go — a provider listing the same model twice would otherwise give
+ * React two options with the same key — and the list is capped, with
+ * `truncated` saying so instead of the tail disappearing in silence.
+ */
+export function sanitizeModelCatalog(models: unknown): {
+  models: ModelCatalogEntry[];
+  truncated: boolean;
+} {
+  if (!Array.isArray(models)) {
+    return { models: [], truncated: false };
+  }
+
+  const sanitized: ModelCatalogEntry[] = [];
+  const seen = new Set<string>();
+  let truncated = false;
+
+  for (const model of models) {
+    const candidate = modelCatalogCandidate(model);
+    if (candidate !== undefined && !seen.has(candidate.id)) {
+      seen.add(candidate.id);
+      if (sanitized.length >= MODEL_CATALOG_LIMIT) {
+        // Known to exist, deliberately not carried: the answer says the list
+        // was cut rather than pretending this was all of it.
+        truncated = true;
+      } else {
+        sanitized.push(candidate);
+      }
+    }
+  }
+
+  return { models: sanitized, truncated };
+}
+
+function modelCatalogCandidate(value: unknown): ModelCatalogEntry | undefined {
+  if (typeof value !== "object" || value === null) return undefined;
+  const record = value as Record<string, unknown>;
+  const id = typeof record.id === "string" ? record.id.trim() : "";
+  return MODEL_ID_PATTERN.test(id) ? { id, name: cleanModelName(record.name, id) } : undefined;
+}
+
+/** A display name flattened to one line, or the id when nothing is left. */
+function cleanModelName(name: unknown, fallback: string): string {
+  if (typeof name !== "string") return fallback;
+  const flattened = name
+    .replace(/[\p{Cc}\p{Cf}]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MODEL_NAME_MAX_LENGTH)
+    .trim();
+  return flattened === "" ? fallback : flattened;
+}
+
+/**
+ * The models one provider publishes, for the settings Modèles tab.
+ *
+ * `ProviderAdapter.listModels` is optional: the mock adapter does not expose
+ * it, and a custom endpoint that speaks a partial OpenAI dialect may reject
+ * `/models`. `unsupported` and `error` are therefore normal fallback states,
+ * and the tab keeps its free text field for both.
+ *
+ * Unlike `providers:test`, this one does reach the network: a catalogue is not
+ * something the machine holds. The configuration is checked first, so a
+ * provider with no key is told so instead of being called and refused.
+ */
+async function listProviderModels(
+  request: ModelsListRequest,
+  context: ProviderTestContext,
+): Promise<ModelsListResponse> {
+  const empty: Pick<ModelsListResponse, "models" | "truncated"> = {
+    models: [],
+    truncated: false,
+  };
+
+  try {
+    const resolved = await resolveProviderAdapter(request, context);
+    if ("verdict" in resolved) {
+      return { id: request.id, ...empty, ...resolved.verdict };
+    }
+    const adapter = resolved.build();
+    if (!adapter.listModels) {
+      return { id: request.id, outcome: "unsupported", ...empty };
+    }
+    const verdict = verdictOfHealth(await adapter.validateConfiguration());
+    if (verdict.outcome !== "ok") {
+      return { id: request.id, ...empty, ...verdict };
+    }
+    const catalog = await adapter.listModels(
+      AbortSignal.timeout(REPROMPT_POLICY.runtime.connectionCheckTimeoutMs),
+    );
+    return { id: request.id, outcome: "ok", ...sanitizeModelCatalog(catalog) };
+  } catch {
+    // Swallowed for the same reason `runValidation` swallows: an adapter error
+    // carries the URL it called, a rejected fetch carries the host, and a
+    // timeout carries neither but is still a sentence nobody translated.
+    return { id: request.id, outcome: "error", ...empty };
   }
 }
 

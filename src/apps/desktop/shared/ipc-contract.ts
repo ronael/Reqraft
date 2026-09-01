@@ -9,7 +9,11 @@ import {
   isValidCustomProfileId,
 } from "@/profiles/custom.js";
 import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
-import { BUILTIN_PROVIDER_IDS, CREDENTIAL_PROVIDER_IDS } from "@/providers/catalog.js";
+import {
+  BUILTIN_PROVIDER_IDS,
+  CREDENTIAL_PROVIDER_IDS,
+  OPENAI_COMPATIBLE_PROVIDER_ID,
+} from "@/providers/catalog.js";
 import type { SetupBlocker } from "@/config/setup.js";
 
 /**
@@ -476,6 +480,100 @@ export interface ProviderTestResponse {
   missing?: string[];
 }
 
+// --- Models --------------------------------------------------------------------
+
+/**
+ * Which provider's catalogue the settings are asking for.
+ *
+ * The same discriminated union as `providers:test`, and for the same reason: a
+ * built-in provider is one of a closed list, while a compatible endpoint is
+ * keyed by whatever the user named it, and nothing stops someone naming an
+ * endpoint `anthropic`. `openai-compatible` is excluded from the built-in
+ * branch because it names a family — the registry builds it from the FIRST
+ * entry of `providers`, so a catalogue can only be asked for one endpoint at a
+ * time, through the `endpoint` branch.
+ *
+ * `mock` stays in: it has no `listModels`, so asking for it is how the
+ * `unsupported` answer is reached rather than a case nothing can produce.
+ *
+ * What travels is a provider identity, nothing else. No key, no base URL, no
+ * header: the main process already holds the configuration and hydrates the
+ * credentials itself, and a renderer that could name an endpoint of its own
+ * would be a renderer that can make the application call an arbitrary host.
+ */
+const ModelCatalogBuiltinIdSchema = z
+  .enum(BUILTIN_PROVIDER_IDS)
+  .exclude([OPENAI_COMPATIBLE_PROVIDER_ID]);
+
+export const MODEL_CATALOG_BUILTIN_IDS = ModelCatalogBuiltinIdSchema.options;
+export type ModelCatalogBuiltinId = (typeof MODEL_CATALOG_BUILTIN_IDS)[number];
+
+export const ModelsListRequestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("builtin"), id: ModelCatalogBuiltinIdSchema }).strict(),
+  z
+    .object({
+      kind: z.literal("endpoint"),
+      id: z
+        .string()
+        .trim()
+        .min(1)
+        .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
+    })
+    .strict(),
+]);
+export type ModelsListRequest = z.infer<typeof ModelsListRequestSchema>;
+
+/**
+ * How many models may cross in one answer.
+ *
+ * A catalogue is remote data: an endpoint someone pointed the application at
+ * decides how long its list is, and an unbounded one would be rendered into a
+ * `<select>` the settings window cannot recover from. Two hundred is well past
+ * what any provider publishes today and still a bound.
+ */
+export const MODEL_CATALOG_LIMIT = 200;
+
+/**
+ * How a catalogue request concluded.
+ *
+ * The provider-check outcomes plus `unsupported`, which is the one thing a
+ * check cannot report: an adapter with no `listModels` at all. The list is
+ * shared rather than copied so the two features cannot drift into describing
+ * the same provider state with different words.
+ */
+export const MODEL_CATALOG_OUTCOMES = [...PROVIDER_TEST_OUTCOMES, "unsupported"] as const;
+export type ModelCatalogOutcome = (typeof MODEL_CATALOG_OUTCOMES)[number];
+
+/**
+ * One model, as the renderer is allowed to see it.
+ *
+ * Deliberately not `ProviderModelOption`: that shape carries a description and
+ * a recommendation, which are editorial fields the repository writes about the
+ * presets it curates. A live catalogue has neither, and reusing the shape would
+ * mean inventing an empty description and a `recommended: false` for every
+ * model a provider publishes.
+ */
+export interface ModelCatalogEntry {
+  id: string;
+  name: string;
+}
+
+/**
+ * The whole answer: which provider, how it went, and what it publishes.
+ *
+ * `models` is empty unless `outcome` is `ok`, and `truncated` says the
+ * provider published more than `MODEL_CATALOG_LIMIT` — an honest "there are
+ * more" rather than a list silently cut. `missing` names configuration entries
+ * exactly as `ProviderTestResponse.missing` does, never their values.
+ */
+export interface ModelsListResponse {
+  id: string;
+  outcome: ModelCatalogOutcome;
+  models: ModelCatalogEntry[];
+  truncated: boolean;
+  missing?: string[];
+}
+
 export const CredentialDeleteRequestSchema = z
   .object({ provider: z.enum(BUILTIN_PROVIDER_IDS) })
   .strict();
@@ -762,6 +860,7 @@ export interface ReqraftBridge {
   saveProvider(request: ProviderSaveRequest): Promise<ProviderMutationResponse>;
   deleteProvider(id: string): Promise<ProviderMutationResponse>;
   testProvider(request: ProviderTestRequest): Promise<ProviderTestResponse>;
+  listModels(request: ModelsListRequest): Promise<ModelsListResponse>;
   completeOnboarding(request: OnboardingCompleteRequest): Promise<OnboardingCompleteResponse>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;
