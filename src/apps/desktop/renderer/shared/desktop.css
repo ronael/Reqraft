@@ -3163,6 +3163,107 @@ kbd {
   color: #52525b;
 }
 
+.provider-section + .provider-section {
+  margin-top: 22px;
+}
+
+.provider-section-head {
+  display: flex;
+  min-height: 30px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.provider-section-head .settings-subhead {
+  margin: 0;
+}
+
+.provider-list {
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.012);
+}
+
+.provider-row {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  min-height: 72px;
+  align-items: center;
+  gap: 13px;
+  padding: 12px 14px;
+  transition: background 160ms ease;
+}
+
+.provider-row + .provider-row {
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
+}
+
+.provider-row:hover {
+  background: rgba(255, 255, 255, 0.022);
+}
+
+.provider-logo {
+  display: flex;
+  width: 30px;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  color: #c7c7cf;
+}
+
+.provider-logo img {
+  display: block;
+  width: 20px;
+  height: 20px;
+  object-fit: contain;
+  filter: invert(1);
+  opacity: 0.82;
+}
+
+.provider-logo-anthropic img {
+  width: 18px;
+  height: 18px;
+}
+
+.provider-logo-deepseek img {
+  width: 22px;
+  height: 22px;
+}
+
+.provider-logo-native-light img {
+  filter: none;
+}
+
+.provider-copy {
+  min-width: 0;
+}
+
+.provider-name {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  color: #eeeeef;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.provider-name-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.provider-empty {
+  margin: 0;
+  padding: 16px 14px;
+  color: #60606b;
+  font-size: 11px;
+  line-height: 17px;
+}
+
 .settings-panel > .settings-subhead:first-child {
   margin-top: 4px;
 }
@@ -3182,6 +3283,7 @@ kbd {
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
+  justify-self: end;
 }
 
 .provider-key-control .settings-input {
@@ -3270,14 +3372,31 @@ kbd {
  * line the sentence collapses to two words per line — the same failure the
  * onboarding key field had, and for the same reason.
  */
-.settings-card-list .settings-row:has(.chip-danger) {
-  flex-direction: column;
-  align-items: stretch;
-  gap: 10px;
+.provider-row:has(.chip-danger) {
+  grid-template-columns: 34px minmax(0, 1fr);
 }
 
-.settings-card-list .settings-row:has(.chip-danger) .provider-key-control {
+.provider-row:has(.chip-danger) .provider-key-control {
+  grid-column: 2;
+  justify-self: end;
   justify-content: flex-end;
+}
+
+@media (max-width: 760px) {
+  .provider-row {
+    grid-template-columns: 30px minmax(0, 1fr);
+    column-gap: 10px;
+  }
+
+  .provider-key-control {
+    grid-column: 2;
+    max-width: 100%;
+    flex-wrap: wrap;
+  }
+
+  .provider-key-control .settings-input {
+    width: min(240px, 100%);
+  }
 }
 
 /* Fills whatever the window leaves: the list is the part that flexes. */

@@ -9,6 +9,7 @@ import {
 
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { ProviderLogo } from "./ProviderLogo.js";
 
 /**
  * Ce qu'une ligne de fournisseur dit, et ce qu'elle propose.
@@ -168,9 +169,9 @@ export function ProviderTestButton(
 ): React.JSX.Element {
   const t = useT();
   return (
-    <button type="button" className="chip" disabled={props.blocked} onClick={props.onTest}>
+    <Button variant="neutral" disabled={props.blocked} onClick={props.onTest}>
       {props.running ? t("settings.providerTesting") : t("settings.providerTest")}
-    </button>
+    </Button>
   );
 }
 
@@ -228,10 +229,11 @@ export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): Re
   const t = useT();
   const { provider } = props;
   return (
-    <div className="settings-row">
-      <span>
-        <span className="settings-row-title">
-          {provider.label}
+    <div className="provider-row">
+      <ProviderLogo providerId={provider.id} label={provider.label} />
+      <span className="provider-copy">
+        <span className="settings-row-title provider-name">
+          <span className="provider-name-text">{provider.label}</span>
           {props.isDefault && <DefaultProviderBadge kind="builtin" />}
         </span>
         <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
@@ -267,9 +269,9 @@ export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): Re
           >
             {t("settings.verify")}
           </Button>
-          <button type="button" className="chip" onClick={props.onCancel}>
+          <Button variant="neutral" onClick={props.onCancel}>
             {t(CANCEL_KEY)}
-          </button>
+          </Button>
         </span>
       ) : (
         <span className="provider-key-control">

@@ -33,6 +33,7 @@ import {
 } from "./ProviderRow.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { ProviderLogo } from "./ProviderLogo.js";
 import { PreferencesTab } from "./PreferencesTab.js";
 import { UpdatesTab } from "./UpdatesTab.js";
 import { version } from "@/version.js";
@@ -550,181 +551,189 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
 
   return (
     <>
-      <h3 className="settings-subhead">{t("settings.builtinProviders")}</h3>
-      <div className="settings-card-list">
-        {keyProviders.map((provider) => (
-          <BuiltinProviderRow
-            key={provider.id}
-            provider={provider}
-            isDefault={defaultRow?.kind === "builtin" && defaultRow.id === provider.id}
-            editing={editing === provider.id}
-            confirming={confirming === provider.id}
-            secret={secret}
-            busy={busy}
-            testing={testing === `builtin:${provider.id}`}
-            testsBlocked={testing !== null}
-            result={results[`builtin:${provider.id}`]}
-            onTest={builtinTest(provider)}
-            onSecretChange={setSecret}
-            onStartEdit={() => {
-              setSecret("");
-              setConfirming(null);
-              setEditing(provider.id);
-            }}
-            onCancel={() => {
-              setSecret("");
-              setEditing(null);
-            }}
-            onSave={() => {
-              saveKey(provider);
-            }}
-            onStartRemove={() => {
-              setConfirming(provider.id);
-            }}
-            onCancelRemove={() => {
-              setConfirming(null);
-            }}
-            onRemove={() => {
-              setConfirming(null);
-              removeKey(provider);
-            }}
-          />
-        ))}
-      </div>
+      <section className="provider-section">
+        <div className="provider-section-head">
+          <h3 className="settings-subhead">{t("settings.builtinProviders")}</h3>
+        </div>
+        <div className="provider-list">
+          {keyProviders.map((provider) => (
+            <BuiltinProviderRow
+              key={provider.id}
+              provider={provider}
+              isDefault={defaultRow?.kind === "builtin" && defaultRow.id === provider.id}
+              editing={editing === provider.id}
+              confirming={confirming === provider.id}
+              secret={secret}
+              busy={busy}
+              testing={testing === `builtin:${provider.id}`}
+              testsBlocked={testing !== null}
+              result={results[`builtin:${provider.id}`]}
+              onTest={builtinTest(provider)}
+              onSecretChange={setSecret}
+              onStartEdit={() => {
+                setSecret("");
+                setConfirming(null);
+                setEditing(provider.id);
+              }}
+              onCancel={() => {
+                setSecret("");
+                setEditing(null);
+              }}
+              onSave={() => {
+                saveKey(provider);
+              }}
+              onStartRemove={() => {
+                setConfirming(provider.id);
+              }}
+              onCancelRemove={() => {
+                setConfirming(null);
+              }}
+              onRemove={() => {
+                setConfirming(null);
+                removeKey(provider);
+              }}
+            />
+          ))}
+        </div>
+      </section>
 
-      <h3 className="settings-subhead">{t("settings.compatibleProviders")}</h3>
-      <div className="settings-card-list">
-        {endpoints.length === 0 && !form && (
-          <p className="settings-note muted">{t("settings.noCustomProvider")}</p>
-        )}
-        {endpoints.map(([id, endpoint]) => {
-          const testKey = `endpoint:${id}`;
-          const testResult = results[testKey];
-          return (
-            <div key={id} className="settings-row">
-              <span>
-                <span className="settings-row-title">
-                  {endpoint.name ?? id}
-                  {defaultRow?.kind === "endpoint" && defaultRow.id === id && (
-                    <DefaultProviderBadge kind="endpoint" />
-                  )}
-                </span>
-                <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
-                <span className="settings-row-detail">
-                  {endpoint.apiKeyEnv === undefined
-                    ? t("settings.endpointNoKey")
-                    : t("settings.keyFromEnv", { envName: endpoint.apiKeyEnv })}
-                </span>
-                {testResult !== undefined && testing !== testKey && (
-                  <ProviderTestResult result={testResult} />
-                )}
-                {confirming === `endpoint:${id}` && (
-                  <span className="settings-row-detail provider-confirm">
-                    Retirer « {id} » de votre configuration ?
+      <section className="provider-section">
+        <div className="provider-section-head">
+          <h3 className="settings-subhead">{t("settings.compatibleProviders")}</h3>
+          {!form && (
+            <Button
+              onClick={() => {
+                setError(null);
+                setForm({
+                  mode: "create",
+                  id: "local",
+                  name: "",
+                  baseUrl: "http://localhost:11434/v1",
+                  apiKeyEnv: "",
+                });
+              }}
+            >
+              <Plus size={13} aria-hidden /> {t("settings.addProvider")}
+            </Button>
+          )}
+        </div>
+        {(endpoints.length > 0 || !form) && (
+          <div className="provider-list">
+            {endpoints.length === 0 && (
+              <p className="provider-empty">{t("settings.noCustomProvider")}</p>
+            )}
+            {endpoints.map(([id, endpoint]) => {
+              const testKey = `endpoint:${id}`;
+              const testResult = results[testKey];
+              const label = endpoint.name ?? id;
+              return (
+                <div key={id} className="provider-row">
+                  <ProviderLogo providerId="endpoint" label={label} />
+                  <span className="provider-copy">
+                    <span className="settings-row-title provider-name">
+                      <span className="provider-name-text">{label}</span>
+                      {defaultRow?.kind === "endpoint" && defaultRow.id === id && (
+                        <DefaultProviderBadge kind="endpoint" />
+                      )}
+                    </span>
+                    <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
+                    <span className="settings-row-detail">
+                      {endpoint.apiKeyEnv === undefined
+                        ? t("settings.endpointNoKey")
+                        : t("settings.keyFromEnv", { envName: endpoint.apiKeyEnv })}
+                    </span>
+                    {testResult !== undefined && testing !== testKey && (
+                      <ProviderTestResult result={testResult} />
+                    )}
+                    {confirming === `endpoint:${id}` && (
+                      <span className="settings-row-detail provider-confirm">
+                        Retirer « {id} » de votre configuration ?
+                      </span>
+                    )}
                   </span>
-                )}
-              </span>
-              <span className="provider-key-control">
-                {/* Pas pendant une confirmation de suppression : la ligne pose
-                    une question, et un troisième bouton à côté de la réponse
-                    invite à cliquer ailleurs qu'où elle attend. */}
-                {confirming !== `endpoint:${id}` && (
-                  <ProviderTestButton
-                    running={testing === testKey}
-                    blocked={testing !== null || busy}
-                    onTest={() => {
-                      runTest(testKey, { kind: "endpoint", id });
-                    }}
-                  />
-                )}
-                <Button
-                  variant="neutral"
-                  onClick={() => {
-                    setError(null);
-                    setForm({
-                      mode: "update",
-                      id,
-                      name: endpoint.name ?? "",
-                      baseUrl: endpoint.baseUrl,
-                      apiKeyEnv: endpoint.apiKeyEnv ?? "",
-                    });
-                  }}
-                >
-                  {t("settings.edit")}
-                </Button>
-                {confirming === `endpoint:${id}` ? (
-                  <>
-                    <button
-                      type="button"
-                      className="chip chip-danger"
-                      disabled={busy}
+                  <span className="provider-key-control">
+                    {confirming !== `endpoint:${id}` && (
+                      <ProviderTestButton
+                        running={testing === testKey}
+                        blocked={testing !== null || busy}
+                        onTest={() => {
+                          runTest(testKey, { kind: "endpoint", id });
+                        }}
+                      />
+                    )}
+                    <Button
+                      variant="neutral"
                       onClick={() => {
-                        setConfirming(null);
-                        run(async () => {
-                          props.onChanged(await window.reqraft.deleteProvider(id));
+                        setError(null);
+                        setForm({
+                          mode: "update",
+                          id,
+                          name: endpoint.name ?? "",
+                          baseUrl: endpoint.baseUrl,
+                          apiKeyEnv: endpoint.apiKeyEnv ?? "",
                         });
                       }}
                     >
-                      {t("settings.confirm")}
-                    </button>
-                    <button
-                      type="button"
-                      className="chip"
-                      onClick={() => {
-                        setConfirming(null);
-                      }}
-                    >
-                      {t(CANCEL_KEY)}
-                    </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="chip"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(`endpoint:${id}`);
-                    }}
-                  >
-                    {t("settings.delete")}
-                  </button>
-                )}
-              </span>
-            </div>
-          );
-        })}
-      </div>
+                      {t("settings.edit")}
+                    </Button>
+                    {confirming === `endpoint:${id}` ? (
+                      <>
+                        <button
+                          type="button"
+                          className="chip chip-danger"
+                          disabled={busy}
+                          onClick={() => {
+                            setConfirming(null);
+                            run(async () => {
+                              props.onChanged(await window.reqraft.deleteProvider(id));
+                            });
+                          }}
+                        >
+                          {t("settings.confirm")}
+                        </button>
+                        <button
+                          type="button"
+                          className="chip"
+                          onClick={() => {
+                            setConfirming(null);
+                          }}
+                        >
+                          {t(CANCEL_KEY)}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="chip"
+                        disabled={busy}
+                        onClick={() => {
+                          setConfirming(`endpoint:${id}`);
+                        }}
+                      >
+                        {t("settings.delete")}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
-      {form ? (
-        <EndpointForm
-          form={form}
-          problem={problem}
-          busy={busy}
-          onChange={setForm}
-          onCancel={() => {
-            setForm(null);
-            setError(null);
-          }}
-          onSave={saveEndpoint}
-        />
-      ) : (
-        <div className="settings-actions">
-          <Button
-            onClick={() => {
+        {form && (
+          <EndpointForm
+            form={form}
+            problem={problem}
+            busy={busy}
+            onChange={setForm}
+            onCancel={() => {
+              setForm(null);
               setError(null);
-              setForm({
-                mode: "create",
-                id: "local",
-                name: "",
-                baseUrl: "http://localhost:11434/v1",
-                apiKeyEnv: "",
-              });
             }}
-          >
-            <Plus size={13} aria-hidden /> {t("settings.addProvider")}
-          </Button>
-        </div>
-      )}
+            onSave={saveEndpoint}
+          />
+        )}
+      </section>
 
       {error !== null && (
         <div className="settings-warning" role="alert">
