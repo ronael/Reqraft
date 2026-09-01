@@ -225,6 +225,7 @@ export const DESKTOP_EN = {
   "profiles.noneLevel": "none",
   "profiles.notEditableTag": "not editable",
   "main.traySettings": "Settings…",
+  "main.traySuspendShortcuts": "Suspend global shortcuts",
   "main.trayQuit": "Quit Reqraft",
   "main.trayIdle": "Reqraft — ready",
   "main.trayBusy": "Reqraft — rewriting…",
@@ -232,6 +233,7 @@ export const DESKTOP_EN = {
   "main.updateTitle": "Reqraft update available",
   "main.updateBody": "Version {version} is ready to download.",
   "main.trayUpdateAvailable": "Download Reqraft {version}",
+  "main.trayShortcutsSuspendedTooltip": "Reqraft — global shortcuts suspended",
   "main.settingsTitle": SETTINGS_TITLE,
   "main.onboardingTitle": "Reqraft — Setup",
   "main.profileFileType": "Reqraft profile",
@@ -262,6 +264,8 @@ export const DESKTOP_EN = {
   "main.doctorRejectedBySystem": "rejected by the system: {list}",
   "main.doctorNoConflict": "no duplicate",
   "main.doctorConflictingShortcuts": "already used by another Reqraft command: {list}",
+  "main.doctorShortcutsActive": "global shortcuts active",
+  "main.doctorShortcutsSuspended": "global shortcuts suspended from the menu bar",
   "main.doctorNoShortcut": "no active shortcut",
   "main.autoProfileName": "Auto",
   "main.autoProfileSummary": "Local profile detection",
@@ -294,6 +298,8 @@ export const DESKTOP_EN = {
   "settings.shortcutUnavailable": "Choice unavailable: {accelerator} is active instead.",
   "settings.shortcutsConflicting":
     "Shortcuts Reqraft asked for twice: {list}. Only one command can answer a combination — a fallback was registered for the other, give it a distinct combination.",
+  "settings.shortcutsSuspended":
+    "Global shortcuts are suspended. Resume them from the Reqraft menu-bar icon.",
   "settings.language": "Interface language",
   "settings.languageDetail": "Reqraft restarts automatically when this changes.",
   "settings.welcomeTour": "Reqraft introduction",

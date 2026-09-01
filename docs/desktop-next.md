@@ -26,11 +26,11 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 | Saisie libre | `⌘⏎` | valider |
 | Popover | `⌘⏎` | reformuler |
 | Réglages | menus déroulants | changer les trois raccourcis globaux, à chaud |
+| Menu tray | case à cocher | suspendre/reprendre les raccourcis globaux |
 
-### Manquants (par ordre de valeur)
+### Manquants
 
-1. **Désactivation temporaire des raccourcis globaux** (présentations, partage
-   d'écran) via le menu tray — « Suspendre les raccourcis ».
+- Aucun manque identifié sur le socle de raccourcis actuel.
 
 ### Livrés depuis
 
@@ -49,6 +49,13 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
   dans Préférences et réenregistré immédiatement. Les collisions entre deux
   commandes Reqraft sont distinguées des raccourcis détenus par une autre app,
   pour ne pas envoyer l'utilisateur vers le mauvais correctif.
+
+- **Suspension temporaire** — la case « Suspendre les raccourcis globaux » du
+  menu tray coupe les trois commandes sans oublier leurs enregistrements. Une
+  infobulle et le Diagnostic rendent cet état visible. Changer une combinaison
+  pendant la suspension reprend brièvement le registre Electron, remplace les
+  raccourcis puis restaure la suspension, afin que la reprise ne laisse aucune
+  commande inactive.
 
   Les règles vivent dans `src/apps/desktop/renderer/capsule/keyboard.ts`, un
   module pur au même titre que `capsule-machine.ts` : la suite tourne sous Node

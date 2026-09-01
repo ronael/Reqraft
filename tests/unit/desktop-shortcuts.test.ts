@@ -5,6 +5,7 @@ import {
   isUsableAccelerator,
   prettyAccelerator,
   registerShortcuts,
+  replaceShortcuts,
   type ShortcutRegistrar,
 } from "@/apps/desktop/main/shortcuts.js";
 import { SHORTCUT_PRESETS } from "@/apps/desktop/shared/ipc-contract.js";
@@ -94,6 +95,35 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
     const accelerators = SHORTCUT_CANDIDATES.map((candidate) => candidate.accelerator);
     expect(accelerators).not.toContain("Command+Space");
     expect(accelerators).not.toContain("Control+Space");
+  });
+});
+
+describe("replaceShortcuts", () => {
+  it("reprend temporairement avant un ré-enregistrement puis restaure la suspension", () => {
+    const events: string[] = [];
+    let suspended = true;
+    const resolution = replaceShortcuts(
+      {
+        unregisterAll: () => {
+          events.push("unregister");
+        },
+        isSuspended: () => suspended,
+        setSuspended: (next) => {
+          suspended = next;
+          events.push(next ? "suspend" : "resume");
+        },
+      },
+      (accelerator) => {
+        events.push(`register:${accelerator}`);
+        return true;
+      },
+      handlers,
+    );
+
+    expect(events.slice(0, 3)).toEqual(["resume", "unregister", "register:Command+Control+R"]);
+    expect(events.at(-1)).toBe("suspend");
+    expect(suspended).toBe(true);
+    expect(resolution.registered).toHaveLength(3);
   });
 });
 

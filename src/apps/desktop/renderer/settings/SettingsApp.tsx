@@ -90,11 +90,18 @@ export function SettingsApp(): React.JSX.Element {
   const [updates, setUpdates] = useState<DesktopUpdateState | null>(null);
 
   useEffect(() => {
+    const refreshShortcuts = (): void => {
+      void window.reqraft.shortcutsState().then(setShortcuts);
+    };
     void window.reqraft.readConfig().then(setConfig);
     void window.reqraft.providersStatus().then(setProviders);
-    void window.reqraft.shortcutsState().then(setShortcuts);
+    refreshShortcuts();
     void window.reqraft.permissionsState().then(setPermissions);
     void window.reqraft.updatesState().then(setUpdates);
+    window.addEventListener("focus", refreshShortcuts);
+    return () => {
+      window.removeEventListener("focus", refreshShortcuts);
+    };
   }, []);
 
   const runDoctor = useCallback(() => {
@@ -212,6 +219,7 @@ export function SettingsApp(): React.JSX.Element {
                 popoverShortcut={popoverShortcut}
                 rejectedShortcuts={rejectedShortcuts}
                 conflictingShortcuts={conflictingShortcuts}
+                shortcutsSuspended={shortcuts?.suspended ?? false}
                 hasNoShortcut={hasNoShortcut}
                 permissionDetail={permissionDetail()}
                 canReplace={permissions?.canReplace ?? null}

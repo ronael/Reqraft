@@ -109,6 +109,11 @@ Tester dans **trois applications différentes** (ex. Safari, Notes, VS Code).
 - [ ] Donner la même combinaison à deux commandes → le doublon est signalé
       comme conflit Reqraft, la première commande reste active et la seconde
       reçoit un repli distinct.
+- [ ] Menu tray → cocher « Suspendre les raccourcis globaux » : les trois
+      combinaisons cessent de répondre, la case reste cochée et l'infobulle
+      annonce la suspension ; décocher réactive les trois raccourcis.
+- [ ] Pendant la suspension, changer une combinaison dans Préférences puis
+      reprendre : la nouvelle combinaison fonctionne, l'ancienne non.
 - [ ] Choisir un raccourci déjà pris → l'échec est affiché, un repli est
       proposé ; jamais silencieux (DESKTOP.md §5.5).
 - [ ] Choisir un raccourci intercepté par macOS (ex. `⌘Espace`) → `register()`

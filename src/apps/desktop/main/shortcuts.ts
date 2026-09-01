@@ -133,6 +133,12 @@ export interface ShortcutHandlers {
 
 export type PreferredShortcuts = Partial<Record<ShortcutIntent, string>>;
 
+export interface ShortcutRegistryController {
+  unregisterAll(): void;
+  isSuspended(): boolean;
+  setSuspended(suspended: boolean): void;
+}
+
 /**
  * Registers one shortcut per intent (capture, free input, popover), walking the
  * candidate list in order.
@@ -195,6 +201,28 @@ export function registerShortcuts(
   }
 
   return { registered, rejected, conflicts };
+}
+
+/**
+ * Replaces the active keymap without losing it when shortcuts are suspended.
+ * Electron refuses registrations while suspended, so settings changes briefly
+ * resume the registry, replace every binding, then restore the previous state.
+ */
+export function replaceShortcuts(
+  controller: ShortcutRegistryController,
+  register: ShortcutRegistrar,
+  handlers: ShortcutHandlers,
+  forced?: string,
+  preferred?: PreferredShortcuts,
+): ShortcutResolution {
+  const suspended = controller.isSuspended();
+  if (suspended) controller.setSuspended(false);
+  try {
+    controller.unregisterAll();
+    return registerShortcuts(register, handlers, forced, preferred);
+  } finally {
+    if (suspended) controller.setSuspended(true);
+  }
 }
 
 function handlerFor(intent: ShortcutIntent, handlers: ShortcutHandlers): () => void {

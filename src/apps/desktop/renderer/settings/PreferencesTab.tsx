@@ -14,6 +14,7 @@ export interface PreferencesTabProps {
   popoverShortcut: string;
   rejectedShortcuts: string[];
   conflictingShortcuts: string[];
+  shortcutsSuspended: boolean;
   hasNoShortcut: boolean;
   permissionDetail: string;
   canReplace: boolean | null;
@@ -72,6 +73,11 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
       {props.conflictingShortcuts.length > 0 && (
         <div className="settings-warning" role="alert">
           ! {t("settings.shortcutsConflicting", { list: props.conflictingShortcuts.join(", ") })}
+        </div>
+      )}
+      {props.shortcutsSuspended && (
+        <div className="settings-warning" role="status">
+          ! {t("settings.shortcutsSuspended")}
         </div>
       )}
       {/* Après les avertissements de raccourcis, pas au milieu : une alerte

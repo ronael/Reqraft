@@ -188,6 +188,13 @@ export interface DesktopIpcDependencies {
   removeCredential?: (provider: CredentialProvider) => Promise<void>;
 }
 
+const EMPTY_SHORTCUT_STATE: ShortcutStateInfo = {
+  registered: [],
+  rejected: [],
+  conflicts: [],
+  suspended: false,
+};
+
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
   const env = dependencies.env ?? process.env;
   const load = dependencies.loadConfig ?? loadConfig;
@@ -437,7 +444,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.shortcutsState, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     // Without a wired source (tests), report the honest empty state.
-    return dependencies.shortcutState?.() ?? { registered: [], rejected: [], conflicts: [] };
+    return dependencies.shortcutState?.() ?? EMPTY_SHORTCUT_STATE;
   });
 }
 

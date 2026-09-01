@@ -55,6 +55,8 @@ interface DesktopE2ePayload {
     capsuleMode?: string;
     popoverVisible?: boolean;
     popoverHidden?: boolean;
+    shortcutsSuspended?: boolean;
+    shortcutsResumed?: boolean;
     run?: { rewritten: string; model: string; profile: string };
     error?: string;
   };
@@ -269,6 +271,18 @@ describeElectron("desktop Electron smoke", () => {
       expect(payload.scenario?.error).toBeUndefined();
       expect(payload.scenario?.popoverVisible).toBe(true);
       expect(payload.scenario?.popoverHidden).toBe(true);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "suspends and resumes every registered global shortcut",
+    async () => {
+      const payload = await runDesktopProbe({ REQRAFT_DESKTOP_E2E_SCENARIO: "suspension" });
+
+      expect(payload.scenario?.error).toBeUndefined();
+      expect(payload.scenario?.shortcutsSuspended).toBe(true);
+      expect(payload.scenario?.shortcutsResumed).toBe(true);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );

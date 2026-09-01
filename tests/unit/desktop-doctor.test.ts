@@ -100,6 +100,7 @@ describe("buildDoctorReport (lot 5)", () => {
         ],
         rejected: ["Alt+Space"],
         conflicts: ["Command+Alt+K"],
+        suspended: true,
       },
     });
 
@@ -123,6 +124,10 @@ describe("buildDoctorReport (lot 5)", () => {
     expect(byId.get("shortcuts:conflicts")).toMatchObject({
       ok: false,
       detail: "already used by another Reqraft command: Command+Alt+K",
+    });
+    expect(byId.get("shortcuts:suspended")).toMatchObject({
+      ok: false,
+      detail: "global shortcuts suspended from the menu bar",
     });
     expect(JSON.stringify(report)).not.toContain("sk-ne-jamais-afficher");
   });

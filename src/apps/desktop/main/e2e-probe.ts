@@ -28,6 +28,8 @@ export interface E2eScenarioTargets {
   capsuleVisible: () => boolean;
   capsulePending: () => CapsuleOpenedPayload | null;
   popoverVisible: () => boolean;
+  setShortcutsSuspended: (suspended: boolean) => void;
+  shortcutsSuspended: () => boolean;
 }
 
 export interface E2eScenarioReport {
@@ -37,6 +39,8 @@ export interface E2eScenarioReport {
   /** Le popover après le premier appui, puis après le second : une bascule. */
   popoverVisible?: boolean;
   popoverHidden?: boolean;
+  shortcutsSuspended?: boolean;
+  shortcutsResumed?: boolean;
   run?: { rewritten: string; model: string; profile: string };
   error?: string;
 }
@@ -78,6 +82,8 @@ export async function runE2eScenario(
         return await capsuleScenario(name, targets);
       case "popover":
         return await popoverScenario(name, targets);
+      case "suspension":
+        return suspensionScenario(name, targets);
       case "run":
         return await runScenario(name, targets);
       default:
@@ -100,6 +106,17 @@ async function capsuleScenario(
     name,
     capsuleVisible: targets.capsuleVisible(),
     capsuleMode: targets.capsulePending()?.mode,
+  };
+}
+
+function suspensionScenario(name: string, targets: E2eScenarioTargets): E2eScenarioReport {
+  targets.setShortcutsSuspended(true);
+  const suspended = targets.shortcutsSuspended();
+  targets.setShortcutsSuspended(false);
+  return {
+    name,
+    shortcutsSuspended: suspended,
+    shortcutsResumed: !targets.shortcutsSuspended(),
   };
 }
 

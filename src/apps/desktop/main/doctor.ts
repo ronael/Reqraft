@@ -152,6 +152,12 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
         : t("main.doctorConflictingShortcuts", { list: state.conflicts.join(", ") }),
   });
 
+  checks.push({
+    id: "shortcuts:suspended",
+    ok: !state.suspended,
+    detail: state.suspended ? t("main.doctorShortcutsSuspended") : t("main.doctorShortcutsActive"),
+  });
+
   return checks;
 }
 

@@ -661,6 +661,7 @@ describe("canaux capture et permissions (lot 2)", () => {
       registered: [{ accelerator: "Alt+Space", label: "⌥Espace", intent: "capture" as const }],
       rejected: ["Alt+Shift+Space"],
       conflicts: ["Command+Control+R"],
+      suspended: true,
     };
     registerIpcHandlers({
       ipcMain: harness.ipcMain,
@@ -683,7 +684,12 @@ describe("canaux capture et permissions (lot 2)", () => {
       undefined,
       harness.sender,
     );
-    expect(response).toEqual({ registered: [], rejected: [], conflicts: [] });
+    expect(response).toEqual({
+      registered: [],
+      rejected: [],
+      conflicts: [],
+      suspended: false,
+    });
   });
 });
 

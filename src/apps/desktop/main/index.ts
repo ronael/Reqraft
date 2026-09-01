@@ -49,7 +49,12 @@ import { RepromptService } from "./reprompt-service.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type { CapsuleOpenedPayload } from "@/apps/desktop/shared/ipc-contract.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
-import { registerShortcuts, type ShortcutHandlers, type ShortcutResolution } from "./shortcuts.js";
+import {
+  registerShortcuts,
+  replaceShortcuts,
+  type ShortcutHandlers,
+  type ShortcutResolution,
+} from "./shortcuts.js";
 import { createOnboardingWindow } from "./windows/onboarding.js";
 import { createTray, type TrayController } from "./tray.js";
 import { DesktopUpdateService } from "./update-service.js";
@@ -249,6 +254,47 @@ function createShortcutRegistrar(): (accelerator: string, handler: () => void) =
   return (accelerator, handler) => globalShortcut.register(accelerator, handler);
 }
 
+const electronShortcutRegistry = {
+  unregisterAll(): void {
+    globalShortcut.unregisterAll();
+  },
+  isSuspended(): boolean {
+    return globalShortcut.isSuspended();
+  },
+  setSuspended(suspended: boolean): void {
+    globalShortcut.setSuspended(suspended);
+  },
+};
+
+function replaceConfiguredShortcuts(
+  register: ReturnType<typeof createShortcutRegistrar>,
+  handlers: ShortcutHandlers,
+  preferred: Parameters<typeof registerShortcuts>[3],
+): ShortcutResolution {
+  return replaceShortcuts(
+    electronShortcutRegistry,
+    register,
+    handlers,
+    process.env.REQRAFT_SHORTCUT,
+    preferred,
+  );
+}
+
+function shortcutState(resolution: ShortcutResolution, tray: TrayController) {
+  return { ...resolution, suspended: tray.areShortcutsSuspended() };
+}
+
+function e2eSuspensionTargets(
+  tray: TrayController,
+): Pick<E2eScenarioTargets, "setShortcutsSuspended" | "shortcutsSuspended"> {
+  return {
+    setShortcutsSuspended: (suspended) => {
+      tray.setShortcutsSuspended(suspended);
+    },
+    shortcutsSuspended: () => tray.areShortcutsSuspended(),
+  };
+}
+
 function createDesktopUpdateController(tray: TrayController): {
   service: DesktopUpdateService;
   check: () => ReturnType<DesktopUpdateService["check"]>;
@@ -320,6 +366,9 @@ function createMainTray(
       popover.toggle(bounds);
     },
     onOpenSettings: openSettings,
+    onShortcutsSuspendedChange: (suspended) => {
+      globalShortcut.setSuspended(suspended);
+    },
   });
 }
 
@@ -581,11 +630,9 @@ function bootstrap(): void {
       // Applique immédiatement un raccourci changé dans les réglages, au lieu
       // d'attendre le prochain lancement.
       onShortcutsChanged: (shortcuts) => {
-        globalShortcut.unregisterAll();
-        shortcutResolution = registerShortcuts(
+        shortcutResolution = replaceConfiguredShortcuts(
           registerGlobalShortcut,
           shortcutHandlers,
-          process.env.REQRAFT_SHORTCUT,
           shortcuts,
         );
       },
@@ -599,7 +646,7 @@ function bootstrap(): void {
       onWelcomeTourComplete: () => {
         onboardingWindow?.close();
       },
-      shortcutState: () => shortcutResolution,
+      shortcutState: () => shortcutState(shortcutResolution, tray),
       showSaveDialog: async (defaultFileName) => {
         // The renderer never names a path: the user does, through the OS.
         const result = await dialog.showSaveDialog({
@@ -659,6 +706,7 @@ function bootstrap(): void {
           capsuleVisible: () => !capsule.window.isDestroyed() && capsule.window.isVisible(),
           capsulePending: () => ouvertures.pending(),
           popoverVisible: () => !popover.window.isDestroyed() && popover.window.isVisible(),
+          ...e2eSuspensionTargets(tray),
         },
       });
     }

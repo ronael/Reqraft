@@ -219,6 +219,7 @@ export const DESKTOP_FR = {
   "profiles.noneLevel": "aucune",
   "profiles.notEditableTag": "non modifiable",
   "main.traySettings": "Réglages…",
+  "main.traySuspendShortcuts": "Suspendre les raccourcis globaux",
   "main.trayQuit": "Quitter Reqraft",
   "main.trayIdle": "Reqraft — prêt",
   "main.trayBusy": "Reqraft — reformulation en cours…",
@@ -226,6 +227,7 @@ export const DESKTOP_FR = {
   "main.updateTitle": "Mise à jour Reqraft disponible",
   "main.updateBody": "La version {version} peut être téléchargée.",
   "main.trayUpdateAvailable": "Télécharger Reqraft {version}",
+  "main.trayShortcutsSuspendedTooltip": "Reqraft — raccourcis globaux suspendus",
   "main.settingsTitle": SETTINGS_TITLE,
   "main.onboardingTitle": "Reqraft — Configuration",
   "main.profileFileType": "Profil Reqraft",
@@ -256,6 +258,8 @@ export const DESKTOP_FR = {
   "main.doctorRejectedBySystem": "refusés par le système : {list}",
   "main.doctorNoConflict": "aucun doublon",
   "main.doctorConflictingShortcuts": "déjà utilisés par une autre commande Reqraft : {list}",
+  "main.doctorShortcutsActive": "raccourcis globaux actifs",
+  "main.doctorShortcutsSuspended": "raccourcis globaux suspendus depuis la barre de menus",
   "main.doctorNoShortcut": "aucun raccourci actif",
   "main.autoProfileName": "Auto",
   "main.autoProfileSummary": "Détection locale du profil",
@@ -290,6 +294,8 @@ export const DESKTOP_FR = {
   "settings.shortcutUnavailable": "Choix non disponible : {accelerator} est actif à la place.",
   "settings.shortcutsConflicting":
     "Raccourcis demandés deux fois par Reqraft : {list}. Une seule commande peut répondre à une combinaison — un repli a été enregistré pour l'autre, choisissez-lui une combinaison distincte.",
+  "settings.shortcutsSuspended":
+    "Les raccourcis globaux sont suspendus. Réactivez-les depuis l'icône Reqraft de la barre de menus.",
   "settings.language": "Langue de l'interface",
   "settings.languageDetail": "Reqraft redémarre automatiquement quand ce choix change.",
   "settings.welcomeTour": "Présentation de Reqraft",

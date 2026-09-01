@@ -360,6 +360,8 @@ export interface ShortcutStateInfo {
    * same message for both would send the user to the wrong place.
    */
   conflicts: string[];
+  /** Whether Electron is temporarily ignoring every registered shortcut. */
+  suspended: boolean;
 }
 
 /**

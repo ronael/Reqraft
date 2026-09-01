@@ -1,6 +1,7 @@
 import { Menu, Tray, app, nativeImage } from "electron";
-import { trayIconPng, trayTooltip, type TrayState } from "./tray-icon.js";
+import { suspendedTrayTooltip, trayIconPng, trayTooltip, type TrayState } from "./tray-icon.js";
 import { t } from "./i18n.js";
+import { createShortcutSuspensionMenuItem } from "./tray-menu.js";
 
 /**
  * Menu-bar presence (DESKTOP.md lot 4): the only persistent element of the
@@ -12,12 +13,15 @@ import { t } from "./i18n.js";
 export interface TrayActions {
   onTogglePopover: (anchorBounds: Electron.Rectangle) => void;
   onOpenSettings: () => void;
+  onShortcutsSuspendedChange: (suspended: boolean) => void;
 }
 
 export interface TrayController {
   setState(state: TrayState): void;
   setAvailableUpdate(version: string, onOpen: () => void): void;
   getState(): TrayState;
+  setShortcutsSuspended(suspended: boolean): void;
+  areShortcutsSuspended(): boolean;
   /**
    * The icon rectangle, so a keyboard trigger anchors the popover exactly where
    * a click would. Only the click event carries these bounds, and the global
@@ -30,6 +34,7 @@ export interface TrayController {
 
 export function createTray(actions: TrayActions): TrayController {
   let state: TrayState = "repos";
+  let shortcutsSuspended = false;
   let availableUpdate: { version: string; onOpen: () => void } | null = null;
   const tray = new Tray(nativeImage.createFromBuffer(trayIconPng(state)));
 
@@ -45,6 +50,7 @@ export function createTray(actions: TrayActions): TrayController {
             { type: "separator" as const },
           ]),
       { label: t("main.traySettings"), click: actions.onOpenSettings },
+      createShortcutSuspensionMenuItem(shortcutsSuspended, setShortcutsSuspended),
       { type: "separator" },
       {
         label: t("main.trayQuit"),
@@ -57,7 +63,13 @@ export function createTray(actions: TrayActions): TrayController {
   function applyState(next: TrayState): void {
     state = next;
     tray.setImage(nativeImage.createFromBuffer(trayIconPng(next)));
-    tray.setToolTip(trayTooltip(next));
+    tray.setToolTip(shortcutsSuspended ? suspendedTrayTooltip() : trayTooltip(next));
+  }
+
+  function setShortcutsSuspended(suspended: boolean): void {
+    actions.onShortcutsSuspendedChange(suspended);
+    shortcutsSuspended = suspended;
+    applyState(state);
   }
 
   applyState(state);
@@ -74,6 +86,8 @@ export function createTray(actions: TrayActions): TrayController {
       availableUpdate = { version, onOpen };
     },
     getState: () => state,
+    setShortcutsSuspended,
+    areShortcutsSuspended: () => shortcutsSuspended,
     getBounds: () => tray.getBounds(),
     destroy: () => {
       tray.destroy();

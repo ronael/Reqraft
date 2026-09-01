@@ -34,3 +34,7 @@ const TOOLTIP_KEYS: Record<TrayState, string> = {
 export function trayTooltip(state: TrayState): string {
   return t(TOOLTIP_KEYS[state]);
 }
+
+export function suspendedTrayTooltip(): string {
+  return t("main.trayShortcutsSuspendedTooltip");
+}
