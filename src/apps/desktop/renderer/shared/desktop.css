@@ -6,10 +6,38 @@
 
 :root {
   color-scheme: dark;
+  --rq-scrollbar-thumb: rgba(161, 161, 170, 0.24);
+  --rq-scrollbar-thumb-hover: rgba(161, 161, 170, 0.44);
 }
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: var(--rq-scrollbar-thumb) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+*::-webkit-scrollbar-track,
+*::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  min-width: 28px;
+  min-height: 28px;
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background: var(--rq-scrollbar-thumb);
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--rq-scrollbar-thumb-hover);
+  background-clip: padding-box;
 }
 
 html,
@@ -3127,8 +3155,6 @@ kbd {
   min-height: 0;
   padding: 0 6px 6px;
   overflow-y: auto;
-  scrollbar-width: thin;
-  scrollbar-color: #3f3f46 transparent;
 }
 
 .profile-sheet-group + .profile-sheet-group {
