@@ -126,6 +126,8 @@ export const DESKTOP_FR = {
     "Les clés sont vérifiées auprès du fournisseur puis rangées dans le trousseau de votre système. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.",
   "settings.shortcutRestart":
     "Les changements s'appliquent immédiatement. Si une combinaison est indisponible, Reqraft active un repli.",
+  "settings.shortcutsReset": "Réinitialiser",
+  "settings.shortcutsRetest": "Retester",
   "settings.replaceEnvInApp":
     "Cette clé vient de l'environnement de lancement. Remplacez-la ici pour que l'application utilise plutôt le trousseau.",
   "profiles.intro":

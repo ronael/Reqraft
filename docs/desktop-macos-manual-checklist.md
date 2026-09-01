@@ -114,6 +114,10 @@ Tester dans **trois applications différentes** (ex. Safari, Notes, VS Code).
       annonce la suspension ; décocher réactive les trois raccourcis.
 - [ ] Pendant la suspension, changer une combinaison dans Préférences puis
       reprendre : la nouvelle combinaison fonctionne, l'ancienne non.
+- [ ] « Réinitialiser » remet les trois menus sur Automatique et réactive les
+      combinaisons de la chaîne de repli actuellement disponibles.
+- [ ] Libérer dans une autre app une combinaison précédemment refusée, puis
+      cliquer « Retester » : elle devient active sans relancer Reqraft.
 - [ ] Choisir un raccourci déjà pris → l'échec est affiché, un repli est
       proposé ; jamais silencieux (DESKTOP.md §5.5).
 - [ ] Choisir un raccourci intercepté par macOS (ex. `⌘Espace`) → `register()`

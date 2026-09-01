@@ -1,4 +1,4 @@
-import { RotateCcw } from "lucide-react";
+import { RefreshCw, RotateCcw } from "lucide-react";
 import { useT } from "../shared/i18n.js";
 import { SHORTCUT_PRESETS, type ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
@@ -9,6 +9,8 @@ export type UiLocalePreference = "auto" | "en" | "fr";
 export interface PreferencesTabProps {
   chosen: Partial<Record<ShortcutIntent, string>>;
   onChoose(intent: ShortcutIntent, accelerator: string): void;
+  onResetShortcuts(): void;
+  onRetestShortcuts(): void;
   captureShortcut: string;
   inputShortcut: string;
   popoverShortcut: string;
@@ -60,6 +62,14 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
         }}
       />
       <p className="settings-note muted">{t("settings.shortcutRestart")}</p>
+      <div className="settings-actions shortcut-actions">
+        <button type="button" className="button-secondary" onClick={props.onResetShortcuts}>
+          <RotateCcw size={13} aria-hidden /> {t("settings.shortcutsReset")}
+        </button>
+        <button type="button" className="button-secondary" onClick={props.onRetestShortcuts}>
+          <RefreshCw size={13} aria-hidden /> {t("settings.shortcutsRetest")}
+        </button>
+      </div>
       {props.rejectedShortcuts.length > 0 && (
         <div className="settings-warning" role="alert">
           ! {t("settings.shortcutsTaken", { list: props.rejectedShortcuts.join(", ") })}

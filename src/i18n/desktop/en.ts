@@ -132,6 +132,8 @@ export const DESKTOP_EN = {
     "Keys are verified with the provider then stored in your system keychain. They are never written to your configuration, nor shown here.",
   "settings.shortcutRestart":
     "Changes take effect immediately. If a combination is unavailable, Reqraft activates a fallback.",
+  "settings.shortcutsReset": "Reset",
+  "settings.shortcutsRetest": "Retry",
   "settings.replaceEnvInApp":
     "This key comes from the launch environment. Replace it here to make the app use the keychain instead.",
   "profiles.intro":

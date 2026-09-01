@@ -233,6 +233,12 @@ export function SettingsApp(): React.JSX.Element {
                     },
                   });
                 }}
+                onResetShortcuts={() => {
+                  patchConfig({ desktopShortcuts: {} });
+                }}
+                onRetestShortcuts={() => {
+                  patchConfig({ desktopShortcuts: config?.desktopShortcuts ?? {} });
+                }}
                 uiLocale={config?.uiLocale ?? "auto"}
                 onChooseLanguage={(preference) => {
                   patchConfig({ uiLocale: preference });

@@ -1121,6 +1121,11 @@ kbd {
   gap: 8px;
 }
 
+.shortcut-actions button {
+  width: 132px;
+  justify-content: center;
+}
+
 .shortcut-overridden {
   color: rgba(253, 230, 138, 0.9);
 }

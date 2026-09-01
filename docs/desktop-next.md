@@ -77,9 +77,11 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Raccourcis
 
-- Bouton « Réinitialiser par défaut » pour revenir aux raccourcis automatiques.
-- Bouton « Retester l'enregistrement » après avoir libéré un raccourci pris
-  par une autre app.
+- **Livré :** « Réinitialiser » efface les choix explicites et revient aux
+  combinaisons automatiques pour les trois commandes.
+- **Livré :** « Retester » réécrit volontairement les mêmes choix afin de
+  relancer l'enregistrement après avoir libéré une combinaison dans une autre
+  application. L'état affiché est relu après l'opération.
 - Lien direct vers le réglage système Accessibilité/Automatisation
   (`shell.openExternal("x-apple.systempreferences:…")`) au lieu de seulement
   déclencher le prompt.

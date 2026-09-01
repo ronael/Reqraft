@@ -94,6 +94,7 @@ interface Harness {
   execute: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
   saveConfig: ReturnType<typeof vi.fn>;
   relaunchApp: ReturnType<typeof vi.fn>;
+  onShortcutsChanged: ReturnType<typeof vi.fn<(shortcuts: Config["desktopShortcuts"]) => void>>;
   sender: RunEventSender;
   sent: { channel: string; payload: unknown }[];
   state: { destroyed: boolean };
@@ -110,6 +111,7 @@ function setup(options: {
   const execute = options.execute ?? streamingExecute();
   const saveConfig = vi.fn((_config: Config) => Promise.resolve());
   const relaunchApp = vi.fn<() => void>();
+  const onShortcutsChanged = vi.fn<(shortcuts: Config["desktopShortcuts"]) => void>();
   const { sender, sent, state } = createFakeSender();
 
   const service = new RepromptService({
@@ -128,10 +130,21 @@ function setup(options: {
     loadConfig: () => Promise.resolve(config),
     saveConfig,
     relaunchApp,
+    onShortcutsChanged,
     hydrateCredentials: options.hydrateCredentials ?? (() => Promise.resolve()),
     env,
   });
-  return { ipcMain, clipboard, execute, saveConfig, relaunchApp, sender, sent, state };
+  return {
+    ipcMain,
+    clipboard,
+    execute,
+    saveConfig,
+    relaunchApp,
+    onShortcutsChanged,
+    sender,
+    sent,
+    state,
+  };
 }
 
 function sentChannels(harness: Harness, channel: string): unknown[] {
@@ -492,6 +505,20 @@ describe("config via IPC", () => {
     await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { stream: false }, harness.sender);
 
     expect(harness.relaunchApp).not.toHaveBeenCalled();
+  });
+
+  it("config:write reteste les mêmes raccourcis quand le renderer les réécrit", async () => {
+    const shortcuts = { capture: "Command+Control+R" };
+    const harness = setup({ config: { ...MOCK_CONFIG, desktopShortcuts: shortcuts } });
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.configWrite,
+      { desktopShortcuts: shortcuts },
+      harness.sender,
+    );
+
+    expect(harness.onShortcutsChanged).toHaveBeenCalledOnce();
+    expect(harness.onShortcutsChanged).toHaveBeenCalledWith(shortcuts);
   });
 
   it("sanitizeConfigForRenderer conserve une config sans providers custom", () => {
