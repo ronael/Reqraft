@@ -2,9 +2,13 @@ import { type ComponentType, useCallback, useEffect, useRef, useState } from "re
 import {
   CircleArrowUp,
   Cpu,
+  Fingerprint,
+  Globe2,
+  KeyRound,
   Plus,
   SlidersHorizontal,
   Stethoscope,
+  Type,
   UserRound,
   Waypoints,
 } from "lucide-react";
@@ -33,6 +37,7 @@ import {
 } from "./ProviderRow.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { InlineMessage } from "../shared/InlineMessage.js";
 import { ProviderLogo } from "./ProviderLogo.js";
 import { PreferencesTab } from "./PreferencesTab.js";
 import { UpdatesTab } from "./UpdatesTab.js";
@@ -546,6 +551,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
     ? findEndpointProblem(
         form,
         endpoints.map(([id]) => id),
+        t,
       )
     : undefined;
 
@@ -765,32 +771,39 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
     detail: string,
     value: string,
     key: keyof EndpointForm,
+    Icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>,
     mono = true,
     disabled = false,
   ): React.JSX.Element => (
-    <label className="settings-row">
-      <span>
+    <label className="settings-group-row">
+      <span className="settings-row-icon">
+        <Icon size={16} aria-hidden />
+      </span>
+      <span className="settings-group-copy">
         <span className="settings-row-title">{title}</span>
         <span className="settings-row-detail">{detail}</span>
       </span>
-      <input
-        className={mono ? "settings-input mono" : "settings-input"}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => {
-          props.onChange({ ...form, [key]: event.target.value });
-        }}
-      />
+      <span className="settings-row-control">
+        <input
+          className={mono ? "settings-input mono" : "settings-input"}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => {
+            props.onChange({ ...form, [key]: event.target.value });
+          }}
+        />
+      </span>
     </label>
   );
 
   return (
-    <div className="settings-card-list provider-form">
+    <div className="settings-group provider-form">
       {field(
         t("settings.identifier"),
         t("settings.endpointIdDetail"),
         form.id,
         "id",
+        Fingerprint,
         true,
         form.mode === "update",
       )}
@@ -799,6 +812,8 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
         t("settings.endpointNameDetail"),
         form.name,
         "name",
+        Type,
+        false,
         false,
       )}
       {field(
@@ -806,21 +821,39 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
         t("settings.endpointBaseUrlDetail"),
         form.baseUrl,
         "baseUrl",
+        Globe2,
+        true,
+        false,
       )}
       {field(
         t("settings.endpointKeyEnvLabel"),
         t("settings.endpointKeyEnvDetail"),
         form.apiKeyEnv,
         "apiKeyEnv",
+        KeyRound,
+        true,
+        false,
       )}
-      {props.problem !== undefined && <p className="settings-note muted">{props.problem}</p>}
-      <div className="settings-actions provider-form-actions">
-        <button type="button" className="chip" onClick={props.onCancel}>
-          {t(CANCEL_KEY)}
-        </button>
-        <Button disabled={props.problem !== undefined || props.busy} onClick={props.onSave}>
-          {t("settings.save")}
-        </Button>
+      <div className="settings-group-foot settings-group-foot-split provider-form-foot">
+        {props.problem !== undefined ? (
+          <InlineMessage tone="warning" role="alert">
+            {props.problem}
+          </InlineMessage>
+        ) : (
+          <span className="settings-note muted">
+            {t(
+              form.mode === "update" ? "settings.providerFormEdit" : "settings.providerFormCreate",
+            )}
+          </span>
+        )}
+        <div className="settings-actions provider-form-actions">
+          <Button variant="neutral" onClick={props.onCancel}>
+            {t(CANCEL_KEY)}
+          </Button>
+          <Button disabled={props.problem !== undefined || props.busy} onClick={props.onSave}>
+            {t("settings.save")}
+          </Button>
+        </div>
       </div>
     </div>
   );

@@ -1,8 +1,9 @@
 import { useCallback, useState } from "react";
-import { Copy } from "lucide-react";
+import { CircleCheck, Copy, RefreshCw, TriangleAlert } from "lucide-react";
 import type { DoctorReport } from "@/apps/desktop/shared/ipc-contract.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { InlineMessage, type MessageTone } from "../shared/InlineMessage.js";
 
 /**
  * L'onglet Diagnostic, extrait de `SettingsApp.tsx`.
@@ -46,59 +47,118 @@ export function DiagnosticTab({
   }, []);
 
   const hasReport = doctor !== null;
+  const failedCount = doctor?.checks.filter((check) => !check.ok).length ?? 0;
   const rerunDiagnostic = (): void => {
     setCopyStatus("idle");
     onRunDoctor();
   };
 
   return (
-    <>
-      {running && <p className="muted">{t("settings.diagnosticRunning")}</p>}
-      <div className="diagnostic-list">
-        {doctor?.checks.map((check) => (
-          <div
-            key={check.id}
-            className={check.ok ? "diagnostic-row" : "diagnostic-row diagnostic-row-risk"}
-          >
-            <span className={check.ok ? "verdict-good" : "verdict-risky"}>
-              {check.ok ? "✓" : "!"}
-            </span>
-            <span className="diagnostic-name">{check.id}</span>
-            {check.detail !== undefined && (
-              <span className="diagnostic-detail">{check.detail}</span>
-            )}
+    <section className="settings-section diagnostic-section">
+      <div className="settings-section-head">
+        <h3 className="settings-subhead">{t("settings.diagnosticChecks")}</h3>
+      </div>
+      <div className="settings-group">
+        <div className="settings-group-rows diagnostic-list">
+          {doctor?.checks.map((check) => {
+            const Icon = check.ok ? CircleCheck : TriangleAlert;
+            return (
+              <div key={check.id} className="settings-group-row diagnostic-row">
+                <span
+                  className={
+                    check.ok
+                      ? "settings-row-icon diagnostic-icon-ok"
+                      : "settings-row-icon diagnostic-icon-risk"
+                  }
+                >
+                  <Icon size={17} aria-hidden />
+                </span>
+                <span className="settings-group-copy">
+                  <span className="settings-row-title">{diagnosticCheckLabel(check.id, t)}</span>
+                  {check.detail !== undefined && (
+                    <span className="settings-row-detail diagnostic-detail">{check.detail}</span>
+                  )}
+                </span>
+                <span className={check.ok ? "settings-state settings-state-ok" : "settings-state"}>
+                  {check.ok ? t("settings.diagnosticOk") : t("settings.diagnosticAttention")}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+        <div className="settings-group-foot settings-group-foot-split">
+          <InlineMessage tone={diagnosticTone(hasReport, running, copyStatus, failedCount)}>
+            {diagnosticMessage(hasReport, running, copyStatus, failedCount, t)}
+          </InlineMessage>
+          <div className="settings-actions">
+            <Button
+              variant="neutral"
+              onClick={copyReport}
+              disabled={!hasReport || running || copyStatus === "copying"}
+              aria-busy={copyStatus === "copying"}
+            >
+              <Copy size={13} aria-hidden />
+              {t("settings.copyReport")}
+            </Button>
+            <Button variant="neutral" onClick={rerunDiagnostic} disabled={running}>
+              <RefreshCw size={13} className={running ? "spin" : undefined} aria-hidden />
+              {t("settings.rerunDiagnostic")}
+            </Button>
           </div>
-        ))}
+        </div>
       </div>
-      <div className="settings-actions">
-        {/* Le libellé ne change pas avec l'état : un bouton qui se renomme
-            « Copié » change de largeur, et les deux actions voisines cessent
-            d'être alignées. L'issue de la copie est annoncée à côté. */}
-        <Button
-          variant="neutral"
-          onClick={copyReport}
-          disabled={!hasReport || running || copyStatus === "copying"}
-          aria-busy={copyStatus === "copying"}
-        >
-          <Copy size={13} aria-hidden />
-          {t("settings.copyReport")}
-        </Button>
-        <Button variant="neutral" onClick={rerunDiagnostic} disabled={running}>
-          {t("settings.rerunDiagnostic")}
-        </Button>
-      </div>
-      {/* Toujours monté, même vide : une zone live ajoutée en même temps que
-          son message n'est pas annoncée par un lecteur d'écran. */}
-      <p className="settings-note muted" role="status">
-        {copyStatusMessage(copyStatus, t)}
-      </p>
-    </>
+    </section>
   );
 }
 
-function copyStatusMessage(status: CopyStatus, t: Translate): string {
-  if (status === "copying") return t("settings.copyingReport");
-  if (status === "copied") return t("settings.reportCopied");
-  if (status === "error") return t("settings.reportCopyFailed");
-  return "";
+export function diagnosticCheckLabel(id: string, t: Translate): string {
+  const exact: Record<string, string> = {
+    "config:file": "settings.diagnosticConfigFile",
+    "config:defaults": "settings.diagnosticDefaults",
+    "permissions:accessibility": "settings.diagnosticAccessibility",
+    "permissions:automation": "settings.diagnosticAutomation",
+    "permissions:replace": "settings.diagnosticReplacement",
+    "shortcuts:capture": "settings.captureShortcut",
+    "shortcuts:input": "settings.inputShortcut",
+    "shortcuts:popover": "settings.popoverShortcut",
+    "shortcuts:rejected": "settings.diagnosticRejectedShortcuts",
+    "shortcuts:conflicts": "settings.diagnosticShortcutConflicts",
+    "shortcuts:suspended": "settings.diagnosticShortcutState",
+  };
+  const key = exact[id];
+  if (key !== undefined) return t(key);
+  if (id.startsWith("provider:")) {
+    return t("settings.diagnosticProvider", { provider: id.slice("provider:".length) });
+  }
+  return id;
+}
+
+function diagnosticTone(
+  hasReport: boolean,
+  running: boolean,
+  copyStatus: CopyStatus,
+  failedCount: number,
+): MessageTone {
+  if (running || copyStatus === "copying") return "pending";
+  if (copyStatus === "copied") return "success";
+  if (copyStatus === "error") return "error";
+  if (!hasReport) return "info";
+  return failedCount === 0 ? "success" : "warning";
+}
+
+function diagnosticMessage(
+  hasReport: boolean,
+  running: boolean,
+  copyStatus: CopyStatus,
+  failedCount: number,
+  t: Translate,
+): string {
+  if (running) return t("settings.diagnosticRunning");
+  if (copyStatus === "copying") return t("settings.copyingReport");
+  if (copyStatus === "copied") return t("settings.reportCopied");
+  if (copyStatus === "error") return t("settings.reportCopyFailed");
+  if (!hasReport) return t("settings.diagnosticReady");
+  if (failedCount === 0) return t("settings.diagnosticAllClear");
+  if (failedCount === 1) return t("settings.diagnosticIssue");
+  return t("settings.diagnosticIssues", { count: String(failedCount) });
 }

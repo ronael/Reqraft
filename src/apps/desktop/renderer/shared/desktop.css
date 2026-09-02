@@ -1047,37 +1047,22 @@ kbd {
   border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.diagnostic-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
+.settings-group-row.diagnostic-row {
+  min-height: 54px;
+  padding-top: 9px;
+  padding-bottom: 9px;
 }
 
-.diagnostic-row {
-  display: grid;
-  grid-template-columns: 18px minmax(160px, 1fr) minmax(120px, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 10px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.02);
-  font-size: 12px;
+.diagnostic-icon-ok {
+  color: #6ee7b7;
 }
 
-.diagnostic-row-risk {
-  border-color: rgba(251, 191, 36, 0.22);
-  background: rgba(251, 191, 36, 0.05);
-}
-
-.diagnostic-name {
-  color: #e4e4e7;
+.diagnostic-icon-risk {
+  color: #fcd34d;
 }
 
 .diagnostic-detail {
-  min-width: 0;
   overflow: hidden;
-  color: #52525b;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1290,13 +1275,14 @@ kbd {
 
 .profile-form {
   width: 100%;
-  max-width: 760px;
-  margin: 0 auto;
 }
 
 .profile-form-head {
-  padding: 2px 0 14px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  min-height: 30px;
+  padding: 0;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
 }
 
 .profile-form-title {
@@ -1308,8 +1294,8 @@ kbd {
 .profile-form-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 15px 16px;
-  padding: 18px 0;
+  gap: 12px 16px;
+  padding: 14px;
 }
 
 .profile-field {
@@ -1341,7 +1327,7 @@ kbd {
 
 .profile-textarea {
   width: 100%;
-  min-height: 138px;
+  min-height: 94px;
   font-family: inherit;
   line-height: 18px;
   resize: vertical;
@@ -1349,9 +1335,13 @@ kbd {
 
 .profile-form-actions {
   margin-top: 0;
-  padding-top: 14px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 0;
   gap: 8px;
+  justify-content: flex-end;
+}
+
+.profile-form-messages {
+  margin: 0 0 8px;
 }
 
 .shortcut-control {
@@ -3332,14 +3322,23 @@ kbd {
 
 .provider-form {
   margin-top: 10px;
-  padding: 12px;
-  border: 1px solid rgba(167, 139, 250, 0.18);
-  border-radius: 10px;
-  background: rgba(139, 92, 246, 0.04);
+}
+
+.provider-form .settings-group-row {
+  min-height: 64px;
+}
+
+.provider-form .settings-row-control > .settings-input {
+  width: min(360px, 38vw);
 }
 
 .provider-form-actions {
+  padding: 0;
   gap: 8px;
+}
+
+.provider-form-foot > .inline-message {
+  max-width: min(420px, 52vw);
 }
 
 /*
