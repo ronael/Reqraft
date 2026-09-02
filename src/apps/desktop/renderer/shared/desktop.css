@@ -207,6 +207,39 @@ body {
   -webkit-box-orient: vertical;
 }
 
+.capsule-source-editor {
+  display: grid;
+  min-width: 0;
+  flex: 1;
+}
+
+.capsule-source-editor::after {
+  content: attr(data-replicated-value) " ";
+  white-space: pre-wrap;
+  word-break: break-word;
+  visibility: hidden;
+}
+
+.capsule-source-input,
+.capsule-source-editor::after {
+  grid-area: 1 / 1 / 2 / 2;
+  min-width: 0;
+  font: inherit;
+  font-style: italic;
+  line-height: inherit;
+}
+
+.capsule-source-input {
+  width: 100%;
+  padding: 0;
+  border: none;
+  resize: none;
+  overflow: hidden;
+  outline: none;
+  background: transparent;
+  color: inherit;
+}
+
 .capsule-stream {
   margin: 0;
   white-space: pre-wrap;
@@ -260,19 +293,6 @@ body {
   resize: none;
   overflow: hidden;
   background: transparent;
-}
-
-/*
- * Le champ se signale sans se redessiner.
- *
- * `outline` ne prend aucune place dans la mise en page : le texte ne bouge pas
- * d'un pixel quand le curseur entre, alors qu'une bordure ou un retrait
- * décalerait tout le résultat au premier clic.
- */
-.capsule-result:focus-within {
-  outline: 1px solid rgba(167, 139, 250, 0.3);
-  outline-offset: 6px;
-  border-radius: 4px;
 }
 
 .capsule-result-input:focus {
@@ -3720,24 +3740,21 @@ kbd {
 .toast-success {
   border-color: var(--rq-msg-success-line);
   background:
-    linear-gradient(var(--rq-msg-success-fill), var(--rq-msg-success-fill)),
-    var(--rq-toast-surface);
+    linear-gradient(var(--rq-msg-success-fill), var(--rq-msg-success-fill)), var(--rq-toast-surface);
   color: var(--rq-msg-success-text);
 }
 
 .toast-warning {
   border-color: var(--rq-msg-warning-line);
   background:
-    linear-gradient(var(--rq-msg-warning-fill), var(--rq-msg-warning-fill)),
-    var(--rq-toast-surface);
+    linear-gradient(var(--rq-msg-warning-fill), var(--rq-msg-warning-fill)), var(--rq-toast-surface);
   color: var(--rq-msg-warning-text);
 }
 
 .toast-error {
   border-color: var(--rq-msg-error-line);
   background:
-    linear-gradient(var(--rq-msg-error-fill), var(--rq-msg-error-fill)),
-    var(--rq-toast-surface);
+    linear-gradient(var(--rq-msg-error-fill), var(--rq-msg-error-fill)), var(--rq-toast-surface);
   color: var(--rq-msg-error-text);
 }
 

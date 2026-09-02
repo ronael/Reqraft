@@ -40,6 +40,8 @@ export const DESKTOP_EN = {
   "clipboard.copyFailed": "The result could not be copied.",
   "capsule.editLabel": "Result — editable before replacing or copying",
   "capsule.editEmpty": "The result is empty: write something before applying it.",
+  "capsule.editPromptLabel": "Starting prompt — editable before running again",
+  "capsule.promptEmpty": "The starting prompt is empty: write something before running again.",
   "capsule.replaceUnavailable": "Replacement unavailable — result copied, ⌘V to paste.",
   "capsule.replaceFailed": "Replacement failed — the result is still shown.",
   "capsule.qualityGood": "✓ faithful",

@@ -422,15 +422,21 @@ describe("l'édition du résultat rend ses touches au champ", () => {
     expect(resolveCapsuleKeyDown(stroke, EN_EDITION)).toBeNull();
   });
 
-  it.each<[string, CapsuleKeyStroke]>([
-    ["⇥", { key: "Tab" }],
-    ["⌘R", { key: "r", metaKey: true }],
-    ["⌘D", { key: "d", metaKey: true }],
-  ])("%s garde le comportement natif du navigateur", (_nom, stroke) => {
+  it("⇥ garde le comportement natif du navigateur", () => {
     // La capsule coupait ces frappes pour s'en servir. Continuer à les couper
     // pendant l'édition les rendrait inertes : ni commande, ni frappe.
-    expect(preventsBrowserDefault(stroke, EN_EDITION)).toBe(false);
-    expect(preventsBrowserDefault(stroke, { state: "ready", editing: false })).toBe(true);
+    expect(preventsBrowserDefault({ key: "Tab" }, EN_EDITION)).toBe(false);
+    expect(preventsBrowserDefault({ key: "Tab" }, { state: "ready", editing: false })).toBe(true);
+  });
+
+  it("bloque le rechargement et le signet sans déclencher les commandes", () => {
+    for (const stroke of [
+      { key: "r", metaKey: true },
+      { key: "d", metaKey: true },
+    ]) {
+      expect(resolveCapsuleKeyDown(stroke, EN_EDITION)).toBeNull();
+      expect(preventsBrowserDefault(stroke, EN_EDITION)).toBe(true);
+    }
   });
 
   it("esc ferme toujours, et ⌘. interrompt toujours", () => {

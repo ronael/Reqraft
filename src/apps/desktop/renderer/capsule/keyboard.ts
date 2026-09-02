@@ -151,6 +151,13 @@ export function preventsBrowserDefault(
   stroke: CapsuleKeyStroke,
   context: CapsuleKeyContext,
 ): boolean {
+  if (context.editing && stroke.metaKey === true) {
+    const key = normaliser(stroke.key);
+    // Le champ garde ses commandes de texte (⌘C notamment), mais ni le
+    // rechargement de la fenêtre ni le signet du navigateur ne doivent prendre
+    // le relais quand les commandes Reqraft sont suspendues pendant l'édition.
+    if (key === "r" || key === "d") return true;
+  }
   const intent = commandeDeLaFrappe(stroke, context);
   return intent !== null && COUPE_LE_DEFAUT.has(intent);
 }

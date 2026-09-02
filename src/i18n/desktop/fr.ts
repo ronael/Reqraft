@@ -33,6 +33,8 @@ export const DESKTOP_FR = {
   "clipboard.copyFailed": "Le résultat n’a pas pu être copié.",
   "capsule.editLabel": "Résultat — modifiable avant de remplacer ou de copier",
   "capsule.editEmpty": "Le résultat est vide : écris quelque chose avant de l'appliquer.",
+  "capsule.editPromptLabel": "Prompt de départ — modifiable avant de relancer",
+  "capsule.promptEmpty": "Le prompt de départ est vide : écris quelque chose avant de relancer.",
   "capsule.replaceUnavailable": "Remplacement indisponible — résultat copié, ⌘V pour coller.",
   "capsule.replaceFailed": "Le remplacement a échoué — le résultat reste affiché.",
   "capsule.qualityGood": "✓ fidèle",

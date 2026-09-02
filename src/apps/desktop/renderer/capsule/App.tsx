@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
+import { PromptEditor } from "./PromptEditor.js";
 import { ResultEditor } from "./ResultEditor.js";
 import { useT } from "../shared/i18n.js";
 import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
@@ -37,6 +38,8 @@ const QUALITY_KEYS: Record<RepromptResult["quality"]["status"], string> = {
   review: "capsule.qualityReview",
   risky: "capsule.qualityRisky",
 };
+
+const PROMPT_EMPTY_MESSAGE = "capsule.promptEmpty";
 
 export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
   const currentIndex = REPROMPT_LEVEL_IDS.indexOf(current);
@@ -151,6 +154,35 @@ function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
         </button>
       )}
     </header>
+  );
+}
+
+function CapsuleSource(
+  props: Readonly<{
+    input: string;
+    label: string;
+    editLabel: string;
+    editable: boolean;
+    readOnly: boolean;
+    onChange(text: string): void;
+    onEditingChange(editing: boolean): void;
+  }>,
+): React.JSX.Element {
+  return (
+    <div className="capsule-source">
+      <span className="capsule-source-label">{props.label}</span>
+      {props.editable ? (
+        <PromptEditor
+          value={props.input}
+          label={props.editLabel}
+          readOnly={props.readOnly}
+          onChange={props.onChange}
+          onEditingChange={props.onEditingChange}
+        />
+      ) : (
+        <span className="capsule-source-text">{props.input}</span>
+      )}
+    </div>
   );
 }
 
@@ -683,18 +715,28 @@ export function App(): React.JSX.Element {
       });
   }, [annoncer, t, texteAAppliquer]);
 
+  const promptEstVide = input.trim() === "";
+
   const relancer = useCallback(() => {
+    if (promptEstVide) {
+      annoncer(t(PROMPT_EMPTY_MESSAGE), "warning");
+      return;
+    }
     startRun(input, level);
-  }, [input, level, startRun]);
+  }, [annoncer, input, level, promptEstVide, startRun, t]);
 
   /** ⇥ monte d'un niveau, ⇧⇥ redescend ; le clic n'a pas de modificateur. */
   const changerNiveau = useCallback(
     (direction: 1 | -1) => {
+      if (promptEstVide) {
+        annoncer(t(PROMPT_EMPTY_MESSAGE), "warning");
+        return;
+      }
       const next = cycleRepromptLevel(level, direction);
       setLevel(next);
       startRun(input, next);
     },
-    [input, level, startRun],
+    [annoncer, input, level, promptEstVide, startRun, t],
   );
 
   const fermer = useCallback(() => {
@@ -832,6 +874,9 @@ export function App(): React.JSX.Element {
    * la comparaison montre.
    */
   const finalText = edited ?? result?.rewritten ?? "";
+  const promptEditable = state === "ready" || state === "applying";
+  const promptVisibleOutsideComparison = state !== "input" && state !== "comparison";
+  const promptVisible = promptVisibleOutsideComparison && (input !== "" || promptEditable);
 
   const finding = describeQualityFinding(finalResult?.quality.signals ?? [], t);
 
@@ -866,6 +911,22 @@ export function App(): React.JSX.Element {
   const profilAffiche = chosenProfile ?? displayedProfile ?? AUTO_PROFILE_ID;
   const awaitingDetection = autoRequested && appliedProfile === null;
 
+  const choisirProfil = useCallback(
+    (id: string) => {
+      setChosenProfile(id);
+      setPicking(false);
+      // Depuis un résultat, le choix se voit tout de suite : le relancer est
+      // ce que « changer de profil » veut dire à ce moment-là.
+      if (state !== "ready" && state !== "comparison") return;
+      if (promptEstVide) {
+        annoncer(t(PROMPT_EMPTY_MESSAGE), "warning");
+        return;
+      }
+      startRunAvecProfil(input, level, id);
+    },
+    [annoncer, input, level, promptEstVide, startRunAvecProfil, state, t],
+  );
+
   return (
     <main className="capsule">
       <CapsuleHeader
@@ -882,15 +943,7 @@ export function App(): React.JSX.Element {
         <ProfileSheet
           entries={profiles}
           selectedId={chosenProfile ?? displayedProfile ?? AUTO_PROFILE_ID}
-          onSelect={(id) => {
-            setChosenProfile(id);
-            setPicking(false);
-            // Depuis un résultat, le choix se voit tout de suite : le relancer
-            // est ce que « changer de profil » veut dire à ce moment-là.
-            if (state === "ready" || state === "comparison") {
-              startRunAvecProfil(input, level, id);
-            }
-          }}
+          onSelect={choisirProfil}
           onClose={() => {
             setPicking(false);
           }}
@@ -919,11 +972,16 @@ export function App(): React.JSX.Element {
             </>
           )}
 
-          {state !== "input" && input !== "" && state !== "comparison" && (
-            <div className="capsule-source">
-              <span className="capsule-source-label">{t("capsule.before")}</span>
-              <span className="capsule-source-text">{input}</span>
-            </div>
+          {promptVisible && (
+            <CapsuleSource
+              input={input}
+              label={t("capsule.before")}
+              editLabel={t("capsule.editPromptLabel")}
+              editable={promptEditable}
+              readOnly={state === "applying"}
+              onChange={setInput}
+              onEditingChange={setEditing}
+            />
           )}
 
           {state === "capture" && <p className="muted">{t("capsule.readingSelection")}</p>}

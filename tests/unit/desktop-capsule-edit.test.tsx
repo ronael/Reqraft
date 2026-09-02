@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { ResultEditor } from "@/apps/desktop/renderer/capsule/ResultEditor.js";
+import { PromptEditor } from "@/apps/desktop/renderer/capsule/PromptEditor.js";
 import { RESULT_ACCEPT_TEXT_MAX_LENGTH } from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
@@ -78,6 +79,13 @@ describe("le champ du résultat", () => {
     expect(editeur("x")).toContain('aria-label="Résultat"');
   });
 
+  it("ne change pas visuellement au focus", async () => {
+    const css = await readFile(STYLESHEET, "utf8");
+
+    expect(css).not.toContain(".capsule-result:focus-within");
+    expect(css).toContain(".capsule-result-input:focus {\n  outline: none;");
+  });
+
   it("garde la géométrie et le style du bloc qu'il remplace", async () => {
     // Le champ succède à un `<pre class="capsule-stream">`. Il porte la même
     // classe — donc la même police, la même taille et le même interligne — et
@@ -111,6 +119,52 @@ describe("le champ du résultat", () => {
 
     const css = await readFile(STYLESHEET, "utf8");
     expect(css).toContain("content: attr(data-replicated-value)");
+  });
+});
+
+describe("le prompt de départ", () => {
+  it("est éditable après la génération", () => {
+    const markup = renderToStaticMarkup(
+      <PromptEditor
+        value="demande initiale"
+        label="Prompt de départ"
+        readOnly={false}
+        onChange={() => undefined}
+        onEditingChange={() => undefined}
+      />,
+    );
+
+    expect(markup).toContain("<textarea");
+    expect(markup).toContain("demande initiale");
+    expect(markup).toContain('aria-label="Prompt de départ"');
+    expect(attribut(markup, "readonly")).toBe(false);
+  });
+
+  it("reste visuellement neutre au focus", async () => {
+    const css = await readFile(STYLESHEET, "utf8");
+    const rule = css.slice(css.indexOf(".capsule-source-input {"));
+    const body = rule.slice(rule.indexOf("{") + 1, rule.indexOf("}"));
+
+    expect(body).toContain("border: none");
+    expect(body).toContain("outline: none");
+    expect(body).toContain("background: transparent");
+  });
+
+  it("alimente la comparaison et les relances avec la valeur modifiée", async () => {
+    const corps = await corpsDeApp();
+
+    expect(await source()).toContain("<PromptEditor");
+    expect(corps).toContain("<CapsuleSource");
+    expect(corps).toContain("onChange={setInput}");
+    expect(corps).toContain("startRun(input, level)");
+    expect(corps).toContain('<div className="diff-before">− {input}</div>');
+  });
+
+  it("reste monté quand le prompt est entièrement vidé", async () => {
+    const corps = await corpsDeApp();
+
+    expect(corps).toContain('input !== "" || promptEditable');
+    expect(corps).toContain("{promptVisible && (");
   });
 });
 
