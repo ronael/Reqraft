@@ -8,6 +8,30 @@
   color-scheme: dark;
   --rq-scrollbar-thumb: rgba(161, 161, 170, 0.24);
   --rq-scrollbar-thumb-hover: rgba(161, 161, 170, 0.44);
+
+  /*
+   * Les tons d'un message d'état : bordure, fond, texte.
+   *
+   * Ils sont volontairement bas en saturation. L'ancien pavé d'avertissement
+   * peignait un ambre plein sur trois lignes, ce qui en faisait l'élément le
+   * plus visible d'un écran où il ne portait souvent qu'une note. Un message
+   * doit se distinguer de son voisin, pas de la page.
+   */
+  --rq-msg-info-line: rgba(255, 255, 255, 0.09);
+  --rq-msg-info-fill: rgba(255, 255, 255, 0.03);
+  --rq-msg-info-text: #9d9da8;
+  --rq-msg-pending-line: rgba(255, 255, 255, 0.07);
+  --rq-msg-pending-fill: rgba(255, 255, 255, 0.022);
+  --rq-msg-pending-text: #85858f;
+  --rq-msg-success-line: rgba(52, 211, 153, 0.2);
+  --rq-msg-success-fill: rgba(52, 211, 153, 0.055);
+  --rq-msg-success-text: #96dcbb;
+  --rq-msg-warning-line: rgba(251, 191, 36, 0.18);
+  --rq-msg-warning-fill: rgba(251, 191, 36, 0.045);
+  --rq-msg-warning-text: #d8c493;
+  --rq-msg-error-line: rgba(248, 113, 113, 0.22);
+  --rq-msg-error-fill: rgba(248, 113, 113, 0.05);
+  --rq-msg-error-text: #e5a3a3;
 }
 
 * {
@@ -203,6 +227,23 @@ body {
   }
   50% {
     opacity: 1;
+  }
+}
+
+/*
+ * Une attente qui tourne, et rien d'autre.
+ *
+ * `transform` seulement : aucune propriété de mise en page, donc aucun
+ * recalcul pendant qu'un appel réseau est en cours. Le repli mouvement réduit
+ * est en fin de fichier, avec les autres.
+ */
+.spin {
+  animation: rq-spin 900ms linear infinite;
+}
+
+@keyframes rq-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 
@@ -946,15 +987,6 @@ kbd {
   background: rgba(139, 92, 246, 0.06);
 }
 
-.settings-update-available {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  border-color: rgba(52, 211, 153, 0.22);
-  background: rgba(52, 211, 153, 0.06);
-  color: #a7f3d0;
-}
-
 .settings-note {
   font-size: 11px;
   line-height: 16px;
@@ -973,21 +1005,6 @@ kbd {
 
 .settings-input {
   width: min(260px, 42vw);
-}
-
-.model-catalog-status {
-  min-height: 16px;
-}
-
-.model-catalog-control {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-shrink: 0;
-}
-
-.model-catalog-control .settings-select {
-  width: min(260px, 30vw);
 }
 
 .settings-actions {
@@ -1347,6 +1364,19 @@ kbd {
 .shortcut-actions button {
   width: 132px;
   justify-content: center;
+}
+
+.shortcut-control kbd {
+  display: inline-flex;
+  align-items: center;
+  min-height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+}
+
+.shortcut-control > .settings-select {
+  width: 148px;
+  flex-shrink: 0;
 }
 
 .shortcut-overridden {
@@ -3163,10 +3193,12 @@ kbd {
   color: #52525b;
 }
 
+.settings-section + .settings-section,
 .provider-section + .provider-section {
   margin-top: 22px;
 }
 
+.settings-section-head,
 .provider-section-head {
   display: flex;
   min-height: 30px;
@@ -3176,10 +3208,12 @@ kbd {
   margin-bottom: 8px;
 }
 
+.settings-section-head .settings-subhead,
 .provider-section-head .settings-subhead {
   margin: 0;
 }
 
+.settings-group,
 .provider-list {
   overflow: hidden;
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -3187,6 +3221,7 @@ kbd {
   background: rgba(255, 255, 255, 0.012);
 }
 
+.settings-group-row,
 .provider-row {
   display: grid;
   grid-template-columns: 34px minmax(0, 1fr) auto;
@@ -3197,14 +3232,17 @@ kbd {
   transition: background 160ms ease;
 }
 
+.settings-group-row + .settings-group-row,
 .provider-row + .provider-row {
   border-top: 1px solid rgba(255, 255, 255, 0.065);
 }
 
+.settings-group-row:hover,
 .provider-row:hover {
   background: rgba(255, 255, 255, 0.022);
 }
 
+.settings-row-icon,
 .provider-logo {
   display: flex;
   width: 30px;
@@ -3237,6 +3275,7 @@ kbd {
   filter: none;
 }
 
+.settings-group-copy,
 .provider-copy {
   min-width: 0;
 }
@@ -3278,6 +3317,7 @@ kbd {
   min-width: 0;
 }
 
+.settings-row-control,
 .provider-key-control {
   display: flex;
   align-items: center;
@@ -3383,11 +3423,13 @@ kbd {
 }
 
 @media (max-width: 760px) {
+  .settings-group-row,
   .provider-row {
     grid-template-columns: 30px minmax(0, 1fr);
     column-gap: 10px;
   }
 
+  .settings-row-control,
   .provider-key-control {
     grid-column: 2;
     max-width: 100%;
@@ -3396,6 +3438,167 @@ kbd {
 
   .provider-key-control .settings-input {
     width: min(240px, 100%);
+  }
+
+  .settings-group-foot-split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .settings-group-foot-split .settings-actions {
+    justify-content: flex-start;
+  }
+}
+
+/* Keep rows in the same group aligned to the tallest label. */
+.settings-group-rows {
+  display: grid;
+  grid-auto-rows: 1fr;
+}
+
+.settings-row-icon {
+  color: #83838e;
+}
+
+.settings-row-control:not(.shortcut-control) > .settings-select,
+.settings-row-control:not(.shortcut-control) > .settings-input {
+  width: min(220px, 30vw);
+  flex-shrink: 0;
+}
+
+.settings-group-foot {
+  padding: 10px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.065);
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.settings-group-foot-split {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.settings-group-foot-split > .settings-note {
+  margin: 0;
+  min-width: 0;
+  color: #62626d;
+}
+
+.settings-group-foot-split > .settings-actions {
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.settings-group-foot-split > .inline-message {
+  min-width: 0;
+}
+
+.settings-messages {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.settings-state {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.025);
+  color: #a1a1aa;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.settings-state-ok {
+  border-color: var(--rq-msg-success-line);
+  background: var(--rq-msg-success-fill);
+  color: var(--rq-msg-success-text);
+}
+
+.inline-message {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  min-height: 32px;
+  padding: 7px 10px;
+  border: 1px solid var(--rq-msg-info-line);
+  border-radius: 8px;
+  background: var(--rq-msg-info-fill);
+  color: var(--rq-msg-info-text);
+  font-size: 11px;
+  line-height: 16px;
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease,
+    color 180ms ease;
+}
+
+.inline-message-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.inline-message-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.inline-message-pending {
+  border-color: var(--rq-msg-pending-line);
+  background: var(--rq-msg-pending-fill);
+  color: var(--rq-msg-pending-text);
+}
+
+.inline-message-success {
+  border-color: var(--rq-msg-success-line);
+  background: var(--rq-msg-success-fill);
+  color: var(--rq-msg-success-text);
+}
+
+.inline-message-warning {
+  border-color: var(--rq-msg-warning-line);
+  background: var(--rq-msg-warning-fill);
+  color: var(--rq-msg-warning-text);
+}
+
+.inline-message-error {
+  border-color: var(--rq-msg-error-line);
+  background: var(--rq-msg-error-fill);
+  color: var(--rq-msg-error-text);
+}
+
+.settings-group,
+.settings-messages,
+.settings-group-row-entering,
+.settings-action-entering {
+  animation: rq-rise 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .settings-group,
+  .settings-messages,
+  .settings-group-row-entering,
+  .settings-action-entering {
+    animation-duration: 1ms;
+  }
+
+  .inline-message {
+    transition: none;
+  }
+
+  .spin,
+  .pulse {
+    animation: none;
   }
 }
 

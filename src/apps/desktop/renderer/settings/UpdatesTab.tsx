@@ -1,7 +1,8 @@
-import { CircleAlert, CircleCheck, ExternalLink, RefreshCw } from "lucide-react";
+import { CloudDownload, ExternalLink, Package, RefreshCw } from "lucide-react";
 import type { DesktopUpdateState } from "@/apps/desktop/shared/ipc-contract.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { InlineMessage, type MessageTone } from "../shared/InlineMessage.js";
 
 export interface UpdatesTabProps {
   state: DesktopUpdateState | null;
@@ -9,62 +10,89 @@ export interface UpdatesTabProps {
   onOpenDownload(): void;
 }
 
+export function describeUpdateState(state: DesktopUpdateState | null, t: Translate): string {
+  if (state === null || state.status === "idle") return t("settings.updates.notChecked");
+  if (state.status === "checking") return t("settings.updates.checking");
+  if (state.status === "available") {
+    return t("settings.updates.available", { version: state.latestVersion ?? "" });
+  }
+  if (state.status === "up-to-date") return t("settings.updates.upToDate");
+  return t("settings.updates.error");
+}
+
+export function updateStateTone(state: DesktopUpdateState | null): MessageTone {
+  if (state === null || state.status === "idle") return "info";
+  if (state.status === "checking") return "pending";
+  if (state.status === "up-to-date") return "success";
+  if (state.status === "error") return "error";
+  return "info";
+}
+
 export function UpdatesTab(props: Readonly<UpdatesTabProps>): React.JSX.Element {
   const t = useT();
   const checking = props.state?.status === "checking";
   const available = props.state?.status === "available";
+  const failed = props.state?.status === "error";
 
   return (
     <>
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">{t("settings.updates.current")}</div>
-          <div className="settings-row-detail">{t("settings.updates.currentDetail")}</div>
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.updates.versionGroup")}</h3>
         </div>
-        <strong className="mono">{props.state?.currentVersion ?? "—"}</strong>
-      </div>
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">{t("settings.updates.latest")}</div>
-          <div className="settings-row-detail">{statusLabel(props.state, t)}</div>
-        </div>
-        <strong className="mono">{props.state?.latestVersion ?? "—"}</strong>
-      </div>
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <div className="settings-group-row">
+              <span className="settings-row-icon">
+                <Package size={18} strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.updates.current")}</span>
+                <span className="settings-row-detail">{t("settings.updates.currentDetail")}</span>
+              </span>
+              <span className="settings-row-control">
+                <span className="settings-state mono">{props.state?.currentVersion ?? "—"}</span>
+              </span>
+            </div>
+            <div className="settings-group-row">
+              <span className="settings-row-icon">
+                <CloudDownload size={18} strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.updates.latest")}</span>
+                <span className="settings-row-detail">{t("settings.updates.latestDetail")}</span>
+              </span>
+              <span className="settings-row-control">
+                <span className="settings-state mono">{props.state?.latestVersion ?? "—"}</span>
+              </span>
+            </div>
+          </div>
 
-      {available && (
-        <div className="settings-warning settings-update-available" role="status">
-          <CircleCheck size={14} aria-hidden />
-          <span>
-            {t("settings.updates.available", { version: props.state.latestVersion ?? "" })}
-          </span>
+          <div className="settings-group-foot settings-group-foot-split">
+            <InlineMessage tone={updateStateTone(props.state)} role={failed ? "alert" : "status"}>
+              {describeUpdateState(props.state, t)}
+            </InlineMessage>
+            <div className="settings-actions">
+              <Button
+                variant="neutral"
+                disabled={checking}
+                aria-busy={checking}
+                onClick={props.onCheck}
+              >
+                <RefreshCw size={13} className={checking ? "spin" : undefined} aria-hidden />
+                {t("settings.updates.check")}
+              </Button>
+              {available && (
+                <Button className="settings-action-entering" onClick={props.onOpenDownload}>
+                  <ExternalLink size={13} aria-hidden /> {t("settings.updates.download")}
+                </Button>
+              )}
+            </div>
+          </div>
         </div>
-      )}
-      {props.state?.status === "error" && (
-        <div className="settings-warning" role="alert">
-          <CircleAlert size={14} aria-hidden /> {t("settings.updates.error")}
-        </div>
-      )}
+      </section>
 
-      <div className="settings-actions">
-        <Button variant="neutral" disabled={checking} onClick={props.onCheck}>
-          <RefreshCw size={13} className={checking ? "pulse" : undefined} aria-hidden />
-          {checking ? t("settings.updates.checking") : t("settings.updates.check")}
-        </Button>
-        {available && (
-          <Button onClick={props.onOpenDownload}>
-            <ExternalLink size={13} aria-hidden /> {t("settings.updates.download")}
-          </Button>
-        )}
-      </div>
       <p className="settings-note muted">{t("settings.updates.startupNote")}</p>
     </>
   );
-}
-
-function statusLabel(state: DesktopUpdateState | null, t: Translate): string {
-  if (state === null || state.status === "idle") return t("settings.updates.notChecked");
-  if (state.status === "checking") return t("settings.updates.checking");
-  if (state.status === "available") return t("settings.updates.availableShort");
-  if (state.status === "up-to-date") return t("settings.updates.upToDate");
-  return t("settings.updates.errorShort");
 }

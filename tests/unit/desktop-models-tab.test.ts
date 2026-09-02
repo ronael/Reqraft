@@ -3,6 +3,7 @@ import { initialSettingsTab } from "@/apps/desktop/renderer/settings/SettingsApp
 import {
   describeModelCatalog,
   modelCatalogRequest,
+  modelCatalogTone,
   modelForProvider,
 } from "@/apps/desktop/renderer/settings/ModelsTab.js";
 import type { ProviderStatus } from "@/apps/desktop/shared/ipc-contract.js";
@@ -104,6 +105,54 @@ describe("modelCatalogRequest", () => {
         t,
       ),
     ).toBe("2 modèles disponibles.");
+  });
+});
+
+describe("modelCatalogTone", () => {
+  it("attend pendant le chargement", () => {
+    expect(modelCatalogTone({ status: "loading" })).toBe("pending");
+  });
+
+  it("ne réserve l'erreur qu'à l'appel qui n'a pas abouti", () => {
+    expect(modelCatalogTone({ status: "error" })).toBe("error");
+    expect(modelCatalogTone({ status: "unavailable" })).toBe("info");
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: { id: "openai-compatible", outcome: "unsupported", models: [], truncated: false },
+      }),
+    ).toBe("info");
+  });
+
+  it("confirme un catalogue chargé, avertit d'un catalogue vide", () => {
+    const models = [{ id: "gpt-5.1", name: "GPT 5.1" }];
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: { id: "openai", outcome: "ok", models, truncated: false },
+      }),
+    ).toBe("success");
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: { id: "openai", outcome: "ok", models: [], truncated: false },
+      }),
+    ).toBe("warning");
+  });
+
+  it("avertit d'une configuration à compléter", () => {
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: {
+          id: "anthropic",
+          outcome: "missing_configuration",
+          models: [],
+          truncated: false,
+          missing: ["ANTHROPIC_API_KEY"],
+        },
+      }),
+    ).toBe("warning");
   });
 });
 

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { Gauge, Hash, RefreshCw, Sparkles } from "lucide-react";
 import {
   MODEL_CATALOG_BUILTIN_IDS,
   REPROMPT_LEVEL_IDS,
@@ -12,6 +12,8 @@ import {
 
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { InlineMessage, type MessageTone } from "../shared/InlineMessage.js";
+import { ProviderLogo } from "./ProviderLogo.js";
 
 interface ModelsTabProps {
   config: SafeConfig;
@@ -70,6 +72,17 @@ export function describeModelCatalog(state: CatalogState, t: Translate = (key) =
   return t("settings.modelCatalogError");
 }
 
+export function modelCatalogTone(state: CatalogState): MessageTone {
+  if (state.status === "loading") return "pending";
+  if (state.status === "error") return "error";
+  if (state.status === "unavailable") return "info";
+
+  const { response } = state;
+  if (response.outcome === "ok") return response.models.length === 0 ? "warning" : "success";
+  if (response.outcome === "unsupported") return "info";
+  return "warning";
+}
+
 export function ModelsTab({
   config,
   providers,
@@ -117,126 +130,158 @@ export function ModelsTab({
   const hasLiveCatalog = liveModels.length > 0;
   const known = liveModels.some((model) => model.id === config.defaultModel);
   const typing = custom || !hasLiveCatalog || !known;
-  const catalogFailed =
-    catalog.status === "error" ||
-    catalog.status === "unavailable" ||
-    (catalog.status === "ready" && catalog.response.outcome !== "ok");
+  const loading = catalog.status === "loading";
 
   return (
-    <div className="settings-card-list">
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">{t("settings.defaultProvider")}</span>
-          <span className="settings-row-detail">{t("settings.defaultProviderDetail")}</span>
-        </span>
-        <select
-          className="settings-select"
-          value={config.defaultProvider}
-          onChange={(event) => {
-            const providerId = event.target.value as SafeConfig["defaultProvider"];
-            const next = providers.find((provider) => provider.id === providerId);
-            setCustom(false);
-            onPatchConfig({
-              defaultProvider: providerId,
-              defaultModel: modelForProvider(next, config.defaultModel),
-            });
-          }}
-        >
-          {providers.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.label}
-            </option>
-          ))}
-        </select>
-      </label>
+    <>
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.models.routing")}</h3>
+        </div>
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <label className="settings-group-row">
+              <ProviderLogo providerId={config.defaultProvider} label={config.defaultProvider} />
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.defaultProvider")}</span>
+                <span className="settings-row-detail">{t("settings.defaultProviderDetail")}</span>
+              </span>
+              <span className="settings-row-control">
+                <select
+                  className="settings-select"
+                  value={config.defaultProvider}
+                  onChange={(event) => {
+                    const providerId = event.target.value as SafeConfig["defaultProvider"];
+                    const next = providers.find((provider) => provider.id === providerId);
+                    setCustom(false);
+                    onPatchConfig({
+                      defaultProvider: providerId,
+                      defaultModel: modelForProvider(next, config.defaultModel),
+                    });
+                  }}
+                >
+                  {providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.label}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
 
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">{t("settings.defaultModel")}</span>
-          <span className="settings-row-detail">{t("settings.defaultModelDetail")}</span>
-          <span
-            className={
-              catalogFailed
-                ? "settings-row-detail model-catalog-status provider-test-failed"
-                : "settings-row-detail model-catalog-status"
-            }
-            role="status"
-          >
-            {describeModelCatalog(catalog, t)}
-          </span>
-        </span>
-        <span className="model-catalog-control">
-          <select
-            className="settings-select"
-            value={typing ? CUSTOM_MODEL_OPTION : config.defaultModel}
-            disabled={!hasLiveCatalog}
-            onChange={(event) => {
-              if (event.target.value === CUSTOM_MODEL_OPTION) {
-                setCustom(true);
-                return;
-              }
-              setCustom(false);
-              onPatchConfig({ defaultModel: event.target.value });
-            }}
-          >
-            {liveModels.map((model) => (
-              <option key={model.id} value={model.id}>
-                {model.name}
-              </option>
-            ))}
-            <option value={CUSTOM_MODEL_OPTION}>{t("settings.otherModel")}</option>
-          </select>
-          <Button
-            variant="neutral"
-            onClick={loadCatalog}
-            disabled={catalog.status === "loading"}
-            aria-label={t("settings.refreshModels")}
-            title={t("settings.refreshModels")}
-          >
-            <RefreshCw size={13} aria-hidden />
-            {t("settings.refresh")}
-          </Button>
-        </span>
-      </label>
+            <label className="settings-group-row">
+              <span className="settings-row-icon">
+                <Sparkles size={18} strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.defaultModel")}</span>
+                <span className="settings-row-detail">{t("settings.defaultModelDetail")}</span>
+              </span>
+              <span className="settings-row-control">
+                <select
+                  className="settings-select"
+                  value={typing ? CUSTOM_MODEL_OPTION : config.defaultModel}
+                  disabled={!hasLiveCatalog}
+                  onChange={(event) => {
+                    if (event.target.value === CUSTOM_MODEL_OPTION) {
+                      setCustom(true);
+                      return;
+                    }
+                    setCustom(false);
+                    onPatchConfig({ defaultModel: event.target.value });
+                  }}
+                >
+                  {liveModels.map((model) => (
+                    <option key={model.id} value={model.id}>
+                      {model.name}
+                    </option>
+                  ))}
+                  <option value={CUSTOM_MODEL_OPTION}>{t("settings.otherModel")}</option>
+                </select>
+              </span>
+            </label>
 
-      {typing && (
-        <label className="settings-row">
-          <span>
-            <span className="settings-row-title">{t("settings.modelId")}</span>
-            <span className="settings-row-detail">{t("settings.modelIdDetail")}</span>
-          </span>
-          <input
-            className="settings-input mono"
-            key={`${config.defaultProvider}:${config.defaultModel}`}
-            defaultValue={config.defaultModel}
-            onBlur={(event) => {
-              if (event.target.value !== config.defaultModel) {
-                onPatchConfig({ defaultModel: event.target.value });
-              }
-            }}
-          />
-        </label>
-      )}
+            {typing && (
+              <label className="settings-group-row settings-group-row-entering">
+                <span className="settings-row-icon">
+                  <Hash size={18} strokeWidth={1.7} aria-hidden />
+                </span>
+                <span className="settings-group-copy">
+                  <span className="settings-row-title">{t("settings.modelId")}</span>
+                  <span className="settings-row-detail">{t("settings.modelIdDetail")}</span>
+                </span>
+                <span className="settings-row-control">
+                  <input
+                    className="settings-input mono"
+                    key={`${config.defaultProvider}:${config.defaultModel}`}
+                    defaultValue={config.defaultModel}
+                    onBlur={(event) => {
+                      if (event.target.value !== config.defaultModel) {
+                        onPatchConfig({ defaultModel: event.target.value });
+                      }
+                    }}
+                  />
+                </span>
+              </label>
+            )}
+          </div>
 
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">{t("settings.defaultLevel")}</span>
-          <span className="settings-row-detail">{t("settings.defaultLevelDetail")}</span>
-        </span>
-        <select
-          className="settings-select"
-          value={config.defaultLevel}
-          onChange={(event) => {
-            onPatchConfig({ defaultLevel: event.target.value as SafeConfig["defaultLevel"] });
-          }}
-        >
-          {REPROMPT_LEVEL_IDS.map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
+          <div className="settings-group-foot settings-group-foot-split">
+            <InlineMessage tone={modelCatalogTone(catalog)}>
+              {describeModelCatalog(catalog, t)}
+            </InlineMessage>
+            <div className="settings-actions">
+              <Button
+                variant="neutral"
+                onClick={loadCatalog}
+                disabled={loading}
+                aria-busy={loading}
+                aria-label={t("settings.refreshModels")}
+                title={t("settings.refreshModels")}
+              >
+                <RefreshCw size={13} className={loading ? "spin" : undefined} aria-hidden />
+                {t("settings.refresh")}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.models.rewriting")}</h3>
+        </div>
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <label className="settings-group-row">
+              <span className="settings-row-icon">
+                <Gauge size={18} strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.defaultLevel")}</span>
+                <span className="settings-row-detail">{t("settings.defaultLevelDetail")}</span>
+              </span>
+              <span className="settings-row-control">
+                <select
+                  className="settings-select"
+                  value={config.defaultLevel}
+                  onChange={(event) => {
+                    onPatchConfig({
+                      defaultLevel: event.target.value as SafeConfig["defaultLevel"],
+                    });
+                  }}
+                >
+                  {REPROMPT_LEVEL_IDS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+              </span>
+            </label>
+          </div>
+        </div>
+      </section>
+    </>
   );
 }

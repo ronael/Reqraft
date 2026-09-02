@@ -1,8 +1,19 @@
-import { RefreshCw, RotateCcw } from "lucide-react";
+import {
+  Compass,
+  Languages,
+  PanelTop,
+  RefreshCw,
+  RotateCcw,
+  ShieldCheck,
+  SquarePen,
+  TextSelect,
+  type LucideIcon,
+} from "lucide-react";
 import { useT } from "../shared/i18n.js";
 import { SHORTCUT_PRESETS, type ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
 import { Button } from "../shared/Button.js";
+import { InlineMessage } from "../shared/InlineMessage.js";
 
 /** Le choix de langue tel qu'il est enregistré : « auto » en fait partie. */
 export type UiLocalePreference = "auto" | "en" | "fr";
@@ -32,99 +43,178 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
   const t = useT();
   return (
     <>
-      <ShortcutRow
-        title={t("settings.captureShortcut")}
-        detail={t("settings.captureShortcutDetail")}
-        active={props.captureShortcut}
-        presets={SHORTCUT_PRESETS.capture}
-        chosen={props.chosen.capture ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("capture", accelerator);
-        }}
-      />
-      <ShortcutRow
-        title={t("settings.inputShortcut")}
-        detail={t("settings.inputShortcutDetail")}
-        active={props.inputShortcut}
-        presets={SHORTCUT_PRESETS.input}
-        chosen={props.chosen.input ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("input", accelerator);
-        }}
-      />
-      <ShortcutRow
-        title={t("settings.popoverShortcut")}
-        detail={t("settings.popoverShortcutDetail")}
-        active={props.popoverShortcut}
-        presets={SHORTCUT_PRESETS.popover}
-        chosen={props.chosen.popover ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("popover", accelerator);
-        }}
-      />
-      <p className="settings-note muted">{t("settings.shortcutRestart")}</p>
-      <div className="settings-actions shortcut-actions">
-        <Button variant="neutral" onClick={props.onResetShortcuts}>
-          <RotateCcw size={13} aria-hidden /> {t("settings.shortcutsReset")}
-        </Button>
-        <Button variant="neutral" onClick={props.onRetestShortcuts}>
-          <RefreshCw size={13} aria-hidden /> {t("settings.shortcutsRetest")}
-        </Button>
-      </div>
-      {props.rejectedShortcuts.length > 0 && (
-        <div className="settings-warning" role="alert">
-          ! {t("settings.shortcutsTaken", { list: props.rejectedShortcuts.join(", ") })}
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.preferences.shortcutsGroup")}</h3>
         </div>
-      )}
-      {props.hasNoShortcut && (
-        <div className="settings-warning" role="alert">
-          ! {t("settings.shortcutsNone")}
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <ShortcutRow
+              icon={TextSelect}
+              title={t("settings.captureShortcut")}
+              detail={t("settings.captureShortcutDetail")}
+              active={props.captureShortcut}
+              presets={SHORTCUT_PRESETS.capture}
+              chosen={props.chosen.capture ?? ""}
+              onChoose={(accelerator) => {
+                props.onChoose("capture", accelerator);
+              }}
+            />
+            <ShortcutRow
+              icon={SquarePen}
+              title={t("settings.inputShortcut")}
+              detail={t("settings.inputShortcutDetail")}
+              active={props.inputShortcut}
+              presets={SHORTCUT_PRESETS.input}
+              chosen={props.chosen.input ?? ""}
+              onChoose={(accelerator) => {
+                props.onChoose("input", accelerator);
+              }}
+            />
+            <ShortcutRow
+              icon={PanelTop}
+              title={t("settings.popoverShortcut")}
+              detail={t("settings.popoverShortcutDetail")}
+              active={props.popoverShortcut}
+              presets={SHORTCUT_PRESETS.popover}
+              chosen={props.chosen.popover ?? ""}
+              onChoose={(accelerator) => {
+                props.onChoose("popover", accelerator);
+              }}
+            />
+          </div>
+          <div className="settings-group-foot settings-group-foot-split">
+            <p className="settings-note muted">{t("settings.shortcutRestart")}</p>
+            <div className="settings-actions shortcut-actions">
+              <Button variant="neutral" onClick={props.onResetShortcuts}>
+                <RotateCcw size={13} aria-hidden /> {t("settings.shortcutsReset")}
+              </Button>
+              <Button variant="neutral" onClick={props.onRetestShortcuts}>
+                <RefreshCw size={13} aria-hidden /> {t("settings.shortcutsRetest")}
+              </Button>
+            </div>
+          </div>
         </div>
-      )}
-      {props.conflictingShortcuts.length > 0 && (
-        <div className="settings-warning" role="alert">
-          ! {t("settings.shortcutsConflicting", { list: props.conflictingShortcuts.join(", ") })}
+
+        <ShortcutMessages
+          rejected={props.rejectedShortcuts}
+          conflicting={props.conflictingShortcuts}
+          suspended={props.shortcutsSuspended}
+          hasNoShortcut={props.hasNoShortcut}
+        />
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.preferences.interfaceGroup")}</h3>
         </div>
-      )}
-      {props.shortcutsSuspended && (
-        <div className="settings-warning" role="status">
-          ! {t("settings.shortcutsSuspended")}
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <LanguageRow chosen={props.uiLocale} onChoose={props.onChooseLanguage} />
+            <div className="settings-group-row">
+              <span className="settings-row-icon">
+                <Compass size={18} strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.welcomeTour")}</span>
+                <span className="settings-row-detail">{t("settings.welcomeTourDetail")}</span>
+              </span>
+              <span className="settings-row-control">
+                <Button variant="neutral" onClick={props.onOpenWelcomeTour}>
+                  <RotateCcw size={13} aria-hidden /> {t("settings.welcomeTourReplay")}
+                </Button>
+              </span>
+            </div>
+          </div>
         </div>
-      )}
-      {/* Après les avertissements de raccourcis, pas au milieu : une alerte
-          séparée de la ligne qu'elle concerne ne se rattache plus à rien. */}
-      <LanguageRow chosen={props.uiLocale} onChoose={props.onChooseLanguage} />
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">{t("settings.welcomeTour")}</div>
-          <div className="settings-row-detail">{t("settings.welcomeTourDetail")}</div>
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.preferences.systemGroup")}</h3>
         </div>
-        <Button variant="neutral" onClick={props.onOpenWelcomeTour}>
-          <RotateCcw size={12} aria-hidden /> {t("settings.welcomeTourReplay")}
-        </Button>
-      </div>
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">{t("settings.macosPermissions")}</div>
-          <div className="settings-row-detail">{props.permissionDetail}</div>
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <div className="settings-group-row">
+              <span className="settings-row-icon">
+                <ShieldCheck size={18} strokeWidth={1.7} aria-hidden />
+              </span>
+              <span className="settings-group-copy">
+                <span className="settings-row-title">{t("settings.macosPermissions")}</span>
+                <span className="settings-row-detail">{props.permissionDetail}</span>
+              </span>
+              <span className="settings-row-control">
+                <PermissionControl
+                  canReplace={props.canReplace}
+                  onAskPermissions={props.onAskPermissions}
+                />
+              </span>
+            </div>
+          </div>
         </div>
-        {props.canReplace === false && (
-          <Button onClick={props.onAskPermissions}>{t("settings.allow")}</Button>
-        )}
-      </div>
+      </section>
     </>
   );
 }
 
-/**
- * La langue de l'interface.
- *
- * Le choix est écrit tout de suite dans la configuration, mais l'application
- * ne change pas de langue en cours de route : le menu de la barre et les
- * titres de fenêtre sont posés au démarrage et ne peuvent plus être
- * réétiquetés. Montrer une moitié traduite serait pire que d'attendre le
- * prochain lancement, ce que la ligne annonce.
- */
+function PermissionControl(
+  props: Readonly<{ canReplace: boolean | null; onAskPermissions: () => void }>,
+): React.JSX.Element {
+  const t = useT();
+  if (props.canReplace === null) {
+    return <span className="settings-state">{t("settings.permissionsChecking")}</span>;
+  }
+  if (props.canReplace) {
+    return (
+      <span className="settings-state settings-state-ok">
+        <ShieldCheck size={13} aria-hidden />
+        {t("settings.permissionsOk")}
+      </span>
+    );
+  }
+  return <Button onClick={props.onAskPermissions}>{t("settings.allow")}</Button>;
+}
+
+function ShortcutMessages(
+  props: Readonly<{
+    rejected: string[];
+    conflicting: string[];
+    suspended: boolean;
+    hasNoShortcut: boolean;
+  }>,
+): React.JSX.Element | null {
+  const t = useT();
+  const nothingToSay =
+    props.rejected.length === 0 &&
+    props.conflicting.length === 0 &&
+    !props.suspended &&
+    !props.hasNoShortcut;
+  if (nothingToSay) return null;
+
+  return (
+    <div className="settings-messages">
+      {props.rejected.length > 0 && (
+        <InlineMessage tone="warning" role="alert">
+          {t("settings.shortcutsTaken", { list: props.rejected.join(", ") })}
+        </InlineMessage>
+      )}
+      {props.hasNoShortcut && (
+        <InlineMessage tone="error" role="alert">
+          {t("settings.shortcutsNone")}
+        </InlineMessage>
+      )}
+      {props.conflicting.length > 0 && (
+        <InlineMessage tone="warning" role="alert">
+          {t("settings.shortcutsConflicting", { list: props.conflicting.join(", ") })}
+        </InlineMessage>
+      )}
+      {props.suspended && (
+        <InlineMessage tone="info">{t("settings.shortcutsSuspended")}</InlineMessage>
+      )}
+    </div>
+  );
+}
+
 function LanguageRow(
   props: Readonly<{
     chosen: UiLocalePreference;
@@ -133,28 +223,34 @@ function LanguageRow(
 ): React.JSX.Element {
   const t = useT();
   return (
-    <div className="settings-row">
-      <div>
-        <div className="settings-row-title">{t("settings.language")}</div>
-        <div className="settings-row-detail">{t("settings.languageDetail")}</div>
-      </div>
-      <select
-        className="settings-select"
-        value={props.chosen}
-        aria-label={t("settings.language")}
-        onChange={(event) => {
-          props.onChoose(event.target.value as UiLocalePreference);
-        }}
-      >
-        <option value="auto">{t("settings.languageAuto")}</option>
-        <option value="en">{t("settings.languageEn")}</option>
-        <option value="fr">{t("settings.languageFr")}</option>
-      </select>
+    <div className="settings-group-row">
+      <span className="settings-row-icon">
+        <Languages size={18} strokeWidth={1.7} aria-hidden />
+      </span>
+      <span className="settings-group-copy">
+        <span className="settings-row-title">{t("settings.language")}</span>
+        <span className="settings-row-detail">{t("settings.languageDetail")}</span>
+      </span>
+      <span className="settings-row-control">
+        <select
+          className="settings-select"
+          value={props.chosen}
+          aria-label={t("settings.language")}
+          onChange={(event) => {
+            props.onChoose(event.target.value as UiLocalePreference);
+          }}
+        >
+          <option value="auto">{t("settings.languageAuto")}</option>
+          <option value="en">{t("settings.languageEn")}</option>
+          <option value="fr">{t("settings.languageFr")}</option>
+        </select>
+      </span>
     </div>
   );
 }
 
 interface ShortcutRowProps {
+  icon: LucideIcon;
   title: string;
   detail: string;
   /** The accelerator actually in force right now, fallback included, raw. */
@@ -174,6 +270,7 @@ interface ShortcutRowProps {
  */
 function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
   const t = useT();
+  const Icon = props.icon;
   // Raw against raw. Comparing formatted labels made this fire whenever the two
   // formatters disagreed, which is a bug report about a shortcut that works.
   const overridden = props.chosen !== "" && props.chosen !== props.active;
@@ -186,21 +283,25 @@ function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
     : [...props.presets, ...(props.chosen === "" ? [] : [props.chosen])];
 
   return (
-    <div className="settings-row">
-      <div>
-        <div className="settings-row-title">{props.title}</div>
-        <div className="settings-row-detail">{props.detail}</div>
+    <div className="settings-group-row">
+      <span className="settings-row-icon">
+        <Icon size={18} strokeWidth={1.7} aria-hidden />
+      </span>
+      <span className="settings-group-copy">
+        <span className="settings-row-title">{props.title}</span>
+        <span className="settings-row-detail">{props.detail}</span>
         {overridden && (
-          <div className="settings-row-detail shortcut-overridden">
+          <span className="settings-row-detail shortcut-overridden">
             {t("settings.shortcutUnavailable", { accelerator: formatAccelerator(props.active, t) })}
-          </div>
+          </span>
         )}
-      </div>
-      <div className="shortcut-control">
+      </span>
+      <span className="settings-row-control shortcut-control">
         <kbd>{formatAccelerator(props.active, t)}</kbd>
         <select
           className="settings-select"
           value={props.chosen}
+          aria-label={props.title}
           onChange={(event) => {
             props.onChoose(event.target.value);
           }}
@@ -212,7 +313,7 @@ function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
             </option>
           ))}
         </select>
-      </div>
+      </span>
     </div>
   );
 }
