@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
+import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
+import { ResultEditor } from "./ResultEditor.js";
 import { useT } from "../shared/i18n.js";
 import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
 import { describeQualityFinding } from "../shared/quality.js";
@@ -308,6 +310,18 @@ export function App(): React.JSX.Element {
   const [chosenProfile, setChosenProfile] = useState<string | null>(null);
   const [picking, setPicking] = useState(false);
   /**
+   * Le résultat tel qu'il a été repris, ou `null` s'il n'a pas été touché.
+   *
+   * Deux valeurs distinctes plutôt qu'une copie initialisée depuis le
+   * résultat : `null` dit « rien n'a été modifié », et c'est ce qui permet à
+   * l'acceptation de ne rien porter du tout, donc au processus principal
+   * d'appliquer exactement le texte qu'il a produit.
+   */
+  const [edited, setEdited] = useState<string | null>(null);
+  /** Le curseur est dans le champ du résultat : la frappe lui appartient. */
+  const [editing, setEditing] = useState(false);
+  const { toast, show: annoncer, dismiss: fermerAnnonce } = useToast();
+  /**
    * Temps écoulé depuis le déclenchement, en millisecondes.
    *
    * Une attente sans repère paraît plus longue qu'elle ne l'est, et rien ne
@@ -366,6 +380,11 @@ export function App(): React.JSX.Element {
       setResult(null);
       setError(null);
       setNotice(null);
+      // Une nouvelle génération repart du texte du modèle : garder l'édition
+      // précédente ferait copier et remplacer un texte que plus rien à l'écran
+      // ne montre.
+      setEdited(null);
+      setEditing(false);
       window.reqraft
         .startReprompt({
           input: text,
@@ -403,6 +422,8 @@ export function App(): React.JSX.Element {
     setResult(null);
     setError(null);
     setNotice(null);
+    setEdited(null);
+    setEditing(false);
     setLevel("standard");
     // Un choix fait dans une capsule ne doit pas modifier la capture suivante.
     // Sinon « auto » et le profil configuré sont contournés sans l'indiquer.
@@ -526,24 +547,46 @@ export function App(): React.JSX.Element {
    */
   const echecDuRemplacement = useCallback(
     (reason?: string) => {
-      setNotice(
+      annoncer(
         reason === undefined
           ? t("capsule.replaceFailed")
           : t("capsule.replaceFailedWhy", { reason }),
+        "error",
       );
       dispatch("failed");
     },
-    [dispatch, t],
+    [annoncer, dispatch, t],
   );
+
+  /**
+   * Le texte à appliquer, ou `undefined` s'il n'a pas été repris.
+   *
+   * Un résultat vidé n'est pas une reformulation : le laisser partir
+   * remplacerait la sélection par rien. Le contrat le refuse déjà côté
+   * principal ; le dire ici évite un aller-retour dont le seul résultat serait
+   * un échec.
+   */
+  const texteAAppliquer = useCallback((): { ok: true; text?: string } | { ok: false } => {
+    if (edited === null) return { ok: true };
+    if (edited.trim() === "") {
+      annoncer(t("capsule.editEmpty"), "warning");
+      return { ok: false };
+    }
+    return { ok: true, text: edited };
+  }, [annoncer, edited, t]);
 
   const accept = useCallback(() => {
     const runId = activeRunId.current;
     if (runId === null) {
       return;
     }
+    const texte = texteAAppliquer();
+    if (!texte.ok) {
+      return;
+    }
     dispatch("accept");
     window.reqraft
-      .acceptResult(runId, "replace")
+      .acceptResult(runId, "replace", texte.text)
       .then(async ({ applied, reason }) => {
         if (applied) {
           dispatch("applied");
@@ -554,27 +597,27 @@ export function App(): React.JSX.Element {
         // of replacing, and say so (§2.6, §5.4). The reason comes from the
         // main process when it has one — « indisponible » alone leaves the
         // user with nothing to act on.
-        const copy = await window.reqraft.acceptResult(runId, "copy");
+        const copy = await window.reqraft.acceptResult(runId, "copy", texte.text);
         if (!copy.applied) {
           // Ni remplacé, ni copié : le résultat est perdu de vue si on ne le
           // dit pas, et la capsule resterait figée sur `applying`.
           echecDuRemplacement(reason);
           return;
         }
-        setNotice(
+        const message =
           reason === undefined
             ? t("capsule.replaceUnavailable")
-            : t("capsule.replaceUnavailableWhy", { reason }),
-        );
+            : t("capsule.replaceUnavailableWhy", { reason });
+        annoncer(message, "warning");
         dispatch("applied");
         window.setTimeout(() => {
           window.close();
-        }, 1200);
+        }, toastDurationMs(message));
       })
       .catch((cause: unknown) => {
         echecDuRemplacement(cause instanceof Error ? cause.message : undefined);
       });
-  }, [dispatch, echecDuRemplacement, t]);
+  }, [annoncer, dispatch, echecDuRemplacement, t, texteAAppliquer]);
 
   const cancelRun = useCallback(() => {
     const runId = activeRunId.current;
@@ -597,6 +640,8 @@ export function App(): React.JSX.Element {
       setResult(null);
       setError(null);
       setNotice(null);
+      setEdited(null);
+      setEditing(false);
       dispatch("rerun");
       window.reqraft
         .startReprompt({ input: text, level: chosenLevel, profileId })
@@ -618,11 +663,25 @@ export function App(): React.JSX.Element {
 
   const copier = useCallback(() => {
     const runId = activeRunId.current;
-    if (runId !== null) {
-      void window.reqraft.acceptResult(runId, "copy");
-      setNotice(t("capsule.copied"));
+    if (runId === null) {
+      return;
     }
-  }, [t]);
+    const texte = texteAAppliquer();
+    if (!texte.ok) {
+      return;
+    }
+    void window.reqraft
+      .acceptResult(runId, "copy", texte.text)
+      .then(({ applied }) => {
+        annoncer(
+          applied ? t("capsule.copied") : t("clipboard.copyFailed"),
+          applied ? "success" : "error",
+        );
+      })
+      .catch(() => {
+        annoncer(t("clipboard.copyFailed"), "error");
+      });
+  }, [annoncer, t, texteAAppliquer]);
 
   const relancer = useCallback(() => {
     startRun(input, level);
@@ -648,6 +707,19 @@ export function App(): React.JSX.Element {
   const basculerComparaison = useCallback(() => {
     setComparison((current) => reduceComparison(current, "pin-comparison"));
   }, []);
+
+  /**
+   * L'édition ne retient les touches que là où le champ existe.
+   *
+   * Un champ démonté n'émet pas toujours son `blur` : `editing` pourrait
+   * rester vrai après une relance, et la capsule serait sourde à ⏎, ⌘C et ⌘R
+   * sans que rien à l'écran ne l'explique. Croiser avec l'état rend cette
+   * survivance sans effet.
+   */
+  const contexteClavier = useMemo(
+    () => ({ state, editing: editing && state === "ready" }),
+    [state, editing],
+  );
 
   // Keyboard: ⏎ remplacer, ⌥ comparer (maintenu), ⌘D comparer (épinglé),
   // ⌘C copier, ⌘R relancer, ⇥/⇧⇥ niveau, esc fermer, ⌘. interrompre.
@@ -681,8 +753,8 @@ export function App(): React.JSX.Element {
     const onKeyDown = (event: KeyboardEvent): void => {
       // Couper le navigateur d'abord, et sur la frappe : une répétition de ⌘D
       // n'a plus de commande à exécuter mais reste une frappe de la capsule.
-      if (preventsBrowserDefault(event, state)) event.preventDefault();
-      const intent = resolveCapsuleKeyDown(event, state);
+      if (preventsBrowserDefault(event, contexteClavier)) event.preventDefault();
+      const intent = resolveCapsuleKeyDown(event, contexteClavier);
       if (intent !== null) executer[intent]();
     };
     const onKeyUp = (event: KeyboardEvent): void => {
@@ -695,7 +767,16 @@ export function App(): React.JSX.Element {
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("keyup", onKeyUp);
     };
-  }, [state, accept, basculerComparaison, cancelRun, changerNiveau, copier, fermer, relancer]);
+  }, [
+    contexteClavier,
+    accept,
+    basculerComparaison,
+    cancelRun,
+    changerNiveau,
+    copier,
+    fermer,
+    relancer,
+  ]);
 
   /**
    * La machine suit l'intention de comparaison, et l'intention suit la machine.
@@ -742,6 +823,15 @@ export function App(): React.JSX.Element {
   const showResult =
     (state === "ready" || state === "comparison" || state === "applying") && result !== null;
   const finalResult = showResult ? result : null;
+  /**
+   * Le texte qui fait foi : celui affiché, repris ou non.
+   *
+   * Une seule valeur pour l'affichage, la copie, le remplacement et le « + »
+   * de la comparaison. Deux sources — le résultat du modèle d'un côté,
+   * l'édition de l'autre — feraient tôt ou tard copier autre chose que ce que
+   * la comparaison montre.
+   */
+  const finalText = edited ?? result?.rewritten ?? "";
 
   const finding = describeQualityFinding(finalResult?.quality.signals ?? [], t);
 
@@ -856,13 +946,20 @@ export function App(): React.JSX.Element {
           )}
 
           {(state === "ready" || state === "applying") && result !== null && (
-            <pre className="capsule-stream">{result.rewritten}</pre>
+            <ResultEditor
+              value={finalText}
+              label={t("capsule.editLabel")}
+              // Une fois l'acceptation partie, le texte est celui qui part.
+              readOnly={state === "applying"}
+              onChange={setEdited}
+              onEditingChange={setEditing}
+            />
           )}
 
           {state === "comparison" && result !== null && (
             <div className="capsule-diff">
               <div className="diff-before">− {input}</div>
-              <div className="diff-after">+ {result.rewritten}</div>
+              <div className="diff-after">+ {finalText}</div>
             </div>
           )}
 
@@ -911,6 +1008,10 @@ export function App(): React.JSX.Element {
         onCancel={cancelRun}
         onClose={fermer}
       />
+
+      {/* Hors du corps : le message ne défile pas avec le résultat et ne
+          déplace rien, et il se pose au-dessus du pied sans le recouvrir. */}
+      <Toast toast={toast} onDismiss={fermerAnnonce} />
     </main>
   );
 }

@@ -1,18 +1,11 @@
 import process from "node:process";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecuteRepromptInput, ExecuteRepromptResult } from "@/application/reprompt.js";
-import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import { REPROMPT_LEVELS } from "@/core/levels.js";
 import type { RepromptResult } from "@/core/types.js";
-import {
-  registerIpcHandlers,
-  sanitizeConfigForRenderer,
-  type IpcEventLike,
-  type IpcMainLike,
-} from "@/apps/desktop/main/ipc.js";
+import { registerIpcHandlers, sanitizeConfigForRenderer } from "@/apps/desktop/main/ipc.js";
 import { formatDoctorReport } from "@/apps/desktop/main/doctor.js";
-import { RepromptService, type RunEventSender } from "@/apps/desktop/main/reprompt-service.js";
 import {
   IPC_CHANNELS,
   PUSH_CHANNELS,
@@ -26,134 +19,14 @@ import {
   type DoctorReport,
   type RepromptStartResponse,
 } from "@/apps/desktop/shared/ipc-contract.js";
-
-const FAKE_RESULT: RepromptResult = {
-  original: "demande brute",
-  rewritten: "demande reformulée",
-  profile: "general",
-  level: "standard",
-  provider: "mock",
-  model: "mock-model",
-  changes: ["demande clarifiée"],
-  quality: { status: "good", signals: [] },
-};
-
-const MOCK_CONFIG: Config = { ...DEFAULT_CONFIG, defaultProvider: "mock" };
-
-class FakeIpcMain implements IpcMainLike {
-  private readonly handlers = new Map<string, (event: IpcEventLike, payload: unknown) => unknown>();
-
-  handle(channel: string, listener: (event: IpcEventLike, payload: unknown) => unknown): void {
-    this.handlers.set(channel, listener);
-  }
-
-  registeredChannels(): string[] {
-    return [...this.handlers.keys()];
-  }
-
-  invoke(channel: string, payload: unknown, sender: RunEventSender): Promise<unknown> {
-    const handler = this.handlers.get(channel);
-    if (!handler) {
-      return Promise.reject(new Error(`Aucun handler pour ${channel}`));
-    }
-    // Like the real ipcMain: a handler that throws synchronously surfaces as
-    // a rejected promise to the renderer, never as a synchronous throw.
-    try {
-      return Promise.resolve(handler({ sender }, payload));
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-    }
-  }
-}
-
-function createFakeSender(): {
-  sender: RunEventSender;
-  sent: { channel: string; payload: unknown }[];
-  state: { destroyed: boolean };
-} {
-  const sent: { channel: string; payload: unknown }[] = [];
-  const state = { destroyed: false };
-  const sender: RunEventSender = {
-    send: (channel, payload) => {
-      sent.push({ channel, payload });
-    },
-    isDestroyed: () => state.destroyed,
-  };
-  return { sender, sent, state };
-}
-
-function streamingExecute(
-  result: RepromptResult = FAKE_RESULT,
-): (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult> {
-  return vi.fn((input: ExecuteRepromptInput): Promise<ExecuteRepromptResult> => {
-    input.onDelta?.("fragment-1 ");
-    input.onDelta?.("fragment-2");
-    return Promise.resolve({ result, detectedProfile: false });
-  });
-}
-
-interface Harness {
-  ipcMain: FakeIpcMain;
-  clipboard: { writeText: ReturnType<typeof vi.fn<(text: string) => void>> };
-  execute: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
-  saveConfig: ReturnType<typeof vi.fn>;
-  relaunchApp: ReturnType<typeof vi.fn>;
-  onShortcutsChanged: ReturnType<typeof vi.fn<(shortcuts: Config["desktopShortcuts"]) => void>>;
-  sender: RunEventSender;
-  sent: { channel: string; payload: unknown }[];
-  state: { destroyed: boolean };
-}
-
-function setup(options: {
-  execute?: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
-  config?: Config;
-  env?: NodeJS.ProcessEnv;
-  hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
-}): Harness {
-  const config = options.config ?? MOCK_CONFIG;
-  const env = options.env ?? {};
-  const execute = options.execute ?? streamingExecute();
-  const saveConfig = vi.fn((_config: Config) => Promise.resolve());
-  const relaunchApp = vi.fn<() => void>();
-  const onShortcutsChanged = vi.fn<(shortcuts: Config["desktopShortcuts"]) => void>();
-  const { sender, sent, state } = createFakeSender();
-
-  const service = new RepromptService({
-    executeReprompt: execute,
-    loadConfig: () => Promise.resolve(config),
-    env,
-    createRunId: () => "run-1",
-  });
-
-  const ipcMain = new FakeIpcMain();
-  const clipboard = { writeText: vi.fn<(text: string) => void>() };
-  registerIpcHandlers({
-    ipcMain,
-    clipboard,
-    service,
-    loadConfig: () => Promise.resolve(config),
-    saveConfig,
-    relaunchApp,
-    onShortcutsChanged,
-    hydrateCredentials: options.hydrateCredentials ?? (() => Promise.resolve()),
-    env,
-  });
-  return {
-    ipcMain,
-    clipboard,
-    execute,
-    saveConfig,
-    relaunchApp,
-    onShortcutsChanged,
-    sender,
-    sent,
-    state,
-  };
-}
-
-function sentChannels(harness: Harness, channel: string): unknown[] {
-  return harness.sent.filter((event) => event.channel === channel).map((event) => event.payload);
-}
+import {
+  FAKE_RESULT,
+  MOCK_CONFIG,
+  sentChannels,
+  setup,
+  streamingExecute,
+  type Harness,
+} from "./desktop-ipc-harness.js";
 
 describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
   it("définit les canaux exacts du contrat, en un seul endroit", () => {
@@ -403,49 +276,6 @@ describe("cycle de vie reprompt via IPC", () => {
     await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
     await new Promise((resolve) => setTimeout(resolve, 20));
     expect(harness.sent).toHaveLength(0);
-  });
-});
-
-describe("result:accept", () => {
-  async function finishRun(harness: Harness): Promise<void> {
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-  }
-
-  it("mode copy : écrit le résultat dans le presse-papiers", async () => {
-    const harness = setup({});
-    await finishRun(harness);
-    const response = (await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "copy" },
-      harness.sender,
-    )) as { applied: boolean };
-    expect(response).toEqual({ applied: true });
-    expect(harness.clipboard.writeText).toHaveBeenCalledWith("demande reformulée");
-  });
-
-  it("mode replace : dégradé explicite tant que le lot 2 n'est pas livré", async () => {
-    const harness = setup({});
-    await finishRun(harness);
-    const response = (await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    )) as { applied: boolean };
-    expect(response).toEqual({ applied: false });
-    expect(harness.clipboard.writeText).not.toHaveBeenCalled();
-  });
-
-  it("runId inconnu : applied false, sans erreur", async () => {
-    const harness = setup({});
-    const response = (await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "inconnu", mode: "copy" },
-      harness.sender,
-    )) as { applied: boolean };
-    expect(response).toEqual({ applied: false });
   });
 });
 
@@ -820,168 +650,6 @@ describe("doctor:copy", () => {
     );
     for (const value of Object.values(env)) expect(copied).not.toContain(value);
     expect(copied).toContain("OPENAI_API_KEY");
-  });
-});
-
-/**
- * Le remplacement, et ce qu'il dit quand il n'a pas lieu.
- *
- * `applied: false` seul ne disait rien : la capsule ne pouvait pas
- * distinguer une permission refusée d'une application source restée en
- * arrière-plan, et affichait le même « remplacement impossible » pour les
- * deux.
- */
-describe("result:accept en mode replace", () => {
-  it("result:accept replace délègue au service de capture", async () => {
-    const replace = vi.fn(() => Promise.resolve({ applied: true }));
-    const harness = setup({});
-    registerIpcHandlers({
-      ipcMain: harness.ipcMain,
-      clipboard: harness.clipboard,
-      service: new RepromptService({
-        executeReprompt: streamingExecute(),
-        loadConfig: () => Promise.resolve(MOCK_CONFIG),
-        env: {},
-        createRunId: () => "run-1",
-      }),
-      captureService: {
-        consumeStashed: () => ({ empty: true }),
-        replace,
-      } as never,
-    });
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-
-    const response = await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    );
-    expect(response).toEqual({ applied: true });
-    expect(replace).toHaveBeenCalledWith("demande reformulée");
-  });
-
-  it("rend le focus clavier avant de coller", async () => {
-    // La capsule est un `type: "panel"` : sur macOS un panneau non activant
-    // garde le focus clavier sans rendre l'application frontmost. System Events
-    // répondait donc que l'application source était déjà au premier plan,
-    // `activateApp` confirmait une bascule qui n'avait pas lieu, et ⌘V
-    // atterrissait dans la capsule — sélection intacte, succès annoncé.
-    const order: string[] = [];
-    const replace = vi.fn(() => {
-      order.push("replace");
-      return Promise.resolve({ applied: true });
-    });
-    const harness = setup({});
-    registerIpcHandlers({
-      ipcMain: harness.ipcMain,
-      clipboard: harness.clipboard,
-      service: new RepromptService({
-        executeReprompt: streamingExecute(),
-        loadConfig: () => Promise.resolve(MOCK_CONFIG),
-        env: {},
-        createRunId: () => "run-1",
-      }),
-      captureService: { consumeStashed: () => ({ empty: true }), replace } as never,
-      hideCapsule: () => {
-        order.push("hide");
-      },
-      showCapsule: () => {
-        order.push("reveal");
-      },
-    });
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-
-    await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    );
-
-    // Cachée avant la frappe, et laissée cachée : la capsule se ferme ensuite.
-    expect(order).toEqual(["hide", "replace"]);
-  });
-
-  it("ramène la capsule quand le remplacement a échoué", async () => {
-    // Le message d'échec s'affiche dans la capsule : la cacher sans la ramener
-    // le rendrait invisible.
-    const order: string[] = [];
-    const harness = setup({});
-    registerIpcHandlers({
-      ipcMain: harness.ipcMain,
-      clipboard: harness.clipboard,
-      service: new RepromptService({
-        executeReprompt: streamingExecute(),
-        loadConfig: () => Promise.resolve(MOCK_CONFIG),
-        env: {},
-        createRunId: () => "run-1",
-      }),
-      captureService: {
-        consumeStashed: () => ({ empty: true }),
-        replace: () => Promise.resolve({ applied: false, reason: "source app unknown" }),
-      } as never,
-      hideCapsule: () => {
-        order.push("hide");
-      },
-      showCapsule: () => {
-        order.push("reveal");
-      },
-    });
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-
-    await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    );
-
-    expect(order).toEqual(["hide", "reveal"]);
-  });
-
-  it("porte jusqu'au renderer la raison d'un remplacement refusé", async () => {
-    // `ReplaceOutcome.reason` distingue « application source inconnue » d'une
-    // permission refusée. Elle s'arrêtait au contrat, qui ne déclarait que
-    // `applied` : la capsule ne pouvait dire que « remplacement impossible ».
-    const replace = vi.fn(() =>
-      Promise.resolve({ applied: false, reason: "source app did not come back to the front" }),
-    );
-    const harness = setup({});
-    registerIpcHandlers({
-      ipcMain: harness.ipcMain,
-      clipboard: harness.clipboard,
-      service: new RepromptService({
-        executeReprompt: streamingExecute(),
-        loadConfig: () => Promise.resolve(MOCK_CONFIG),
-        env: {},
-        createRunId: () => "run-1",
-      }),
-      captureService: {
-        consumeStashed: () => ({ empty: true }),
-        replace,
-      } as never,
-    });
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-
-    const response = await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    );
-    expect(response).toEqual({
-      applied: false,
-      reason: "source app did not come back to the front",
-    });
   });
 });
 

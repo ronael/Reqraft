@@ -71,21 +71,40 @@ function resoudreCommande(key: string, stroke: CapsuleKeyStroke): CapsuleIntent 
   return null;
 }
 
-/** La commande que la frappe désigne, sans encore regarder la répétition. */
-function commandeDeLaFrappe(stroke: CapsuleKeyStroke, state: CapsuleState): CapsuleIntent | null {
+/** Ce que la capsule est en train de faire quand la touche arrive. */
+export interface CapsuleKeyContext {
+  readonly state: CapsuleState;
+  /** Le curseur est dans le champ du résultat final. */
+  readonly editing: boolean;
+}
+
+/**
+ * La commande que la frappe désigne, sans encore regarder la répétition.
+ *
+ * Pendant une édition, la frappe appartient au champ : `⏎` ajoute une ligne,
+ * `⇥` en sort, `⌘C` copie la sélection. Les leur reprendre pour en faire des
+ * commandes rendrait le résultat inéditable — on n'écrit pas dans un champ
+ * dont chaque touche déclenche autre chose. `esc` et `⌘.` restent hors de
+ * cette porte, comme ils sont déjà hors de `commandable` : fermer et
+ * interrompre ne dépendent d'aucun état.
+ */
+function commandeDeLaFrappe(
+  stroke: CapsuleKeyStroke,
+  context: CapsuleKeyContext,
+): CapsuleIntent | null {
   const key = normaliser(stroke.key);
   if (key === "Escape") return "close";
   if (key === "." && stroke.metaKey === true) return "cancel";
-  if (!commandable(state)) return null;
+  if (context.editing || !commandable(context.state)) return null;
   return resoudreCommande(key, stroke);
 }
 
 /** La commande demandée par un appui, ou `null` si la frappe ne dit rien ici. */
 export function resolveCapsuleKeyDown(
   stroke: CapsuleKeyStroke,
-  state: CapsuleState,
+  context: CapsuleKeyContext,
 ): CapsuleIntent | null {
-  const intent = commandeDeLaFrappe(stroke, state);
+  const intent = commandeDeLaFrappe(stroke, context);
   // ⌘D est la seule commande qui bascule, donc la seule que la répétition
   // trahit : un appui un peu tenu enchaîne les `keydown`, chacun inverserait
   // l'épinglage, et l'état final dépendrait de la durée de l'appui — la
@@ -128,8 +147,11 @@ const COUPE_LE_DEFAUT: ReadonlySet<CapsuleIntent> = new Set<CapsuleIntent>([
  * le résultat de `resolveCapsuleKeyDown` rendrait le signet du navigateur à
  * partir de la deuxième répétition, c'est-à-dire au milieu d'un appui tenu.
  */
-export function preventsBrowserDefault(stroke: CapsuleKeyStroke, state: CapsuleState): boolean {
-  const intent = commandeDeLaFrappe(stroke, state);
+export function preventsBrowserDefault(
+  stroke: CapsuleKeyStroke,
+  context: CapsuleKeyContext,
+): boolean {
+  const intent = commandeDeLaFrappe(stroke, context);
   return intent !== null && COUPE_LE_DEFAUT.has(intent);
 }
 

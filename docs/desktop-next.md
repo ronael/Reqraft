@@ -171,7 +171,12 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 ### Finitions produit (maquette pas encore couverte)
 
 3. **Toast « ✓ Texte remplacé · ⌘Z pour annuler »** après remplacement
-   (scénario 6 de la maquette).
+   (scénario 6 de la maquette). Le composant de toast partagé et les retours de
+   copie/échec sont livrés ; l'annulation réelle du remplacement reste à
+   concevoir avant d'afficher ce message.
+   **Livré en complément :** le résultat peut être corrigé directement dans la
+   capsule avant copie ou remplacement, et la comparaison utilise le texte
+   corrigé.
 4. **Sens du cycle ⇥ en cas d'expansion** : quand `disproportionate_expansion`
    est détecté, ⇥ devrait proposer le niveau INFÉRIEUR en premier (scénario 7),
    pas le suivant du cycle.

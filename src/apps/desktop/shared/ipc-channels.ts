@@ -18,9 +18,11 @@ export const IPC_CHANNELS = {
   doctorRun: "doctor:run",
   // Partager un diagnostic dans une issue GitHub. Volontairement distinct de
   // `doctor:run` et sans charge utile : le renderer demande une copie, il ne
-  // fournit jamais le texte. Il n'existe aucun canal presse-papiers générique
-  // — accepter une chaîne du renderer reviendrait à lui donner le presse-
-  // papiers de l'utilisateur.
+  // fournit jamais le texte. Il n'existe toujours aucun canal presse-papiers
+  // générique — accepter n'importe quelle chaîne du renderer reviendrait à lui
+  // donner le presse-papiers de l'utilisateur. Le seul texte du renderer qui
+  // atteigne le presse-papiers passe par `result:accept`, où il n'est reçu
+  // qu'avec un runId existant, borné et validé par le contrat.
   doctorCopy: "doctor:copy",
   permissionsState: "permissions:state",
   permissionsRequest: "permissions:request",

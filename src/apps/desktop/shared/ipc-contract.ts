@@ -58,8 +58,43 @@ export type RepromptCancelRequest = z.infer<typeof RepromptCancelRequestSchema>;
 export const RESULT_ACCEPT_MODES = ["replace", "copy"] as const;
 export type ResultAcceptMode = (typeof RESULT_ACCEPT_MODES)[number];
 
+/**
+ * Le plafond du texte qu'une acceptation peut porter.
+ *
+ * Le renderer reste non fiable, et une acceptation transporte désormais du
+ * texte : il doit donc être borné ici, du côté qui décide, et pas seulement
+ * dans le champ qui le produit. Cent mille caractères dépassent largement
+ * toute reformulation — la sortie du modèle est elle-même bornée par
+ * `maxOutputTokens` — et empêchent qu'une acceptation serve à faire transiter
+ * un volume arbitraire vers le presse-papiers ou vers l'application source.
+ */
+export const RESULT_ACCEPT_TEXT_MAX_LENGTH = 100_000;
+
 export const ResultAcceptRequestSchema = z
-  .object({ runId: z.string().min(1), mode: z.enum(RESULT_ACCEPT_MODES) })
+  .object({
+    runId: z.string().min(1),
+    mode: z.enum(RESULT_ACCEPT_MODES),
+    /**
+     * La version reprise à la main, absente tant que rien n'a été modifié.
+     *
+     * Elle voyage AVEC l'acceptation. Il n'existe volontairement aucun canal
+     * pour enregistrer un texte avant de l'appliquer : il y aurait alors une
+     * fenêtre entre l'enregistrement et l'acceptation pendant laquelle le
+     * texte appliqué pourrait ne plus être celui qui était affiché. Ici la
+     * paire « quel run » et « quel texte » arrive en un seul message, validée
+     * en une seule fois.
+     *
+     * Un texte vide ou fait d'espaces est refusé : accepter un résultat, c'est
+     * en écrire un, et remplacer une sélection par du vide est une perte, pas
+     * une reformulation.
+     */
+    text: z
+      .string()
+      .min(1)
+      .max(RESULT_ACCEPT_TEXT_MAX_LENGTH)
+      .refine((value) => value.trim() !== "", { message: "texte vide" })
+      .optional(),
+  })
   .strict();
 export type ResultAcceptRequest = z.infer<typeof ResultAcceptRequestSchema>;
 
@@ -830,7 +865,11 @@ export interface ReqraftBridge {
   startReprompt(request: RepromptStartRequest): Promise<RepromptStartResponse>;
   cancelReprompt(runId: string): Promise<void>;
   captureSelection(): Promise<CaptureSelectionResponse>;
-  acceptResult(runId: string, mode: ResultAcceptMode): Promise<ResultAcceptResponse>;
+  /**
+   * `text` n'est fourni que si le résultat a été repris dans la capsule : sans
+   * lui, le processus principal applique le résultat qu'il a lui-même produit.
+   */
+  acceptResult(runId: string, mode: ResultAcceptMode, text?: string): Promise<ResultAcceptResponse>;
   readConfig(): Promise<SafeConfig>;
   writeConfig(patch: ConfigWriteRequest): Promise<SafeConfig>;
   providersStatus(): Promise<ProviderStatus[]>;

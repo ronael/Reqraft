@@ -10,6 +10,7 @@ import {
   resolveCapsuleKeyUp,
   wantsComparison,
   type CapsuleIntent,
+  type CapsuleKeyContext,
   type CapsuleKeyStroke,
   type ComparisonIntent,
 } from "@/apps/desktop/renderer/capsule/keyboard.js";
@@ -28,17 +29,32 @@ import {
  * que quand elle est câblée à l'envers. Ici les fonctions sont appelées.
  */
 
+/**
+ * La frappe telle qu'elle arrive hors du champ d'édition.
+ *
+ * C'est le contexte de toutes les règles ci-dessous, sauf celles qui portent
+ * justement sur l'édition. Le nommer une fois évite de le répéter à chaque
+ * appel, et laisse voir d'un coup d'œil les cas qui s'en écartent.
+ */
+function touche(stroke: CapsuleKeyStroke, state: CapsuleState): CapsuleIntent | null {
+  return resolveCapsuleKeyDown(stroke, { state, editing: false });
+}
+
+function coupeLeDefaut(stroke: CapsuleKeyStroke, state: CapsuleState): boolean {
+  return preventsBrowserDefault(stroke, { state, editing: false });
+}
+
 /** Les seuls états où le pied de la capsule rend ses commandes. */
 const AVEC_COMMANDES: readonly CapsuleState[] = ["ready", "comparison"];
 const SANS_COMMANDES = CAPSULE_STATES.filter((state) => !AVEC_COMMANDES.includes(state));
 
 describe("les touches de niveau", () => {
   it.each(AVEC_COMMANDES)("⇥ avance d'un niveau depuis %s", (state) => {
-    expect(resolveCapsuleKeyDown({ key: "Tab" }, state)).toBe("level-next");
+    expect(touche({ key: "Tab" }, state)).toBe("level-next");
   });
 
   it.each(AVEC_COMMANDES)("⇧⇥ recule d'un niveau depuis %s", (state) => {
-    expect(resolveCapsuleKeyDown({ key: "Tab", shiftKey: true }, state)).toBe("level-previous");
+    expect(touche({ key: "Tab", shiftKey: true }, state)).toBe("level-previous");
   });
 
   it("les deux sens parcourent le cycle en sens inverse l'un de l'autre", () => {
@@ -49,7 +65,7 @@ describe("les touches de niveau", () => {
       "level-previous": -1,
     };
     const avance = (level: "minimal" | "standard" | "complete", shiftKey: boolean) => {
-      const intent = resolveCapsuleKeyDown({ key: "Tab", shiftKey }, "ready");
+      const intent = touche({ key: "Tab", shiftKey }, "ready");
       expect(intent === "level-next" || intent === "level-previous").toBe(true);
       return cycleRepromptLevel(level, sens[intent as "level-next" | "level-previous"]);
     };
@@ -64,76 +80,76 @@ describe("les touches de niveau", () => {
   });
 
   it("⌘⇥ appartient au système et ne change pas de niveau", () => {
-    expect(resolveCapsuleKeyDown({ key: "Tab", metaKey: true }, "ready")).toBeNull();
+    expect(touche({ key: "Tab", metaKey: true }, "ready")).toBeNull();
   });
 
   it.each(SANS_COMMANDES)("⇥ et ⇧⇥ sont inertes pendant %s", (state) => {
-    expect(resolveCapsuleKeyDown({ key: "Tab" }, state)).toBeNull();
-    expect(resolveCapsuleKeyDown({ key: "Tab", shiftKey: true }, state)).toBeNull();
+    expect(touche({ key: "Tab" }, state)).toBeNull();
+    expect(touche({ key: "Tab", shiftKey: true }, state)).toBeNull();
   });
 
   it("les deux sens coupent le comportement du navigateur", () => {
     // Sans cela ⇥ déplace le focus dans la fenêtre et ⇧⇥ le remonte : le
     // niveau change ET le focus part, ce qui rend l'appui suivant imprévisible.
-    expect(preventsBrowserDefault({ key: "Tab" }, "ready")).toBe(true);
-    expect(preventsBrowserDefault({ key: "Tab", shiftKey: true }, "ready")).toBe(true);
+    expect(coupeLeDefaut({ key: "Tab" }, "ready")).toBe(true);
+    expect(coupeLeDefaut({ key: "Tab", shiftKey: true }, "ready")).toBe(true);
   });
 });
 
 describe("⌘D, la comparaison épinglée", () => {
   it.each(AVEC_COMMANDES)("est reconnu depuis %s", (state) => {
-    expect(resolveCapsuleKeyDown({ key: "d", metaKey: true }, state)).toBe("pin-comparison");
+    expect(touche({ key: "d", metaKey: true }, state)).toBe("pin-comparison");
   });
 
   it("survit au verrou majuscules", () => {
-    expect(resolveCapsuleKeyDown({ key: "D", metaKey: true }, "ready")).toBe("pin-comparison");
+    expect(touche({ key: "D", metaKey: true }, "ready")).toBe("pin-comparison");
   });
 
   it("n'est pas le « d » nu, qui n'a rien à faire là", () => {
-    expect(resolveCapsuleKeyDown({ key: "d" }, "ready")).toBeNull();
+    expect(touche({ key: "d" }, "ready")).toBeNull();
   });
 
   it.each(SANS_COMMANDES)("est inerte pendant %s", (state) => {
-    expect(resolveCapsuleKeyDown({ key: "d", metaKey: true }, state)).toBeNull();
+    expect(touche({ key: "d", metaKey: true }, state)).toBeNull();
   });
 
   it("coupe le signet du navigateur", () => {
-    expect(preventsBrowserDefault(CMD_D, "ready")).toBe(true);
+    expect(coupeLeDefaut(CMD_D, "ready")).toBe(true);
   });
 
   it("ne rebascule pas quand l'appui est tenu", () => {
     // Le système répète le `keydown` tant que la touche est enfoncée. Chaque
     // répétition inverserait l'épinglage : la comparaison clignoterait, et
     // l'état final dépendrait de la durée de l'appui.
-    expect(resolveCapsuleKeyDown({ ...CMD_D, repeat: true }, "ready")).toBeNull();
-    expect(resolveCapsuleKeyDown({ ...CMD_D, repeat: true }, "comparison")).toBeNull();
+    expect(touche({ ...CMD_D, repeat: true }, "ready")).toBeNull();
+    expect(touche({ ...CMD_D, repeat: true }, "comparison")).toBeNull();
   });
 
   it("reste retiré au navigateur pendant la répétition", () => {
     // La répétition n'exécute plus rien, mais elle reste une frappe de la
     // capsule : la laisser passer rendrait le signet au milieu d'un appui tenu.
-    expect(preventsBrowserDefault({ ...CMD_D, repeat: true }, "ready")).toBe(true);
+    expect(coupeLeDefaut({ ...CMD_D, repeat: true }, "ready")).toBe(true);
   });
 });
 
 describe("les autres commandes du pied", () => {
   it("garde le contrat existant", () => {
-    expect(resolveCapsuleKeyDown({ key: "Enter" }, "ready")).toBe("accept");
-    expect(resolveCapsuleKeyDown({ key: "c", metaKey: true }, "ready")).toBe("copy");
-    expect(resolveCapsuleKeyDown({ key: "r", metaKey: true }, "ready")).toBe("rerun");
-    expect(resolveCapsuleKeyDown({ key: "Alt" }, "ready")).toBe("hold-comparison");
+    expect(touche({ key: "Enter" }, "ready")).toBe("accept");
+    expect(touche({ key: "c", metaKey: true }, "ready")).toBe("copy");
+    expect(touche({ key: "r", metaKey: true }, "ready")).toBe("rerun");
+    expect(touche({ key: "Alt" }, "ready")).toBe("hold-comparison");
   });
 
   it("laisse ⌘⏎ au champ de saisie", () => {
     // Le textarea de l'état `input` valide avec ⌘⏎ ; le remplacement est ⏎ nu.
-    expect(resolveCapsuleKeyDown({ key: "Enter", metaKey: true }, "ready")).toBeNull();
+    expect(touche({ key: "Enter", metaKey: true }, "ready")).toBeNull();
   });
 
   it.each(CAPSULE_STATES)("esc ferme et ⌘. interrompt depuis %s", (state) => {
     // Ces deux-là passent avant la porte des états : une capsule qui travaille
     // doit rester interruptible et fermable.
-    expect(resolveCapsuleKeyDown({ key: "Escape" }, state)).toBe("close");
-    expect(resolveCapsuleKeyDown({ key: ".", metaKey: true }, state)).toBe("cancel");
+    expect(touche({ key: "Escape" }, state)).toBe("close");
+    expect(touche({ key: ".", metaKey: true }, state)).toBe("cancel");
   });
 
   it("ne coupe pas le navigateur là où il n'y a rien à couper", () => {
@@ -145,7 +161,7 @@ describe("les autres commandes du pied", () => {
       { key: "Alt" },
     ];
     for (const stroke of inoffensives) {
-      expect(preventsBrowserDefault(stroke, "ready"), stroke.key).toBe(false);
+      expect(coupeLeDefaut(stroke, "ready"), stroke.key).toBe(false);
     }
   });
 
@@ -163,7 +179,7 @@ describe("les autres commandes du pied", () => {
       [{ key: "Alt" }, "hold-comparison"],
     ];
     for (const [stroke, intent] of repetables) {
-      expect(resolveCapsuleKeyDown({ ...stroke, repeat: true }, "ready"), stroke.key).toBe(intent);
+      expect(touche({ ...stroke, repeat: true }, "ready"), stroke.key).toBe(intent);
     }
   });
 
@@ -171,7 +187,7 @@ describe("les autres commandes du pied", () => {
     // Filtrer par état laisserait le maintien allumé si la capsule change
     // d'état entre l'appui et le relâchement.
     for (const state of CAPSULE_STATES) {
-      expect(resolveCapsuleKeyDown({ key: "Alt" }, state)).toBe(
+      expect(touche({ key: "Alt" }, state)).toBe(
         AVEC_COMMANDES.includes(state) ? "hold-comparison" : null,
       );
     }
@@ -213,7 +229,7 @@ function appliquer(capsule: Capsule, intent: CapsuleIntent): Capsule {
 }
 
 function frapper(capsule: Capsule, stroke: CapsuleKeyStroke): Capsule {
-  const intent = resolveCapsuleKeyDown(stroke, capsule.state);
+  const intent = touche(stroke, capsule.state);
   return intent === null ? capsule : appliquer(capsule, intent);
 }
 
@@ -380,5 +396,60 @@ describe("l'épinglage ne survit pas à un « avant » périmé", () => {
         state === "ready" || state === "comparison" || state === "applying",
       );
     }
+  });
+});
+
+/**
+ * Le clavier pendant qu'on reprend le résultat.
+ *
+ * Le résultat final est devenu un champ. Sans cette porte, écrire dedans était
+ * impossible : `⏎` remplaçait la sélection au lieu d'ajouter une ligne, `⇥`
+ * relançait une génération au lieu de sortir du champ, `⌘C` copiait tout le
+ * résultat au lieu de la sélection, et `⌘R` jetait ce qui venait d'être écrit.
+ */
+describe("l'édition du résultat rend ses touches au champ", () => {
+  const EN_EDITION: CapsuleKeyContext = { state: "ready", editing: true };
+
+  it.each<[string, CapsuleKeyStroke]>([
+    ["⏎", { key: "Enter" }],
+    ["⇥", { key: "Tab" }],
+    ["⇧⇥", { key: "Tab", shiftKey: true }],
+    ["⌘C", { key: "c", metaKey: true }],
+    ["⌘R", { key: "r", metaKey: true }],
+    ["⌘D", { key: "d", metaKey: true }],
+    ["⌥", { key: "Alt" }],
+  ])("%s ne déclenche plus la commande de la capsule", (_nom, stroke) => {
+    expect(resolveCapsuleKeyDown(stroke, EN_EDITION)).toBeNull();
+  });
+
+  it.each<[string, CapsuleKeyStroke]>([
+    ["⇥", { key: "Tab" }],
+    ["⌘R", { key: "r", metaKey: true }],
+    ["⌘D", { key: "d", metaKey: true }],
+  ])("%s garde le comportement natif du navigateur", (_nom, stroke) => {
+    // La capsule coupait ces frappes pour s'en servir. Continuer à les couper
+    // pendant l'édition les rendrait inertes : ni commande, ni frappe.
+    expect(preventsBrowserDefault(stroke, EN_EDITION)).toBe(false);
+    expect(preventsBrowserDefault(stroke, { state: "ready", editing: false })).toBe(true);
+  });
+
+  it("esc ferme toujours, et ⌘. interrompt toujours", () => {
+    // Les deux seules commandes qui ne dépendent d'aucun état : une capsule
+    // dont on ne peut plus sortir parce que le curseur est dans un champ
+    // serait un piège.
+    expect(resolveCapsuleKeyDown({ key: "Escape" }, EN_EDITION)).toBe("close");
+    expect(resolveCapsuleKeyDown({ key: ".", metaKey: true }, EN_EDITION)).toBe("cancel");
+  });
+
+  it("le relâchement de ⌥ reste écouté, quel qu'ait été l'appui", () => {
+    // `resolveCapsuleKeyUp` ne regarde ni l'état ni l'édition : un maintien
+    // commencé avant le clic dans le champ doit pouvoir se relâcher.
+    expect(resolveCapsuleKeyUp({ key: "Alt" })).toBe("release-comparison");
+  });
+
+  it("les commandes reviennent dès que le champ rend la main", () => {
+    expect(resolveCapsuleKeyDown({ key: "Enter" }, { state: "ready", editing: false })).toBe(
+      "accept",
+    );
   });
 });

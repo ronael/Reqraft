@@ -31,7 +31,15 @@ const bridge: ReqraftBridge = {
   startReprompt: (request) => ipcRenderer.invoke(IPC_CHANNELS.repromptStart, request),
   cancelReprompt: (runId) => ipcRenderer.invoke(IPC_CHANNELS.repromptCancel, { runId }),
   captureSelection: () => ipcRenderer.invoke(IPC_CHANNELS.captureSelection),
-  acceptResult: (runId, mode) => ipcRenderer.invoke(IPC_CHANNELS.resultAccept, { runId, mode }),
+  // Le texte n'accompagne l'acceptation que s'il a été repris à la main : la
+  // clé reste absente sinon, et le processus principal applique le résultat
+  // qu'il a lui-même produit.
+  acceptResult: (runId, mode, text) =>
+    ipcRenderer.invoke(IPC_CHANNELS.resultAccept, {
+      runId,
+      mode,
+      ...(text === undefined ? {} : { text }),
+    }),
   readConfig: () => ipcRenderer.invoke(IPC_CHANNELS.configRead),
   writeConfig: (patch) => ipcRenderer.invoke(IPC_CHANNELS.configWrite, patch),
   providersStatus: () => ipcRenderer.invoke(IPC_CHANNELS.providersStatus),

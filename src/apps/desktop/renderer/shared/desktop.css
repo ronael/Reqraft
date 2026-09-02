@@ -32,6 +32,16 @@
   --rq-msg-error-line: rgba(248, 113, 113, 0.22);
   --rq-msg-error-fill: rgba(248, 113, 113, 0.05);
   --rq-msg-error-text: #e5a3a3;
+
+  /*
+   * Le fond des messages flottants.
+   *
+   * Les tons ci-dessus sont des voiles : posés sur une surface, ils la teintent
+   * sans la couvrir. Une annonce flotte au-dessus du contenu et doit rester
+   * lisible quel que soit ce qu'elle recouvre, d'où une base opaque sur
+   * laquelle le voile de ton vient se superposer.
+   */
+  --rq-toast-surface: rgba(24, 24, 31, 0.97);
 }
 
 * {
@@ -81,6 +91,14 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /*
+   * Au-dessus du pied, jamais dessus.
+   *
+   * La rangée de verdict (34px) et la rangée de commandes (28px) font 63px
+   * bordure comprise ; 76px laisse une respiration au-dessus sans décoller
+   * l'annonce du contenu.
+   */
+  --rq-toast-offset: 76px;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(16, 16, 23, 0.92);
@@ -198,6 +216,67 @@ body {
   font-size: 13px;
   line-height: 21px;
   color: #f4f4f5;
+}
+
+/*
+ * Le résultat final, éditable.
+ *
+ * Le champ remplace un `<pre>` sans rien déplacer : `.capsule-stream` porte
+ * déjà la police, la taille et l'interligne, et tout ce qui suit ne fait
+ * qu'annuler ce qu'un `textarea` ajoute de son côté — cadre, fond, retrait,
+ * poignée de redimensionnement. Sans cela le texte sautait d'une ligne et de
+ * quelques pixels au moment où le résultat arrivait.
+ *
+ * La hauteur suit le contenu sans mesurer quoi que ce soit : le conteneur
+ * duplique le texte dans son pseudo-élément, invisible, et les deux occupent
+ * la même cellule de grille. C'est le double qui dicte la hauteur, donc elle
+ * est toujours exactement celle du texte — jamais une ligne de retard, jamais
+ * une oscillation pendant la frappe.
+ */
+.capsule-result {
+  display: grid;
+}
+
+.capsule-result::after {
+  /* L'espace final : une ligne vide terminale compte quand même. */
+  content: attr(data-replicated-value) " ";
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  line-height: 21px;
+  visibility: hidden;
+}
+
+.capsule-result-input,
+.capsule-result::after {
+  grid-area: 1 / 1 / 2 / 2;
+}
+
+.capsule-result-input {
+  width: 100%;
+  padding: 0;
+  border: none;
+  resize: none;
+  overflow: hidden;
+  background: transparent;
+}
+
+/*
+ * Le champ se signale sans se redessiner.
+ *
+ * `outline` ne prend aucune place dans la mise en page : le texte ne bouge pas
+ * d'un pixel quand le curseur entre, alors qu'une bordure ou un retrait
+ * décalerait tout le résultat au premier clic.
+ */
+.capsule-result:focus-within {
+  outline: 1px solid rgba(167, 139, 250, 0.3);
+  outline-offset: 6px;
+  border-radius: 4px;
+}
+
+.capsule-result-input:focus {
+  outline: none;
 }
 
 .caret {
@@ -597,6 +676,8 @@ kbd {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* Le pied du popover : 8px + 16px + 8px, bordure comprise, puis la marge. */
+  --rq-toast-offset: 45px;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(16, 16, 23, 0.92);
@@ -701,6 +782,8 @@ kbd {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  /* La barre d'état fait 32px, bordure comprise, puis la marge. */
+  --rq-toast-offset: 45px;
   min-height: 0;
   overflow: hidden;
   background: #0b0b10;
@@ -3574,6 +3657,111 @@ kbd {
   border-color: var(--rq-msg-error-line);
   background: var(--rq-msg-error-fill);
   color: var(--rq-msg-error-text);
+}
+
+/*
+ * L'annonce passagère, posée au-dessus de la surface.
+ *
+ * Elle reprend la boîte de `.inline-message` — même grille, même retrait,
+ * mêmes tons — parce que c'est le même message : seule sa place dans la page
+ * change. Ce qui s'ajoute ici est ce que « flottant » implique : une position
+ * fixe, donc indépendante du défilement du corps ; une largeur bornée, pour
+ * qu'un texte long se replie au lieu de traverser la fenêtre ; un fond opaque,
+ * puisqu'elle recouvre du contenu ; et un décalage bas déclaré par chaque
+ * surface, pour qu'elle se pose au-dessus de son pied et jamais dessus.
+ */
+.toast-layer {
+  position: fixed;
+  z-index: 30;
+  right: 0;
+  bottom: var(--rq-toast-offset, 12px);
+  left: 0;
+  display: flex;
+  justify-content: center;
+  padding: 0 14px;
+  /* Rien de ce qu'elle survole ne devient incliquable. */
+  pointer-events: none;
+}
+
+.toast {
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
+  max-width: min(360px, 100%);
+  padding: 7px 10px;
+  border: 1px solid var(--rq-msg-info-line);
+  border-radius: 8px;
+  background: var(--rq-toast-surface);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  color: var(--rq-msg-info-text);
+  font-size: 11px;
+  line-height: 16px;
+  animation: rq-toast-in 170ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+.toast-icon {
+  margin-top: 1px;
+  flex-shrink: 0;
+}
+
+.toast-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+/*
+ * Le ton par-dessus l'opacité.
+ *
+ * Le voile de couleur est le même que celui des messages en ligne, mais il ne
+ * peut pas remplacer le fond : posé seul il laisserait lire le résultat au
+ * travers de l'annonce.
+ */
+.toast-success {
+  border-color: var(--rq-msg-success-line);
+  background:
+    linear-gradient(var(--rq-msg-success-fill), var(--rq-msg-success-fill)),
+    var(--rq-toast-surface);
+  color: var(--rq-msg-success-text);
+}
+
+.toast-warning {
+  border-color: var(--rq-msg-warning-line);
+  background:
+    linear-gradient(var(--rq-msg-warning-fill), var(--rq-msg-warning-fill)),
+    var(--rq-toast-surface);
+  color: var(--rq-msg-warning-text);
+}
+
+.toast-error {
+  border-color: var(--rq-msg-error-line);
+  background:
+    linear-gradient(var(--rq-msg-error-fill), var(--rq-msg-error-fill)),
+    var(--rq-toast-surface);
+  color: var(--rq-msg-error-text);
+}
+
+/*
+ * Six pixels et une opacité : de quoi remarquer l'arrivée, pas de quoi
+ * détourner d'un texte qu'on est en train de lire. `transform` et `opacity`
+ * seulement, donc aucun recalcul de mise en page.
+ */
+@keyframes rq-toast-in {
+  from {
+    opacity: 0;
+    transform: translate3d(0, 6px, 0);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* `both` conserve l'état final : le message reste visible, il n'arrive plus. */
+  .toast {
+    animation-duration: 1ms;
+  }
 }
 
 .settings-group,

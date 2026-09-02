@@ -48,6 +48,12 @@ et le TUI.
   directement à la réparation sans rejouer automatiquement la présentation.
 - Paramètres modifiables depuis le desktop : provider, modèle, niveau et
   profil, dans l'onboarding, les réglages, le popover et la capsule.
+- Résultat éditable directement dans la capsule avant copie ou remplacement ;
+  la comparaison reflète la version modifiée et le processus principal valide
+  le texte avec le `runId` dans une seule opération IPC.
+- Retours d'actions transitoires unifiés dans un toast partagé, superposé au
+  contenu de la capsule, du popover et des réglages afin de rester visible sur
+  les résultats longs sans déplacer l'interface.
 - Préférences desktop : raccourcis globaux configurables avec ré-enregistrement
   à chaud, langue d'interface `fr/en` résolue au démarrage, relance automatique
   après changement de langue et retour direct aux réglages.

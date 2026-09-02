@@ -6,6 +6,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useT } from "../shared/i18n.js";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
+import { Toast, useToast } from "../shared/Toast.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
@@ -29,6 +30,7 @@ export function PopoverApp(): React.JSX.Element {
   const [lastResult, setLastResult] = useState<RepromptResult | null>(null);
   const [failed, setFailed] = useState<string | null>(null);
   const activeRunId = useRef<string | null>(null);
+  const { toast, show: annoncer, dismiss: fermerAnnonce } = useToast();
 
   useEffect(() => {
     window.reqraft
@@ -93,9 +95,19 @@ export function PopoverApp(): React.JSX.Element {
   const copyLastResult = useCallback(() => {
     const runId = activeRunId.current;
     if (runId !== null) {
-      void window.reqraft.acceptResult(runId, "copy");
+      void window.reqraft
+        .acceptResult(runId, "copy")
+        .then(({ applied }) => {
+          annoncer(
+            applied ? t("popover.copied") : t("clipboard.copyFailed"),
+            applied ? "success" : "error",
+          );
+        })
+        .catch(() => {
+          annoncer(t("clipboard.copyFailed"), "error");
+        });
     }
-  }, []);
+  }, [annoncer, t]);
 
   const selectedProfile = profiles.find((entry) => entry.id === profileId);
 
@@ -195,6 +207,8 @@ export function PopoverApp(): React.JSX.Element {
           </button>
         </div>
       )}
+
+      <Toast toast={toast} onDismiss={fermerAnnonce} />
 
       <footer className="popover-footer">
         {/* Le popover s'ouvre à la souris : son action principale doit s'y

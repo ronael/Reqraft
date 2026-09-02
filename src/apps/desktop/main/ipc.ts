@@ -256,13 +256,21 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   });
 
   ipcMain.handle(IPC_CHANNELS.resultAccept, async (_event, payload) => {
-    const { runId, mode } = ResultAcceptRequestSchema.parse(payload);
+    // La validation d'abord, le run ensuite : un texte hors bornes est refusé
+    // quel que soit le run, et l'acceptation entière échoue plutôt que de
+    // retomber sur le résultat d'origine — accepter silencieusement autre chose
+    // que ce que la capsule montrait serait pire qu'une erreur.
+    const { runId, mode, text } = ResultAcceptRequestSchema.parse(payload);
     const result = service.storedResult(runId);
     if (!result) {
       return { applied: false };
     }
+    // Une seule opération, un seul message : le texte repris à la main arrive
+    // avec l'acceptation, jamais par un enregistrement préalable. Il n'y a donc
+    // pas d'instant où le texte appliqué pourrait différer de celui affiché.
+    const accepted = text ?? result.rewritten;
     if (mode === "copy") {
-      clipboard.writeText(result.rewritten);
+      clipboard.writeText(accepted);
       return { applied: true };
     }
     // "replace" reinjects into the recorded source app — never into whatever
@@ -273,7 +281,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
 
     // Le focus d'abord, la frappe ensuite : voir `hideCapsule`.
     dependencies.hideCapsule?.();
-    const outcome = await dependencies.captureService.replace(result.rewritten);
+    const outcome = await dependencies.captureService.replace(accepted);
     if (!outcome.applied) {
       // Le message d'échec s'affiche dans la capsule : la cacher sans la
       // ramener le rendrait invisible.

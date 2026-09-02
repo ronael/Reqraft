@@ -4,6 +4,7 @@ import type { DoctorReport } from "@/apps/desktop/shared/ipc-contract.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage, type MessageTone } from "../shared/InlineMessage.js";
+import { Toast, useToast } from "../shared/Toast.js";
 
 /**
  * L'onglet Diagnostic, extrait de `SettingsApp.tsx`.
@@ -14,8 +15,15 @@ import { InlineMessage, type MessageTone } from "../shared/InlineMessage.js";
  * global de la fenêtre.
  */
 
-/** Ce que la copie est en train de faire, pour ce que l'utilisateur en voit. */
-type CopyStatus = "idle" | "copying" | "copied" | "error";
+/**
+ * Ce que la copie est en train de faire, pour ce que l'utilisateur en voit.
+ *
+ * La réussite n'y figure plus : « rapport copié » est un accusé de réception,
+ * qui s'annonce et s'efface. Il occupait la ligne où se lit l'état du
+ * diagnostic — la seule information durable de cet onglet — et la masquait
+ * jusqu'au prochain clic. L'échec, lui, reste : il demande une décision.
+ */
+type CopyStatus = "idle" | "copying" | "error";
 
 export interface DiagnosticTabProps {
   doctor: DoctorReport | null;
@@ -30,6 +38,7 @@ export function DiagnosticTab({
 }: Readonly<DiagnosticTabProps>): React.JSX.Element {
   const t = useT();
   const [copyStatus, setCopyStatus] = useState<CopyStatus>("idle");
+  const { toast, show: annoncer, dismiss: fermerAnnonce } = useToast();
 
   const copyReport = useCallback(() => {
     setCopyStatus("copying");
@@ -39,12 +48,13 @@ export function DiagnosticTab({
     void window.reqraft
       .copyDoctorReport()
       .then(() => {
-        setCopyStatus("copied");
+        setCopyStatus("idle");
+        annoncer(t("settings.reportCopied"));
       })
       .catch(() => {
         setCopyStatus("error");
       });
-  }, []);
+  }, [annoncer, t]);
 
   const hasReport = doctor !== null;
   const failedCount = doctor?.checks.filter((check) => !check.ok).length ?? 0;
@@ -107,6 +117,8 @@ export function DiagnosticTab({
           </div>
         </div>
       </div>
+
+      <Toast toast={toast} onDismiss={fermerAnnonce} />
     </section>
   );
 }
@@ -140,7 +152,6 @@ function diagnosticTone(
   failedCount: number,
 ): MessageTone {
   if (running || copyStatus === "copying") return "pending";
-  if (copyStatus === "copied") return "success";
   if (copyStatus === "error") return "error";
   if (!hasReport) return "info";
   return failedCount === 0 ? "success" : "warning";
@@ -155,7 +166,6 @@ function diagnosticMessage(
 ): string {
   if (running) return t("settings.diagnosticRunning");
   if (copyStatus === "copying") return t("settings.copyingReport");
-  if (copyStatus === "copied") return t("settings.reportCopied");
   if (copyStatus === "error") return t("settings.reportCopyFailed");
   if (!hasReport) return t("settings.diagnosticReady");
   if (failedCount === 0) return t("settings.diagnosticAllClear");
