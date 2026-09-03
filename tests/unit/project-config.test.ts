@@ -56,7 +56,7 @@ describe("trouver le projet", () => {
     const context = findProjectContext(deep);
 
     expect(context).not.toBeNull();
-    expect(context?.configPath).toMatch(/\.reqraft\/config\.json$/);
+    expect(context?.configPath.endsWith(path.join(".reqraft", "config.json"))).toBe(true);
     expect(deep.startsWith(context?.root ?? "///")).toBe(true);
   });
 
@@ -192,10 +192,14 @@ describe("la chaîne complète, sur disque", () => {
 
   /** Le fichier utilisateur, là où la plateforme le range vraiment. */
   async function writeUserConfig(home: string, values: unknown): Promise<void> {
-    const directory =
-      process.platform === "darwin"
-        ? path.join(home, "Library", "Application Support", "rp")
-        : path.join(home, ".config", "rp");
+    let directory: string;
+    if (process.platform === "win32") {
+      directory = path.join(home, "AppData", "Roaming", "rp");
+    } else if (process.platform === "darwin") {
+      directory = path.join(home, "Library", "Application Support", "rp");
+    } else {
+      directory = path.join(home, ".config", "rp");
+    }
     await mkdir(directory, { recursive: true });
     await writeFile(path.join(directory, "config.json"), JSON.stringify(values), "utf8");
   }
