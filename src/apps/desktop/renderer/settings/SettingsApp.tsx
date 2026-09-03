@@ -57,6 +57,10 @@ export function initialSettingsTab(search: string = window.location.search): Tab
   return TABS.includes(requested as Tab) ? (requested as Tab) : "profiles";
 }
 
+export function settingsTabClass(base: string, entering: boolean): string {
+  return entering ? `${base} settings-tab-entering` : base;
+}
+
 const TAB_META: Record<
   Tab,
   {
@@ -106,6 +110,7 @@ const TAB_META: Record<
 export function SettingsApp(): React.JSX.Element {
   const t = useT();
   const [tab, setTab] = useState<Tab>(() => initialSettingsTab());
+  const [tabSwitched, setTabSwitched] = useState(false);
   const [config, setConfig] = useState<SafeConfig | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);
@@ -118,6 +123,15 @@ export function SettingsApp(): React.JSX.Element {
   // promesse rejetée n'était rattrapée nulle part.
   const [doctorFailed, setDoctorFailed] = useState(false);
   const [updates, setUpdates] = useState<DesktopUpdateState | null>(null);
+
+  const openTab = useCallback(
+    (next: Tab) => {
+      if (next === tab) return;
+      setTab(next);
+      setTabSwitched(true);
+    },
+    [tab],
+  );
 
   useEffect(() => {
     const refreshShortcuts = (): void => {
@@ -251,7 +265,7 @@ export function SettingsApp(): React.JSX.Element {
                 active={label === tab}
                 meta={TAB_META[label]}
                 onClick={() => {
-                  setTab(label);
+                  openTab(label);
                   if (label === "updates" && (updates === null || updates.status === "idle")) {
                     checkForUpdates();
                   }
@@ -265,13 +279,13 @@ export function SettingsApp(): React.JSX.Element {
 
         <section className="settings-content">
           <header className="settings-screen-header">
-            <div>
+            <div key={tab} className={settingsTabClass("settings-screen-heading", tabSwitched)}>
               <h1>{t(activeTab.titleKey)}</h1>
               <p>{t(activeTab.detailKey)}</p>
             </div>
           </header>
 
-          <div className="settings-panel">
+          <div key={tab} className={settingsTabClass("settings-panel", tabSwitched)}>
             {tab === "preferences" && (
               <PreferencesTab
                 captureShortcut={captureShortcut}
@@ -340,7 +354,7 @@ export function SettingsApp(): React.JSX.Element {
                 running={doctorRunning}
                 failed={doctorFailed}
                 onRunDoctor={runDoctor}
-                onOpenTab={setTab}
+                onOpenTab={openTab}
               />
             )}
 

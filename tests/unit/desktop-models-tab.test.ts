@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   initialSettingsTab,
   settingsNavIndicatorOffset,
+  settingsTabClass,
 } from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import {
   describeModelCatalog,
@@ -14,6 +15,16 @@ import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.j
 import { createDesktopTranslator } from "@/i18n/desktop/index.js";
 
 const t = createDesktopTranslator("fr");
+
+describe("settings tab motion", () => {
+  it("does not animate the initial render", () => {
+    expect(settingsTabClass("settings-panel", false)).toBe("settings-panel");
+  });
+
+  it("adds the entrance class after navigation", () => {
+    expect(settingsTabClass("settings-panel", true)).toBe("settings-panel settings-tab-entering");
+  });
+});
 
 /**
  * Changing the provider in the settings.

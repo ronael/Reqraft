@@ -1127,6 +1127,10 @@ kbd {
   padding: 24px 24px 16px;
 }
 
+.settings-screen-heading {
+  min-width: 0;
+}
+
 .settings-screen-header h1 {
   margin: 0;
   color: #ffffff;
@@ -4034,18 +4038,19 @@ kbd {
   }
 }
 
-.settings-group,
-.settings-messages,
 .settings-group-row-entering,
 .settings-action-entering {
   animation: rq-rise 180ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
+.settings-tab-entering {
+  animation: rq-rise 170ms cubic-bezier(0.32, 0.72, 0, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .settings-group,
-  .settings-messages,
   .settings-group-row-entering,
-  .settings-action-entering {
+  .settings-action-entering,
+  .settings-tab-entering {
     animation-duration: 1ms;
   }
 

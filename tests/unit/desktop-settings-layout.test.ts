@@ -103,10 +103,9 @@ describe("mouvement réduit", () => {
     const block = reducedMotionBlocks();
 
     for (const selector of [
-      ".settings-group",
-      ".settings-messages",
       ".settings-group-row-entering",
       ".settings-action-entering",
+      ".settings-tab-entering",
       ".inline-message",
       ".spin",
     ]) {
