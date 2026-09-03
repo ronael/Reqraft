@@ -23,7 +23,8 @@ export interface CapsuleUiWindow {
     executeJavaScript(code: string, userGesture?: boolean): Promise<unknown>;
     /** La frappe telle que la fenêtre la reçoit, pas un événement fabriqué. */
     sendInputEvent(event: {
-      type: "keyDown" | "keyUp";
+      /** `char` est le caractère saisi : c'est lui qui fait avancer le curseur. */
+      type: "keyDown" | "keyUp" | "char";
       keyCode: string;
       modifiers?: ("meta" | "shift" | "control" | "alt")[];
     }): void;
@@ -89,7 +90,7 @@ export interface CapsuleUiReport {
 
 const MOUNTED = ".capsule";
 const INPUT = "textarea.capsule-input";
-const RESULT = "textarea.capsule-result-input";
+const RESULT = "textarea.result-editor-input";
 const DIFF = ".capsule-diff";
 const TOAST = ".toast";
 const SUBMIT = ".capsule-hint-key";
@@ -127,7 +128,9 @@ async function waitForSelector(
 async function waitForSelectorToDisappear(
   target: CapsuleUiWindow,
   selector: string,
-  timeoutMs = 5_000,
+  // Toast.tsx borne la lecture à 6 s ; le pilote doit laisser au composant son
+  // délai maximal, plus une marge de rendu, quelle que soit la langue active.
+  timeoutMs = 7_000,
 ): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   for (;;) {
@@ -158,8 +161,27 @@ function fillScript(selector: string, text: string): string {
     field.focus();
     setter.call(field, ${JSON.stringify(text)});
     field.dispatchEvent(new Event("input", { bubbles: true }));
-    return true;
+    return document.activeElement === field;
   })()`;
+}
+
+async function fill(target: CapsuleUiWindow, selector: string, text: string): Promise<void> {
+  if (!(await evaluate<boolean>(target, fillScript(selector, text)))) {
+    throw new Error(`could not fill ${selector}`);
+  }
+}
+
+async function blurField(target: CapsuleUiWindow, selector: string): Promise<void> {
+  const blurred = await evaluate<boolean>(
+    target,
+    `(() => {
+      const field = document.querySelector(${JSON.stringify(selector)});
+      if (field === null) return false;
+      field.blur();
+      return document.activeElement !== field;
+    })()`,
+  );
+  if (!blurred) throw new Error(`could not blur ${selector}`);
 }
 
 /**
@@ -290,7 +312,7 @@ async function openFreshInput(targets: CapsuleUiTargets): Promise<CapsuleUiWindo
 /** Un aller complet : saisie, run réel, résultat affiché. */
 async function runOnce(targets: CapsuleUiTargets, prompt: string): Promise<CapsuleUiWindow> {
   const target = await openFreshInput(targets);
-  await evaluate<boolean>(target, fillScript(INPUT, prompt));
+  await fill(target, INPUT, prompt);
   await evaluate<boolean>(target, clickScript(SUBMIT));
   await waitForSelector(target, RESULT);
   await settle();
@@ -336,7 +358,7 @@ export async function runCapsuleUiScenario(targets: CapsuleUiTargets): Promise<C
 
   // Édition multiligne sur un résultat long : la fenêtre est déjà au plafond,
   // le corps doit absorber la croissance sans que rien ne bouge.
-  await evaluate<boolean>(target, fillScript(RESULT, MULTILINE_EDIT));
+  await fill(target, RESULT, MULTILINE_EDIT);
   await settle();
   measures.push(await measure(target, "editing-long", targets.shotsDir));
 
@@ -373,13 +395,13 @@ export async function runCapsuleUiScenario(targets: CapsuleUiTargets): Promise<C
   // le pied doit rester visible.
   target = await runOnce(targets, FIXTURES[0]?.prompt ?? "corrige cette phrase");
   measures.push(await measure(target, "short-again", targets.shotsDir));
-  await evaluate<boolean>(target, fillScript(RESULT, MULTILINE_EDIT));
+  await fill(target, RESULT, MULTILINE_EDIT);
   await settle();
   measures.push(await measure(target, "editing-short", targets.shotsDir));
 
   // Le champ rend la main : c'est là, et seulement là, que la capsule se
   // réajuste au texte repris. Un seul mouvement, après la frappe.
-  await evaluate<boolean>(target, `(() => { document.activeElement?.blur(); true })()`);
+  await blurField(target, RESULT);
   await settle();
   measures.push(await measure(target, "edited-short-blurred", targets.shotsDir));
 
@@ -401,7 +423,7 @@ async function measureToast(
   shotsDir?: string,
 ): Promise<CapsuleMeasure> {
   const restored = await evaluate<string>(target, valueScript(RESULT));
-  await evaluate<boolean>(target, fillScript(RESULT, ""));
+  await fill(target, RESULT, "");
   await evaluate<boolean>(target, clickCommandScript("⌘C"));
   await waitForSelector(target, TOAST);
   // Le nœud existe dès le premier rendu, puis son entrée CSS devient visible.
@@ -409,8 +431,8 @@ async function measureToast(
   // la présence d'un élément encore transparent dans le DOM.
   await settle();
   const measured = await measure(target, `${name}-toast`, shotsDir);
-  await evaluate<boolean>(target, fillScript(RESULT, restored));
-  await evaluate<boolean>(target, `(() => { document.activeElement?.blur(); true })()`);
+  await fill(target, RESULT, restored);
+  await blurField(target, RESULT);
   // La campagne réutilise la même fenêtre pour l'état suivant. Attendre la
   // sortie réelle du toast évite de polluer sa mesure et sa capture avec une
   // annonce appartenant au cas précédent.
@@ -433,7 +455,7 @@ async function settle(): Promise<void> {
 /** L'état d'erreur, atteint par un fournisseur que rien ne configure. */
 export async function runCapsuleErrorScenario(targets: CapsuleUiTargets): Promise<CapsuleUiReport> {
   const target = await openFreshInput(targets);
-  await evaluate<boolean>(target, fillScript(INPUT, "reformule cette demande"));
+  await fill(target, INPUT, "reformule cette demande");
   await evaluate<boolean>(target, clickScript(SUBMIT));
   await waitForSelector(target, '[role="alert"]');
   await settle();

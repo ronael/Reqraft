@@ -14,7 +14,7 @@ import {
   CAPSULE_RESERVED_HEIGHT,
   CAPSULE_WIDTH,
 } from "@/apps/desktop/shared/capsule-geometry.js";
-import type { CapsuleMeasure, CapsuleUiReport } from "@/apps/desktop/main/e2e-capsule.js";
+import type { CapsuleUiReport } from "@/apps/desktop/main/e2e-capsule.js";
 import type { PopoverUiReport } from "@/apps/desktop/main/e2e-popover.js";
 
 const electronPath =
@@ -83,6 +83,13 @@ const MOCK_CONFIG = {
   defaultLevel: "standard",
   telemetry: false,
 };
+
+/** La mesure portant ce nom dans un relevé, ou l'échec explicite. */
+function mesure<T extends { name: string }>(measures: T[], name: string): T {
+  const found = measures.find((candidate) => candidate.name === name);
+  if (found === undefined) throw new Error(`mesure « ${name} » absente`);
+  return found;
+}
 
 const temporaryHomes: string[] = [];
 
@@ -298,29 +305,6 @@ describeElectron("desktop Electron smoke", () => {
   );
 
   it(
-    "keeps the copy action visible while a long popover result scrolls",
-    async () => {
-      const payload = await runDesktopProbe(
-        {
-          REQRAFT_DESKTOP_E2E_SCENARIO: "popover-ui",
-          REQRAFT_DESKTOP_E2E_SHOTS: process.env.REQRAFT_DESKTOP_E2E_SHOTS ?? "",
-        },
-        MOCK_CONFIG,
-      );
-      expect(payload.scenario?.error).toBeUndefined();
-      const ui = payload.scenario?.popoverUi;
-      expect(ui).toBeDefined();
-      if (ui === undefined) return;
-      expect(ui.content.scrollHeight).toBeGreaterThan(ui.content.clientHeight);
-      expect(ui.footerVisible).toBe(true);
-      expect(ui.copyInFooter).toBe(true);
-      expect(ui.copyInContent).toBe(false);
-      expect(ui.copy.bottom).toBeLessThanOrEqual(ui.footer.bottom);
-    },
-    ELECTRON_TEST_TIMEOUT_MS,
-  );
-
-  it(
     "suspends and resumes every registered global shortcut",
     async () => {
       const payload = await runDesktopProbe({ REQRAFT_DESKTOP_E2E_SCENARIO: "suspension" });
@@ -474,12 +458,6 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
     return (await releve()).ui;
   }
 
-  function byName(ui: CapsuleUiReport, name: string): CapsuleMeasure {
-    const found = ui.measures.find((measure) => measure.name === name);
-    if (found === undefined) throw new Error(`mesure « ${name} » absente`);
-    return found;
-  }
-
   it(
     "adapte sa hauteur à chaque état posé, sans jamais perdre son pied",
     async () => {
@@ -495,9 +473,9 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
         expect(measure.footer.height, measure.name).toBeGreaterThan(0);
       }
 
-      const court = byName(ui, "short");
-      const moyen = byName(ui, "medium");
-      const long = byName(ui, "long");
+      const court = mesure(ui.measures, "short");
+      const moyen = mesure(ui.measures, "medium");
+      const long = mesure(ui.measures, "long");
 
       // Un résultat court ne laisse pas un demi-écran de vide : c'est tout
       // l'objet de l'adaptation.
@@ -521,7 +499,7 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
     "ouvre la saisie libre à la hauteur annoncée, sans rétrécir après coup",
     async () => {
       const ui = await capsuleUi();
-      const saisie = byName(ui, "input");
+      const saisie = mesure(ui.measures, "input");
 
       // La constante sert à ouvrir la fenêtre AVANT que le renderer n'ait
       // mesuré quoi que ce soit. Si elle s'écarte du rendu réel, la capsule
@@ -538,9 +516,9 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
     "ne bouge pas d'un pixel pendant qu'on édite le résultat",
     async () => {
       const ui = await capsuleUi();
-      const avant = byName(ui, "short-again");
-      const pendant = byName(ui, "editing-short");
-      const apres = byName(ui, "edited-short-blurred");
+      const avant = mesure(ui.measures, "short-again");
+      const pendant = mesure(ui.measures, "editing-short");
+      const apres = mesure(ui.measures, "edited-short-blurred");
 
       // Quatorze lignes collées dans une capsule de 172 px : le corps défile,
       // la fenêtre ne bronche pas. C'est la règle qui remplace le
@@ -554,7 +532,9 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
       expect(apres.window.height).toBeGreaterThan(pendant.window.height);
 
       // Même chose sur un résultat déjà au plafond : rien à gagner, rien qui bouge.
-      expect(byName(ui, "editing-long").window).toEqual(byName(ui, "long").window);
+      expect(mesure(ui.measures, "editing-long").window).toEqual(
+        mesure(ui.measures, "long").window,
+      );
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );
@@ -567,9 +547,11 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
       // La dérive est le défaut classique d'une fenêtre qui se replace à partir
       // de sa position courante : chaque cycle la décale un peu plus. La
       // position est ici recalculée depuis l'ancre de la session.
-      expect(byName(ui, "long-again").window).toEqual(byName(ui, "long").window);
-      expect(byName(ui, "short-again").window).toEqual(byName(ui, "short").window);
-      expect(byName(ui, "comparison").body.scrollTop).toBe(0);
+      expect(mesure(ui.measures, "long-again").window).toEqual(mesure(ui.measures, "long").window);
+      expect(mesure(ui.measures, "short-again").window).toEqual(
+        mesure(ui.measures, "short").window,
+      );
+      expect(mesure(ui.measures, "comparison").body.scrollTop).toBe(0);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );
@@ -654,6 +636,198 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
       expect(erreur.window.height).toBeLessThan(CAPSULE_RESERVED_HEIGHT);
       expect(erreur.footerVisible).toBe(true);
       expect(erreur.body.overflows).toBe(false);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+});
+
+/**
+ * La géométrie du popover, mesurée dans la vraie fenêtre.
+ *
+ * Le panneau fait 320 × 260 et n'est pas redimensionnable : il n'a aucune
+ * marge pour absorber un résultat long ou un champ qui grandit. Ce qui doit
+ * être prouvé est donc toujours le même — seule la zone centrale défile, le
+ * pied reste entier et atteignable, et rien ne sort de la fenêtre — dans tous
+ * les états que le produit traverse.
+ */
+describeElectron("popover — géométrie et clavier dans la vraie fenêtre", () => {
+  // Les bornes déclarées dans `main/windows/popover.ts`, recopiées : importer
+  // ce module ici chargerait Electron dans le processus de test.
+  const POPOVER_WIDTH = 320;
+  const POPOVER_HEIGHT = 260;
+
+  /**
+   * Une seule campagne de mesures pour tous les cas.
+   *
+   * Le scénario enchaîne cinq états dans la vraie fenêtre ; le relancer par
+   * assertion coûterait une minute de plus sans rien prouver de neuf.
+   */
+  let campagne: Promise<PopoverUiReport> | null = null;
+
+  function releve(): Promise<PopoverUiReport> {
+    campagne ??= runDesktopProbe(
+      {
+        REQRAFT_DESKTOP_E2E_SCENARIO: "popover-ui",
+        REQRAFT_DESKTOP_E2E_SHOTS: process.env.REQRAFT_DESKTOP_E2E_SHOTS ?? "",
+      },
+      MOCK_CONFIG,
+    ).then((payload) => {
+      expect(payload.scenario?.error).toBeUndefined();
+      const ui = payload.scenario?.popoverUi;
+      if (ui === undefined) throw new Error("le scénario n'a rendu aucune mesure");
+      return ui;
+    });
+    return campagne;
+  }
+
+  it(
+    "garde le pied entier et dans la fenêtre à chaque état",
+    async () => {
+      const ui = await releve();
+
+      expect(ui.measures.map((measure) => measure.name)).toEqual([
+        "empty",
+        "result",
+        "edited",
+        "typing",
+        "rerun",
+        "toast",
+      ]);
+      for (const measure of ui.measures) {
+        expect(measure.window, measure.name).toEqual({
+          width: POPOVER_WIDTH,
+          height: POPOVER_HEIGHT,
+        });
+        // Un pied hors de la fenêtre est un popover sans issue : ni copie, ni
+        // relance, ni réglages.
+        expect(measure.footerVisible, `${measure.name} : pied hors de la fenêtre`).toBe(true);
+        expect(measure.footer.height, measure.name).toBeGreaterThan(0);
+        // La page ne défile jamais : c'est la zone centrale qui le fait.
+        expect(measure.documentOverflows, `${measure.name} : la page déborde`).toBe(false);
+        expect(measure.content.overflowsSideways, `${measure.name} : débordement latéral`).toBe(
+          false,
+        );
+        expect(measure.promptInContent, measure.name).toBe(false);
+      }
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "fait défiler le résultat seul, sans jamais emporter la copie",
+    async () => {
+      const ui = await releve();
+      const vide = mesure(ui.measures, "empty");
+      const resultat = mesure(ui.measures, "result");
+
+      // Rien à montrer, rien à copier : le pied ne porte que la relance.
+      expect(vide.resultValue).toBeNull();
+      expect(vide.copy).toBeNull();
+      expect(vide.content.overflows).toBe(false);
+
+      expect(resultat.content.overflows).toBe(true);
+      expect(resultat.resultInContent).toBe(true);
+      expect(resultat.copyInFooter).toBe(true);
+      expect(resultat.copyInContent).toBe(false);
+      expect(resultat.copyVisible).toBe(true);
+      expect(resultat.copy?.bottom ?? 0).toBeLessThanOrEqual(resultat.footer.bottom);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "absorbe une reprise multiligne sans déplacer le pied",
+    async () => {
+      const ui = await releve();
+      const avant = mesure(ui.measures, "result");
+      const pendant = mesure(ui.measures, "edited");
+
+      // Le champ grandit avec le texte ; c'est le contenu qui défile, pas la
+      // fenêtre qui s'ouvre — elle ne le peut pas.
+      expect(pendant.resultValue).toContain("ligne reprise 14");
+      expect(pendant.content.overflows).toBe(true);
+      expect(pendant.footer).toEqual(avant.footer);
+      expect(pendant.prompt).toEqual(avant.prompt);
+      expect(pendant.copyVisible).toBe(true);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "suit le curseur quand on écrit au bas d'un résultat plus haut que la fenêtre",
+    async () => {
+      const ui = await releve();
+      const frappe = mesure(ui.measures, "typing");
+
+      // Trois caractères envoyés à la vraie fenêtre, curseur en fin de champ.
+      // Le champ n'a pas de barre de défilement à lui : il grandit, et c'est
+      // la zone centrale qui doit amener le curseur sous les yeux. Sans cela
+      // on écrit sous le pied, à l'aveugle.
+      expect(frappe.resultValue).toContain("ligne reprise 14!!!");
+      expect(frappe.content.overflows).toBe(true);
+      expect(frappe.content.scrollTop).toBeGreaterThan(0);
+      expect(frappe.footerVisible).toBe(true);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "relance sur ⌘⏎ depuis le champ du résultat, sans recharger la fenêtre",
+    async () => {
+      const ui = await releve();
+      const relance = mesure(ui.measures, "rerun");
+
+      // Un rechargement jetterait le prompt sans un mot. Le marqueur posé dans
+      // la page prouve que le document n'a pas été rejoué.
+      expect(ui.reloadedOnRerunShortcut).toBe(false);
+      expect(ui.promptAfterRerun).toContain("point 24 a reformuler proprement");
+      // La relance a bien eu lieu : le champ ne porte plus la reprise.
+      expect(relance.resultValue).not.toContain("ligne reprise 14");
+      expect(relance.resultValue?.length ?? 0).toBeGreaterThan(0);
+      // Et elle s'ouvre par son début. La frappe précédente avait laissé la
+      // zone centrale défilée bas ; hériter de cette position ferait apparaître
+      // le nouveau résultat au milieu de lui-même.
+      expect(mesure(ui.measures, "typing").content.scrollTop).toBeGreaterThan(0);
+      expect(relance.content.scrollTop).toBe(0);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "pose l'annonce dans la fenêtre et au-dessus du pied",
+    async () => {
+      const ui = await releve();
+      const annonce = mesure(ui.measures, "toast");
+
+      expect(annonce.toast, "aucune annonce affichée").not.toBeNull();
+      if (annonce.toast === null) return;
+      expect(annonce.toast.top).toBeGreaterThanOrEqual(0);
+      expect(annonce.toast.bottom).toBeLessThanOrEqual(POPOVER_HEIGHT);
+      // Recouverte, elle ne sert à rien.
+      expect(annonce.toast.bottom).toBeLessThanOrEqual(annonce.footer.top);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "garde le pied visible quand le fournisseur refuse",
+    async () => {
+      const payload = await runDesktopProbe(
+        { REQRAFT_DESKTOP_E2E_SCENARIO: "popover-error" },
+        { ...MOCK_CONFIG, defaultProvider: "openai", defaultModel: "gpt-4o-mini" },
+      );
+
+      expect(payload.scenario?.error).toBeUndefined();
+      const erreur = payload.scenario?.popoverUi?.measures[0];
+      expect(erreur, "mesure d'erreur absente").toBeDefined();
+      if (erreur === undefined) return;
+      expect(erreur.name).toBe("error");
+      expect(erreur.footerVisible).toBe(true);
+      expect(erreur.documentOverflows).toBe(false);
+      // L'erreur remplace le résultat : rien à copier, et pas de bouton qui
+      // copierait le texte d'un run précédent.
+      expect(erreur.resultValue).toBeNull();
+      expect(erreur.copy).toBeNull();
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );

@@ -5,7 +5,11 @@ import {
   type CapsuleUiTargets,
   type CapsuleUiWindow,
 } from "./e2e-capsule.js";
-import { runPopoverUiScenario, type PopoverUiReport } from "./e2e-popover.js";
+import {
+  runPopoverErrorScenario,
+  runPopoverUiScenario,
+  type PopoverUiReport,
+} from "./e2e-popover.js";
 import type { RepromptService } from "./reprompt-service.js";
 import type { ShortcutHandlers } from "./shortcuts.js";
 import type { CapsuleOpenedPayload, RepromptResult } from "@/apps/desktop/shared/ipc-contract.js";
@@ -120,17 +124,10 @@ export async function runE2eScenario(
         };
       case "capsule-error":
         return { name, ui: await runCapsuleErrorScenario(uiTargets(targets)) };
-      case "popover-ui": {
-        const shotsDir = process.env[DESKTOP_E2E_SHOTS];
-        return {
-          name,
-          popoverUi: await runPopoverUiScenario({
-            window: targets.popoverWindow,
-            open: targets.shortcutHandlers.onPopover,
-            ...(shotsDir === undefined || shotsDir === "" ? {} : { shotsDir }),
-          }),
-        };
-      }
+      case "popover-ui":
+        return { name, popoverUi: await runPopoverUiScenario(popoverTargets(targets)) };
+      case "popover-error":
+        return { name, popoverUi: await runPopoverErrorScenario(popoverTargets(targets)) };
       default:
         return { name, error: `unknown scenario: ${name}` };
     }
@@ -141,14 +138,28 @@ export async function runE2eScenario(
 
 /** Ce dont les scénarios d'interface ont besoin, extrait des cibles. */
 function uiTargets(targets: E2eScenarioTargets): CapsuleUiTargets {
-  const shotsDir = process.env[DESKTOP_E2E_SHOTS];
   return {
     capsuleWindow: targets.capsuleWindow,
     openInput: () => {
       targets.shortcutHandlers.onInput();
     },
-    ...(shotsDir === undefined || shotsDir === "" ? {} : { shotsDir }),
+    ...shotsDir(),
   };
+}
+
+/** Les mêmes, pour la fenêtre du popover. */
+function popoverTargets(targets: E2eScenarioTargets): Parameters<typeof runPopoverUiScenario>[0] {
+  return {
+    window: targets.popoverWindow,
+    open: targets.shortcutHandlers.onPopover,
+    ...shotsDir(),
+  };
+}
+
+/** Le dossier de captures demandé, ou rien du tout. */
+function shotsDir(): { shotsDir?: string } {
+  const directory = process.env[DESKTOP_E2E_SHOTS];
+  return directory === undefined || directory === "" ? {} : { shotsDir: directory };
 }
 
 /** Le chemin du raccourci de saisie ouvre la vraie capsule sans toucher à l'OS. */

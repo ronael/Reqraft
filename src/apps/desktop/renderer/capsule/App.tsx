@@ -2,7 +2,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
 import { PromptEditor } from "./PromptEditor.js";
-import { ResultEditor } from "./ResultEditor.js";
+import { ResultEditor } from "../shared/ResultEditor.js";
 import { useCapsuleHeight } from "./useCapsuleHeight.js";
 import { useT } from "../shared/i18n.js";
 import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
@@ -1030,6 +1030,7 @@ export function App(): React.JSX.Element {
               <ResultEditor
                 value={finalText}
                 label={t("capsule.editLabel")}
+                surfaceClassName="capsule-result"
                 // Une fois l'acceptation partie, le texte est celui qui part.
                 readOnly={state === "applying"}
                 onChange={setEdited}

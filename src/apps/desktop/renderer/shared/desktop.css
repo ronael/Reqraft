@@ -252,7 +252,13 @@ body {
   color: inherit;
 }
 
-.capsule-stream {
+/*
+ * Le texte en cours de réception, puis le texte reçu : même police, même
+ * taille, même interligne. La seconde déclaration est la surface qui accueille
+ * le champ éditable, et c'est d'elle qu'il tient sa typographie.
+ */
+.capsule-stream,
+.capsule-result {
   margin: 0;
   white-space: pre-wrap;
   word-break: break-word;
@@ -266,11 +272,12 @@ body {
 /*
  * Le résultat final, éditable.
  *
- * Le champ remplace un `<pre>` sans rien déplacer : `.capsule-stream` porte
- * déjà la police, la taille et l'interligne, et tout ce qui suit ne fait
- * qu'annuler ce qu'un `textarea` ajoute de son côté — cadre, fond, retrait,
- * poignée de redimensionnement. Sans cela le texte sautait d'une ligne et de
- * quelques pixels au moment où le résultat arrivait.
+ * Le champ remplace un `<pre>` sans rien déplacer : la surface qui l'accueille
+ * — `.capsule-result` ici, `.popover-result` dans le panneau — porte déjà la
+ * police, la taille et l'interligne, et tout ce qui suit ne fait qu'annuler ce
+ * qu'un `textarea` ajoute de son côté : cadre, fond, retrait, poignée de
+ * redimensionnement. Sans cela le texte sautait d'une ligne et de quelques
+ * pixels au moment où le résultat arrivait.
  *
  * La hauteur suit le contenu sans mesurer quoi que ce soit : le conteneur
  * duplique le texte dans son pseudo-élément, invisible, et les deux occupent
@@ -278,36 +285,38 @@ body {
  * est toujours exactement celle du texte — jamais une ligne de retard, jamais
  * une oscillation pendant la frappe.
  */
-.capsule-result {
+.result-editor {
   display: grid;
 }
 
-.capsule-result::after {
+.result-editor::after {
   /* L'espace final : une ligne vide terminale compte quand même. */
   content: attr(data-replicated-value) " ";
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-size: 13px;
-  line-height: 21px;
   visibility: hidden;
 }
 
-.capsule-result-input,
-.capsule-result::after {
+.result-editor-input,
+.result-editor::after {
   grid-area: 1 / 1 / 2 / 2;
+  min-width: 0;
+  /* Le double doit être réglé exactement comme le champ, sinon la hauteur
+     qu'il dicte n'est pas celle du texte affiché. */
+  font: inherit;
 }
 
-.capsule-result-input {
+.result-editor-input {
   width: 100%;
   padding: 0;
   border: none;
   resize: none;
   overflow: hidden;
   background: transparent;
+  color: inherit;
 }
 
-.capsule-result-input:focus {
+.result-editor-input:focus {
   outline: none;
 }
 
@@ -792,6 +801,11 @@ kbd {
   margin-bottom: 4px;
 }
 
+/*
+ * Le résultat du popover : le texte reçu, puis la surface du champ éditable.
+ * Comme dans la capsule, c'est elle qui porte la typographie — le champ et son
+ * double n'en déclarent aucune, ils l'héritent.
+ */
 .popover-result {
   margin: 0 0 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

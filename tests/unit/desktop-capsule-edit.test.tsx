@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
-import { ResultEditor } from "@/apps/desktop/renderer/capsule/ResultEditor.js";
+import { ResultEditor } from "@/apps/desktop/renderer/shared/ResultEditor.js";
 import { PromptEditor } from "@/apps/desktop/renderer/capsule/PromptEditor.js";
 import { RESULT_ACCEPT_TEXT_MAX_LENGTH } from "@/apps/desktop/shared/ipc-contract.js";
 
@@ -34,6 +34,7 @@ function editeur(value: string, readOnly = false): string {
       value={value}
       label="Résultat"
       readOnly={readOnly}
+      surfaceClassName="capsule-result"
       onChange={() => undefined}
       onEditingChange={() => undefined}
     />,
@@ -72,19 +73,21 @@ describe("le champ du résultat", () => {
   it("ne change pas visuellement au focus", async () => {
     const css = await readFile(STYLESHEET, "utf8");
 
-    expect(css).not.toContain(".capsule-result:focus-within");
-    expect(css).toContain(".capsule-result-input:focus {\n  outline: none;");
+    expect(css).not.toContain(".result-editor:focus-within");
+    expect(css).toContain(".result-editor-input:focus {\n  outline: none;");
   });
 
   it("garde la géométrie et le style du bloc qu'il remplace", async () => {
-    // Le champ succède à un `<pre class="capsule-stream">`. Il porte la même
-    // classe — donc la même police, la même taille et le même interligne — et
-    // n'annule que ce qu'un `textarea` ajoute de son côté. Sans cela le texte
-    // sautait au moment où le résultat arrivait.
-    expect(editeur("x")).toContain('class="capsule-stream capsule-result-input"');
+    // Le champ succède à un `<pre class="capsule-stream">`. Sa surface porte
+    // la même règle de typographie — donc la même police, la même taille et le
+    // même interligne — et le champ n'annule que ce qu'un `textarea` ajoute de
+    // son côté. Sans cela le texte sautait au moment où le résultat arrivait.
+    expect(editeur("x")).toContain('class="result-editor capsule-result"');
+    expect(editeur("x")).toContain('class="result-editor-input"');
 
     const css = await readFile(STYLESHEET, "utf8");
-    const regle = css.slice(css.indexOf("\n.capsule-result-input {"));
+    expect(css).toContain(".capsule-stream,\n.capsule-result {");
+    const regle = css.slice(css.indexOf("\n.result-editor-input {"));
     const corps = regle.slice(regle.indexOf("{") + 1, regle.indexOf("}"));
 
     for (const annule of [
@@ -95,8 +98,8 @@ describe("le champ du résultat", () => {
     ]) {
       expect(corps, `le champ doit annuler ${annule}`).toContain(annule);
     }
-    // Ni police ni interligne redéclarés : ils viennent de `.capsule-stream`,
-    // et une seconde déclaration ici les ferait diverger.
+    // Ni police ni interligne redéclarés : ils viennent de la surface, et une
+    // seconde déclaration ici les ferait diverger.
     expect(corps).not.toMatch(/(^|;|\s)font-family\s*:/);
     expect(corps).not.toMatch(/(^|;|\s)line-height\s*:/);
   });

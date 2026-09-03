@@ -15,6 +15,12 @@ import { RESULT_ACCEPT_TEXT_MAX_LENGTH } from "@/apps/desktop/shared/ipc-contrac
  * dans un pseudo-élément invisible, et le champ occupe la même cellule de
  * grille. Un `scrollHeight` recalculé à chaque frappe ferait osciller la
  * capsule d'une ligne pendant la frappe, ce que la géométrie stable interdit.
+ *
+ * La capsule et le popover montrent le même champ. Ce que les deux surfaces ne
+ * partagent pas, c'est la typographie : 13 px dans une capsule de 560 px, 11 px
+ * dans un panneau de 320. Elle est donc portée par la classe de la surface, sur
+ * le conteneur, et le champ comme son double la reprennent par héritage — une
+ * seule déclaration par surface, jamais deux qui pourraient diverger.
  */
 
 export interface ResultEditorProps {
@@ -23,15 +29,18 @@ export interface ResultEditorProps {
   label: string;
   /** Pendant l'application, le texte est celui qui part : il ne bouge plus. */
   readOnly: boolean;
+  /** La classe de la surface d'accueil, qui porte la typographie du texte. */
+  surfaceClassName: string;
   onChange(text: string): void;
-  onEditingChange(editing: boolean): void;
+  /** Seules les surfaces dont la géométrie dépend de la frappe s'en servent. */
+  onEditingChange?(editing: boolean): void;
 }
 
 export function ResultEditor(props: Readonly<ResultEditorProps>): React.JSX.Element {
   return (
-    <div className="capsule-result" data-replicated-value={props.value}>
+    <div className={`result-editor ${props.surfaceClassName}`} data-replicated-value={props.value}>
       <textarea
-        className="capsule-stream capsule-result-input"
+        className="result-editor-input"
         aria-label={props.label}
         title={props.label}
         value={props.value}
@@ -46,10 +55,10 @@ export function ResultEditor(props: Readonly<ResultEditorProps>): React.JSX.Elem
           props.onChange(event.target.value);
         }}
         onFocus={() => {
-          props.onEditingChange(true);
+          props.onEditingChange?.(true);
         }}
         onBlur={() => {
-          props.onEditingChange(false);
+          props.onEditingChange?.(false);
         }}
       />
     </div>
