@@ -311,7 +311,8 @@ describe("l'annonce sur un résultat long", () => {
     // Dans le corps, elle défilerait avec le résultat et serait invisible dès
     // la première page ; sous le pied, elle serait recouverte.
     expect(couche?.closest(".capsule-body")).toBeNull();
-    expect(couche?.parentElement?.className).toBe("capsule");
+    expect(couche?.parentElement?.className).toBe("capsule-bottom");
+    expect(couche?.closest(".capsule")).not.toBeNull();
     expect(document.querySelector(".capsule-footer")?.compareDocumentPosition(couche as Node)).toBe(
       Node.DOCUMENT_POSITION_FOLLOWING,
     );

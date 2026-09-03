@@ -91,14 +91,6 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
-  /*
-   * Au-dessus du pied, jamais dessus.
-   *
-   * La rangée de verdict (34px) et la rangée de commandes (28px) font 63px
-   * bordure comprise ; 76px laisse une respiration au-dessus sans décoller
-   * l'annonce du contenu.
-   */
-  --rq-toast-offset: 76px;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(16, 16, 23, 0.92);
@@ -106,6 +98,17 @@ body {
     0 24px 70px rgba(0, 0, 0, 0.62),
     0 0 0 1px rgba(167, 139, 250, 0.2),
     0 0 60px rgba(139, 92, 246, 0.1);
+}
+
+.capsule-bottom {
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* La hauteur du pied est variable : le toast se place depuis son bord réel. */
+.capsule-bottom > .toast-layer {
+  position: absolute;
+  bottom: calc(100% + 12px);
 }
 
 /* ── Bandeau : origine du texte + profil détecté ─────────────────────── */

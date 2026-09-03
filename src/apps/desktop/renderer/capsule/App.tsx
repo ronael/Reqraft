@@ -827,10 +827,23 @@ export function App(): React.JSX.Element {
       "pin-comparison": basculerComparaison,
     };
     const onKeyDown = (event: KeyboardEvent): void => {
+      // La cible DOM est la vérité au moment exact de la frappe. L'état React
+      // reste utile pour figer la géométrie, mais il peut avoir un rendu de
+      // retard après un focus programmatique : dans cet intervalle, ⌘R tapé
+      // dans le champ ne doit surtout pas devenir une relance.
+      const target = event.target;
+      const eventComesFromEditor =
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLInputElement ||
+        (target instanceof HTMLElement && target.isContentEditable);
+      const keyboardContext = {
+        ...contexteClavier,
+        editing: contexteClavier.editing || eventComesFromEditor,
+      };
       // Couper le navigateur d'abord, et sur la frappe : une répétition de ⌘D
       // n'a plus de commande à exécuter mais reste une frappe de la capsule.
-      if (preventsBrowserDefault(event, contexteClavier)) event.preventDefault();
-      const intent = resolveCapsuleKeyDown(event, contexteClavier);
+      if (preventsBrowserDefault(event, keyboardContext)) event.preventDefault();
+      const intent = resolveCapsuleKeyDown(event, keyboardContext);
       if (intent !== null) executer[intent]();
     };
     const onKeyUp = (event: KeyboardEvent): void => {
@@ -1090,44 +1103,46 @@ export function App(): React.JSX.Element {
         </section>
       )}
 
-      <CapsuleFooter
-        state={state}
-        expansion={expansion === true}
-        comparisonPinned={comparison.pinned}
-        running={running}
-        elapsedMs={elapsedMs}
-        finalResult={finalResult}
-        verdictLabel={verdictLabel}
-        verdictDetail={verdictDetail}
-        verdictItems={finding?.items ?? []}
-        profileLabel={profilAffiche}
-        pickable={profilChoisissable}
-        onPick={() => {
-          setPicking(true);
-        }}
-        onCycleLevel={() => {
-          setLevel(cycleRepromptLevel(level, 1));
-        }}
-        level={level}
-        onSubmit={() => {
-          if (input.trim() === "") return;
-          dispatch("submitted");
-          startRun(input, level);
-        }}
-        onAccept={accept}
-        onCompare={basculerComparaison}
-        onCopy={copier}
-        onRerun={relancer}
-        onLevel={() => {
-          changerNiveau(1);
-        }}
-        onCancel={cancelRun}
-        onClose={fermer}
-      />
+      <div className="capsule-bottom">
+        <CapsuleFooter
+          state={state}
+          expansion={expansion === true}
+          comparisonPinned={comparison.pinned}
+          running={running}
+          elapsedMs={elapsedMs}
+          finalResult={finalResult}
+          verdictLabel={verdictLabel}
+          verdictDetail={verdictDetail}
+          verdictItems={finding?.items ?? []}
+          profileLabel={profilAffiche}
+          pickable={profilChoisissable}
+          onPick={() => {
+            setPicking(true);
+          }}
+          onCycleLevel={() => {
+            setLevel(cycleRepromptLevel(level, 1));
+          }}
+          level={level}
+          onSubmit={() => {
+            if (input.trim() === "") return;
+            dispatch("submitted");
+            startRun(input, level);
+          }}
+          onAccept={accept}
+          onCompare={basculerComparaison}
+          onCopy={copier}
+          onRerun={relancer}
+          onLevel={() => {
+            changerNiveau(1);
+          }}
+          onCancel={cancelRun}
+          onClose={fermer}
+        />
 
-      {/* Hors du corps : le message ne défile pas avec le résultat et ne
-          déplace rien, et il se pose au-dessus du pied sans le recouvrir. */}
-      <Toast toast={toast} onDismiss={fermerAnnonce} />
+        {/* Ancré au pied lui-même : sa hauteur peut changer sans que le toast
+            repose sur une constante qui finira par devenir fausse. */}
+        <Toast toast={toast} onDismiss={fermerAnnonce} />
+      </div>
     </main>
   );
 }

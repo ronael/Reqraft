@@ -115,15 +115,20 @@ describe("place de l'annonce dans la fenêtre", () => {
   });
 
   it("se pose au-dessus du pied, jamais dessus", async () => {
-    // La couche lit le décalage ; chaque surface qui l'affiche doit le
-    // déclarer, sinon l'annonce recouvre les commandes de sa propre fenêtre.
+    // Popover et réglages ont un pied fixe. La capsule, dont le verdict peut
+    // prendre plusieurs lignes, s'ancre au bord réel de son pied.
     expect(await ruleBody(".toast-layer")).toContain("bottom: var(--rq-toast-offset");
 
-    for (const surface of [".capsule", ".popover", ".settings"]) {
+    for (const surface of [".popover", ".settings"]) {
       expect(await ruleBody(surface), `${surface} doit déclarer son décalage`).toContain(
         "--rq-toast-offset:",
       );
     }
+
+    expect(await ruleBody(".capsule-bottom")).toContain("position: relative");
+    const capsuleLayer = await ruleBody(".capsule-bottom > .toast-layer");
+    expect(capsuleLayer).toContain("position: absolute");
+    expect(capsuleLayer).toContain("bottom: calc(100% + 12px)");
   });
 
   it("réduit son mouvement quand le système le demande", async () => {
