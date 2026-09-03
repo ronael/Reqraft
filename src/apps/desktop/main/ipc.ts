@@ -44,6 +44,7 @@ import {
 } from "@/profiles/local-store.js";
 import { duplicateProfile, exportProfile } from "@/profiles/transfer.js";
 import {
+  CapsuleResizeRequestSchema,
   ConfigWriteRequestSchema,
   CURRENT_WELCOME_TOUR_VERSION,
   CredentialDeleteRequestSchema,
@@ -139,6 +140,17 @@ export interface DesktopIpcDependencies {
   openWelcomeTour?: () => void;
   /** Pourquoi la capsule est ouverte, pour qu'elle puisse le demander. */
   capsulePending?: () => CapsuleOpenedPayload | null;
+  /**
+   * Donne à la capsule la hauteur qu'elle demande, si c'est bien elle qui
+   * demande.
+   *
+   * `sender` est passé jusqu'ici parce que le preload est le même pour les
+   * quatre surfaces : sans cette vérification, la fenêtre de réglages ou le
+   * popover pourraient redimensionner la capsule. Le renderer n'obtient jamais
+   * la fenêtre elle-même — il propose un nombre, et le processus principal le
+   * borne à la zone de travail.
+   */
+  resizeCapsule?: (height: number, sender: RunEventSender) => void;
   /**
    * Cache la capsule avant de coller, et la ramène si le collage échoue.
    *
@@ -462,6 +474,11 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.capsulePending, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     return dependencies.capsulePending?.() ?? null;
+  });
+
+  ipcMain.handle(IPC_CHANNELS.capsuleResize, (event, payload) => {
+    const { height } = CapsuleResizeRequestSchema.parse(payload);
+    dependencies.resizeCapsule?.(height, event.sender);
   });
 
   ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {

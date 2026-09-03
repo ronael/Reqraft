@@ -1,3 +1,10 @@
+import {
+  runCapsuleErrorScenario,
+  runCapsuleUiScenario,
+  type CapsuleUiReport,
+  type CapsuleUiTargets,
+  type CapsuleUiWindow,
+} from "./e2e-capsule.js";
 import type { RepromptService } from "./reprompt-service.js";
 import type { ShortcutHandlers } from "./shortcuts.js";
 import type { CapsuleOpenedPayload, RepromptResult } from "@/apps/desktop/shared/ipc-contract.js";
@@ -21,6 +28,8 @@ export const DESKTOP_E2E_PROBE = "REQRAFT_DESKTOP_E2E_PROBE";
 export const DESKTOP_E2E_REJECT_SHORTCUTS = "REQRAFT_DESKTOP_E2E_REJECT_SHORTCUTS";
 export const DESKTOP_E2E_SCENARIO = "REQRAFT_DESKTOP_E2E_SCENARIO";
 export const DESKTOP_E2E_HOLD = "REQRAFT_DESKTOP_E2E_HOLD";
+/** Dossier où déposer une capture par état de capsule ; vide = aucune. */
+export const DESKTOP_E2E_SHOTS = "REQRAFT_DESKTOP_E2E_SHOTS";
 
 export interface E2eScenarioTargets {
   repromptService: RepromptService;
@@ -30,6 +39,16 @@ export interface E2eScenarioTargets {
   popoverVisible: () => boolean;
   setShortcutsSuspended: (suspended: boolean) => void;
   shortcutsSuspended: () => boolean;
+  /**
+   * La fenêtre capsule elle-même.
+   *
+   * Les scénarios d'interface pilotent le vrai renderer et mesurent des
+   * rectangles rendus : c'est la seule façon de prouver qu'un pied tient dans
+   * la fenêtre à 560 px de large. Voir `e2e-capsule.ts`.
+   */
+  capsuleWindow: () => CapsuleUiWindow;
+  /** Les libellés des accélérateurs du menu applicatif, tels qu'installés. */
+  menuAccelerators: () => string[];
 }
 
 export interface E2eScenarioReport {
@@ -42,6 +61,10 @@ export interface E2eScenarioReport {
   shortcutsSuspended?: boolean;
   shortcutsResumed?: boolean;
   run?: { rewritten: string; model: string; profile: string };
+  /** Les mesures prises dans le vrai renderer (scénarios `capsule-ui*`). */
+  ui?: CapsuleUiReport;
+  /** Les accélérateurs que le menu applicatif détient réellement. */
+  menuAccelerators?: string[];
   error?: string;
 }
 
@@ -86,12 +109,32 @@ export async function runE2eScenario(
         return suspensionScenario(name, targets);
       case "run":
         return await runScenario(name, targets);
+      case "capsule-ui":
+        return {
+          name,
+          ui: await runCapsuleUiScenario(uiTargets(targets)),
+          menuAccelerators: targets.menuAccelerators(),
+        };
+      case "capsule-error":
+        return { name, ui: await runCapsuleErrorScenario(uiTargets(targets)) };
       default:
         return { name, error: `unknown scenario: ${name}` };
     }
   } catch (cause) {
     return { name, error: cause instanceof Error ? cause.message : String(cause) };
   }
+}
+
+/** Ce dont les scénarios d'interface ont besoin, extrait des cibles. */
+function uiTargets(targets: E2eScenarioTargets): CapsuleUiTargets {
+  const shotsDir = process.env[DESKTOP_E2E_SHOTS];
+  return {
+    capsuleWindow: targets.capsuleWindow,
+    openInput: () => {
+      targets.shortcutHandlers.onInput();
+    },
+    ...(shotsDir === undefined || shotsDir === "" ? {} : { shotsDir }),
+  };
 }
 
 /** Le chemin du raccourci de saisie ouvre la vraie capsule sans toucher à l'OS. */

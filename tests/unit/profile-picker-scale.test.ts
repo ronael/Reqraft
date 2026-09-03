@@ -5,6 +5,7 @@ import { visibleWindow } from "@/apps/cli/tui/model/overlay.js";
 import { dialogBodyCapacity } from "@/apps/cli/tui/primitives/Dialog.js";
 import { POPOVER_HEIGHT, POPOVER_WIDTH } from "@/apps/desktop/main/windows/popover.js";
 import { CAPSULE_HEIGHT } from "@/apps/desktop/main/windows/capsule.js";
+import { CAPSULE_MAX_HEIGHT, capsuleHeightPolicy } from "@/apps/desktop/shared/capsule-geometry.js";
 import type { ProfileCatalogEntry } from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
@@ -99,13 +100,18 @@ describe("regrouper : le même ordre d'origines", () => {
 });
 
 describe("borner : la fenêtre ne suit pas le catalogue", () => {
-  it("garde des fenêtres desktop de taille fixe", () => {
-    // Les constantes SONT le contrat : la capsule et le popover sont des
-    // fenêtres non redimensionnables, et Electron ne dessine rien au-delà.
-    // Une liste qui ferait grandir la fenêtre serait simplement coupée.
+  it("garde des fenêtres desktop bornées, quelle que soit la liste", () => {
+    // Les constantes SONT le contrat : Electron ne dessine rien au-delà de la
+    // fenêtre, et une liste qui la ferait grandir serait simplement coupée. Le
+    // popover est fixe ; la capsule suit son contenu mais dans des bornes
+    // arrêtées d'avance, et la feuille de profils reçoit toujours la hauteur de
+    // travail plutôt que celle du résultat qu'elle recouvre
+    // (`capsuleHeightPolicy`, régime `reserved`).
     expect(POPOVER_WIDTH).toBe(320);
     expect(POPOVER_HEIGHT).toBe(260);
     expect(CAPSULE_HEIGHT).toBe(380);
+    expect(capsuleHeightPolicy({ state: "ready", picking: true, editing: false })).toBe("reserved");
+    expect(CAPSULE_HEIGHT).toBeLessThanOrEqual(CAPSULE_MAX_HEIGHT);
   });
 
   it("borne la tranche TUI à la hauteur du dialogue, quel que soit le catalogue", () => {

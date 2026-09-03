@@ -6,6 +6,15 @@ import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
+import {
+  CAPSULE_INPUT_HEIGHT,
+  CAPSULE_HEIGHT_STEP,
+  CAPSULE_MAX_HEIGHT,
+  CAPSULE_MIN_HEIGHT,
+  CAPSULE_RESERVED_HEIGHT,
+  CAPSULE_WIDTH,
+} from "@/apps/desktop/shared/capsule-geometry.js";
+import type { CapsuleMeasure, CapsuleUiReport } from "@/apps/desktop/main/e2e-capsule.js";
 
 const electronPath =
   process.platform === "win32"
@@ -58,9 +67,20 @@ interface DesktopE2ePayload {
     shortcutsSuspended?: boolean;
     shortcutsResumed?: boolean;
     run?: { rewritten: string; model: string; profile: string };
+    ui?: CapsuleUiReport;
+    menuAccelerators?: string[];
     error?: string;
   };
 }
+
+/** La configuration minimale qui laisse un run partir, sans clé ni réseau. */
+const MOCK_CONFIG = {
+  defaultProvider: "mock",
+  defaultModel: "mock-model",
+  defaultProfile: "writing",
+  defaultLevel: "standard",
+  telemetry: false,
+};
 
 const temporaryHomes: string[] = [];
 
@@ -390,6 +410,225 @@ describeElectron("desktop Electron smoke", () => {
       ]);
       expect(payload.shortcuts.conflicts).toEqual([]);
       expect(payload.windowCount).toBeGreaterThanOrEqual(2);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+});
+
+/**
+ * La géométrie de la capsule, mesurée dans le vrai renderer.
+ *
+ * Ces cas ne relisent aucune feuille de style : le processus principal ouvre la
+ * vraie fenêtre, la pilote, et rend les rectangles que le moteur de rendu a
+ * calculés à 560 px de large. C'est la seule façon de prouver qu'un pied tient
+ * dans une fenêtre de 172 px — une règle CSS ne le dit pas.
+ */
+describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", () => {
+  /**
+   * Une seule campagne de mesures pour tous les cas.
+   *
+   * Le scénario enchaîne onze états dans la vraie fenêtre : le relancer par
+   * assertion coûterait une minute de plus sans rien prouver de neuf. Les cas
+   * qui suivent lisent chacun une facette du même relevé.
+   */
+  let campagne: Promise<{ ui: CapsuleUiReport; menuAccelerators: string[] }> | null = null;
+
+  function releve(): Promise<{ ui: CapsuleUiReport; menuAccelerators: string[] }> {
+    campagne ??= runDesktopProbe({ REQRAFT_DESKTOP_E2E_SCENARIO: "capsule-ui" }, MOCK_CONFIG).then(
+      (payload) => {
+        expect(payload.scenario?.error).toBeUndefined();
+        const ui = payload.scenario?.ui;
+        if (ui === undefined) throw new Error("le scénario n'a rendu aucune mesure");
+        return { ui, menuAccelerators: payload.scenario?.menuAccelerators ?? [] };
+      },
+    );
+    return campagne;
+  }
+
+  async function capsuleUi(): Promise<CapsuleUiReport> {
+    return (await releve()).ui;
+  }
+
+  function byName(ui: CapsuleUiReport, name: string): CapsuleMeasure {
+    const found = ui.measures.find((measure) => measure.name === name);
+    if (found === undefined) throw new Error(`mesure « ${name} » absente`);
+    return found;
+  }
+
+  it(
+    "adapte sa hauteur à chaque état posé, sans jamais perdre son pied",
+    async () => {
+      const ui = await capsuleUi();
+
+      for (const measure of ui.measures) {
+        expect(measure.window.width, measure.name).toBe(CAPSULE_WIDTH);
+        expect(measure.window.height, measure.name).toBeGreaterThanOrEqual(CAPSULE_MIN_HEIGHT);
+        expect(measure.window.height, measure.name).toBeLessThanOrEqual(CAPSULE_MAX_HEIGHT);
+        // §4.3 : le pied porte le verdict et les commandes. Une capsule dont
+        // le pied passe sous le bord est une capsule sans issue.
+        expect(measure.footerVisible, `${measure.name} : pied hors de la fenêtre`).toBe(true);
+        expect(measure.footer.height, measure.name).toBeGreaterThan(0);
+      }
+
+      const court = byName(ui, "short");
+      const moyen = byName(ui, "medium");
+      const long = byName(ui, "long");
+
+      // Un résultat court ne laisse pas un demi-écran de vide : c'est tout
+      // l'objet de l'adaptation.
+      expect(court.window.height).toBeLessThan(CAPSULE_RESERVED_HEIGHT);
+      expect(court.body.overflows).toBe(false);
+      expect(court.window.height - court.naturalHeight).toBeLessThan(CAPSULE_HEIGHT_STEP);
+
+      // Chaque taille de contenu a sa hauteur, dans l'ordre.
+      expect(moyen.window.height).toBeGreaterThan(court.window.height);
+      expect(long.window.height).toBeGreaterThan(moyen.window.height);
+
+      // Un résultat long est borné et défile : la capsule reste une capsule.
+      expect(long.window.height).toBe(CAPSULE_MAX_HEIGHT);
+      expect(long.body.overflows).toBe(true);
+      expect(long.naturalHeight).toBeGreaterThan(CAPSULE_MAX_HEIGHT);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "ouvre la saisie libre à la hauteur annoncée, sans rétrécir après coup",
+    async () => {
+      const ui = await capsuleUi();
+      const saisie = byName(ui, "input");
+
+      // La constante sert à ouvrir la fenêtre AVANT que le renderer n'ait
+      // mesuré quoi que ce soit. Si elle s'écarte du rendu réel, la capsule
+      // apparaît puis saute — et ce test est ce qui l'annonce.
+      expect(Math.abs(saisie.window.height - CAPSULE_INPUT_HEIGHT)).toBeLessThanOrEqual(
+        CAPSULE_HEIGHT_STEP,
+      );
+      expect(saisie.body.overflows).toBe(false);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "ne bouge pas d'un pixel pendant qu'on édite le résultat",
+    async () => {
+      const ui = await capsuleUi();
+      const avant = byName(ui, "short-again");
+      const pendant = byName(ui, "editing-short");
+      const apres = byName(ui, "edited-short-blurred");
+
+      // Quatorze lignes collées dans une capsule de 172 px : le corps défile,
+      // la fenêtre ne bronche pas. C'est la règle qui remplace le
+      // `ResizeObserver` du POC, et elle se vérifie ici, pas en relisant du code.
+      expect(pendant.window).toEqual(avant.window);
+      expect(pendant.naturalHeight).toBeGreaterThan(pendant.window.height);
+      expect(pendant.body.overflows).toBe(true);
+      expect(pendant.footerVisible).toBe(true);
+
+      // Puis, une seule fois, quand le champ rend la main.
+      expect(apres.window.height).toBeGreaterThan(pendant.window.height);
+
+      // Même chose sur un résultat déjà au plafond : rien à gagner, rien qui bouge.
+      expect(byName(ui, "editing-long").window).toEqual(byName(ui, "long").window);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "retrouve exactement ses bornes après un aller-retour de comparaison",
+    async () => {
+      const ui = await capsuleUi();
+
+      // La dérive est le défaut classique d'une fenêtre qui se replace à partir
+      // de sa position courante : chaque cycle la décale un peu plus. La
+      // position est ici recalculée depuis l'ancre de la session.
+      expect(byName(ui, "long-again").window).toEqual(byName(ui, "long").window);
+      expect(byName(ui, "short-again").window).toEqual(byName(ui, "short").window);
+      expect(byName(ui, "comparison").body.scrollTop).toBe(0);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "garde l'annonce dans la fenêtre et au-dessus du pied, à toutes les tailles",
+    async () => {
+      const ui = await capsuleUi();
+      const annonces = ui.measures.filter((measure) => measure.name.endsWith("-toast"));
+
+      expect(annonces.length).toBeGreaterThanOrEqual(3);
+      for (const measure of annonces) {
+        const toast = measure.toast;
+        expect(toast, `${measure.name} : aucune annonce affichée`).not.toBeNull();
+        if (toast === null) continue;
+        expect(toast.top, measure.name).toBeGreaterThanOrEqual(0);
+        expect(toast.bottom, measure.name).toBeLessThanOrEqual(measure.window.height);
+        // Au-dessus du pied, jamais dessous : recouverte, elle ne sert à rien.
+        expect(toast.bottom, measure.name).toBeLessThanOrEqual(measure.footer.top);
+      }
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "ne recharge pas la fenêtre quand ⌘R arrive pendant l'édition",
+    async () => {
+      const ui = await capsuleUi();
+
+      // Le rechargement jetterait le texte corrigé sans un mot. La frappe est
+      // envoyée à la fenêtre réelle, et le marqueur posé dans la page prouve
+      // que le document n'a pas été rejoué.
+      expect(ui.reloadedOnRerunShortcut).toBe(false);
+      expect(ui.textAfterRerunShortcut).toContain("ligne editee 14");
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "ne laisse aucun raccourci de menu confisquer ⌘R ni déformer la capsule",
+    async () => {
+      const { menuAccelerators: accelerators } = await releve();
+
+      // Le menu par défaut d'Electron porte « Recharger ⌘R », et un raccourci
+      // de menu passe AVANT le renderer sur macOS : aucun `preventDefault` de
+      // la capsule ne peut l'arrêter. Le menu posé par l'application ne doit
+      // donc pas le contenir — ni le zoom, qui déforme une géométrie calculée
+      // à 560 px.
+      expect(accelerators.length, "aucun menu applicatif installé").toBeGreaterThan(0);
+      for (const entry of accelerators) {
+        const [role = "", accelerator = ""] = entry.split(":");
+        expect(["reload", "forcereload", "resetzoom", "zoomin", "zoomout"]).not.toContain(
+          role.toLowerCase(),
+        );
+        expect(accelerator.replace("CommandOrControl", "CmdOrCtrl"), entry).not.toBe("CmdOrCtrl+R");
+      }
+      // Le menu Édition reste entier : ⌘C, ⌘V et ⌘A des champs en dépendent.
+      expect(accelerators).toContain("copy:CommandOrControl+C");
+      expect(accelerators).toContain("paste:CommandOrControl+V");
+      expect(accelerators).toContain("selectall:CommandOrControl+A");
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "resserre aussi l'écran d'erreur, plutôt que de l'étaler sur la hauteur de travail",
+    async () => {
+      const payload = await runDesktopProbe(
+        { REQRAFT_DESKTOP_E2E_SCENARIO: "capsule-error" },
+        {
+          ...MOCK_CONFIG,
+          defaultProvider: "openai",
+          defaultModel: "gpt-4o-mini",
+        },
+      );
+
+      expect(payload.scenario?.error).toBeUndefined();
+      const erreur = payload.scenario?.ui?.measures[0];
+      expect(erreur, "mesure d'erreur absente").toBeDefined();
+      if (erreur === undefined) return;
+      expect(erreur.name).toBe("error");
+      expect(erreur.window.height).toBeLessThan(CAPSULE_RESERVED_HEIGHT);
+      expect(erreur.footerVisible).toBe(true);
+      expect(erreur.body.overflows).toBe(false);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );

@@ -9,6 +9,7 @@ import {
   dialog,
   globalShortcut,
   ipcMain,
+  Menu,
   Notification,
   screen,
   shell,
@@ -39,13 +40,14 @@ import { applyCrashReportPolicy } from "./crash-report.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
 import { buildOnboardingState, registerIpcHandlers } from "./ipc.js";
 import { createMacosBridge, createOsascriptRunner } from "./macos.js";
+import { installDesktopMenu } from "./menu.js";
 import {
   createSystemPermissionsProbe,
   type PermissionsProbe,
   probePermissions,
   requestAccessibility,
 } from "./permissions.js";
-import { RepromptService } from "./reprompt-service.js";
+import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type { CapsuleOpenedPayload } from "@/apps/desktop/shared/ipc-contract.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
@@ -350,6 +352,72 @@ function createDesktopUpdateController(tray: TrayController): {
   return { service, check, openDownload, checkAtStartup };
 }
 
+/**
+ * Les accélérateurs que le menu applicatif détient vraiment.
+ *
+ * `⌘R` est le cas qui compte : un menu par défaut y met « Recharger », et un
+ * accélérateur de menu est traité par le système AVANT le renderer — aucun
+ * `preventDefault` de la capsule ne peut l'arrêter. Le remplacement du texte
+ * en cours d'édition disparaîtrait avec le rechargement, sans un mot.
+ */
+function applicationMenuAccelerators(): string[] {
+  const collect = (items: readonly Electron.MenuItem[]): string[] =>
+    items.flatMap((item) => {
+      // Les types annoncent `Menu | undefined` ; à l'exécution une entrée sans
+      // sous-menu porte `null`. Lire l'un sans l'autre a déjà planté la sonde.
+      const submenu = item.submenu as Electron.Menu | null | undefined;
+      const name = item.role ?? item.label;
+      return [
+        // `accelerator` vaut `null`, pas `undefined`, quand l'entrée n'en a pas.
+        ...(item.accelerator === null ? [] : [`${name}:${item.accelerator}`]),
+        ...(submenu === null || submenu === undefined ? [] : collect(submenu.items)),
+      ];
+    });
+  const menu = Menu.getApplicationMenu();
+  return menu === null ? [] : collect(menu.items);
+}
+
+/**
+ * Seule la capsule redimensionne la capsule.
+ *
+ * Le preload est le même pour les quatre surfaces : sans cette comparaison, la
+ * fenêtre de réglages ou le popover pourraient redimensionner la capsule depuis
+ * leur propre renderer. Le renderer n'obtient jamais la fenêtre — il propose un
+ * nombre, que `CapsuleWindow.resize` borne à la zone de travail.
+ */
+function createCapsuleResizer(
+  capsule: () => CapsuleWindow,
+): (height: number, sender: RunEventSender) => void {
+  return (height, sender) => {
+    const target = capsule();
+    if (target.window.isDestroyed() || sender !== target.window.webContents) return;
+    target.resize(height);
+  };
+}
+
+/** Où exporter un profil. Le renderer ne nomme jamais un chemin : l'OS le fait. */
+async function chooseExportPath(defaultFileName: string): Promise<string | undefined> {
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultFileName,
+    filters: [{ name: t("main.profileFileType"), extensions: ["json"] }],
+  });
+  return result.canceled ? undefined : result.filePath;
+}
+
+/** Le menu applicatif réel, posé avant toute fenêtre. Voir `menu.ts`. */
+function installApplicationMenu(): void {
+  installDesktopMenu(
+    {
+      buildFromTemplate: (template) =>
+        Menu.buildFromTemplate(template as Electron.MenuItemConstructorOptions[]),
+      setApplicationMenu: (menu) => {
+        Menu.setApplicationMenu(menu as Electron.Menu);
+      },
+    },
+    { devTools: !app.isPackaged },
+  );
+}
+
 function reportRejectedShortcuts(resolution: ShortcutResolution): void {
   if (resolution.registered.length > 0) return;
   console.error(
@@ -436,7 +504,7 @@ function createShortcutHandlers(deps: {
         // `liveCapsule()` comme la branche saisie : la capture aussi doit
         // survivre à une fenêtre détruite, et c'est le chemin le plus utilisé.
         const target = deps.liveCapsule();
-        target.show({ kind: "cursor", point: cursor });
+        target.show({ kind: "cursor", point: cursor }, "capture");
         deps.ouvertures.annonce(target, "capture");
       };
       void deps.captureService
@@ -450,7 +518,7 @@ function createShortcutHandlers(deps: {
     onInput: () => {
       deps.captureService.clear();
       const target = deps.liveCapsule();
-      target.show({ kind: "centered" });
+      target.show({ kind: "centered" }, "input");
       deps.ouvertures.annonce(target, "input");
     },
     // La vraie fenêtre popover, la même que celle du clic sur l'icône : deux
@@ -471,6 +539,10 @@ function bootstrap(): void {
   }
 
   void app.whenReady().then(async () => {
+    // Avant toute fenêtre : le menu par défaut d'Electron détient ⌘R, et un
+    // accélérateur de menu passe avant le renderer.
+    installApplicationMenu();
+
     await applyConfiguredLocale();
 
     await preloadProfileCatalog();
@@ -619,6 +691,7 @@ function bootstrap(): void {
         openOnboarding(true);
       },
       capsulePending: () => ouvertures.pending(),
+      resizeCapsule: createCapsuleResizer(() => capsule),
       // Rendre le focus clavier avant de coller, et ramener la capsule si le
       // remplacement n'a pas eu lieu — c'est elle qui porte le message.
       hideCapsule: () => {
@@ -647,14 +720,7 @@ function bootstrap(): void {
         onboardingWindow?.close();
       },
       shortcutState: () => shortcutState(shortcutResolution, tray),
-      showSaveDialog: async (defaultFileName) => {
-        // The renderer never names a path: the user does, through the OS.
-        const result = await dialog.showSaveDialog({
-          defaultPath: defaultFileName,
-          filters: [{ name: t("main.profileFileType"), extensions: ["json"] }],
-        });
-        return result.canceled ? undefined : result.filePath;
-      },
+      showSaveDialog: chooseExportPath,
     });
 
     try {
@@ -706,6 +772,8 @@ function bootstrap(): void {
           capsuleVisible: () => !capsule.window.isDestroyed() && capsule.window.isVisible(),
           capsulePending: () => ouvertures.pending(),
           popoverVisible: () => !popover.window.isDestroyed() && popover.window.isVisible(),
+          capsuleWindow: () => liveCapsule().window,
+          menuAccelerators: applicationMenuAccelerators,
           ...e2eSuspensionTargets(tray),
         },
       });

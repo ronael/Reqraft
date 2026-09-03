@@ -63,6 +63,8 @@ const bridge: ReqraftBridge = {
   readLocale: (locale) =>
     ipcRenderer.invoke(IPC_CHANNELS.localeRead, locale === undefined ? undefined : { locale }),
   capsulePending: () => ipcRenderer.invoke(IPC_CHANNELS.capsulePending),
+  // Un nombre, rien d'autre : la fenêtre reste hors de portée du renderer.
+  resizeCapsule: (height) => ipcRenderer.invoke(IPC_CHANNELS.capsuleResize, { height }),
   openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
   openWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenWelcomeTour),
   shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),

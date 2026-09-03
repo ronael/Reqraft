@@ -1,8 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
 import { PromptEditor } from "./PromptEditor.js";
 import { ResultEditor } from "./ResultEditor.js";
+import { useCapsuleHeight } from "./useCapsuleHeight.js";
 import { useT } from "../shared/i18n.js";
 import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
 import { describeQualityFinding } from "../shared/quality.js";
@@ -372,6 +373,7 @@ export function App(): React.JSX.Element {
    */
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const activeRunId = useRef<string | null>(null);
+  const bodyRef = useRef<HTMLElement | null>(null);
   /**
    * Ce qui demande la comparaison : `⌥` maintenu, `⌘D` épinglé, ou les deux.
    *
@@ -845,6 +847,19 @@ export function App(): React.JSX.Element {
 
   const running = state === GENERATING || state === "streaming" || state === "analysis";
 
+  // La fenêtre suit le contenu, mais seulement quand le contenu s'est posé :
+  // ni pendant le streaming, ni pendant la frappe. Voir `useCapsuleHeight`.
+  useCapsuleHeight({ state, picking, editing, result, notice, error });
+
+  // Un résultat long peut laisser le corps défilé très bas. La comparaison
+  // est une nouvelle lecture : elle doit toujours commencer par l'« avant »,
+  // pas hériter de la position du champ qui vient d'être démonté.
+  useLayoutEffect(() => {
+    if (state === "comparison" && bodyRef.current !== null) {
+      bodyRef.current.scrollTop = 0;
+    }
+  }, [state]);
+
   useEffect(() => {
     if (!running || startedAt === null) {
       return undefined;
@@ -950,86 +965,95 @@ export function App(): React.JSX.Element {
           onManage={() => void window.reqraft.openSettings()}
         />
       ) : (
-        <section className={state === "input" ? "capsule-body capsule-flush" : "capsule-body"}>
-          {state === "input" && (
-            <>
-              <textarea
-                className="capsule-input"
-                placeholder={t("capsule.placeholder")}
-                value={input}
-                rows={4}
-                autoFocus
-                onChange={(event) => {
-                  setInput(event.target.value);
-                }}
-                onKeyDown={(event) => {
-                  if (event.key === "Enter" && event.metaKey && input.trim() !== "") {
-                    dispatch("submitted");
-                    startRun(input, level);
-                  }
-                }}
+        <section
+          ref={bodyRef}
+          className={state === "input" ? "capsule-body capsule-flush" : "capsule-body"}
+        >
+          {/* Un bloc intrinsèque autour du corps : c'est lui qu'on mesure pour
+              décider de la hauteur de la fenêtre. `.capsule-body` est le
+              `flex: 1` de la capsule et rend toujours la place qu'on lui a
+              laissée, donc la capsule ne rétrécirait jamais. */}
+          <div className="capsule-content">
+            {state === "input" && (
+              <>
+                <textarea
+                  className="capsule-input"
+                  placeholder={t("capsule.placeholder")}
+                  value={input}
+                  rows={4}
+                  autoFocus
+                  onChange={(event) => {
+                    setInput(event.target.value);
+                  }}
+                  onKeyDown={(event) => {
+                    if (event.key === "Enter" && event.metaKey && input.trim() !== "") {
+                      dispatch("submitted");
+                      startRun(input, level);
+                    }
+                  }}
+                />
+              </>
+            )}
+
+            {promptVisible && (
+              <CapsuleSource
+                input={input}
+                label={t("capsule.before")}
+                editLabel={t("capsule.editPromptLabel")}
+                editable={promptEditable}
+                readOnly={state === "applying"}
+                onChange={setInput}
+                onEditingChange={setEditing}
               />
-            </>
-          )}
+            )}
 
-          {promptVisible && (
-            <CapsuleSource
-              input={input}
-              label={t("capsule.before")}
-              editLabel={t("capsule.editPromptLabel")}
-              editable={promptEditable}
-              readOnly={state === "applying"}
-              onChange={setInput}
-              onEditingChange={setEditing}
-            />
-          )}
+            {state === "capture" && <p className="muted">{t("capsule.readingSelection")}</p>}
 
-          {state === "capture" && <p className="muted">{t("capsule.readingSelection")}</p>}
+            {state === "analysis" && <p className="muted">{t("capsule.analysingIntent")}</p>}
 
-          {state === "analysis" && <p className="muted">{t("capsule.analysingIntent")}</p>}
+            {state === GENERATING && (
+              <p className="muted">
+                {displayedProfile !== null
+                  ? t("capsule.detectedPreparing", { profile: displayedProfile })
+                  : t("capsule.preparing")}
+              </p>
+            )}
 
-          {state === GENERATING && (
-            <p className="muted">
-              {displayedProfile !== null
-                ? t("capsule.detectedPreparing", { profile: displayedProfile })
-                : t("capsule.preparing")}
-            </p>
-          )}
+            {state === "streaming" && (
+              <pre className="capsule-stream">
+                {streamed}
+                <span className="caret" aria-hidden="true" />
+              </pre>
+            )}
 
-          {state === "streaming" && (
-            <pre className="capsule-stream">
-              {streamed}
-              <span className="caret" aria-hidden="true" />
-            </pre>
-          )}
+            {(state === "ready" || state === "applying") && result !== null && (
+              <ResultEditor
+                value={finalText}
+                label={t("capsule.editLabel")}
+                // Une fois l'acceptation partie, le texte est celui qui part.
+                readOnly={state === "applying"}
+                onChange={setEdited}
+                onEditingChange={setEditing}
+              />
+            )}
 
-          {(state === "ready" || state === "applying") && result !== null && (
-            <ResultEditor
-              value={finalText}
-              label={t("capsule.editLabel")}
-              // Une fois l'acceptation partie, le texte est celui qui part.
-              readOnly={state === "applying"}
-              onChange={setEdited}
-              onEditingChange={setEditing}
-            />
-          )}
+            {state === "comparison" && result !== null && (
+              <div className="capsule-diff">
+                <div className="diff-before">− {input}</div>
+                <div className="diff-after">+ {finalText}</div>
+              </div>
+            )}
 
-          {state === "comparison" && result !== null && (
-            <div className="capsule-diff">
-              <div className="diff-before">− {input}</div>
-              <div className="diff-after">+ {finalText}</div>
-            </div>
-          )}
+            {state === "error" && error !== null && (
+              <div role="alert">
+                <div className="error-title">× {error.title}</div>
+                <p className="error-detail">{error.message}</p>
+                {error.nextAction !== undefined && <p className="muted">{error.nextAction}</p>}
+              </div>
+            )}
 
-          {state === "error" && error !== null && (
-            <div role="alert">
-              <div className="error-title">× {error.title}</div>
-              <p className="error-detail">{error.message}</p>
-              {error.nextAction !== undefined && <p className="muted">{error.nextAction}</p>}
-            </div>
-          )}
-
-          {notice !== null && <p className="capsule-notice">{notice}</p>}
+            {notice !== null && <p className="capsule-notice">{notice}</p>}
+          </div>
         </section>
       )}
 

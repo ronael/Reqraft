@@ -6,20 +6,20 @@ import { PromptEditor } from "@/apps/desktop/renderer/capsule/PromptEditor.js";
 import { RESULT_ACCEPT_TEXT_MAX_LENGTH } from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
- * Le résultat final, repris à la main.
+ * Les deux champs de la capsule, et le contrat visuel qu'ils tiennent.
  *
- * Ce qui compte n'est pas que le champ existe, mais qu'il n'y ait qu'une seule
- * version du texte : celle qu'on voit est celle qui part. Une deuxième source
- * — le résultat du modèle laissé quelque part — finirait par faire copier
- * autre chose que ce que la comparaison montre.
+ * Ce fichier ne garde que ce qui se voit dans le balisage rendu ou dans la
+ * feuille de style. Tout ce qui est comportement — quel texte part à la copie,
+ * ce que la comparaison montre, ce que le clavier fait pendant l'édition — est
+ * exercé sur la capsule montée dans `desktop-capsule-edit-flow.test.tsx`, où
+ * l'on tape vraiment dans les champs et où l'on vérifie ce que le pont IPC
+ * reçoit. Une ligne relue dans la source ne prouve pas un comportement.
  *
- * La suite tourne sous Node sans DOM : le rendu se vérifie en balisage, et le
- * câblage de la capsule en relisant sa source. Ce que le clavier fait pendant
- * l'édition est vérifié en appelant les fonctions, dans
- * `desktop-capsule-keyboard.test.ts`.
+ * La géométrie réelle — hauteur du pied, débordement du corps, position de
+ * l'annonce à 560 px de large — est mesurée dans la vraie fenêtre Electron par
+ * le scénario `capsule-ui` (`tests/e2e/desktop.test.ts`).
  */
 
-const RENDERER = "src/apps/desktop/renderer/capsule/App.tsx";
 const STYLESHEET = "src/apps/desktop/renderer/shared/desktop.css";
 
 /** Insensible à la casse : React 19 rend `readOnly`, le DOM lit `readonly`. */
@@ -38,16 +38,6 @@ function editeur(value: string, readOnly = false): string {
       onEditingChange={() => undefined}
     />,
   );
-}
-
-async function source(): Promise<string> {
-  return readFile(RENDERER, "utf8");
-}
-
-/** Le corps du composant `App`, sans ses sous-composants. */
-async function corpsDeApp(): Promise<string> {
-  const s = await source();
-  return s.slice(s.indexOf("export function App()"));
 }
 
 describe("le champ du résultat", () => {
@@ -114,7 +104,7 @@ describe("le champ du résultat", () => {
   it("suit la hauteur du contenu sans mesurer", async () => {
     // Le conteneur duplique le texte dans son pseudo-élément : c'est le double
     // qui dicte la hauteur. Un `scrollHeight` recalculé à chaque frappe ferait
-    // osciller la capsule d'une ligne pendant la saisie.
+    // osciller le champ d'une ligne pendant la saisie.
     expect(editeur("deux\nlignes")).toContain('data-replicated-value="deux\nlignes"');
 
     const css = await readFile(STYLESHEET, "utf8");
@@ -149,86 +139,23 @@ describe("le prompt de départ", () => {
     expect(body).toContain("outline: none");
     expect(body).toContain("background: transparent");
   });
-
-  it("alimente la comparaison et les relances avec la valeur modifiée", async () => {
-    const corps = await corpsDeApp();
-
-    expect(await source()).toContain("<PromptEditor");
-    expect(corps).toContain("<CapsuleSource");
-    expect(corps).toContain("onChange={setInput}");
-    expect(corps).toContain("startRun(input, level)");
-    expect(corps).toContain('<div className="diff-before">− {input}</div>');
-  });
-
-  it("reste monté quand le prompt est entièrement vidé", async () => {
-    const corps = await corpsDeApp();
-
-    expect(corps).toContain('input !== "" || promptEditable');
-    expect(corps).toContain("{promptVisible && (");
-  });
 });
 
-describe("une seule version du texte", () => {
-  it("copie et remplace la version affichée", async () => {
-    const corps = await corpsDeApp();
+describe("le bloc mesuré pour la hauteur de la fenêtre", () => {
+  it("établit son propre contexte de formatage", async () => {
+    // Sans `flow-root`, la marge basse du dernier enfant s'échappe du bloc :
+    // la hauteur mesurée serait inférieure de dix pixels à celle occupée, et
+    // la capsule couperait sa dernière ligne. Le scénario `capsule-ui` mesure
+    // la conséquence ; cette règle en est la cause.
+    const css = await readFile(STYLESHEET, "utf8");
+    const rule = css.slice(css.indexOf(".capsule-content {"));
 
-    // Les deux chemins passent par le même calcul, qui refuse un texte vide et
-    // rend `undefined` quand rien n'a été repris.
-    for (const appel of [
-      'acceptResult(runId, "replace", texte.text)',
-      'acceptResult(runId, "copy", texte.text)',
-    ]) {
-      expect(corps, `${appel} manquant`).toContain(appel);
-    }
-    expect(corps).not.toContain('acceptResult(runId, "copy")');
-    expect(corps).not.toContain('acceptResult(runId, "replace")');
+    expect(rule.slice(0, rule.indexOf("}"))).toContain("display: flow-root");
   });
 
-  it("compare la version affichée, pas celle du modèle", async () => {
-    const corps = await corpsDeApp();
-    const diff = corps.slice(corps.indexOf('className="diff-after"'));
+  it("coupe les animations d'attente quand le système le demande", async () => {
+    const css = await readFile(STYLESHEET, "utf8");
 
-    expect(diff.slice(0, 80)).toContain("finalText");
-    expect(corps).not.toContain("+ {result.rewritten}");
-  });
-
-  it("affiche la version reprise dès qu'elle existe", async () => {
-    const corps = await corpsDeApp();
-
-    expect(corps).toContain('const finalText = edited ?? result?.rewritten ?? ""');
-    expect(corps).toContain("value={finalText}");
-  });
-});
-
-describe("une nouvelle génération repart du texte du modèle", () => {
-  /**
-   * Les trois portes par lesquelles un run recommence.
-   *
-   * Une édition laissée derrière ferait copier et remplacer un texte que plus
-   * rien à l'écran ne montre — et la capsule resterait sourde au clavier si
-   * `editing` survivait au démontage du champ.
-   */
-  const DEPARTS = [
-    "const startRun = useCallback(",
-    "const startRunAvecProfil = useCallback(",
-    "const resetSession = useCallback(",
-  ];
-
-  it.each(DEPARTS)("%s efface l'édition", async (depart) => {
-    const s = await source();
-    const debut = s.indexOf(depart);
-    expect(debut, `${depart} introuvable`).toBeGreaterThan(-1);
-    const corps = s.slice(debut, s.indexOf("useCallback(", debut + depart.length));
-
-    expect(corps).toContain("setEdited(null)");
-    expect(corps).toContain("setEditing(false)");
-  });
-
-  it("ne laisse pas une édition démontée rendre la capsule sourde", async () => {
-    // Un champ démonté n'émet pas toujours son `blur` : croiser avec l'état
-    // rend cette survivance sans effet.
-    const corps = await corpsDeApp();
-
-    expect(corps).toContain('editing: editing && state === "ready"');
+    expect(css).toContain(".capsule-bar,\n  .caret,\n  .pulse {\n    animation: none;");
   });
 });

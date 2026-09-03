@@ -178,6 +178,18 @@ body {
   overflow-y: auto;
 }
 
+/*
+ * Le bloc que l'on mesure pour décider de la hauteur de la fenêtre.
+ *
+ * `flow-root` n'est pas décoratif : sans contexte de formatage, la marge basse
+ * du dernier enfant s'échappe du bloc, et la hauteur mesurée serait inférieure
+ * de dix pixels à celle occupée — la capsule couperait sa dernière ligne.
+ * Aucun effet visible par ailleurs : le bloc n'a ni retrait, ni bordure.
+ */
+.capsule-content {
+  display: flow-root;
+}
+
 /* En saisie, le champ occupe la capsule : aucun retrait ne l'en écarte. */
 .capsule-flush {
   padding: 0;
@@ -312,6 +324,24 @@ body {
 @keyframes rq-blink {
   50% {
     opacity: 0;
+  }
+}
+
+/*
+ * La capsule sans mouvement.
+ *
+ * Les trois animations d'attente — la barre d'activité, le curseur du
+ * streaming, le clignotement du texte « en réception » — tournent en boucle
+ * tant que le modèle répond. Une boucle est exactement ce que « réduire les
+ * animations » désigne. L'information reste : la barre garde sa couleur, le
+ * curseur reste visible, le texte reste là. Le redimensionnement de la fenêtre,
+ * lui, est instantané par construction : il n'y a aucune transition à couper.
+ */
+@media (prefers-reduced-motion: reduce) {
+  .capsule-bar,
+  .caret,
+  .pulse {
+    animation: none;
   }
 }
 

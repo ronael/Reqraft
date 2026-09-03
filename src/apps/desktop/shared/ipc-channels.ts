@@ -51,6 +51,12 @@ export const IPC_CHANNELS = {
   // départ, sablier compris. Elle peut donc aussi demander pourquoi elle est
   // ouverte, au montage.
   capsulePending: "capsule:pending",
+  // La hauteur de la capsule, proposée par le renderer et arbitrée par le
+  // processus principal. Le renderer n'a jamais accès à `BrowserWindow` : il
+  // envoie un nombre borné, et seul le principal connaît la zone de travail,
+  // l'ancre de la session et le côté d'ouverture. Voir
+  // `shared/capsule-geometry.ts` pour les trois régimes de hauteur.
+  capsuleResize: "capsule:resize",
   windowOpenSettings: "window:open-settings",
   windowOpenWelcomeTour: "window:open-welcome-tour",
   shortcutsState: "shortcuts:state",
@@ -118,6 +124,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.profileExport,
   IPC_CHANNELS.localeRead,
   IPC_CHANNELS.capsulePending,
+  IPC_CHANNELS.capsuleResize,
   IPC_CHANNELS.windowOpenSettings,
   IPC_CHANNELS.windowOpenWelcomeTour,
   IPC_CHANNELS.shortcutsState,

@@ -827,6 +827,20 @@ export interface LocaleResponse {
 /** L'ouverture en attente, ou `null` si la capsule n'a pas été déclenchée. */
 export type CapsulePendingResponse = CapsuleOpenedPayload | null;
 
+/**
+ * La hauteur que la capsule demande pour elle-même.
+ *
+ * Bornée par le schéma, puis rebornée par le processus principal : le renderer
+ * mesure son contenu, mais c'est le principal qui connaît la zone de travail
+ * et qui décide. Les bornes du schéma sont volontairement plus larges que
+ * celles du produit — elles refusent l'absurde (0, un million), pas une valeur
+ * que le renderer aurait le droit de proposer.
+ */
+export const CapsuleResizeRequestSchema = z
+  .object({ height: z.number().int().min(80).max(4000) })
+  .strict();
+export type CapsuleResizeRequest = z.infer<typeof CapsuleResizeRequestSchema>;
+
 // Re-exported so the renderer gets fully typed payloads without ever
 // importing the core, even for types (DESKTOP.md §4.2).
 export type { RepromptResult, UiError };
@@ -889,6 +903,8 @@ export interface ReqraftBridge {
   exportProfile(id: string): Promise<ProfileExportResponse>;
   readLocale(locale?: "en" | "fr"): Promise<LocaleResponse>;
   capsulePending(): Promise<CapsulePendingResponse>;
+  /** Propose une hauteur pour la fenêtre capsule ; le principal l'arbitre. */
+  resizeCapsule(height: number): Promise<void>;
   openSettings(): Promise<void>;
   openWelcomeTour(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;

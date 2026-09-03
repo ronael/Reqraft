@@ -165,6 +165,26 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
    capsule, le cycle complet avec provider `mock`, le raccourci pris et la
    seconde instance. Les permissions OS et le presse-papiers image restent
    manuels pour ne pas modifier la machine qui exécute la suite.
+
+   **Étendu depuis :** le scénario `capsule-ui` pilote le vrai renderer depuis
+   le processus principal (`src/apps/desktop/main/e2e-capsule.ts`) et mesure des
+   rectangles rendus à 560 px — hauteur de fenêtre, hauteur naturelle du
+   contenu, pied dans la fenêtre, débordement du corps, position de l'annonce.
+   Il vérifie aussi qu'un `⌘R` envoyé à la fenêtre pendant l'édition ne la
+   recharge pas, et inventorie les accélérateurs du menu applicatif réel.
+   `REQRAFT_DESKTOP_E2E_SHOTS=<dossier>` dépose une capture PNG par état, pour
+   la relecture humaine ; la suite n'écrit rien par défaut.
+
+   **Défaut trouvé et corrigé au passage :** Electron installe un menu par
+   défaut quand l'application n'en pose aucun, et ce menu détient
+   « Recharger ⌘R », « Recharger sans le cache ⇧⌘R » et le zoom. Un
+   accélérateur de menu est traité par le système avant le renderer : aucun
+   `preventDefault` de la capsule ne pouvait l'arrêter, et un `⌘R` — la commande
+   « relancer » de la capsule — pouvait recharger la fenêtre et jeter le texte en
+   cours d'édition. `src/apps/desktop/main/menu.ts` pose désormais un menu
+   explicite : `appMenu`, `editMenu` (dont dépendent ⌘C, ⌘V, ⌘A dans les champs
+   sur macOS), `windowMenu`, et les outils de développement en développement
+   seulement.
 2. **Message Wayland dans la capsule** — la détection existe (mode plancher)
    mais la capsule ne l'affiche pas encore à l'ouverture.
 
@@ -176,13 +196,73 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
    concevoir avant d'afficher ce message.
    **Livré en complément :** le résultat peut être corrigé directement dans la
    capsule avant copie ou remplacement, et la comparaison utilise le texte
-   corrigé.
+   corrigé. Le comportement est tenu par une suite d'intégration React qui monte
+   la vraie capsule dans un DOM
+   (`tests/unit/desktop-capsule-edit-flow.test.tsx`) : on tape dans les champs,
+   on appuie sur les touches, et l'on vérifie ce que le pont IPC reçoit — prompt
+   modifié envoyé à la relance et au changement de niveau, résultat modifié
+   copié et remplacé, comparaison sur les deux textes repris, prompt vidé puis
+   ressaisi, édition effacée par chaque nouvelle génération, et suspension des
+   commandes pendant la saisie (⏎, ⌘C, ⌘R, ⌘D, ⇥) sans perdre `esc` ni `⌘.`.
 4. **Sens du cycle ⇥ en cas d'expansion** : quand `disproportionate_expansion`
    est détecté, ⇥ devrait proposer le niveau INFÉRIEUR en premier (scénario 7),
    pas le suivant du cycle.
-5. **Hauteur adaptative de la capsule** pour les longs résultats (le POC le
-   faisait via ResizeObserver, borné 148–440 px) — aujourd'hui hauteur fixe
-   380 px avec scroll.
+5. ~~**Hauteur adaptative de la capsule**~~ — livré, mais pas comme le POC.
+   Celui-ci suivait le contenu avec un `ResizeObserver` : il voit chaque
+   fragment de streaming et chaque frappe, donc la fenêtre oscillait ligne par
+   ligne — exactement ce que DESKTOP.md §4.3 interdit, et la raison pour
+   laquelle la hauteur avait fini figée à 380 px.
+
+   La décision est désormais déterministe et prise aux transitions d'état, pas
+   à chaque mutation du DOM. `src/apps/desktop/shared/capsule-geometry.ts`
+   définit trois régimes :
+
+   - `reserved` — 380 px pendant `capture`, `analysis`, `generating`,
+     `streaming` et sous la feuille de profils. Aucune mesure, donc aucun saut
+     pendant que le texte arrive ;
+   - `adaptive` — `input`, `ready`, `comparison`, `error` prennent leur hauteur
+     naturelle mesurée, quantifiée au pas de 4 px et bornée à 148–440 ;
+   - `hold` — `applying`, `closed`, **et toute la durée d'une saisie**. Tant que
+     le curseur est dans un champ, la géométrie est gelée et le corps défile ;
+     la capsule se réajuste une seule fois, au relâchement du champ.
+
+   Le renderer ne touche jamais à `BrowserWindow` : il mesure et propose une
+   hauteur par le canal `capsule:resize` (schéma Zod strict), et le processus
+   principal la reborne à la zone de travail. Le handler refuse tout envoyeur
+   qui n'est pas la capsule — le preload est partagé par les quatre surfaces.
+
+   La position est recalculée depuis l'**ancre mémorisée à l'ouverture**, jamais
+   depuis la position courante : c'est ce qui empêche la fenêtre de dériver.
+   Le côté (`below` / `above` / `centered`) est arrêté une fois par session avec
+   la hauteur MAXIMALE, donc une capsule qui grandit ne bascule jamais de
+   l'autre côté du curseur ; `below` fige le bord haut, `above` le bord bas.
+
+   Mesures réelles, prises dans la vraie fenêtre à 560 px de large par le
+   scénario e2e `capsule-ui` (pied visible et annonce dans la fenêtre dans tous
+   les cas) :
+
+   | état | hauteur | hauteur naturelle | corps |
+   |---|---|---|---|
+   | saisie libre | 204 | 203 | — |
+   | résultat court | 172 | 169 | tient |
+   | résultat moyen | 228 | 226 | tient |
+   | résultat long | 440 (plafond) | 1175 | défile |
+   | édition multiligne (court) | 172, inchangé | 442 | défile |
+   | … après relâchement du champ | 440 | 442 | défile |
+   | comparaison | 440 | 595 | défile |
+   | erreur | 236 | 235 | tient |
+
+   Compromis assumé : quatorze lignes collées dans une capsule de 172 px se
+   lisent à travers un corps qui défile jusqu'à ce que le champ rende la main.
+   Redimensionner pendant la frappe rendrait le cas rare confortable au prix de
+   l'oscillation dans le cas courant.
+
+   Écart volontaire : aucune animation de fenêtre. `setBounds(bounds, true)`
+   anime le cadre sans le contenu, qui est déjà remis en page à la taille
+   finale — cela se lit comme un rognage. Le redimensionnement est donc
+   instantané, ce qui satisfait « réduire les animations » par construction ;
+   les trois boucles d'attente de la capsule (barre, curseur, pulsation) sont en
+   revanche coupées sous `prefers-reduced-motion`.
 6. **Mesure du cycle** : porter `timing.js` du POC (jalons, budget 400 ms)
    dans le main, exposé dans Diagnostic — c'est le critère §11.1 rendu visible.
 
