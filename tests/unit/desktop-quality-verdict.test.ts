@@ -44,6 +44,7 @@ describe("describeQualityFinding", () => {
     expect(describeQualityFinding(signals, t)).toEqual({
       label: t("capsule.technicalTermsMissing"),
       detail: t("capsule.missingTechnicalTerms", { list: "parseResult" }),
+      items: ["parseResult"],
     });
   });
 
@@ -64,7 +65,7 @@ describe("describeQualityFinding", () => {
   });
 
   it("annonce les chemins avant les commandes, quel que soit l'ordre des signaux", () => {
-    // Le pied tient une ligne : on montre la trouvaille la plus utile, pas la
+    // Le pied reste compact : on montre la trouvaille la plus utile, pas la
     // première venue. L'ordre du tableau suit celui où les détections tournent,
     // qui n'a rien à voir avec ce qui aide le plus.
     const signals: Signals = [

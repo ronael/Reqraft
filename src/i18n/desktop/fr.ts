@@ -505,6 +505,7 @@ export const DESKTOP_FR = {
   "capsule.inventedPaths": "chemins que vous n'avez pas cités : {list}",
   "capsule.inventedCommands": "commandes que vous n'avez pas demandées : {list}",
   "capsule.technicalTermsMissing": "! termes techniques perdus",
+  "capsule.missingTechnicalTermsLabel": "absents du résultat :",
   "capsule.missingTechnicalTerms": "absents du résultat : {list}",
   "capsule.structuralInflation": "revenue sous forme de plan",
   "capsule.restructured": "! restructurée",

@@ -197,6 +197,7 @@ interface CapsuleFooterProps {
   finalResult: RepromptResult | null;
   verdictLabel: string;
   verdictDetail: string;
+  verdictItems: string[];
   profileLabel: string;
   pickable: boolean;
   level: Level;
@@ -215,6 +216,7 @@ interface CapsuleFooterProps {
 /** Le pied : ce qu'on peut faire maintenant, au clavier comme à la souris. */
 function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
   const t = useT();
+  const levelLabel = t("capsule.level");
   return (
     <>
       {props.state === "input" ? (
@@ -242,7 +244,13 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
         </div>
       ) : (
         <footer className="capsule-footer">
-          <div className="capsule-verdict">
+          <div
+            className={
+              props.finalResult === null
+                ? "capsule-verdict"
+                : "capsule-verdict capsule-verdict-result"
+            }
+          >
             {(props.state === "generating" || props.state === "streaming") && (
               <>
                 <span className="pulse accent">{t("capsule.receiving")}</span>
@@ -251,15 +259,39 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
             )}
             {props.finalResult !== null && (
               <>
-                <span className={`verdict-${props.finalResult.quality.status}`}>
-                  {props.verdictLabel}
-                </span>
-                <span className="muted">{props.verdictDetail}</span>
-                <span className="capsule-meta">
-                  {t("capsule.level")} {props.finalResult.level} · {props.finalResult.model}
-                  {props.finalResult.latencyMs !== undefined &&
-                    ` · ${(props.finalResult.latencyMs / 1000).toFixed(1)} s`}
-                </span>
+                <div className="capsule-verdict-head">
+                  <span className={`verdict-${props.finalResult.quality.status}`}>
+                    {props.verdictLabel}
+                  </span>
+                  <span
+                    className="capsule-meta"
+                    title={`${levelLabel} ${props.finalResult.level} · ${props.finalResult.model}`}
+                  >
+                    {levelLabel} {props.finalResult.level} · {props.finalResult.model}
+                    {props.finalResult.latencyMs !== undefined &&
+                      ` · ${(props.finalResult.latencyMs / 1000).toFixed(1)} s`}
+                  </span>
+                </div>
+                <div className="capsule-verdict-detail">
+                  {props.verdictItems.length > 0 ? (
+                    <>
+                      <span className="muted">{t("capsule.missingTechnicalTermsLabel")}</span>
+                      <span className="capsule-term-list">
+                        {props.verdictItems.map((item, index) => (
+                          <code
+                            className="capsule-term"
+                            key={`${item}-${String(index)}`}
+                            title={item}
+                          >
+                            {item}
+                          </code>
+                        ))}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="muted">{props.verdictDetail}</span>
+                  )}
+                </div>
               </>
             )}
             {props.state === "error" && <span className="muted">{t("capsule.escToClose")}</span>}
@@ -303,7 +335,7 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                   {t("capsule.rerun")}
                 </CapsuleKey>
                 <CapsuleKey touche="⇥" title={t("capsule.levelCycleTitle")} onClick={props.onLevel}>
-                  {t("capsule.level")}
+                  {levelLabel}
                 </CapsuleKey>
               </>
             )}
@@ -1067,6 +1099,7 @@ export function App(): React.JSX.Element {
         finalResult={finalResult}
         verdictLabel={verdictLabel}
         verdictDetail={verdictDetail}
+        verdictItems={finding?.items ?? []}
         profileLabel={profilAffiche}
         pickable={profilChoisissable}
         onPick={() => {

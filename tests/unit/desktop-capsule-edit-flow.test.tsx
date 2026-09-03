@@ -11,6 +11,7 @@ import {
   espionnerFrappes,
   monterCapsule,
   pousserResultat,
+  repromptResult,
   sortirDeLEdition,
   type CapsuleHarness,
 } from "./desktop-capsule-harness.js";
@@ -60,6 +61,38 @@ describe("le trajet jusqu'au résultat", () => {
     });
     expect(champResultat().value).toBe(MODEL_TEXT);
     expect(champPrompt().value).toBe(DEFAULT_CAPTURE_TEXT);
+  });
+});
+
+describe("le verdict détaillé", () => {
+  it("sépare les termes techniques perdus du texte traduit", async () => {
+    const harness = monterCapsule();
+    await waitFor(() => {
+      expect(harness.bridge.startReprompt).toHaveBeenCalledTimes(1);
+    });
+    const result = repromptResult(MODEL_TEXT);
+    result.quality = {
+      status: "review",
+      signals: [
+        {
+          code: "missing_technical_terms",
+          severity: "warning",
+          params: { terms: ["Live.PPLE", "parseResult"] },
+        },
+      ],
+    };
+
+    await waitFor(() => {
+      harness.push.done({ runId: harness.dernierRunId(), result });
+      expect(champResultat().value).toBe(MODEL_TEXT);
+    });
+
+    expect(screen.getByText(EN["capsule.missingTechnicalTermsLabel"])).toBeDefined();
+    for (const term of ["Live.PPLE", "parseResult"]) {
+      const tag = screen.getByText(term);
+      expect(tag.tagName).toBe("CODE");
+      expect(tag.getAttribute("title")).toBe(term);
+    }
   });
 });
 

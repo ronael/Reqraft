@@ -11,14 +11,17 @@ import type { Translate } from "./i18n.js";
  * empêcher.
  *
  * L'ordre est celui de ce qu'on peut vérifier : un chemin ou une commande se
- * montrent, une restructuration se constate. Le pied de la capsule tient une
- * ligne, donc on annonce la première trouvaille, pas un inventaire.
+ * montrent, une restructuration se constate. Le pied reste compact, donc on
+ * annonce la première trouvaille, pas un inventaire. Ses valeurs structurées
+ * peuvent passer sur la ligne de détail sans concurrencer les métadonnées.
  */
 export interface QualityFinding {
   /** Le mot du verdict : ce qui s'est passé. */
   label: string;
   /** La ligne en dessous : de quoi il s'agit précisément. */
   detail: string;
+  /** Valeurs à préserver telles quelles, affichées séparément du texte traduit. */
+  items?: string[];
 }
 
 export function describeQualityFinding(
@@ -49,6 +52,7 @@ export function describeQualityFinding(
     return {
       label: t("capsule.technicalTermsMissing"),
       detail: t("capsule.missingTechnicalTerms", { list: missingTerms.params.terms.join(", ") }),
+      items: missingTerms.params.terms,
     };
   }
 

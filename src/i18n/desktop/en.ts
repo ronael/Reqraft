@@ -506,6 +506,7 @@ export const DESKTOP_EN = {
   "capsule.inventedPaths": "paths you did not mention: {list}",
   "capsule.inventedCommands": "commands you did not ask for: {list}",
   "capsule.technicalTermsMissing": "! technical terms missing",
+  "capsule.missingTechnicalTermsLabel": "missing from the result:",
   "capsule.missingTechnicalTerms": "missing from the result: {list}",
   "capsule.structuralInflation": "came back as a structured plan",
   "capsule.restructured": "! restructured",
