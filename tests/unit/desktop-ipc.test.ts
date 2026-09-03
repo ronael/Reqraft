@@ -45,6 +45,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       doctorCopy: "doctor:copy",
       permissionsState: "permissions:state",
       permissionsRequest: "permissions:request",
+      systemOpenPermissionSettings: "system:open-permission-settings",
       profilesList: "profiles:list",
       profilesCatalog: "profiles:catalog",
       profileRead: "profiles:read",
@@ -58,6 +59,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       windowOpenSettings: "window:open-settings",
       windowOpenWelcomeTour: "window:open-welcome-tour",
       shortcutsState: "shortcuts:state",
+      shortcutsResume: "shortcuts:resume",
       onboardingState: "onboarding:state",
       onboardingTourComplete: "onboarding:tour-complete",
       onboardingComplete: "onboarding:complete",
@@ -73,7 +75,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(36);
+    expect(REQUEST_CHANNELS).toHaveLength(38);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
@@ -555,6 +557,54 @@ describe("canaux capture et permissions (lot 2)", () => {
       conflicts: [],
       suspended: false,
     });
+  });
+
+  it("shortcuts:resume lève la suspension puis relit l'état réel", async () => {
+    const harness = setup({});
+    let suspended = true;
+    const setShortcutsSuspended = vi.fn((next: boolean) => {
+      suspended = next;
+    });
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      setShortcutsSuspended,
+      shortcutState: () => ({ registered: [], rejected: [], conflicts: [], suspended }),
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.shortcutsResume,
+      undefined,
+      harness.sender,
+    );
+
+    expect(setShortcutsSuspended).toHaveBeenCalledWith(false);
+    expect(response).toMatchObject({ suspended: false });
+  });
+
+  it("n'ouvre qu'un volet de permission nommé par le contrat", async () => {
+    const harness = setup({});
+    const openPermissionSettings = vi.fn(() => Promise.resolve());
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      openPermissionSettings,
+    });
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.systemOpenPermissionSettings,
+      { pane: "automation" },
+      harness.sender,
+    );
+    expect(openPermissionSettings).toHaveBeenCalledWith("automation");
+
+    await expect(
+      harness.ipcMain.invoke(
+        IPC_CHANNELS.systemOpenPermissionSettings,
+        { pane: "file:///tmp" },
+        harness.sender,
+      ),
+    ).rejects.toThrow();
   });
 });
 

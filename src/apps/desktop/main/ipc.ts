@@ -53,6 +53,7 @@ import {
   LocaleReadRequestSchema,
   ModelsListRequestSchema,
   OnboardingCompleteRequestSchema,
+  OpenPermissionSettingsRequestSchema,
   MODEL_CATALOG_LIMIT,
   ProviderDeleteRequestSchema,
   ProviderSaveRequestSchema,
@@ -80,6 +81,7 @@ import {
   type ProviderTestResponse,
   type SafeConfig,
   type ShortcutStateInfo,
+  type SystemPermissionPane,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport, formatDoctorReport } from "./doctor.js";
@@ -131,6 +133,14 @@ export interface DesktopIpcDependencies {
   probePermissions?: () => Promise<PermissionsReport>;
   /** Lot 2: triggers the macOS Accessibility prompt (explicit action only). */
   requestAccessibility?: () => void;
+  /**
+   * Ouvre le volet système d'une permission nommée.
+   *
+   * Injecté comme le reste : `shell` appartient au processus principal, et la
+   * correspondance permission → URL vit dans `permissions.ts`. Le contrat ne
+   * transporte qu'un mot d'une énumération.
+   */
+  openPermissionSettings?: (pane: SystemPermissionPane) => Promise<void>;
   updateState?: () => DesktopUpdateState;
   checkForUpdates?: () => Promise<DesktopUpdateState>;
   openUpdateDownload?: () => Promise<void>;
@@ -175,6 +185,13 @@ export interface DesktopIpcDependencies {
   homeDir?: () => string;
   /** Lot 5: registered/rejected global shortcuts (settings Shortcuts tab). */
   shortcutState?: () => ShortcutStateInfo;
+  /**
+   * Suspend ou reprend les raccourcis globaux, comme la case du menu tray.
+   *
+   * Le Diagnostic montre la suspension ; sans ce chemin, la seule sortie serait
+   * de retrouver cette case dans un menu que l'onglet ne peut pas désigner.
+   */
+  setShortcutsSuspended?: (suspended: boolean) => void;
   /**
    * Ré-enregistre les raccourcis globaux après un changement de réglage.
    *
@@ -417,6 +434,8 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
 
   registerDoctorHandlers(dependencies, env);
 
+  registerDiagnosticActionHandlers(dependencies);
+
   ipcMain.handle(IPC_CHANNELS.permissionsState, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     if (!dependencies.probePermissions) {
@@ -494,6 +513,25 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   ipcMain.handle(IPC_CHANNELS.shortcutsState, (_event, payload) => {
     EmptyRequestSchema.parse(payload);
     // Without a wired source (tests), report the honest empty state.
+    return dependencies.shortcutState?.() ?? EMPTY_SHORTCUT_STATE;
+  });
+}
+
+/** Actions correctives du Diagnostic, séparées du rapport en lecture seule. */
+function registerDiagnosticActionHandlers(dependencies: DesktopIpcDependencies): void {
+  const { ipcMain } = dependencies;
+  ipcMain.handle(IPC_CHANNELS.systemOpenPermissionSettings, async (_event, payload) => {
+    // Une énumération de deux valeurs, jamais une URL : le renderer nomme la
+    // permission, le processus principal détient l'adresse du volet.
+    const { pane } = OpenPermissionSettingsRequestSchema.parse(payload);
+    await dependencies.openPermissionSettings?.(pane);
+  });
+
+  ipcMain.handle(IPC_CHANNELS.shortcutsResume, (_event, payload) => {
+    EmptyRequestSchema.parse(payload);
+    dependencies.setShortcutsSuspended?.(false);
+    // Relu après coup, jamais supposé : si la reprise n'a pas eu lieu, l'onglet
+    // doit continuer à afficher la suspension plutôt qu'un succès inventé.
     return dependencies.shortcutState?.() ?? EMPTY_SHORTCUT_STATE;
   });
 }

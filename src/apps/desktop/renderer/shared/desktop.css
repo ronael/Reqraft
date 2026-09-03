@@ -1209,6 +1209,37 @@ kbd {
   padding-bottom: 9px;
 }
 
+/*
+ * Les deux boutons d'en-tête ne se collent pas au titre.
+ *
+ * `.settings-actions` pose un `padding-top` fait pour un pied de groupe ; dans
+ * un en-tête aligné au centre il décale les boutons d'une demi-ligne sous le
+ * titre. La géométrie des boutons eux-mêmes ne bouge pas.
+ */
+.settings-section-head .settings-actions.diagnostic-head-actions {
+  padding: 0;
+}
+
+/*
+ * Une ligne en échec porte deux lignes de texte de plus et jusqu'à deux
+ * boutons : elle respire, et ses actions restent alignées en haut plutôt que
+ * centrées sur un bloc qui a grandi.
+ */
+.settings-group-row.diagnostic-row-risk {
+  align-items: start;
+  min-height: 72px;
+}
+
+.settings-group-row.diagnostic-row-risk .settings-row-icon,
+.settings-group-row.diagnostic-row-risk .diagnostic-row-actions {
+  padding-top: 1px;
+}
+
+.diagnostic-row-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .diagnostic-icon-ok {
   color: #6ee7b7;
 }
@@ -1221,6 +1252,66 @@ kbd {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/*
+ * La prochaine action, lisible en entier.
+ *
+ * `.diagnostic-detail` tronque sur une ligne, ce qui convient à un chemin de
+ * fichier et pas du tout à une consigne : une phrase coupée par « … » n'est
+ * plus une consigne. Elle est aussi plus claire que le détail au-dessus —
+ * c'est la ligne qu'on vient chercher.
+ */
+.diagnostic-guidance {
+  margin-top: 5px;
+  max-width: 62ch;
+  color: var(--rq-msg-warning-text);
+  white-space: normal;
+}
+
+/*
+ * L'attente a la forme du résultat.
+ *
+ * Trois lignes grises de la hauteur des vraies, plutôt qu'un onglet vide qui
+ * se lit comme un onglet cassé. La pulsation ne touche que l'opacité — donc
+ * aucune mise en page recalculée — et `.pulse` est déjà coupée sous
+ * `prefers-reduced-motion`.
+ */
+.diagnostic-row-skeleton {
+  pointer-events: none;
+}
+
+.diagnostic-skeleton-dot,
+.diagnostic-skeleton-line,
+.diagnostic-skeleton-chip {
+  display: block;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.diagnostic-skeleton-dot {
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+}
+
+.diagnostic-skeleton-line {
+  width: min(280px, 60%);
+  height: 9px;
+}
+
+.diagnostic-skeleton-line + .diagnostic-skeleton-line {
+  margin-top: 8px;
+}
+
+.diagnostic-skeleton-line-short {
+  width: min(180px, 38%);
+}
+
+.diagnostic-skeleton-chip {
+  width: 64px;
+  height: 30px;
+  border-radius: 8px;
 }
 
 .profile-toolbar {

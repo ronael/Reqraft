@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { ProviderAdapter } from "@/core/types.js";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import { buildDoctorReport, formatDoctorReport } from "@/apps/desktop/main/doctor.js";
@@ -58,6 +58,7 @@ describe("buildDoctorReport (lot 5)", () => {
     const check = report.checks.find((entry) => entry.id === "provider:openai");
     expect(check?.ok).toBe(false);
     expect(check?.detail).toContain("OPENAI_API_KEY");
+    expect(check?.remedy).toBe("configure-provider");
     expect(JSON.stringify(report)).not.toContain("sk-ne-jamais-afficher");
   });
 
@@ -75,6 +76,22 @@ describe("buildDoctorReport (lot 5)", () => {
 
     const check = report.checks.find((entry) => entry.id === "provider:anthropic");
     expect(check?.ok).toBe(false);
+  });
+
+  it("contrôle par défaut le seul provider actif", async () => {
+    const createProvider = vi.fn(() => healthyProvider());
+    const report = await buildDoctorReport({
+      loadConfig: () => Promise.resolve({ ...DEFAULT_CONFIG, defaultProvider: "mock" }),
+      hydrateCredentials: () => Promise.resolve(),
+      createProvider,
+      env: {},
+    });
+
+    expect(createProvider).toHaveBeenCalledTimes(1);
+    expect(createProvider).toHaveBeenCalledWith("mock", {}, expect.any(Object));
+    expect(report.checks.filter((check) => check.id.startsWith("provider:"))).toEqual([
+      { id: "provider:mock", ok: true },
+    ]);
   });
 
   it("inclut l'état runtime des permissions et raccourcis quand il est fourni", async () => {
@@ -109,8 +126,12 @@ describe("buildDoctorReport (lot 5)", () => {
     expect(byId.get("permissions:automation")).toMatchObject({
       ok: false,
       detail: "Accessibilité accordée, Automatisation refusée.",
+      remedy: "grant-automation",
     });
-    expect(byId.get("permissions:replace")).toMatchObject({ ok: false });
+    expect(byId.get("permissions:replace")).toMatchObject({
+      ok: false,
+      remedy: "grant-permissions",
+    });
     expect(byId.get("shortcuts:capture")).toMatchObject({
       ok: true,
       detail: "⌃⌥R (Control+Alt+R)",
@@ -120,16 +141,40 @@ describe("buildDoctorReport (lot 5)", () => {
     expect(byId.get("shortcuts:rejected")).toMatchObject({
       ok: false,
       detail: "rejected by the system: Alt+Space",
+      remedy: "free-shortcut",
     });
     expect(byId.get("shortcuts:conflicts")).toMatchObject({
       ok: false,
       detail: "already used by another Reqraft command: Command+Alt+K",
+      remedy: "resolve-shortcut-conflict",
     });
     expect(byId.get("shortcuts:suspended")).toMatchObject({
       ok: false,
       detail: "global shortcuts suspended from the menu bar",
+      remedy: "resume-shortcuts",
     });
     expect(JSON.stringify(report)).not.toContain("sk-ne-jamais-afficher");
+  });
+
+  it("annonce le mode plancher Wayland sans proposer un réglage macOS", async () => {
+    const report = await buildDoctorReport({
+      loadConfig: () => Promise.resolve(DEFAULT_CONFIG),
+      hydrateCredentials: () => Promise.resolve(),
+      createProvider: healthyProvider,
+      providerIds: ["mock"],
+      env: {},
+      permissions: {
+        accessibility: false,
+        automation: false,
+        canReplace: false,
+        gap: "wayland",
+        message: "Wayland floor mode",
+      },
+    });
+
+    const permissionChecks = report.checks.filter((check) => check.id.startsWith("permissions:"));
+    expect(permissionChecks).toHaveLength(3);
+    expect(permissionChecks.every((check) => check.remedy === "wayland-floor")).toBe(true);
   });
 });
 

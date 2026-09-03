@@ -43,13 +43,17 @@ import { createMacosBridge, createOsascriptRunner } from "./macos.js";
 import { installDesktopMenu } from "./menu.js";
 import {
   createSystemPermissionsProbe,
+  openPermissionSettings,
   type PermissionsProbe,
   probePermissions,
   requestAccessibility,
 } from "./permissions.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
-import type { CapsuleOpenedPayload } from "@/apps/desktop/shared/ipc-contract.js";
+import type {
+  CapsuleOpenedPayload,
+  SystemPermissionPane,
+} from "@/apps/desktop/shared/ipc-contract.js";
 import { registerRendererProtocol, registerSchemePrivileges, rqRendererUrl } from "./protocol.js";
 import {
   registerShortcuts,
@@ -531,20 +535,34 @@ function createShortcutHandlers(deps: {
   };
 }
 
+/** Garde la correspondance volet → URL et `shell` dans le processus principal. */
+async function openSystemPermissionSettings(pane: SystemPermissionPane): Promise<void> {
+  await openPermissionSettings(pane, process.platform, async (url) => {
+    await shell.openExternal(url);
+  });
+}
+
+function requestSystemAccessibility(): void {
+  requestAccessibility(systemPreferences);
+}
+
+function requireSettingsWindow(window: Electron.BrowserWindow | null): Electron.BrowserWindow {
+  if (window === null) throw new Error("settings window is not open");
+  return window;
+}
+
+function hideDockOnMacos(): void {
+  if (process.platform === "darwin") app.dock?.hide();
+}
+
 function bootstrap(): void {
-  if (process.platform === "darwin") {
-    // Accessory application: the Dock icon only comes back with packaging
-    // (LSUIElement), which is lot 6.
-    app.dock?.hide();
-  }
+  hideDockOnMacos();
 
   void app.whenReady().then(async () => {
     // Avant toute fenêtre : le menu par défaut d'Electron détient ⌘R, et un
     // accélérateur de menu passe avant le renderer.
     installApplicationMenu();
-
     await applyConfiguredLocale();
-
     await preloadProfileCatalog();
 
     const initialConfig = await loadConfig();
@@ -683,9 +701,8 @@ function bootstrap(): void {
       checkForUpdates: updates.check,
       openUpdateDownload: updates.openDownload,
       probePermissions: async () => await probePermissions(permissionsProbe),
-      requestAccessibility: () => {
-        requestAccessibility(systemPreferences);
-      },
+      requestAccessibility: requestSystemAccessibility,
+      openPermissionSettings: openSystemPermissionSettings,
       openSettings,
       openWelcomeTour: () => {
         openOnboarding(true);
@@ -720,6 +737,9 @@ function bootstrap(): void {
         onboardingWindow?.close();
       },
       shortcutState: () => shortcutState(shortcutResolution, tray),
+      setShortcutsSuspended: (suspended) => {
+        tray.setShortcutsSuspended(suspended);
+      },
       showSaveDialog: chooseExportPath,
     });
 
@@ -773,6 +793,8 @@ function bootstrap(): void {
           capsulePending: () => ouvertures.pending(),
           popoverVisible: () => !popover.window.isDestroyed() && popover.window.isVisible(),
           popoverWindow: () => popover.window,
+          settingsWindow: () => requireSettingsWindow(settingsWindow),
+          openSettings,
           capsuleWindow: () => liveCapsule().window,
           menuAccelerators: applicationMenuAccelerators,
           ...e2eSuspensionTargets(tray),

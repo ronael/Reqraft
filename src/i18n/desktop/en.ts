@@ -102,6 +102,36 @@ export const DESKTOP_EN = {
   "settings.diagnosticShortcutConflicts": "Shortcut conflicts",
   "settings.diagnosticShortcutState": "Shortcut state",
   "settings.diagnosticProvider": "{provider} provider",
+  "settings.diagnosticPassed": "Passing checks ({count})",
+  "settings.diagnosticFailed": "The diagnostic could not run. Try again.",
+  "settings.remedy.grantAccessibility":
+    "Reqraft needs Accessibility to type the replacement. Allow it, or open System Settings › Privacy & Security › Accessibility if the prompt no longer appears.",
+  "settings.remedy.grantAutomation":
+    "macOS asks for Automation at the first replacement and never asks again. Tick Reqraft under System Events in Privacy & Security › Automation.",
+  "settings.remedy.grantPermissions":
+    "Replacement becomes available once the missing permission is granted. Until then, accepting a result copies it, ready to paste with ⌘V.",
+  "settings.remedy.waylandFloor":
+    "Wayland refuses keystroke injection by design. Nothing to allow: ⏎ copies the result, and ⌘V pastes it where you want it.",
+  "settings.remedy.pickShortcut":
+    "No combination could be registered for this command. Pick another one in Settings.",
+  "settings.remedy.freeShortcut":
+    "Another application holds this combination. Free it there, or pick another one in Settings.",
+  "settings.remedy.resolveShortcutConflict":
+    "Two Reqraft commands are asking for the same combination. Change one of them in Settings.",
+  "settings.remedy.resumeShortcuts":
+    "Global shortcuts are suspended from the menu bar. Resume them to get the three commands back.",
+  "settings.remedy.configureProvider":
+    "This provider has no usable configuration. Add or replace its key in Providers.",
+  "settings.remedy.openSystemSettings": "Open System Settings",
+  "settings.remedy.openShortcuts": "Open Settings",
+  "settings.remedy.openProviders": "Providers",
+  "settings.remedy.resume": "Resume",
+  "settings.remedy.systemSettingsOpened":
+    "System Settings opened — the diagnostic runs again when you come back.",
+  "settings.remedy.permissionRequested":
+    "Permission requested. If no prompt appeared, macOS already has an answer: open System Settings.",
+  "settings.remedy.shortcutsResumed": "Global shortcuts resumed.",
+  "settings.remedy.actionFailed": "That action could not be carried out.",
   "settings.context": "Context",
   "settings.context.provider": "provider",
   "settings.context.model": "model",

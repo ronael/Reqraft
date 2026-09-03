@@ -26,6 +26,14 @@ export const IPC_CHANNELS = {
   doctorCopy: "doctor:copy",
   permissionsState: "permissions:state",
   permissionsRequest: "permissions:request",
+  // Ouvre le volet Confidentialité et sécurité de la permission nommée. Le
+  // renderer envoie un mot d'une énumération de deux valeurs, jamais une URL :
+  // c'est le processus principal qui détient la correspondance, sinon
+  // `shell.openExternal` deviendrait un lanceur de schémas piloté par le
+  // renderer. Nécessaire parce que macOS ne réaffiche pas l'invite
+  // Accessibilité après un refus, et n'a aucune invite pour l'Automatisation —
+  // sans ce chemin, un échec de permission n'a plus de suite dans l'app.
+  systemOpenPermissionSettings: "system:open-permission-settings",
   updatesState: "updates:state",
   updatesCheck: "updates:check",
   updatesOpenDownload: "updates:open-download",
@@ -60,6 +68,11 @@ export const IPC_CHANNELS = {
   windowOpenSettings: "window:open-settings",
   windowOpenWelcomeTour: "window:open-welcome-tour",
   shortcutsState: "shortcuts:state",
+  // Reprend les raccourcis globaux suspendus depuis le menu de la barre. La
+  // suspension est visible dans le Diagnostic ; sans ce canal, la seule façon
+  // de la lever serait de retrouver la case dans le menu du tray, ce que
+  // l'onglet ne peut ni montrer ni désigner.
+  shortcutsResume: "shortcuts:resume",
   // Desktop onboarding: someone who installed only the application must be
   // able to configure it without the CLI. `onboarding:state` reports whether
   // a usable configuration exists and offers the choices; `credential:save`
@@ -112,6 +125,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.doctorCopy,
   IPC_CHANNELS.permissionsState,
   IPC_CHANNELS.permissionsRequest,
+  IPC_CHANNELS.systemOpenPermissionSettings,
   IPC_CHANNELS.updatesState,
   IPC_CHANNELS.updatesCheck,
   IPC_CHANNELS.updatesOpenDownload,
@@ -128,6 +142,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.windowOpenSettings,
   IPC_CHANNELS.windowOpenWelcomeTour,
   IPC_CHANNELS.shortcutsState,
+  IPC_CHANNELS.shortcutsResume,
   IPC_CHANNELS.onboardingState,
   IPC_CHANNELS.onboardingTourComplete,
   IPC_CHANNELS.onboardingComplete,

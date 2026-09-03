@@ -1,3 +1,5 @@
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import {
   runCapsuleErrorScenario,
   runCapsuleUiScenario,
@@ -43,6 +45,8 @@ export interface E2eScenarioTargets {
   capsulePending: () => CapsuleOpenedPayload | null;
   popoverVisible: () => boolean;
   popoverWindow: () => CapsuleUiWindow;
+  settingsWindow: () => CapsuleUiWindow;
+  openSettings: (tab?: string) => void;
   setShortcutsSuspended: (suspended: boolean) => void;
   shortcutsSuspended: () => boolean;
   /**
@@ -70,9 +74,20 @@ export interface E2eScenarioReport {
   /** Les mesures prises dans le vrai renderer (scénarios `capsule-ui*`). */
   ui?: CapsuleUiReport;
   popoverUi?: PopoverUiReport;
+  diagnosticUi?: DiagnosticUiReport;
   /** Les accélérateurs que le menu applicatif détient réellement. */
   menuAccelerators?: string[];
   error?: string;
+}
+
+export interface DiagnosticUiReport {
+  window: { width: number; height: number };
+  failedChecks: number;
+  actions: number;
+  rerunVisible: boolean;
+  statusbarVisible: boolean;
+  documentOverflows: boolean;
+  shot?: string;
 }
 
 /**
@@ -128,11 +143,65 @@ export async function runE2eScenario(
         return { name, popoverUi: await runPopoverUiScenario(popoverTargets(targets)) };
       case "popover-error":
         return { name, popoverUi: await runPopoverErrorScenario(popoverTargets(targets)) };
+      case "settings-diagnostic":
+        return { name, diagnosticUi: await diagnosticScenario(targets) };
       default:
         return { name, error: `unknown scenario: ${name}` };
     }
   } catch (cause) {
     return { name, error: cause instanceof Error ? cause.message : String(cause) };
+  }
+}
+
+/** Ouvre et mesure le Diagnostic dans la vraie fenêtre de réglages. */
+async function diagnosticScenario(targets: E2eScenarioTargets): Promise<DiagnosticUiReport> {
+  targets.openSettings("diagnostic");
+  const target = targets.settingsWindow();
+  await waitForRenderer(
+    target,
+    `document.querySelector(".diagnostic-row:not(.diagnostic-row-skeleton)") !== null && document.querySelector(".diagnostic-head-actions [aria-busy=true]") === null`,
+    "completed diagnostic",
+  );
+  await new Promise((resolve) => setTimeout(resolve, 250));
+  const measured = (await target.webContents.executeJavaScript(
+    `(() => {
+    const inside = (node) => {
+      if (node === null) return false;
+      const rect = node.getBoundingClientRect();
+      return rect.top >= 0 && rect.bottom <= window.innerHeight + 1;
+    };
+    return {
+      window: { width: window.innerWidth, height: window.innerHeight },
+      failedChecks: document.querySelectorAll(".diagnostic-row-risk").length,
+      actions: document.querySelectorAll(".diagnostic-row-actions button").length,
+      rerunVisible: inside(document.querySelector(".diagnostic-head-actions button:last-child")),
+      statusbarVisible: inside(document.querySelector(".settings-statusbar")),
+      documentOverflows:
+        document.documentElement.scrollHeight > window.innerHeight + 1 ||
+        document.documentElement.scrollWidth > window.innerWidth + 1,
+    };
+  })()`,
+    true,
+  )) as Omit<DiagnosticUiReport, "shot">;
+  const directory = process.env[DESKTOP_E2E_SHOTS];
+  if (directory === undefined || directory === "") return measured;
+  await mkdir(directory, { recursive: true });
+  const shot = path.join(directory, "settings-diagnostic.png");
+  await writeFile(shot, (await target.webContents.capturePage()).toPNG());
+  return { ...measured, shot };
+}
+
+async function waitForRenderer(
+  target: CapsuleUiWindow,
+  expression: string,
+  label: string,
+  timeoutMs = 15_000,
+): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    if (await target.webContents.executeJavaScript(`Boolean(${expression})`, true)) return;
+    if (Date.now() >= deadline) throw new Error(`timed out waiting for ${label}`);
+    await new Promise((resolve) => setTimeout(resolve, 30));
   }
 }
 

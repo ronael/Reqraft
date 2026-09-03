@@ -1,4 +1,4 @@
-import { type ComponentType, useCallback, useEffect, useRef, useState } from "react";
+import { type ComponentType, useCallback, useEffect, useState } from "react";
 import {
   CircleArrowUp,
   Cpu,
@@ -106,7 +106,11 @@ export function SettingsApp(): React.JSX.Element {
   const [permissions, setPermissions] = useState<PermissionsState | null>(null);
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [doctorRunning, setDoctorRunning] = useState(false);
-  const doctorRequested = useRef(false);
+  // Le diagnostic lui-même peut échouer : `doctor:run` traverse la
+  // configuration, le trousseau et chaque adaptateur. Sans cet état, un rejet
+  // laissait l'onglet sur « Lancez le diagnostic » pour toujours, et la
+  // promesse rejetée n'était rattrapée nulle part.
+  const [doctorFailed, setDoctorFailed] = useState(false);
   const [updates, setUpdates] = useState<DesktopUpdateState | null>(null);
 
   useEffect(() => {
@@ -125,20 +129,39 @@ export function SettingsApp(): React.JSX.Element {
   }, []);
 
   const runDoctor = useCallback(() => {
-    doctorRequested.current = true;
     setDoctorRunning(true);
+    setDoctorFailed(false);
     void window.reqraft
       .runDoctor()
-      .then(setDoctor)
+      .then((report) => {
+        setDoctor(report);
+      })
+      .catch(() => {
+        // Le rapport précédent reste affiché s'il y en avait un : il décrit
+        // encore la dernière mesure réussie, et l'effacer remplacerait une
+        // information datée par rien du tout. Le message d'état dit, lui, que
+        // cette exécution-ci n'a pas abouti.
+        setDoctorFailed(true);
+      })
       .finally(() => {
         setDoctorRunning(false);
       });
   }, []);
 
+  /**
+   * Le diagnostic est rejoué à chaque entrée dans l'onglet, pas une seule fois
+   * par fenêtre.
+   *
+   * Depuis qu'un échec renvoie vers Réglages ou Providers pour être corrigé, le
+   * trajet normal est : constater, réparer ailleurs, revenir. Un rapport figé
+   * au premier affichage montrerait encore le défaut qu'on vient de réparer, ce
+   * qui se lit comme une réparation sans effet. La mesure est locale — fichier
+   * de configuration, trousseau, `validateConfiguration()` de chaque
+   * adaptateur — et n'ouvre aucune connexion.
+   */
   useEffect(() => {
-    if (tab === "diagnostic" && !doctorRequested.current) {
-      runDoctor();
-    }
+    if (tab !== "diagnostic") return;
+    runDoctor();
   }, [runDoctor, tab]);
 
   const patchConfig = useCallback((patch: Parameters<typeof window.reqraft.writeConfig>[0]) => {
@@ -299,7 +322,13 @@ export function SettingsApp(): React.JSX.Element {
             )}
 
             {tab === "diagnostic" && (
-              <DiagnosticTab doctor={doctor} running={doctorRunning} onRunDoctor={runDoctor} />
+              <DiagnosticTab
+                doctor={doctor}
+                running={doctorRunning}
+                failed={doctorFailed}
+                onRunDoctor={runDoctor}
+                onOpenTab={setTab}
+              />
             )}
 
             {tab === "updates" && (

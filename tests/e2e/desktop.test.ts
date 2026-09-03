@@ -70,6 +70,15 @@ interface DesktopE2ePayload {
     run?: { rewritten: string; model: string; profile: string };
     ui?: CapsuleUiReport;
     popoverUi?: PopoverUiReport;
+    diagnosticUi?: {
+      window: { width: number; height: number };
+      failedChecks: number;
+      actions: number;
+      rerunVisible: boolean;
+      statusbarVisible: boolean;
+      documentOverflows: boolean;
+      shot?: string;
+    };
     menuAccelerators?: string[];
     error?: string;
   };
@@ -419,6 +428,32 @@ describeElectron("desktop Electron smoke", () => {
       ]);
       expect(payload.shortcuts.conflicts).toEqual([]);
       expect(payload.windowCount).toBeGreaterThanOrEqual(2);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+});
+
+describeElectron("settings diagnostic — vraie fenêtre", () => {
+  it(
+    "garde les corrections et la relance visibles à 900 × 640",
+    async () => {
+      const payload = await runDesktopProbe(
+        {
+          REQRAFT_DESKTOP_E2E_SCENARIO: "settings-diagnostic",
+          REQRAFT_DESKTOP_E2E_SHOTS: process.env.REQRAFT_DESKTOP_E2E_SHOTS ?? "",
+        },
+        MOCK_CONFIG,
+      );
+
+      expect(payload.scenario?.error).toBeUndefined();
+      const ui = payload.scenario?.diagnosticUi;
+      if (ui === undefined) throw new Error("le Diagnostic n'a rendu aucune mesure");
+      expect(ui.window).toEqual({ width: 900, height: 640 });
+      expect(ui.failedChecks).toBeGreaterThan(0);
+      expect(ui.actions).toBeGreaterThan(0);
+      expect(ui.rerunVisible).toBe(true);
+      expect(ui.statusbarVisible).toBe(true);
+      expect(ui.documentOverflows).toBe(false);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );

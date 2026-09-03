@@ -4,10 +4,11 @@ import type { Config } from "@/config/schema.js";
 import type { ProviderAdapter } from "@/core/types.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { createProvider } from "@/providers/registry.js";
-import { listProviderDefinitions, type BuiltinProvider } from "@/providers/catalog.js";
+import type { BuiltinProvider } from "@/providers/catalog.js";
 import type {
   DoctorCheck,
   DoctorReport,
+  DoctorRemedy,
   ShortcutIntent,
   ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
@@ -61,11 +62,11 @@ export async function buildDoctorReport(
 
   await hydrate(env);
 
-  const ids =
-    dependencies.providerIds ??
-    listProviderDefinitions()
-      .filter((definition) => !definition.isTest)
-      .map((definition) => definition.id);
+  // Le Diagnostic desktop répond à une question opérationnelle : la
+  // configuration utilisée maintenant peut-elle générer ? Les fournisseurs
+  // optionnels ont leur état dans l'onglet Providers ; les traiter comme des
+  // pannes rendrait une installation saine impossible sans toutes les clés.
+  const ids = dependencies.providerIds ?? [config.defaultProvider];
   for (const id of ids) {
     checks.push(await checkProvider(id, env, config, create));
   }
@@ -98,30 +99,60 @@ async function checkProvider(
       ok: false,
       detail:
         health.missingConfiguration?.join(", ") ?? health.code ?? t("main.doctorConfigIncomplete"),
+      remedy: "configure-provider",
     };
   } catch {
-    return { id: `provider:${id}`, ok: false, detail: t("main.doctorValidationError") };
+    return {
+      id: `provider:${id}`,
+      ok: false,
+      detail: t("main.doctorValidationError"),
+      remedy: "configure-provider",
+    };
   }
 }
 
+/**
+ * Les trois lignes de permission, et ce qui les débloque.
+ *
+ * Le remède se décide ici parce que c'est ici qu'on sait sur quoi on tourne.
+ * Sous Wayland l'injection est refusée par conception (§5.4) : proposer
+ * d'ouvrir un volet de Réglages système y serait une fausse piste, et le mode
+ * plancher est le comportement, pas une panne. Sur macOS, l'Accessibilité a
+ * encore une invite, l'Automatisation n'en a aucune — d'où deux remèdes
+ * distincts pour deux lignes qui se ressemblent.
+ */
 function checkPermissions(report: PermissionsReport): DoctorCheck[] {
+  // Sous Wayland les trois lignes tombent ensemble et pour la même raison : le
+  // même remède, nommé une fois.
+  const WAYLAND: DoctorRemedy = "wayland-floor";
+  const wayland = report.gap === "wayland";
   return [
     {
       id: "permissions:accessibility",
       ok: report.accessibility,
       detail: report.accessibility ? t("main.doctorPermissionGranted") : report.message,
+      ...remedyWhenFailing(report.accessibility, wayland ? WAYLAND : "grant-accessibility"),
     },
     {
       id: "permissions:automation",
       ok: report.automation,
       detail: report.automation ? t("main.doctorPermissionGranted") : report.message,
+      ...remedyWhenFailing(report.automation, wayland ? WAYLAND : "grant-automation"),
     },
     {
       id: "permissions:replace",
       ok: report.canReplace,
       detail: report.message,
+      // Aucun bouton en face : le remplacement est la conséquence des deux
+      // lignes au-dessus, et rien ne se corrige à cet endroit précis.
+      ...remedyWhenFailing(report.canReplace, wayland ? WAYLAND : "grant-permissions"),
     },
   ];
+}
+
+/** Le remède, uniquement quand le contrôle échoue. */
+function remedyWhenFailing(ok: boolean, remedy: DoctorRemedy): { remedy?: DoctorRemedy } {
+  return ok ? {} : { remedy };
 }
 
 function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
@@ -138,6 +169,7 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
       state.rejected.length === 0
         ? t("main.doctorNoRejection")
         : t("main.doctorRejectedBySystem", { list: state.rejected.join(", ") }),
+    ...remedyWhenFailing(state.rejected.length === 0, "free-shortcut"),
   });
 
   // Séparé du refus système : ici personne d'autre ne tient la combinaison,
@@ -150,12 +182,14 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
       state.conflicts.length === 0
         ? t("main.doctorNoConflict")
         : t("main.doctorConflictingShortcuts", { list: state.conflicts.join(", ") }),
+    ...remedyWhenFailing(state.conflicts.length === 0, "resolve-shortcut-conflict"),
   });
 
   checks.push({
     id: "shortcuts:suspended",
     ok: !state.suspended,
     detail: state.suspended ? t("main.doctorShortcutsSuspended") : t("main.doctorShortcutsActive"),
+    ...remedyWhenFailing(!state.suspended, "resume-shortcuts"),
   });
 
   return checks;
@@ -167,6 +201,7 @@ function checkShortcutIntent(state: ShortcutStateInfo, intent: ShortcutIntent): 
     id: `shortcuts:${intent}`,
     ok: active !== undefined,
     detail: active ? `${active.label} (${active.accelerator})` : t("main.doctorNoShortcut"),
+    ...remedyWhenFailing(active !== undefined, "pick-shortcut"),
   };
 }
 

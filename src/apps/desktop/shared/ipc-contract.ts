@@ -219,10 +219,51 @@ export interface DesktopUpdateState {
   publishedAt?: string;
 }
 
+/**
+ * Ce qui remet un contrôle en échec d'aplomb.
+ *
+ * Décidé par le processus principal, pas par le renderer : lui seul sait sur
+ * quelle plateforme il tourne, si Wayland refuse l'injection par conception, et
+ * si une combinaison est refusée par une autre application ou réclamée deux
+ * fois par Reqraft. Le renderer devrait sinon deviner tout cela à partir d'un
+ * `detail` traduit, ce qui casse à la première reformulation.
+ *
+ * Un identifiant stable, jamais une phrase : la phrase est traduite en face,
+ * et le rapport copié — qui part dans une issue publique — n'en porte aucune.
+ */
+export const DOCTOR_REMEDIES = [
+  /** macOS peut encore afficher l'invite Accessibilité. */
+  "grant-accessibility",
+  /** Automatisation : aucune API ne l'invite, seul le réglage système l'ouvre. */
+  "grant-automation",
+  /** Conséquence des deux précédentes : rien à faire ici, tout est au-dessus. */
+  "grant-permissions",
+  /** Wayland refuse l'injection par conception (§5.4) : mode plancher assumé. */
+  "wayland-floor",
+  /** Aucune combinaison enregistrée pour cette commande : en choisir une. */
+  "pick-shortcut",
+  /** Une autre application détient la combinaison : la libérer ou en changer. */
+  "free-shortcut",
+  /** Deux commandes Reqraft se disputent la même combinaison. */
+  "resolve-shortcut-conflict",
+  /** Les raccourcis globaux sont suspendus : les reprendre. */
+  "resume-shortcuts",
+  /** Configuration de fournisseur incomplète : clé ou endpoint à corriger. */
+  "configure-provider",
+] as const;
+
+export type DoctorRemedy = (typeof DOCTOR_REMEDIES)[number];
+
 export interface DoctorCheck {
   id: string;
   ok: boolean;
   detail?: string;
+  /**
+   * Renseigné pour les seuls contrôles en échec, et seulement quand une suite
+   * concrète existe. Un échec sans remède affiche son détail et rien d'autre —
+   * mieux qu'un bouton qui ne mène nulle part.
+   */
+  remedy?: DoctorRemedy;
 }
 
 export interface DoctorReport {
@@ -249,6 +290,29 @@ export interface PermissionsState {
 export interface PermissionsRequestResult {
   accessibility: boolean;
 }
+
+/**
+ * Le volet des Réglages système que le desktop sait ouvrir.
+ *
+ * Deux valeurs, et rien d'autre : le renderer nomme une permission, jamais une
+ * URL. Une chaîne libre passée à `shell.openExternal` ferait du renderer un
+ * lanceur de schémas arbitraires (`file:`, `x-apple.systempreferences:` vers
+ * n'importe quel volet) ; l'énumération garde la correspondance du côté qui
+ * connaît déjà la plateforme.
+ *
+ * L'invite Accessibilité existe (`permissions:request`), mais macOS ne la
+ * réaffiche pas après un refus, et l'Automatisation n'a aucune invite
+ * déclenchable. Sans ce canal, un échec de permission n'a plus de suite dans
+ * l'application — la seule réponse serait « allez voir dans les Réglages
+ * système », que personne ne trouve du premier coup.
+ */
+export const SYSTEM_PERMISSION_PANES = ["accessibility", "automation"] as const;
+export type SystemPermissionPane = (typeof SYSTEM_PERMISSION_PANES)[number];
+
+export const OpenPermissionSettingsRequestSchema = z
+  .object({ pane: z.enum(SYSTEM_PERMISSION_PANES) })
+  .strict();
+export type OpenPermissionSettingsRequest = z.infer<typeof OpenPermissionSettingsRequestSchema>;
 
 /**
  * A profile as the renderer is allowed to see it: identity and wording only.
@@ -891,6 +955,8 @@ export interface ReqraftBridge {
   copyDoctorReport(): Promise<DoctorCopyResponse>;
   permissionsState(): Promise<PermissionsState>;
   requestPermissions(): Promise<PermissionsRequestResult>;
+  /** Ouvre le volet système d'une permission nommée ; jamais une URL. */
+  openPermissionSettings(pane: SystemPermissionPane): Promise<void>;
   updatesState(): Promise<DesktopUpdateState>;
   checkForUpdates(): Promise<DesktopUpdateState>;
   openUpdateDownload(): Promise<void>;
@@ -908,6 +974,8 @@ export interface ReqraftBridge {
   openSettings(): Promise<void>;
   openWelcomeTour(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
+  /** Lève la suspension des raccourcis globaux et rend l'état relu après coup. */
+  resumeShortcuts(): Promise<ShortcutStateInfo>;
   onboardingState(): Promise<OnboardingStateResponse>;
   completeWelcomeTour(): Promise<OnboardingStateResponse>;
   saveCredential(request: CredentialSaveRequest): Promise<CredentialSaveResponse>;

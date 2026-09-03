@@ -95,6 +95,36 @@ export const DESKTOP_FR = {
   "settings.diagnosticShortcutConflicts": "Conflits de raccourcis",
   "settings.diagnosticShortcutState": "État des raccourcis",
   "settings.diagnosticProvider": "Provider {provider}",
+  "settings.diagnosticPassed": "Contrôles réussis ({count})",
+  "settings.diagnosticFailed": "Le diagnostic n'a pas pu s'exécuter. Réessayez.",
+  "settings.remedy.grantAccessibility":
+    "Reqraft a besoin de l'Accessibilité pour taper le remplacement. Autorisez-la, ou ouvrez Réglages système › Confidentialité et sécurité › Accessibilité si l'invite ne s'affiche plus.",
+  "settings.remedy.grantAutomation":
+    "macOS demande l'Automatisation au premier remplacement, et ne la redemande jamais. Cochez Reqraft sous Événements système dans Confidentialité et sécurité › Automatisation.",
+  "settings.remedy.grantPermissions":
+    "Le remplacement devient disponible dès que l'autorisation manquante est accordée. En attendant, accepter un résultat le copie, prêt à être collé avec ⌘V.",
+  "settings.remedy.waylandFloor":
+    "Wayland refuse l'injection de frappe par conception. Rien à autoriser : ⏎ copie le résultat, et ⌘V le colle où vous voulez.",
+  "settings.remedy.pickShortcut":
+    "Aucune combinaison n'a pu être enregistrée pour cette commande. Choisissez-en une autre dans Réglages.",
+  "settings.remedy.freeShortcut":
+    "Une autre application détient cette combinaison. Libérez-la de son côté, ou choisissez-en une autre dans Réglages.",
+  "settings.remedy.resolveShortcutConflict":
+    "Deux commandes Reqraft demandent la même combinaison. Changez-en une dans Réglages.",
+  "settings.remedy.resumeShortcuts":
+    "Les raccourcis globaux sont suspendus depuis la barre de menus. Reprenez-les pour retrouver les trois commandes.",
+  "settings.remedy.configureProvider":
+    "Ce fournisseur n'a pas de configuration utilisable. Ajoutez ou remplacez sa clé dans Providers.",
+  "settings.remedy.openSystemSettings": "Ouvrir les Réglages système",
+  "settings.remedy.openShortcuts": "Ouvrir Réglages",
+  "settings.remedy.openProviders": "Providers",
+  "settings.remedy.resume": "Reprendre",
+  "settings.remedy.systemSettingsOpened":
+    "Réglages système ouverts — le diagnostic sera relancé à votre retour.",
+  "settings.remedy.permissionRequested":
+    "Autorisation demandée. Si aucune invite ne s'affiche, macOS a déjà une réponse : ouvrez les Réglages système.",
+  "settings.remedy.shortcutsResumed": "Raccourcis globaux repris.",
+  "settings.remedy.actionFailed": "Cette action n'a pas pu être menée à bien.",
   "settings.context": "Contexte",
   "settings.context.provider": "provider",
   "settings.context.model": "modèle",

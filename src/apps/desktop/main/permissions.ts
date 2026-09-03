@@ -1,3 +1,4 @@
+import type { SystemPermissionPane } from "@/apps/desktop/shared/ipc-contract.js";
 import type { MacosBridge } from "./macos.js";
 import { t } from "./i18n.js";
 
@@ -103,6 +104,40 @@ function describeGap(gap: PermissionGap): string {
     case "wayland":
       return t("main.permissionsWayland");
   }
+}
+
+/**
+ * Où macOS range chacune des deux permissions.
+ *
+ * Le schéma `x-apple.systempreferences:` ouvre le volet directement, ce qu'un
+ * texte d'aide ne remplace pas : « Réglages système › Confidentialité et
+ * sécurité › Accessibilité » est un chemin que personne ne parcourt du premier
+ * coup, et l'invite Accessibilité ne se réaffiche pas après un refus.
+ *
+ * La table vit ici, du côté qui connaît la plateforme. Le renderer ne nomme
+ * qu'une permission : aucune URL ne traverse l'IPC, donc aucune chaîne venue
+ * du renderer ne peut atteindre `shell.openExternal`.
+ */
+export const PERMISSION_SETTINGS_URLS: Record<SystemPermissionPane, string> = {
+  accessibility: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility",
+  automation: "x-apple.systempreferences:com.apple.preference.security?Privacy_Automation",
+};
+
+/**
+ * Ouvre le volet système d'une permission, sur macOS uniquement.
+ *
+ * Ailleurs, il n'y a rien à ouvrir : Windows et X11 n'ont pas ces autorisations
+ * et Wayland refuse l'injection par conception. Rendre `false` plutôt que
+ * d'ouvrir un lien mort laisse l'appelant honnête sur ce qui s'est passé.
+ */
+export async function openPermissionSettings(
+  pane: SystemPermissionPane,
+  platform: NodeJS.Platform,
+  openExternal: (url: string) => Promise<void>,
+): Promise<boolean> {
+  if (platform !== "darwin") return false;
+  await openExternal(PERMISSION_SETTINGS_URLS[pane]);
+  return true;
 }
 
 /** Narrow slice of Electron's `systemPreferences`, injected for testability. */

@@ -50,6 +50,11 @@ const bridge: ReqraftBridge = {
   copyDoctorReport: () => ipcRenderer.invoke(IPC_CHANNELS.doctorCopy),
   permissionsState: () => ipcRenderer.invoke(IPC_CHANNELS.permissionsState),
   requestPermissions: () => ipcRenderer.invoke(IPC_CHANNELS.permissionsRequest),
+  // Le nom d'un volet, pas son adresse : la correspondance reste dans le
+  // processus principal, donc aucune chaîne du renderer n'atteint
+  // `shell.openExternal`.
+  openPermissionSettings: (pane) =>
+    ipcRenderer.invoke(IPC_CHANNELS.systemOpenPermissionSettings, { pane }),
   updatesState: () => ipcRenderer.invoke(IPC_CHANNELS.updatesState),
   checkForUpdates: () => ipcRenderer.invoke(IPC_CHANNELS.updatesCheck),
   openUpdateDownload: () => ipcRenderer.invoke(IPC_CHANNELS.updatesOpenDownload),
@@ -68,6 +73,7 @@ const bridge: ReqraftBridge = {
   openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
   openWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenWelcomeTour),
   shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),
+  resumeShortcuts: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsResume),
   onboardingState: () => ipcRenderer.invoke(IPC_CHANNELS.onboardingState),
   completeWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.onboardingTourComplete),
   // The one call that carries a secret. It goes one way: the main process

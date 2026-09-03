@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   isWayland,
+  openPermissionSettings,
+  PERMISSION_SETTINGS_URLS,
   probePermissions,
   type PermissionsProbe,
 } from "@/apps/desktop/main/permissions.js";
@@ -111,5 +113,23 @@ describe("isWayland", () => {
     expect(isWayland({ XDG_SESSION_TYPE: "wayland" }, "darwin")).toBe(false);
     expect(isWayland({ XDG_SESSION_TYPE: "x11" }, "linux")).toBe(false);
     expect(isWayland({}, "linux")).toBe(false);
+  });
+});
+
+describe("openPermissionSettings", () => {
+  it("ouvre uniquement le volet macOS correspondant à l'énumération", async () => {
+    const openExternal = vi.fn(() => Promise.resolve());
+
+    await expect(openPermissionSettings("accessibility", "darwin", openExternal)).resolves.toBe(
+      true,
+    );
+    expect(openExternal).toHaveBeenCalledWith(PERMISSION_SETTINGS_URLS.accessibility);
+  });
+
+  it("reste inerte hors macOS", async () => {
+    const openExternal = vi.fn(() => Promise.resolve());
+
+    await expect(openPermissionSettings("automation", "linux", openExternal)).resolves.toBe(false);
+    expect(openExternal).not.toHaveBeenCalled();
   });
 });
