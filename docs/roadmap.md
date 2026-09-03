@@ -4,7 +4,7 @@ Cette roadmap distingue la stabilisation, les capacités produit planifiées et
 la recherche. Les éléments « Exploration » ne constituent pas un engagement de
 livraison.
 
-## Now — stabiliser 0.5.x
+## Now — stabiliser 0.6.0
 
 - Faire du dogfooding réel du CLI, du TUI et du desktop ; ne corriger que les
   régressions concrètement remontées.
