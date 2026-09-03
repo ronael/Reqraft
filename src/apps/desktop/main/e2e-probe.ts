@@ -84,6 +84,7 @@ export interface DiagnosticUiReport {
   window: { width: number; height: number };
   failedChecks: number;
   actions: number;
+  summaryGap: number;
   rerunVisible: boolean;
   statusbarVisible: boolean;
   documentOverflows: boolean;
@@ -170,10 +171,16 @@ async function diagnosticScenario(targets: E2eScenarioTargets): Promise<Diagnost
       const rect = node.getBoundingClientRect();
       return rect.top >= 0 && rect.bottom <= window.innerHeight + 1;
     };
+    const summary = document.querySelector(".diagnostic-summary");
+    const failures = document.querySelector(".diagnostic-section > .diagnostic-list");
     return {
       window: { width: window.innerWidth, height: window.innerHeight },
       failedChecks: document.querySelectorAll(".diagnostic-row-risk").length,
       actions: document.querySelectorAll(".diagnostic-row-actions button").length,
+      summaryGap:
+        summary === null || failures === null
+          ? 0
+          : Math.round(failures.getBoundingClientRect().top - summary.getBoundingClientRect().bottom),
       rerunVisible: inside(document.querySelector(".diagnostic-head-actions button:last-child")),
       statusbarVisible: inside(document.querySelector(".settings-statusbar")),
       documentOverflows:

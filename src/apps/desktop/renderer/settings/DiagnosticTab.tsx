@@ -177,7 +177,7 @@ export function DiagnosticTab({
           </div>
         </div>
 
-        <div className="settings-messages">
+        <div className="settings-messages diagnostic-summary">
           <InlineMessage
             tone={diagnosticTone(state)}
             role={failed || copyStatus === "error" ? "alert" : "status"}
@@ -283,10 +283,10 @@ function FailingCheckRow({
         {check.detail !== undefined && (
           <span className="settings-row-detail diagnostic-detail">{check.detail}</span>
         )}
-        {remedy !== undefined && (
-          <span className="settings-row-detail diagnostic-guidance">{t(remedy.guidanceKey)}</span>
-        )}
       </span>
+      {remedy !== undefined && (
+        <span className="settings-row-detail diagnostic-guidance">{t(remedy.guidanceKey)}</span>
+      )}
       {remedy !== undefined && remedy.actions.length > 0 && (
         <span className="settings-row-control diagnostic-row-actions">
           {remedy.actions.map((action) => (

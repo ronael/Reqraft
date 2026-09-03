@@ -74,6 +74,7 @@ interface DesktopE2ePayload {
       window: { width: number; height: number };
       failedChecks: number;
       actions: number;
+      summaryGap: number;
       rerunVisible: boolean;
       statusbarVisible: boolean;
       documentOverflows: boolean;
@@ -451,6 +452,7 @@ describeElectron("settings diagnostic — vraie fenêtre", () => {
       expect(ui.window).toEqual({ width: 900, height: 640 });
       expect(ui.failedChecks).toBeGreaterThan(0);
       expect(ui.actions).toBeGreaterThan(0);
+      expect(ui.summaryGap).toBeGreaterThanOrEqual(12);
       expect(ui.rerunVisible).toBe(true);
       expect(ui.statusbarVisible).toBe(true);
       expect(ui.documentOverflows).toBe(false);

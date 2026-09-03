@@ -1220,6 +1220,10 @@ kbd {
   padding: 0;
 }
 
+.diagnostic-summary {
+  margin-bottom: 12px;
+}
+
 /*
  * Une ligne en échec porte deux lignes de texte de plus et jusqu'à deux
  * boutons : elle respire, et ses actions restent alignées en haut plutôt que
@@ -1228,10 +1232,22 @@ kbd {
 .settings-group-row.diagnostic-row-risk {
   align-items: start;
   min-height: 72px;
+  row-gap: 6px;
 }
 
-.settings-group-row.diagnostic-row-risk .settings-row-icon,
+.settings-group-row.diagnostic-row-risk .settings-row-icon {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.settings-group-row.diagnostic-row-risk .settings-group-copy {
+  grid-column: 2;
+  grid-row: 1;
+}
+
 .settings-group-row.diagnostic-row-risk .diagnostic-row-actions {
+  grid-column: 3;
+  grid-row: 1;
   padding-top: 1px;
 }
 
@@ -1263,10 +1279,22 @@ kbd {
  * c'est la ligne qu'on vient chercher.
  */
 .diagnostic-guidance {
-  margin-top: 5px;
-  max-width: 62ch;
+  grid-column: 2 / -1;
+  grid-row: 2;
+  margin-top: 0;
   color: var(--rq-msg-warning-text);
   white-space: normal;
+}
+
+@media (max-width: 760px) {
+  .settings-group-row.diagnostic-row-risk .diagnostic-row-actions {
+    grid-column: 2;
+    grid-row: 2;
+  }
+
+  .diagnostic-guidance {
+    grid-row: 3;
+  }
 }
 
 /*
