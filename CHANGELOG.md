@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0-rc.2 (2026-09-03)
+## 0.6.0 (2026-09-03)
 
 ### Desktop application
 
@@ -46,9 +46,9 @@
 - Added a macOS manual release checklist for permissions, selection capture,
   replacement, clipboard preservation, language changes and update behavior.
 
-This is a release candidate. macOS is the validated desktop target; Windows
-and Linux installers remain experimental, and automatic installation waits for
-signed distribution packages.
+The CLI is stable. The desktop application remains in beta: macOS is the
+validated target, Windows and Linux installers remain experimental, and
+automatic installation waits for signed distribution packages.
 
 ## 0.3.1 (2026-08-20)
 
