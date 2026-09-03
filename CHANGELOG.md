@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.6.0-rc.1 (2026-09-03)
+## 0.6.0-rc.2 (2026-09-03)
 
 ### Desktop application
 

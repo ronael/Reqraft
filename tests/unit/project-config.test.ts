@@ -168,11 +168,27 @@ describe("recouvrir, pas remplacer", () => {
 
 describe("la chaîne complète, sur disque", () => {
   const originalHome = process.env.HOME;
+  const originalXdgConfigHome = process.env.XDG_CONFIG_HOME;
+  const originalAppData = process.env.APPDATA;
 
   afterEach(() => {
     if (originalHome === undefined) delete process.env.HOME;
     else process.env.HOME = originalHome;
+    if (originalXdgConfigHome === undefined) delete process.env.XDG_CONFIG_HOME;
+    else process.env.XDG_CONFIG_HOME = originalXdgConfigHome;
+    if (originalAppData === undefined) delete process.env.APPDATA;
+    else process.env.APPDATA = originalAppData;
   });
+
+  function useTestHome(home: string): void {
+    if (process.platform === "win32") {
+      process.env.APPDATA = path.join(home, "AppData", "Roaming");
+    } else if (process.platform === "darwin") {
+      process.env.HOME = home;
+    } else {
+      process.env.XDG_CONFIG_HOME = path.join(home, ".config");
+    }
+  }
 
   /** Le fichier utilisateur, là où la plateforme le range vraiment. */
   async function writeUserConfig(home: string, values: unknown): Promise<void> {
@@ -196,7 +212,7 @@ describe("la chaîne complète, sur disque", () => {
     });
     const project = await createProject({ defaultProfile: "code", defaultLevel: "complete" });
 
-    process.env.HOME = home;
+    useTestHome(home);
     const { loadConfig, loadUserConfig } = await import("@/config/loader.js");
 
     const effective = await loadConfig(project);
@@ -218,7 +234,7 @@ describe("la chaîne complète, sur disque", () => {
     directories.push(home, elsewhere);
     await writeUserConfig(home, { defaultProfile: "writing" });
 
-    process.env.HOME = home;
+    useTestHome(home);
     const { loadConfig } = await import("@/config/loader.js");
 
     expect((await loadConfig(elsewhere)).defaultProfile).toBe("writing");
