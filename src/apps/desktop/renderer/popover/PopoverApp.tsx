@@ -182,38 +182,43 @@ export function PopoverApp(): React.JSX.Element {
         </button>
       </div>
 
-      {running && (
-        <div className="popover-section">
-          <div className="popover-label">{t("popover.receiving")}</div>
-          <p className="popover-result">
-            {streamed}
-            <span className="caret" aria-hidden="true" />
-          </p>
-        </div>
-      )}
+      <div className="popover-content">
+        {running && (
+          <div className="popover-section">
+            <div className="popover-label">{t("popover.receiving")}</div>
+            <p className="popover-result">
+              {streamed}
+              <span className="caret" aria-hidden="true" />
+            </p>
+          </div>
+        )}
 
-      {failed !== null && (
-        <div className="popover-section" role="alert">
-          <p className="error-detail">{failed}</p>
-        </div>
-      )}
+        {failed !== null && (
+          <div className="popover-section" role="alert">
+            <p className="error-detail">{failed}</p>
+          </div>
+        )}
 
-      {!running && lastResult !== null && (
-        <div className="popover-section">
-          <div className="popover-label">{t("popover.lastResult")}</div>
-          <p className="popover-result">{lastResult.rewritten}</p>
-          <button type="button" className="chip" onClick={copyLastResult}>
-            {t("popover.copy")}
-          </button>
-        </div>
-      )}
+        {!running && lastResult !== null && (
+          <div className="popover-section">
+            <div className="popover-label">{t("popover.lastResult")}</div>
+            <p className="popover-result">{lastResult.rewritten}</p>
+          </div>
+        )}
+      </div>
 
       <Toast toast={toast} onDismiss={fermerAnnonce} />
 
       <footer className="popover-footer">
+        {!running && lastResult !== null && (
+          <button type="button" className="capsule-key key-primary" onClick={copyLastResult}>
+            <kbd>⌘C</kbd>
+            {t("popover.copy")}
+          </button>
+        )}
         {/* Le popover s'ouvre à la souris : son action principale doit s'y
             prendre aussi, pas seulement au clavier. */}
-        <button type="button" className="capsule-key" onClick={run}>
+        <button type="button" className="capsule-key popover-reformulate" onClick={run}>
           <kbd>⌘⏎</kbd>
           {t("capsule.reformulate")}
         </button>

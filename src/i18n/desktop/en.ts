@@ -271,7 +271,7 @@ export const DESKTOP_EN = {
   "popover.placeholder": "Type, or ⌘V to paste…",
   "popover.receiving": "Receiving…",
   "popover.lastResult": "Last result",
-  "popover.copy": "⌘C copy",
+  "popover.copy": "copy",
   "popover.copied": "Result copied.",
   "popover.settings": "Settings…",
   "popover.browse": "browse",

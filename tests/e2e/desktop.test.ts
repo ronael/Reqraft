@@ -15,6 +15,7 @@ import {
   CAPSULE_WIDTH,
 } from "@/apps/desktop/shared/capsule-geometry.js";
 import type { CapsuleMeasure, CapsuleUiReport } from "@/apps/desktop/main/e2e-capsule.js";
+import type { PopoverUiReport } from "@/apps/desktop/main/e2e-popover.js";
 
 const electronPath =
   process.platform === "win32"
@@ -68,6 +69,7 @@ interface DesktopE2ePayload {
     shortcutsResumed?: boolean;
     run?: { rewritten: string; model: string; profile: string };
     ui?: CapsuleUiReport;
+    popoverUi?: PopoverUiReport;
     menuAccelerators?: string[];
     error?: string;
   };
@@ -291,6 +293,29 @@ describeElectron("desktop Electron smoke", () => {
       expect(payload.scenario?.error).toBeUndefined();
       expect(payload.scenario?.popoverVisible).toBe(true);
       expect(payload.scenario?.popoverHidden).toBe(true);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "keeps the copy action visible while a long popover result scrolls",
+    async () => {
+      const payload = await runDesktopProbe(
+        {
+          REQRAFT_DESKTOP_E2E_SCENARIO: "popover-ui",
+          REQRAFT_DESKTOP_E2E_SHOTS: process.env.REQRAFT_DESKTOP_E2E_SHOTS ?? "",
+        },
+        MOCK_CONFIG,
+      );
+      expect(payload.scenario?.error).toBeUndefined();
+      const ui = payload.scenario?.popoverUi;
+      expect(ui).toBeDefined();
+      if (ui === undefined) return;
+      expect(ui.content.scrollHeight).toBeGreaterThan(ui.content.clientHeight);
+      expect(ui.footerVisible).toBe(true);
+      expect(ui.copyInFooter).toBe(true);
+      expect(ui.copyInContent).toBe(false);
+      expect(ui.copy.bottom).toBeLessThanOrEqual(ui.footer.bottom);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );

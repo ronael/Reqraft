@@ -5,6 +5,7 @@ import {
   type CapsuleUiTargets,
   type CapsuleUiWindow,
 } from "./e2e-capsule.js";
+import { runPopoverUiScenario, type PopoverUiReport } from "./e2e-popover.js";
 import type { RepromptService } from "./reprompt-service.js";
 import type { ShortcutHandlers } from "./shortcuts.js";
 import type { CapsuleOpenedPayload, RepromptResult } from "@/apps/desktop/shared/ipc-contract.js";
@@ -37,6 +38,7 @@ export interface E2eScenarioTargets {
   capsuleVisible: () => boolean;
   capsulePending: () => CapsuleOpenedPayload | null;
   popoverVisible: () => boolean;
+  popoverWindow: () => CapsuleUiWindow;
   setShortcutsSuspended: (suspended: boolean) => void;
   shortcutsSuspended: () => boolean;
   /**
@@ -63,6 +65,7 @@ export interface E2eScenarioReport {
   run?: { rewritten: string; model: string; profile: string };
   /** Les mesures prises dans le vrai renderer (scénarios `capsule-ui*`). */
   ui?: CapsuleUiReport;
+  popoverUi?: PopoverUiReport;
   /** Les accélérateurs que le menu applicatif détient réellement. */
   menuAccelerators?: string[];
   error?: string;
@@ -117,6 +120,17 @@ export async function runE2eScenario(
         };
       case "capsule-error":
         return { name, ui: await runCapsuleErrorScenario(uiTargets(targets)) };
+      case "popover-ui": {
+        const shotsDir = process.env[DESKTOP_E2E_SHOTS];
+        return {
+          name,
+          popoverUi: await runPopoverUiScenario({
+            window: targets.popoverWindow,
+            open: targets.shortcutHandlers.onPopover,
+            ...(shotsDir === undefined || shotsDir === "" ? {} : { shotsDir }),
+          }),
+        };
+      }
       default:
         return { name, error: `unknown scenario: ${name}` };
     }

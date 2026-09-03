@@ -266,7 +266,7 @@ export const DESKTOP_FR = {
   "popover.placeholder": "Écris, ou ⌘V pour coller…",
   "popover.receiving": "Réception…",
   "popover.lastResult": "Dernier résultat",
-  "popover.copy": "⌘C copier",
+  "popover.copy": "copier",
   "popover.copied": "Résultat copié.",
   "popover.settings": "Réglages…",
   "popover.browse": "parcourir",

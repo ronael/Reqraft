@@ -772,6 +772,7 @@ function bootstrap(): void {
           capsuleVisible: () => !capsule.window.isDestroyed() && capsule.window.isVisible(),
           capsulePending: () => ouvertures.pending(),
           popoverVisible: () => !popover.window.isDestroyed() && popover.window.isVisible(),
+          popoverWindow: () => popover.window,
           capsuleWindow: () => liveCapsule().window,
           menuAccelerators: applicationMenuAccelerators,
           ...e2eSuspensionTargets(tray),
