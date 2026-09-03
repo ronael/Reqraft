@@ -4,12 +4,12 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Reqraft — Shape the request. Keep the intent.</title>
-<meta name="description" content="Reqraft is a public-alpha CLI that turns a rough request into a clearer prompt and runs local fidelity checks for scope drift." />
+<meta name="description" content="Reqraft is a desktop beta and open-source CLI that turns rough requests into clear prompts, with local fidelity checks for scope drift." />
 <link rel="canonical" href="https://ronael.github.io/Reqraft/" />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Reqraft" />
 <meta property="og:title" content="Reqraft — Shape the request. Keep the intent." />
-<meta property="og:description" content="Turn a rough request into a clearer prompt, with local checks for possible scope drift." />
+<meta property="og:description" content="Download the Reqraft desktop beta for macOS, or use the open-source CLI to turn rough requests into clear prompts." />
 <meta property="og:url" content="https://ronael.github.io/Reqraft/" />
 <meta property="og:image" content="https://ronael.github.io/Reqraft/docs/assets/reqraft-social.png" />
 <meta property="og:image:width" content="1280" />
@@ -17,7 +17,7 @@
 <meta property="og:image:alt" content="Reqraft — Shape the request. Keep the intent." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Reqraft — Shape the request. Keep the intent." />
-<meta name="twitter:description" content="Turn a rough request into a clearer prompt, with local checks for possible scope drift." />
+<meta name="twitter:description" content="Download the Reqraft desktop beta for macOS, or use the open-source CLI to turn rough requests into clear prompts." />
 <meta name="twitter:image" content="https://ronael.github.io/Reqraft/docs/assets/reqraft-social.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -56,7 +56,8 @@ a{color:inherit;text-decoration:none}
 .top nav a{transition:color .2s}
 .top nav a:hover{color:#fff}
 .top nav a.gh{color:var(--tx3)}
-@media(max-width:720px){.top nav a:not(.gh){display:none}}
+@media(max-width:960px){.top nav{gap:18px}.top nav a:not(.gh):not(.download-nav){display:none}}
+@media(max-width:480px){.top nav .gh{display:none}}
 
 /* ── shared bits ── */
 .sec{padding:128px 0;position:relative}
@@ -95,6 +96,12 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .install:hover{border-color:rgba(167,139,250,.6)}
 .install .dollar{color:var(--rq)}
 .install .cp{color:var(--tx3);font-size:11px;border-left:1px solid var(--rq-line);padding-left:12px;letter-spacing:.06em}
+.download-btn{display:inline-flex;align-items:center;gap:11px;min-height:45px;padding:9px 14px;border:1px solid rgba(255,255,255,.8);border-radius:9px;background:#f4f2f8;color:#111116;transition:background .2s,border-color .2s,transform .2s}
+.download-btn:hover{background:#fff;border-color:#fff;transform:translateY(-1px)}
+.download-btn .download-icon{font-size:17px;line-height:1}
+.download-btn .download-copy{display:flex;flex-direction:column;gap:1px;line-height:1.2}
+.download-btn strong{font-size:12.5px;font-weight:600}
+.download-btn small{font-family:var(--mono);font-size:9.5px;color:#66616f}
 .gh-link{font-size:13.5px;color:var(--tx2);display:inline-flex;gap:7px;align-items:center;border-bottom:1px solid var(--line2);padding-bottom:2px;transition:color .2s,border-color .2s}
 .gh-link:hover{color:#fff;border-color:var(--tx3)}
 
@@ -350,6 +357,30 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
   .messages-feed{padding:14px}
 }
 
+/* ── downloads ── */
+.downloads{padding:120px 0;background:var(--bg2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.download-head{display:grid;gap:28px}
+@media(min-width:860px){.download-head{grid-template-columns:minmax(0,5fr) minmax(0,4fr);gap:80px;align-items:end}}
+.release-meta{font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--tx3)}
+.release-meta strong{display:block;color:var(--rq3);font-weight:500;letter-spacing:.08em;text-transform:uppercase}
+.download-list{margin-top:54px;border-top:1px solid var(--line2)}
+.download-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(240px,1.4fr) auto;gap:26px;align-items:center;padding:22px 0;border-bottom:1px solid var(--line)}
+.platform-title{display:flex;align-items:center;gap:11px;color:#fff;font-size:15px;font-weight:500}
+.platform-mark{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line2);border-radius:7px;background:rgba(255,255,255,.025);font-family:var(--mono);font-size:10px;color:var(--tx2)}
+.platform-copy{font-size:13px;color:var(--tx3)}
+.platform-copy strong{color:var(--tx2);font-weight:500}
+.platform-state{display:inline-flex;align-items:center;gap:7px;margin-top:5px;font-family:var(--mono);font-size:10px;color:var(--tx3)}
+.platform-state::before{content:"";width:5px;height:5px;border-radius:50%;background:var(--tx4)}
+.platform-state.tested{color:var(--ok)}
+.platform-state.tested::before{background:var(--ok)}
+.download-actions{display:flex;align-items:center;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+.download-link{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:8px 12px;border:1px solid var(--line2);border-radius:8px;color:var(--tx2);font-family:var(--mono);font-size:11px;white-space:nowrap;transition:color .2s,border-color .2s,background .2s}
+.download-link:hover{color:#fff;border-color:rgba(255,255,255,.24);background:rgba(255,255,255,.035)}
+.download-link.primary{border-color:var(--rq-line);background:var(--rq-dim);color:var(--rq3)}
+.download-link.primary:hover{border-color:rgba(167,139,250,.58);background:rgba(139,92,246,.17)}
+.download-notice{margin-top:24px;display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap;font-size:12px;color:var(--tx3)}
+.download-notice a{color:var(--tx2);border-bottom:1px solid var(--line2)}
+
 /* ── section 08 · quiet ── */
 .quiet-grid{display:grid;gap:56px}
 @media(min-width:1020px){.quiet-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:80px}}
@@ -391,6 +422,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   .wrap{padding:0 22px}
   .hero{padding-top:110px}
   .hero-cta{align-items:flex-start;flex-direction:column}
+  .download-btn{width:100%;justify-content:center}
   .install{max-width:100%;gap:8px;padding:10px 11px;font-size:11.5px;white-space:nowrap}
   .install .cp{padding-left:8px;font-size:10px}
   .hero-sub,.lede{overflow-wrap:anywhere}
@@ -400,6 +432,13 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   .capsule{top:auto;bottom:12px}
   .editor-body{font-size:11px}
   .native{padding:100px 0}
+  .downloads{padding:88px 0}
+  .download-row{grid-template-columns:1fr;gap:12px;padding:22px 0}
+  .download-actions{justify-content:flex-start}
+}
+@media(max-width:420px){
+  .install{font-size:10.5px}
+  .install .cp{display:none}
 }
 @media(prefers-reduced-motion:reduce){
   *,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}
@@ -419,6 +458,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
       <a href="#levels">Levels</a>
       <a href="#profiles">Profiles</a>
       <a href="#native">Native&nbsp;UI</a>
+      <a class="download-nav" href="#download">Download</a>
       <a class="gh" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">GitHub&nbsp;↗</a>
     </nav>
   </div>
@@ -431,11 +471,12 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   <div class="hero-fade"></div>
   <div class="wrap hero-grid">
     <div>
-      <div class="alpha-status"><span>Public alpha</span><span class="phase">Under active development</span></div>
+      <div class="alpha-status"><span>Desktop beta</span><span class="phase">v0.6.0-rc.2</span></div>
       <h1>Shape the request.<br><em>Keep the intent.</em></h1>
-      <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>then checks for known scope additions and disproportionate expansion.</strong></p>
+      <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>now from a native macOS app or the open-source CLI.</strong></p>
       <div class="hero-cta">
-        <button class="install" id="installHero" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpHero">copy</span></button>
+        <a class="download-btn" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-mac-arm64.dmg" aria-label="Download Reqraft desktop beta for macOS on Apple silicon"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Download for macOS</strong><small>Apple silicon · beta</small></span></a>
+        <button class="install" id="installHero" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli@rc<span class="cp" id="cpHero">copy</span></button>
         <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">View on GitHub <span>→</span></a>
       </div>
     </div>
@@ -541,7 +582,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
     <div class="rv">
       <div class="kick"><b>03</b> Available today</div>
       <h2>It lives in<br><em>your terminal.</em></h2>
-      <p class="lede">The CLI is the real product — install it now, use it in one word: <strong class="mono" style="font-size:14px">rp</strong>.</p>
+      <p class="lede">Prefer the terminal? The full Reqraft workflow is available there too. Install the release candidate and use it in one word: <strong class="mono" style="font-size:14px">rp</strong>.</p>
 
       <div class="cap-list">
         <div class="cap-row"><span class="flag-n">rp "…"</span><span class="flag-d">rewrite a request inline</span></div>
@@ -553,7 +594,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
       </div>
 
       <div class="cli-install">
-        <button class="install" id="installCli" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpCli">copy</span></button>
+        <button class="install" id="installCli" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli@rc<span class="cp" id="cpCli">copy</span></button>
       </div>
     </div>
 
@@ -620,12 +661,12 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 <section class="native" id="native">
   <div class="wrap">
     <div class="rv" style="max-width:720px">
-      <div class="kicker-next"><i aria-hidden="true">&#8203;</i>Coming next — Native UI, in development</div>
-      <h2>Today it lives in your terminal.<br><em>Next, it meets you where you write.</em></h2>
-      <p class="lede">The planned macOS experience adapts to the text in front of you. Select rough code instructions, an e-mail, a ChatGPT request or a team message; Reqraft applies the relevant profile before you choose whether to replace it.</p>
+      <div class="kicker-next"><i aria-hidden="true">&#8203;</i>Desktop beta — available now</div>
+      <h2>It meets you<br><em>where you write.</em></h2>
+      <p class="lede">The macOS app adapts to the text in front of you. Select rough code instructions, an e-mail, a ChatGPT request or a team message; Reqraft applies the relevant profile before you choose whether to replace it.</p>
     </div>
 
-    <div class="seg scenario-switcher rv" role="tablist" aria-label="Planned native workflows">
+    <div class="seg scenario-switcher rv" role="tablist" aria-label="Desktop workflows">
       <button class="on" type="button" role="tab" aria-controls="nativeStage" aria-selected="true" tabindex="0" data-native-scene="code">Code</button>
       <button type="button" role="tab" aria-controls="nativeStage" aria-selected="false" tabindex="-1" data-native-scene="email">E-mail</button>
       <button type="button" role="tab" aria-controls="nativeStage" aria-selected="false" tabindex="-1" data-native-scene="chat">ChatGPT</button>
@@ -634,7 +675,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 
     <div class="stage-wrap rv">
       <div class="stage" id="nativeStage" role="tabpanel">
-        <div class="stage-caption"><span>macOS concept preview · profile <b id="sceneProfile" style="color:var(--rq3);font-weight:500">frontend</b></span><span>planned shortcut · ⌥ space</span></div>
+        <div class="stage-caption"><span>macOS beta · profile <b id="sceneProfile" style="color:var(--rq3);font-weight:500">frontend</b></span><span>default shortcut · ⌥ space</span></div>
         <div class="menubar">
           <div class="l"><span>●</span><span id="sceneApp" style="font-weight:600;color:var(--tx2)">Code</span><span>File</span><span>Edit</span><span>View</span></div>
           <div class="r"><span class="rqb"><i id="mbDot"></i>rq</span><span>13:25</span></div>
@@ -670,9 +711,48 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
     </div>
 
     <div class="surfaces rv">
-      <div class="surf-row"><span class="num">01</span><span class="nm">The capsule</span><span class="ds">Planned contextual interaction, keyboard-driven and anchored to the selected text.</span></div>
-      <div class="surf-row"><span class="num">02</span><span class="nm"><span class="rqdot" aria-hidden="true">&#8203;</span>Menu bar</span><span class="ds">Planned access to quick input, the last result and profile selection.</span></div>
-      <div class="surf-row"><span class="num">03</span><span class="nm">Settings</span><span class="ds">Planned configuration for shortcuts, providers, models and diagnostics.</span></div>
+      <div class="surf-row"><span class="num">01</span><span class="nm">The capsule</span><span class="ds">A contextual, keyboard-driven interaction anchored to the selected text.</span></div>
+      <div class="surf-row"><span class="num">02</span><span class="nm"><span class="rqdot" aria-hidden="true">&#8203;</span>Menu bar</span><span class="ds">Quick access to a new rewrite, the last result and app settings.</span></div>
+      <div class="surf-row"><span class="num">03</span><span class="nm">Settings</span><span class="ds">Configure shortcuts, providers, models, profiles and diagnostics in the app.</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- ══════════ DOWNLOADS ══════════ -->
+<section class="downloads" id="download">
+  <div class="wrap">
+    <div class="download-head rv">
+      <div>
+        <div class="kick"><b>Beta</b> Desktop downloads</div>
+        <h2>Try Reqraft<br><em>on your desktop.</em></h2>
+      </div>
+      <div class="release-meta"><strong>v0.6.0-rc.2</strong>macOS is the tested desktop release. Windows and Linux builds are available for early compatibility testing.</div>
+    </div>
+
+    <div class="download-list rv">
+      <div class="download-row">
+        <div class="platform-title"><span class="platform-mark">mac</span><span>macOS</span></div>
+        <div class="platform-copy"><strong>Apple silicon</strong> · Native desktop app<div class="platform-state tested">Tested beta</div></div>
+        <div class="download-actions">
+          <a class="download-link primary" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-mac-arm64.dmg"><span aria-hidden="true">&#8595;</span> DMG</a>
+          <a class="download-link" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-mac-arm64.zip"><span aria-hidden="true">&#8595;</span> ZIP</a>
+        </div>
+      </div>
+      <div class="download-row">
+        <div class="platform-title"><span class="platform-mark">win</span><span>Windows</span></div>
+        <div class="platform-copy"><strong>x64</strong> · Early compatibility build<div class="platform-state">Experimental</div></div>
+        <div class="download-actions"><a class="download-link" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-win-x64-experimental.exe"><span aria-hidden="true">&#8595;</span> EXE</a></div>
+      </div>
+      <div class="download-row">
+        <div class="platform-title"><span class="platform-mark">linux</span><span>Linux</span></div>
+        <div class="platform-copy"><strong>x86_64</strong> · Early compatibility build<div class="platform-state">Experimental</div></div>
+        <div class="download-actions"><a class="download-link" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-linux-x86_64-experimental.AppImage"><span aria-hidden="true">&#8595;</span> AppImage</a></div>
+      </div>
+    </div>
+
+    <div class="download-notice rv">
+      <span>Beta builds are currently unsigned. macOS may ask you to confirm the first launch.</span>
+      <a href="https://github.com/ronael/Reqraft/releases/tag/v0.6.0-rc.2" target="_blank" rel="noopener">Release notes and all files →</a>
     </div>
   </div>
 </section>
@@ -719,7 +799,8 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
     <div class="rv">
       <h2>Write it rough.<br><em>Send it right.</em></h2>
       <div class="row">
-        <button class="install" id="installFinal" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpFinal">copy</span></button>
+        <a class="download-btn" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-mac-arm64.dmg" aria-label="Download Reqraft desktop beta for macOS on Apple silicon"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Download for macOS</strong><small>Apple silicon · beta</small></span></a>
+        <button class="install" id="installFinal" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli@rc<span class="cp" id="cpFinal">copy</span></button>
         <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">github.com/ronael/Reqraft <span>→</span></a>
       </div>
       <div class="oss">
@@ -1150,7 +1231,7 @@ if (RM){
 
 /* ══════════ copy install ══════════ */
 async function copyInstallCommand(){
-  const command = "npm install -g @reqraft/cli";
+  const command = "npm install -g @reqraft/cli@rc";
   try {
     await navigator.clipboard.writeText(command);
     return true;
