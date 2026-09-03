@@ -476,7 +476,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
       <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>now from a native macOS app or the open-source CLI.</strong></p>
       <div class="hero-cta">
         <a class="download-btn" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-mac-arm64.dmg" aria-label="Download Reqraft desktop beta for macOS on Apple silicon"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Download for macOS</strong><small>Apple silicon · beta</small></span></a>
-        <button class="install" id="installHero" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli@rc<span class="cp" id="cpHero">copy</span></button>
+        <button class="install" id="installHero" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpHero">copy</span></button>
         <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">View on GitHub <span>→</span></a>
       </div>
     </div>
@@ -582,7 +582,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
     <div class="rv">
       <div class="kick"><b>03</b> Available today</div>
       <h2>It lives in<br><em>your terminal.</em></h2>
-      <p class="lede">Prefer the terminal? The full Reqraft workflow is available there too. Install the release candidate and use it in one word: <strong class="mono" style="font-size:14px">rp</strong>.</p>
+      <p class="lede">Prefer the terminal? The stable Reqraft CLI is available there too. Install it and use it in one word: <strong class="mono" style="font-size:14px">rp</strong>.</p>
 
       <div class="cap-list">
         <div class="cap-row"><span class="flag-n">rp "…"</span><span class="flag-d">rewrite a request inline</span></div>
@@ -594,7 +594,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
       </div>
 
       <div class="cli-install">
-        <button class="install" id="installCli" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli@rc<span class="cp" id="cpCli">copy</span></button>
+        <button class="install" id="installCli" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpCli">copy</span></button>
       </div>
     </div>
 
@@ -800,7 +800,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
       <h2>Write it rough.<br><em>Send it right.</em></h2>
       <div class="row">
         <a class="download-btn" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0-rc.2/Reqraft-0.6.0-rc.2-mac-arm64.dmg" aria-label="Download Reqraft desktop beta for macOS on Apple silicon"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Download for macOS</strong><small>Apple silicon · beta</small></span></a>
-        <button class="install" id="installFinal" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli@rc<span class="cp" id="cpFinal">copy</span></button>
+        <button class="install" id="installFinal" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpFinal">copy</span></button>
         <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">github.com/ronael/Reqraft <span>→</span></a>
       </div>
       <div class="oss">
@@ -1231,7 +1231,7 @@ if (RM){
 
 /* ══════════ copy install ══════════ */
 async function copyInstallCommand(){
-  const command = "npm install -g @reqraft/cli@rc";
+  const command = "npm install -g @reqraft/cli";
   try {
     await navigator.clipboard.writeText(command);
     return true;
