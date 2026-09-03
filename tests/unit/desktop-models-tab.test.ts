@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { initialSettingsTab } from "@/apps/desktop/renderer/settings/SettingsApp.js";
+import {
+  initialSettingsTab,
+  settingsNavIndicatorOffset,
+} from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import {
   describeModelCatalog,
   modelCatalogRequest,
@@ -167,6 +170,17 @@ describe("initialSettingsTab", () => {
 
   it("ignore un onglet inconnu", () => {
     expect(initialSettingsTab("?surface=settings&tab=language")).toBe("profiles");
+  });
+});
+
+describe("settingsNavIndicatorOffset", () => {
+  it("aligne l'indicateur sur chaque ligne de navigation", () => {
+    expect(settingsNavIndicatorOffset("profiles")).toBe(0);
+    expect(settingsNavIndicatorOffset("providers")).toBe(38);
+    expect(settingsNavIndicatorOffset("models")).toBe(76);
+    expect(settingsNavIndicatorOffset("preferences")).toBe(114);
+    expect(settingsNavIndicatorOffset("updates")).toBe(152);
+    expect(settingsNavIndicatorOffset("diagnostic")).toBe(190);
   });
 });
 

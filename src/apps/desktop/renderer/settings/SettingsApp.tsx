@@ -45,6 +45,12 @@ import { version } from "@/version.js";
 
 const TABS = ["profiles", "providers", "models", "preferences", "updates", "diagnostic"] as const;
 type Tab = (typeof TABS)[number];
+const SETTINGS_NAV_ITEM_HEIGHT = 36;
+const SETTINGS_NAV_GAP = 2;
+
+export function settingsNavIndicatorOffset(tab: Tab): number {
+  return TABS.indexOf(tab) * (SETTINGS_NAV_ITEM_HEIGHT + SETTINGS_NAV_GAP);
+}
 
 export function initialSettingsTab(search: string = window.location.search): Tab {
   const requested = new URLSearchParams(search).get("tab");
@@ -232,6 +238,13 @@ export function SettingsApp(): React.JSX.Element {
           </div>
 
           <nav className="settings-nav" aria-label={t("settings.title")}>
+            <span
+              className="settings-nav-indicator"
+              aria-hidden
+              style={{
+                transform: `translate3d(0, ${String(settingsNavIndicatorOffset(tab))}px, 0)`,
+              }}
+            />
             {TABS.map((label) => (
               <SettingsNavItem
                 key={label}
@@ -373,6 +386,7 @@ function SettingsNavItem({
     <button
       type="button"
       className={active ? "settings-nav-item settings-nav-item-active" : "settings-nav-item"}
+      aria-current={active ? "page" : undefined}
       onClick={onClick}
     >
       <Icon size={15} aria-hidden />

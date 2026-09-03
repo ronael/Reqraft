@@ -77,6 +77,22 @@ describe("les boutons qui sortent de la métrique le disent", () => {
     // and wrong for a full-width row.
     expect(await ruleBody(".settings-nav-item")).toContain("justify-content: flex-start");
   });
+
+  it("déplace un indicateur unique sans recalculer la mise en page", async () => {
+    const body = await ruleBody(".settings-nav-indicator");
+
+    expect(body).toContain("pointer-events: none");
+    expect(body).toContain("transition: transform");
+    expect(body).not.toMatch(/transition:[^;]*(top|left|width|height)/);
+  });
+
+  it("désactive le déplacement quand le système réduit les animations", async () => {
+    const css = await readFile(STYLESHEET, "utf8");
+    const reducedMotion = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+
+    expect(reducedMotion).toContain(".settings-nav-indicator");
+    expect(reducedMotion).toContain("transition: none");
+  });
 });
 
 describe("le couple profil / niveau", () => {
