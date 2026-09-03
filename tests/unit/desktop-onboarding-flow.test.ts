@@ -18,6 +18,9 @@ import {
   describeCredentialSource,
   findOnboardingProblem,
 } from "@/apps/desktop/renderer/onboarding/OnboardingApp.js";
+import { createDesktopTranslator } from "@/i18n/desktop/index.js";
+
+const t = createDesktopTranslator("fr");
 
 /**
  * Blank machine → onboarding → configuration on disk → usable installation.
@@ -239,18 +242,18 @@ describe("validation du formulaire, côté renderer", () => {
   };
 
   it("accepte un formulaire complet", () => {
-    expect(findOnboardingProblem(form, provider)).toBeUndefined();
+    expect(findOnboardingProblem(form, provider, t)).toBeUndefined();
   });
 
   it("dit quoi faire quand la clé manque, sans jargon", () => {
-    const problem = findOnboardingProblem(form, { ...provider, credentialConfigured: false });
+    const problem = findOnboardingProblem(form, { ...provider, credentialConfigured: false }, t);
 
     expect(problem).toContain("Anthropic");
     expect(problem).toContain("clé API");
   });
 
   it("réclame un modèle", () => {
-    expect(findOnboardingProblem({ ...form, model: "  " }, provider)).toContain("modèle");
+    expect(findOnboardingProblem({ ...form, model: "  " }, provider, t)).toContain("modèle");
   });
 
   it("refuse une URL de base sans schéma", () => {
@@ -259,22 +262,22 @@ describe("validation du formulaire, côté renderer", () => {
     const compatible = { ...provider, id: "openai-compatible" as const, requiresApiKey: false };
 
     expect(
-      findOnboardingProblem({ ...form, compatibleBaseUrl: "localhost:11434" }, compatible),
+      findOnboardingProblem({ ...form, compatibleBaseUrl: "localhost:11434" }, compatible, t),
     ).toContain("http://");
   });
 
   it("refuse un identifiant de fournisseur non normalisé", () => {
     const compatible = { ...provider, id: "openai-compatible" as const, requiresApiKey: false };
 
-    expect(findOnboardingProblem({ ...form, compatibleId: "Mon Serveur" }, compatible)).toContain(
-      "minuscules",
-    );
+    expect(
+      findOnboardingProblem({ ...form, compatibleId: "Mon Serveur" }, compatible, t),
+    ).toContain("minuscules");
   });
 
   it("nomme la variable d'environnement où la clé a été trouvée", () => {
     // Someone who exported a key in their shell should recognise their own
     // doing rather than wonder where this came from.
-    expect(describeCredentialSource({ ...provider, credentialSource: "environment" })).toContain(
+    expect(describeCredentialSource({ ...provider, credentialSource: "environment" }, t)).toContain(
       "ANTHROPIC_API_KEY",
     );
   });
@@ -293,12 +296,12 @@ describe("ce que la fenêtre dit de la clé", () => {
 
   it("ne réclame pas une clé à un fournisseur qui n'en demande aucune", () => {
     // « Aucune clé enregistrée » envoie chercher une clé qui n'existe pas.
-    expect(describeCredentialSource(base)).toContain("Aucune clé nécessaire");
+    expect(describeCredentialSource(base, t)).toContain("Aucune clé nécessaire");
   });
 
   it("signale bien la clé manquante quand il en faut une", () => {
-    expect(describeCredentialSource({ ...base, id: "anthropic", requiresApiKey: true })).toContain(
-      "Aucune clé enregistrée",
-    );
+    expect(
+      describeCredentialSource({ ...base, id: "anthropic", requiresApiKey: true }, t),
+    ).toContain("Aucune clé enregistrée");
   });
 });

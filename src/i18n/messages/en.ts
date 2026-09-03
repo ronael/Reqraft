@@ -13,6 +13,8 @@ export const en = {
   "cli.help.options": () => "Options",
   "cli.help.commands": () => "Commands",
   "cli.description": () => "Turn a rough request into a clear, actionable prompt.",
+  "cli.update.available": ({ current, latest }) =>
+    `Reqraft ${latest} is available (installed: ${current}). Update with npm install -g @reqraft/cli@latest.`,
   "cli.argument.text": () => "Text to rewrite",
   "cli.option.profile": () => "Rewriting profile",
   "cli.option.level": () => "Transformation level (minimal, standard, complete)",
@@ -149,6 +151,12 @@ export const en = {
   "profiles.edit.usage": () => "Usage: rp profiles edit <id>",
   "profiles.edit.builtin": ({ id }) =>
     `“${id}” is a built-in profile and cannot be edited. Duplicate it with “rp profiles duplicate ${id} <new-id>”.`,
+  "profiles.edit.project": ({ id }: { id: string }) =>
+    `"${id}" belongs to this project (.reqraft/profiles). Edit the file in the repository, or duplicate it to get a personal copy.`,
+  "profiles.remove.project": ({ id }: { id: string }) =>
+    `"${id}" belongs to this project (.reqraft/profiles). Delete the file in the repository instead.`,
+  "list.profiles.project": () => "Project profiles",
+  "list.profiles.shadowed": () => "Shadowed by this project",
   "profiles.edit.unknown": ({ id }) => `No local profile “${id}”.`,
   "profiles.edit.keepHint": () => "Enter keeps the value shown in brackets.",
   "profiles.edit.done": ({ id, path }) => `Local profile “${id}” updated (${path})`,
@@ -480,6 +488,14 @@ export const en = {
   "quality.unsupportedAdditions": ({ additions }) => `Unsupported additions: ${additions}.`,
   "quality.disproportionateExpansion": () =>
     "The reformulation is significantly more detailed than the original request.",
+  "quality.inventedPaths": ({ paths }: { paths: string }) =>
+    `Paths that were not in your request: ${paths}.`,
+  "quality.inventedCommands": ({ commands }: { commands: string }) =>
+    `Commands that were not in your request: ${commands}.`,
+  "quality.missingTechnicalTerms": ({ terms }: { terms: string }) =>
+    `Technical terms missing from the reformulation: ${terms}.`,
+  "quality.structuralInflation": () =>
+    "Your request came back as a structured plan; check that nothing was added.",
   "quality.outputTruncated": () => "The provider truncated the generated output.",
   "quality.unstructuredResponse": () =>
     "The provider returned an unstructured response; the text was preserved.",
@@ -540,6 +556,11 @@ export const en = {
   "tui.tooSmall.title": () => "Terminal too small",
   "tui.tooSmall.body": () => "Reqraft needs a little more space to render the editor reliably.",
   "tui.picker.current": () => "current",
+  "tui.picker.search": () => "search:",
+  "tui.picker.searchHint": () => "type to filter",
+  "tui.picker.noMatch": () => "no profile matches",
+  "tui.picker.range": ({ from, to, total }: { from: string; to: string; total: string }) =>
+    `${from}–${to} of ${total}`,
   "tui.palette.title": () => "Commands",
   "tui.palette.searchPlaceholder": () => "Type to filter commands…",
   "tui.palette.noResult": () => "No matching command",

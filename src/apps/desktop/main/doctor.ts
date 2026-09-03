@@ -4,13 +4,16 @@ import type { Config } from "@/config/schema.js";
 import type { ProviderAdapter } from "@/core/types.js";
 import { hydrateCredentials } from "@/auth/credentials.js";
 import { createProvider } from "@/providers/registry.js";
-import { listProviderDefinitions, type BuiltinProvider } from "@/providers/catalog.js";
+import type { BuiltinProvider } from "@/providers/catalog.js";
 import type {
   DoctorCheck,
   DoctorReport,
+  DoctorRemedy,
+  ShortcutIntent,
   ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import type { PermissionsReport } from "./permissions.js";
+import { t } from "./i18n.js";
 
 /**
  * Structured doctor report for the settings Diagnostic tab (DESKTOP.md
@@ -59,8 +62,11 @@ export async function buildDoctorReport(
 
   await hydrate(env);
 
-  const ids =
-    dependencies.providerIds ?? listProviderDefinitions().map((definition) => definition.id);
+  // Le Diagnostic desktop répond à une question opérationnelle : la
+  // configuration utilisée maintenant peut-elle générer ? Les fournisseurs
+  // optionnels ont leur état dans l'onglet Providers ; les traiter comme des
+  // pannes rendrait une installation saine impossible sans toutes les clés.
+  const ids = dependencies.providerIds ?? [config.defaultProvider];
   for (const id of ids) {
     checks.push(await checkProvider(id, env, config, create));
   }
@@ -91,37 +97,69 @@ async function checkProvider(
     return {
       id: `provider:${id}`,
       ok: false,
-      detail: health.missingConfiguration?.join(", ") ?? health.code ?? "configuration incomplète",
+      detail:
+        health.missingConfiguration?.join(", ") ?? health.code ?? t("main.doctorConfigIncomplete"),
+      remedy: "configure-provider",
     };
   } catch {
-    return { id: `provider:${id}`, ok: false, detail: "erreur de validation" };
+    return {
+      id: `provider:${id}`,
+      ok: false,
+      detail: t("main.doctorValidationError"),
+      remedy: "configure-provider",
+    };
   }
 }
 
+/**
+ * Les trois lignes de permission, et ce qui les débloque.
+ *
+ * Le remède se décide ici parce que c'est ici qu'on sait sur quoi on tourne.
+ * Sous Wayland l'injection est refusée par conception (§5.4) : proposer
+ * d'ouvrir un volet de Réglages système y serait une fausse piste, et le mode
+ * plancher est le comportement, pas une panne. Sur macOS, l'Accessibilité a
+ * encore une invite, l'Automatisation n'en a aucune — d'où deux remèdes
+ * distincts pour deux lignes qui se ressemblent.
+ */
 function checkPermissions(report: PermissionsReport): DoctorCheck[] {
+  // Sous Wayland les trois lignes tombent ensemble et pour la même raison : le
+  // même remède, nommé une fois.
+  const WAYLAND: DoctorRemedy = "wayland-floor";
+  const wayland = report.gap === "wayland";
   return [
     {
       id: "permissions:accessibility",
       ok: report.accessibility,
-      detail: report.accessibility ? "accordée" : report.message,
+      detail: report.accessibility ? t("main.doctorPermissionGranted") : report.message,
+      ...remedyWhenFailing(report.accessibility, wayland ? WAYLAND : "grant-accessibility"),
     },
     {
       id: "permissions:automation",
       ok: report.automation,
-      detail: report.automation ? "accordée" : report.message,
+      detail: report.automation ? t("main.doctorPermissionGranted") : report.message,
+      ...remedyWhenFailing(report.automation, wayland ? WAYLAND : "grant-automation"),
     },
     {
       id: "permissions:replace",
       ok: report.canReplace,
       detail: report.message,
+      // Aucun bouton en face : le remplacement est la conséquence des deux
+      // lignes au-dessus, et rien ne se corrige à cet endroit précis.
+      ...remedyWhenFailing(report.canReplace, wayland ? WAYLAND : "grant-permissions"),
     },
   ];
+}
+
+/** Le remède, uniquement quand le contrôle échoue. */
+function remedyWhenFailing(ok: boolean, remedy: DoctorRemedy): { remedy?: DoctorRemedy } {
+  return ok ? {} : { remedy };
 }
 
 function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
   const checks: DoctorCheck[] = [
     checkShortcutIntent(state, "capture"),
     checkShortcutIntent(state, "input"),
+    checkShortcutIntent(state, "popover"),
   ];
 
   checks.push({
@@ -129,21 +167,115 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
     ok: state.rejected.length === 0,
     detail:
       state.rejected.length === 0
-        ? "aucun refus"
-        : `refusés par le système : ${state.rejected.join(", ")}`,
+        ? t("main.doctorNoRejection")
+        : t("main.doctorRejectedBySystem", { list: state.rejected.join(", ") }),
+    ...remedyWhenFailing(state.rejected.length === 0, "free-shortcut"),
+  });
+
+  // Séparé du refus système : ici personne d'autre ne tient la combinaison,
+  // c'est Reqraft qui l'a demandée deux fois. Envoyer vers les Réglages système
+  // pour la libérer ne mènerait nulle part.
+  checks.push({
+    id: "shortcuts:conflicts",
+    ok: state.conflicts.length === 0,
+    detail:
+      state.conflicts.length === 0
+        ? t("main.doctorNoConflict")
+        : t("main.doctorConflictingShortcuts", { list: state.conflicts.join(", ") }),
+    ...remedyWhenFailing(state.conflicts.length === 0, "resolve-shortcut-conflict"),
+  });
+
+  checks.push({
+    id: "shortcuts:suspended",
+    ok: !state.suspended,
+    detail: state.suspended ? t("main.doctorShortcutsSuspended") : t("main.doctorShortcutsActive"),
+    ...remedyWhenFailing(!state.suspended, "resume-shortcuts"),
   });
 
   return checks;
 }
 
-function checkShortcutIntent(
-  state: ShortcutStateInfo,
-  intent: ShortcutStateInfo["registered"][number]["intent"],
-): DoctorCheck {
+function checkShortcutIntent(state: ShortcutStateInfo, intent: ShortcutIntent): DoctorCheck {
   const active = state.registered.find((entry) => entry.intent === intent);
   return {
     id: `shortcuts:${intent}`,
     ok: active !== undefined,
-    detail: active ? `${active.label} (${active.accelerator})` : "aucun raccourci actif",
+    detail: active ? `${active.label} (${active.accelerator})` : t("main.doctorNoShortcut"),
+    ...remedyWhenFailing(active !== undefined, "pick-shortcut"),
   };
+}
+
+/**
+ * Ce que le rapport copié peut dire de la machine, en plus des vérifications.
+ *
+ * Tout est optionnel et fourni par l'appelant : la fonction de formatage reste
+ * pure, donc testable sans `process`, sans `os` et sans Electron.
+ */
+export interface DoctorReportContext {
+  /** Version applicative, déjà disponible dans le main (`@/version.js`). */
+  version?: string;
+  /** `process.platform`, jamais l'identité de la machine. */
+  platform?: string;
+  /**
+   * Le dossier personnel, uniquement pour le retirer du texte.
+   *
+   * Un rapport part dans une issue GitHub : `/Users/prenom.nom/...` y publie
+   * un nom d'utilisateur que personne n'a l'intention de partager. Il est
+   * remplacé par `~`, comme un shell l'écrit.
+   */
+  homeDir?: string;
+}
+
+/** Au-delà, un détail est tronqué : un rapport reste lisible dans une issue. */
+const MAX_DETAIL_LENGTH = 200;
+
+/**
+ * Le rapport en texte brut, pour le presse-papiers (roadmap Diagnostic).
+ *
+ * Pure et sans traduction : ce texte est destiné à une issue publique, où une
+ * sortie stable en anglais se compare d'une machine à l'autre, alors qu'un
+ * rapport localisé ne se compare plus du tout. La sanitization est acquise par
+ * construction — `DoctorCheck.detail` ne porte que des libellés du catalogue,
+ * des identifiants de configuration et des noms de variables manquantes, et
+ * jamais une valeur d'environnement ni un message d'exception (voir
+ * `checkProvider`). Ce qui est fait ici est le dernier filet : le dossier
+ * personnel disparaît, les caractères de contrôle aussi, et un détail
+ * anormalement long est tronqué.
+ */
+export function formatDoctorReport(
+  report: DoctorReport,
+  context: DoctorReportContext = {},
+): string {
+  const lines = ["Reqraft diagnostic"];
+  if (context.version !== undefined && context.version !== "") {
+    lines.push(`version: ${context.version}`);
+  }
+  if (context.platform !== undefined && context.platform !== "") {
+    lines.push(`platform: ${context.platform}`);
+  }
+  lines.push("");
+
+  for (const check of report.checks) {
+    const status = check.ok ? "ok" : "fail";
+    const detail = sanitizeDetail(check.detail, context.homeDir);
+    lines.push(
+      detail === "" ? `- [${status}] ${check.id}` : `- [${status}] ${check.id}: ${detail}`,
+    );
+  }
+
+  // Fin de ligne unique et saut final : le texte reste identique quelle que
+  // soit la plateforme, et se colle proprement à la suite d'un paragraphe.
+  return `${lines.join("\n")}\n`;
+}
+
+function sanitizeDetail(detail: string | undefined, homeDir: string | undefined): string {
+  if (detail === undefined) return "";
+  // Les caractères de contrôle d'abord : ils casseraient la liste à puces, et
+  // un détail sur deux lignes ne se relit plus dans une issue.
+  let value = detail.replaceAll(/[\p{Cc}\p{Cf}]/gu, " ");
+  if (homeDir !== undefined && homeDir.length > 1) {
+    value = value.split(homeDir).join("~");
+  }
+  value = value.replaceAll(/\s+/g, " ").trim();
+  return value.length > MAX_DETAIL_LENGTH ? `${value.slice(0, MAX_DETAIL_LENGTH)}…` : value;
 }

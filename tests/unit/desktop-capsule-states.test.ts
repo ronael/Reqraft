@@ -33,10 +33,10 @@ describe("rendu de la capsule", () => {
   it("traite chaque état de la machine", async () => {
     const source = await corpsDeLaCapsule();
     const oublies = CAPSULE_STATES.filter((state) => {
-      // `fermée` n'a rien à rendre : la fenêtre est cachée. `génération` passe
+      // `closed` n'a rien à rendre : la fenêtre est cachée. `generating` passe
       // par la constante nommée, pas par un littéral.
-      if (state === "fermée") return false;
-      if (state === "génération") return !source.includes("state === GENERATING");
+      if (state === "closed") return false;
+      if (state === "generating") return !source.includes("state === GENERATING");
       // Strictement la comparaison d'état : `mode: "capture"` ou `beginCapture`
       // ne prouvent aucun rendu, et laissaient passer un état oublié.
       return !source.includes(`state === "${state}"`);
@@ -47,6 +47,21 @@ describe("rendu de la capsule", () => {
 
   it("montre la lecture de la sélection", async () => {
     expect(await corpsDeLaCapsule()).toContain('state === "capture"');
+  });
+
+  it("tout lancement de run passe par `analysis`", async () => {
+    // ⌘R, ⇥ et la pastille de niveau appelaient `startRun` depuis `ready` sans
+    // transition : `run-accepted` était alors refusé, et le run se déroulait
+    // dans un état qui ne rend ni barre d'activité, ni réception, ni erreur.
+    // L'utilisateur voyait « l'animation ne se relance pas ».
+    //
+    // La transition est donc dans `startRun`, pas chez ses appelants — c'est
+    // la seule place où elle ne peut pas être oubliée.
+    const source = await readFile(RENDERER, "utf8");
+    const debut = source.indexOf("const startRun = useCallback(");
+    const corps = source.slice(debut, source.indexOf("window.reqraft", debut));
+
+    expect(corps).toContain('dispatch("rerun")');
   });
 
   it("n'impose pas le profil choisi dans une capsule à la capture suivante", async () => {

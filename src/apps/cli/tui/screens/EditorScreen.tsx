@@ -23,6 +23,7 @@ import {
 } from "@/apps/cli/tui/model/overlay.js";
 import { isZoneFocused, type FocusState } from "@/apps/cli/tui/model/focus.js";
 import {
+  filterSelectOptions,
   getModelOptions,
   getProfileOptions,
   getProviderOptions,
@@ -320,11 +321,16 @@ function Overlays({
   const activePicker = pickers.find((picker) => isActive(overlay, picker.id));
 
   if (activePicker) {
+    // Filtré ici ET dans `OpenTuiApp` : deux dérivations de la même fonction
+    // pure sur la même requête, donc le même tableau. Descendre la liste depuis
+    // l'app aurait été une troisième source de vérité à garder alignée.
+    const shown = filterSelectOptions(activePicker.options, overlay.query);
     return (
       <SelectPicker
         title={activePicker.title}
         open
-        options={activePicker.options}
+        options={shown}
+        query={overlay.query}
         currentValue={activePicker.current}
         highlighted={overlay.index}
         terminalWidth={width}

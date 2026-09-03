@@ -9,7 +9,11 @@ import {
   isValidCustomProfileId,
 } from "@/profiles/custom.js";
 import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
-import { BUILTIN_PROVIDER_IDS } from "@/providers/catalog.js";
+import {
+  BUILTIN_PROVIDER_IDS,
+  CREDENTIAL_PROVIDER_IDS,
+  OPENAI_COMPATIBLE_PROVIDER_ID,
+} from "@/providers/catalog.js";
 import type { SetupBlocker } from "@/config/setup.js";
 
 /**
@@ -54,13 +58,62 @@ export type RepromptCancelRequest = z.infer<typeof RepromptCancelRequestSchema>;
 export const RESULT_ACCEPT_MODES = ["replace", "copy"] as const;
 export type ResultAcceptMode = (typeof RESULT_ACCEPT_MODES)[number];
 
+/**
+ * Le plafond du texte qu'une acceptation peut porter.
+ *
+ * Le renderer reste non fiable, et une acceptation transporte désormais du
+ * texte : il doit donc être borné ici, du côté qui décide, et pas seulement
+ * dans le champ qui le produit. Cent mille caractères dépassent largement
+ * toute reformulation — la sortie du modèle est elle-même bornée par
+ * `maxOutputTokens` — et empêchent qu'une acceptation serve à faire transiter
+ * un volume arbitraire vers le presse-papiers ou vers l'application source.
+ */
+export const RESULT_ACCEPT_TEXT_MAX_LENGTH = 100_000;
+
 export const ResultAcceptRequestSchema = z
-  .object({ runId: z.string().min(1), mode: z.enum(RESULT_ACCEPT_MODES) })
+  .object({
+    runId: z.string().min(1),
+    mode: z.enum(RESULT_ACCEPT_MODES),
+    /**
+     * La version reprise à la main, absente tant que rien n'a été modifié.
+     *
+     * Elle voyage AVEC l'acceptation. Il n'existe volontairement aucun canal
+     * pour enregistrer un texte avant de l'appliquer : il y aurait alors une
+     * fenêtre entre l'enregistrement et l'acceptation pendant laquelle le
+     * texte appliqué pourrait ne plus être celui qui était affiché. Ici la
+     * paire « quel run » et « quel texte » arrive en un seul message, validée
+     * en une seule fois.
+     *
+     * Un texte vide ou fait d'espaces est refusé : accepter un résultat, c'est
+     * en écrire un, et remplacer une sélection par du vide est une perte, pas
+     * une reformulation.
+     */
+    text: z
+      .string()
+      .min(1)
+      .max(RESULT_ACCEPT_TEXT_MAX_LENGTH)
+      .refine((value) => value.trim() !== "", { message: "texte vide" })
+      .optional(),
+  })
   .strict();
 export type ResultAcceptRequest = z.infer<typeof ResultAcceptRequestSchema>;
 
 /** Channels documented as `void` input accept no payload at all. */
 export const EmptyRequestSchema = z.undefined();
+
+/**
+ * Lire une autre langue que celle du démarrage.
+ *
+ * Sans argument, le canal rend la langue en vigueur. Avec, il rend le
+ * catalogue demandé : l'onboarding et les réglages montrent ainsi le résultat
+ * d'un choix avant qu'il ne soit enregistré, sans embarquer les catalogues
+ * dans le renderer.
+ */
+export const LocaleReadRequestSchema = z
+  .object({ locale: z.enum(["en", "fr"]).optional() })
+  .strict()
+  .optional();
+export type LocaleReadRequest = z.infer<typeof LocaleReadRequestSchema>;
 
 export const ConfigWriteRequestSchema = ConfigSchema.partial();
 export type ConfigWriteRequest = z.infer<typeof ConfigWriteRequestSchema>;
@@ -94,6 +147,15 @@ export type CaptureSelectionResponse =
 
 export interface ResultAcceptResponse {
   applied: boolean;
+  /**
+   * Pourquoi le remplacement n'a pas eu lieu.
+   *
+   * `ReplaceOutcome` la porte depuis toujours, mais elle s'arrêtait ici : la
+   * capsule ne pouvait dire que « remplacement impossible », sans jamais
+   * distinguer une permission refusée d'une application source qui n'est pas
+   * revenue au premier plan. Même oubli que pour la raison d'une capture vide.
+   */
+  reason?: string;
 }
 
 /**
@@ -116,7 +178,7 @@ export type SafeConfig = Pick<Config, ConfigKey> & {
    * `rp config set desktopShortcuts` would mean nothing. Named here instead,
    * the way `providers` is.
    */
-  desktopShortcuts?: { capture?: string; input?: string };
+  desktopShortcuts?: { capture?: string; input?: string; popover?: string };
 };
 
 export type ProviderCredentialSource =
@@ -147,14 +209,76 @@ export interface ProviderStatus {
   envName?: string;
 }
 
+export type DesktopUpdateStatus = "idle" | "checking" | "up-to-date" | "available" | "error";
+
+export interface DesktopUpdateState {
+  status: DesktopUpdateStatus;
+  currentVersion: string;
+  latestVersion?: string;
+  checkedAt?: string;
+  publishedAt?: string;
+}
+
+/**
+ * Ce qui remet un contrôle en échec d'aplomb.
+ *
+ * Décidé par le processus principal, pas par le renderer : lui seul sait sur
+ * quelle plateforme il tourne, si Wayland refuse l'injection par conception, et
+ * si une combinaison est refusée par une autre application ou réclamée deux
+ * fois par Reqraft. Le renderer devrait sinon deviner tout cela à partir d'un
+ * `detail` traduit, ce qui casse à la première reformulation.
+ *
+ * Un identifiant stable, jamais une phrase : la phrase est traduite en face,
+ * et le rapport copié — qui part dans une issue publique — n'en porte aucune.
+ */
+export const DOCTOR_REMEDIES = [
+  /** macOS peut encore afficher l'invite Accessibilité. */
+  "grant-accessibility",
+  /** Automatisation : aucune API ne l'invite, seul le réglage système l'ouvre. */
+  "grant-automation",
+  /** Conséquence des deux précédentes : rien à faire ici, tout est au-dessus. */
+  "grant-permissions",
+  /** Wayland refuse l'injection par conception (§5.4) : mode plancher assumé. */
+  "wayland-floor",
+  /** Aucune combinaison enregistrée pour cette commande : en choisir une. */
+  "pick-shortcut",
+  /** Une autre application détient la combinaison : la libérer ou en changer. */
+  "free-shortcut",
+  /** Deux commandes Reqraft se disputent la même combinaison. */
+  "resolve-shortcut-conflict",
+  /** Les raccourcis globaux sont suspendus : les reprendre. */
+  "resume-shortcuts",
+  /** Configuration de fournisseur incomplète : clé ou endpoint à corriger. */
+  "configure-provider",
+] as const;
+
+export type DoctorRemedy = (typeof DOCTOR_REMEDIES)[number];
+
 export interface DoctorCheck {
   id: string;
   ok: boolean;
   detail?: string;
+  /**
+   * Renseigné pour les seuls contrôles en échec, et seulement quand une suite
+   * concrète existe. Un échec sans remède affiche son détail et rien d'autre —
+   * mieux qu'un bouton qui ne mène nulle part.
+   */
+  remedy?: DoctorRemedy;
 }
 
 export interface DoctorReport {
   checks: DoctorCheck[];
+}
+
+/**
+ * Réponse de `doctor:copy` : la copie a eu lieu, rien d'autre.
+ *
+ * Le rapport lui-même n'y figure pas — le renderer l'a déjà par `doctor:run`,
+ * et le renvoyer ferait exister deux copies d'un même texte dont une seule est
+ * celle qui a été écrite dans le presse-papiers.
+ */
+export interface DoctorCopyResponse {
+  copied: true;
 }
 
 export interface PermissionsState {
@@ -166,6 +290,29 @@ export interface PermissionsState {
 export interface PermissionsRequestResult {
   accessibility: boolean;
 }
+
+/**
+ * Le volet des Réglages système que le desktop sait ouvrir.
+ *
+ * Deux valeurs, et rien d'autre : le renderer nomme une permission, jamais une
+ * URL. Une chaîne libre passée à `shell.openExternal` ferait du renderer un
+ * lanceur de schémas arbitraires (`file:`, `x-apple.systempreferences:` vers
+ * n'importe quel volet) ; l'énumération garde la correspondance du côté qui
+ * connaît déjà la plateforme.
+ *
+ * L'invite Accessibilité existe (`permissions:request`), mais macOS ne la
+ * réaffiche pas après un refus, et l'Automatisation n'a aucune invite
+ * déclenchable. Sans ce canal, un échec de permission n'a plus de suite dans
+ * l'application — la seule réponse serait « allez voir dans les Réglages
+ * système », que personne ne trouve du premier coup.
+ */
+export const SYSTEM_PERMISSION_PANES = ["accessibility", "automation"] as const;
+export type SystemPermissionPane = (typeof SYSTEM_PERMISSION_PANES)[number];
+
+export const OpenPermissionSettingsRequestSchema = z
+  .object({ pane: z.enum(SYSTEM_PERMISSION_PANES) })
+  .strict();
+export type OpenPermissionSettingsRequest = z.infer<typeof OpenPermissionSettingsRequestSchema>;
 
 /**
  * A profile as the renderer is allowed to see it: identity and wording only.
@@ -211,6 +358,8 @@ export interface ProfileDetail {
 
 /** A local profile file the catalogue could not load, reported not hidden. */
 export interface ProfileCatalogProblemInfo {
+  /** Cassé, ou seulement recouvert par un profil du projet. */
+  kind: "invalid" | "shadowed";
   id: string;
   path: string;
   detail: string;
@@ -221,8 +370,15 @@ export interface ProfileCatalogResponse {
   problems: ProfileCatalogProblemInfo[];
 }
 
+/**
+ * Same rule everywhere a provider identifier is accepted: it becomes a key in
+ * the configuration file, and a mixed-case one would not match the endpoint it
+ * was meant to name.
+ */
+const PROVIDER_ID_ERROR = "A provider identifier must be lowercase.";
+
 const PROFILE_ID_ERROR =
-  "L'identifiant du profil doit être normalisé : lettres minuscules, chiffres et tirets uniquement.";
+  "A profile identifier must be normalised: lowercase letters, digits and hyphens only.";
 
 const ProfileIdSchema = z
   .string()
@@ -231,12 +387,11 @@ const ProfileIdSchema = z
   .regex(CUSTOM_PROFILE_ID_REGEX, PROFILE_ID_ERROR);
 
 const WritableProfileIdSchema = ProfileIdSchema.refine((id) => isValidCustomProfileId(id), {
-  message:
-    "L'identifiant du profil local est réservé, intégré ou non portable. Choisissez un autre identifiant.",
+  message: "This local profile identifier is reserved, built-in or not portable. Pick another one.",
 });
 
 const ExportableProfileIdSchema = ProfileIdSchema.refine((id) => id !== AUTO_PROFILE_ID, {
-  message: "Le profil automatique n'est pas un profil exportable ou duplicable.",
+  message: "The automatic profile can be neither exported nor duplicated.",
 });
 
 export const ProfileIdRequestSchema = z.object({ id: ProfileIdSchema }).strict();
@@ -298,13 +453,36 @@ export interface ProfileMutationResponse {
 export const SHORTCUT_PRESETS = {
   capture: ["Command+Control+R", "Command+Control+J", "Command+Control+G", "Command+Control+B"],
   input: ["Command+Control+N", "Command+Control+K", "Command+Control+M", "Command+Control+P"],
+  popover: ["Command+Control+O", "Command+Control+T", "Command+Control+U", "Command+Control+Y"],
 } as const;
+
+/**
+ * What a global shortcut opens.
+ *
+ * `popover` is the third one: the menu-bar panel used to be reachable by
+ * clicking the tray icon alone, which leaves someone working entirely from the
+ * keyboard without any way in. The three lists above are disjoint by
+ * construction — the settings must never offer the same combination for two
+ * intents, because only one of them could answer.
+ */
+export type ShortcutIntent = keyof typeof SHORTCUT_PRESETS;
 
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
 export interface ShortcutStateInfo {
-  registered: { accelerator: string; label: string; intent: "capture" | "input" }[];
+  registered: { accelerator: string; label: string; intent: ShortcutIntent }[];
   /** Accelerators whose registration returned false — already taken (§5.5). */
   rejected: string[];
+  /**
+   * Accelerators refused because another Reqraft intent already holds them.
+   *
+   * Kept apart from `rejected`: that list means "another application owns it",
+   * and the answer is to free it up elsewhere. This one means the two choices
+   * collide inside Reqraft, and the answer is to change one of them here — the
+   * same message for both would send the user to the wrong place.
+   */
+  conflicts: string[];
+  /** Whether Electron is temporarily ignoring every registered shortcut. */
+  suspended: boolean;
 }
 
 /**
@@ -320,7 +498,7 @@ export const ProviderSaveRequestSchema = z
       .string()
       .trim()
       .min(1)
-      .regex(/^[a-z0-9-]+$/, "L'identifiant du fournisseur doit être en minuscules."),
+      .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
     name: z.string().trim().min(1).optional(),
     baseUrl: z
       .string()
@@ -340,6 +518,161 @@ export type ProviderSaveRequest = z.infer<typeof ProviderSaveRequestSchema>;
 export const ProviderDeleteRequestSchema = z.object({ id: z.string().trim().min(1) }).strict();
 export type ProviderDeleteRequest = z.infer<typeof ProviderDeleteRequestSchema>;
 
+/**
+ * Which provider the settings want checked.
+ *
+ * A discriminated union rather than a bare identifier: a built-in provider is
+ * one of a closed list, while a compatible endpoint is keyed by whatever the
+ * user named it — and nothing stops someone naming an endpoint `anthropic`.
+ * Without the discriminator the main process would have to guess which of the
+ * two a request meant, and would sometimes test the wrong one.
+ *
+ * `mock` is absent by construction: it answers `ok` unconditionally, so
+ * offering it would be a test that cannot fail. The compatible provider is
+ * absent too — it is a family, and each endpoint is addressed on its own.
+ */
+export const PROVIDER_TEST_BUILTIN_IDS = CREDENTIAL_PROVIDER_IDS;
+export type ProviderTestBuiltinId = (typeof PROVIDER_TEST_BUILTIN_IDS)[number];
+
+export const ProviderTestRequestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("builtin"), id: z.enum(PROVIDER_TEST_BUILTIN_IDS) }).strict(),
+  z
+    .object({
+      kind: z.literal("endpoint"),
+      id: z
+        .string()
+        .trim()
+        .min(1)
+        .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
+    })
+    .strict(),
+]);
+export type ProviderTestRequest = z.infer<typeof ProviderTestRequestSchema>;
+
+/**
+ * What a check can conclude.
+ *
+ * A closed list rather than a sentence: `ProviderHealth.detail` is written by
+ * the adapter and could carry anything a remote endpoint sent back, headers
+ * and URLs included. The renderer gets a verdict it can translate, and the
+ * wording stays in the locale catalogues where every other string lives.
+ */
+export const PROVIDER_TEST_OUTCOMES = [
+  "ok",
+  "missing_configuration",
+  "invalid_configuration",
+  "unreachable",
+  "error",
+] as const;
+export type ProviderTestOutcome = (typeof PROVIDER_TEST_OUTCOMES)[number];
+
+/**
+ * The whole answer: which provider, and how it went.
+ *
+ * `missing` names configuration entries — an environment variable, `baseUrl` —
+ * never their values, and the main process drops anything that does not look
+ * like an identifier before sending it.
+ */
+export interface ProviderTestResponse {
+  id: string;
+  outcome: ProviderTestOutcome;
+  missing?: string[];
+}
+
+// --- Models --------------------------------------------------------------------
+
+/**
+ * Which provider's catalogue the settings are asking for.
+ *
+ * The same discriminated union as `providers:test`, and for the same reason: a
+ * built-in provider is one of a closed list, while a compatible endpoint is
+ * keyed by whatever the user named it, and nothing stops someone naming an
+ * endpoint `anthropic`. `openai-compatible` is excluded from the built-in
+ * branch because it names a family — the registry builds it from the FIRST
+ * entry of `providers`, so a catalogue can only be asked for one endpoint at a
+ * time, through the `endpoint` branch.
+ *
+ * `mock` stays in: it has no `listModels`, so asking for it is how the
+ * `unsupported` answer is reached rather than a case nothing can produce.
+ *
+ * What travels is a provider identity, nothing else. No key, no base URL, no
+ * header: the main process already holds the configuration and hydrates the
+ * credentials itself, and a renderer that could name an endpoint of its own
+ * would be a renderer that can make the application call an arbitrary host.
+ */
+const ModelCatalogBuiltinIdSchema = z
+  .enum(BUILTIN_PROVIDER_IDS)
+  .exclude([OPENAI_COMPATIBLE_PROVIDER_ID]);
+
+export const MODEL_CATALOG_BUILTIN_IDS = ModelCatalogBuiltinIdSchema.options;
+export type ModelCatalogBuiltinId = (typeof MODEL_CATALOG_BUILTIN_IDS)[number];
+
+export const ModelsListRequestSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("builtin"), id: ModelCatalogBuiltinIdSchema }).strict(),
+  z
+    .object({
+      kind: z.literal("endpoint"),
+      id: z
+        .string()
+        .trim()
+        .min(1)
+        .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
+    })
+    .strict(),
+]);
+export type ModelsListRequest = z.infer<typeof ModelsListRequestSchema>;
+
+/**
+ * How many models may cross in one answer.
+ *
+ * A catalogue is remote data: an endpoint someone pointed the application at
+ * decides how long its list is, and an unbounded one would be rendered into a
+ * `<select>` the settings window cannot recover from. Two hundred is well past
+ * what any provider publishes today and still a bound.
+ */
+export const MODEL_CATALOG_LIMIT = 200;
+
+/**
+ * How a catalogue request concluded.
+ *
+ * The provider-check outcomes plus `unsupported`, which is the one thing a
+ * check cannot report: an adapter with no `listModels` at all. The list is
+ * shared rather than copied so the two features cannot drift into describing
+ * the same provider state with different words.
+ */
+export const MODEL_CATALOG_OUTCOMES = [...PROVIDER_TEST_OUTCOMES, "unsupported"] as const;
+export type ModelCatalogOutcome = (typeof MODEL_CATALOG_OUTCOMES)[number];
+
+/**
+ * One model, as the renderer is allowed to see it.
+ *
+ * Deliberately not `ProviderModelOption`: that shape carries a description and
+ * a recommendation, which are editorial fields the repository writes about the
+ * presets it curates. A live catalogue has neither, and reusing the shape would
+ * mean inventing an empty description and a `recommended: false` for every
+ * model a provider publishes.
+ */
+export interface ModelCatalogEntry {
+  id: string;
+  name: string;
+}
+
+/**
+ * The whole answer: which provider, how it went, and what it publishes.
+ *
+ * `models` is empty unless `outcome` is `ok`, and `truncated` says the
+ * provider published more than `MODEL_CATALOG_LIMIT` — an honest "there are
+ * more" rather than a list silently cut. `missing` names configuration entries
+ * exactly as `ProviderTestResponse.missing` does, never their values.
+ */
+export interface ModelsListResponse {
+  id: string;
+  outcome: ModelCatalogOutcome;
+  models: ModelCatalogEntry[];
+  truncated: boolean;
+  missing?: string[];
+}
+
 export const CredentialDeleteRequestSchema = z
   .object({ provider: z.enum(BUILTIN_PROVIDER_IDS) })
   .strict();
@@ -357,6 +690,9 @@ export interface ProviderMutationResponse {
 }
 
 // --- Onboarding ----------------------------------------------------------------
+
+/** Increment only when every installation should see a materially new tour. */
+export const CURRENT_WELCOME_TOUR_VERSION = 1;
 
 /**
  * Why the desktop opened its onboarding instead of going straight to work.
@@ -413,6 +749,8 @@ export interface OnboardingProviderOption {
 export interface OnboardingStateResponse {
   /** True when the application cannot be used as it stands. */
   required: boolean;
+  /** True until this version of the Desktop welcome tour has been completed once. */
+  welcomeTourRequired: boolean;
   blocker?: SetupBlocker;
   providers: OnboardingProviderOption[];
   /** What the form starts on: the current configuration, or the defaults. */
@@ -434,6 +772,8 @@ export const CredentialSaveRequestSchema = z
   .object({
     provider: z.enum(BUILTIN_PROVIDER_IDS),
     secret: z.string().min(1),
+    /** Make the Desktop use this stored key even if its launch environment has one. */
+    preferKeychain: z.boolean().optional(),
   })
   .strict();
 export type CredentialSaveRequest = z.infer<typeof CredentialSaveRequestSchema>;
@@ -454,13 +794,15 @@ export const OnboardingCompleteRequestSchema = z
     model: z.string().trim().min(1),
     profile: z.string().trim().min(1),
     level: RepromptLevelSchema,
+    /** La langue choisie à la configuration, enregistrée avec le reste. */
+    uiLocale: z.enum(["auto", "en", "fr"]).optional(),
     compatibleProvider: z
       .object({
         id: z
           .string()
           .trim()
           .min(1)
-          .regex(/^[a-z0-9-]+$/, "L'identifiant du fournisseur doit être en minuscules."),
+          .regex(/^[a-z0-9-]+$/, PROVIDER_ID_ERROR),
         name: z.string().trim().min(1).optional(),
         // `.url()` alone is not enough: `localhost:11434` parses, with
         // `localhost:` as its protocol, and only fails when the first request
@@ -534,8 +876,34 @@ export interface CapsuleOpenedPayload {
   mode: "capture" | "input";
 }
 
+/**
+ * La langue de l'interface et ses libellés, résolus côté main.
+ *
+ * Les libellés voyagent avec : le renderer ne peut pas embarquer les
+ * catalogues sans dupliquer la source de vérité du CLI, et les recharger à
+ * chaque écran ferait clignoter l'interface.
+ */
+export interface LocaleResponse {
+  locale: "en" | "fr";
+  messages: Record<string, string>;
+}
+
 /** L'ouverture en attente, ou `null` si la capsule n'a pas été déclenchée. */
 export type CapsulePendingResponse = CapsuleOpenedPayload | null;
+
+/**
+ * La hauteur que la capsule demande pour elle-même.
+ *
+ * Bornée par le schéma, puis rebornée par le processus principal : le renderer
+ * mesure son contenu, mais c'est le principal qui connaît la zone de travail
+ * et qui décide. Les bornes du schéma sont volontairement plus larges que
+ * celles du produit — elles refusent l'absurde (0, un million), pas une valeur
+ * que le renderer aurait le droit de proposer.
+ */
+export const CapsuleResizeRequestSchema = z
+  .object({ height: z.number().int().min(80).max(4000) })
+  .strict();
+export type CapsuleResizeRequest = z.infer<typeof CapsuleResizeRequestSchema>;
 
 // Re-exported so the renderer gets fully typed payloads without ever
 // importing the core, even for types (DESKTOP.md §4.2).
@@ -575,13 +943,23 @@ export interface ReqraftBridge {
   startReprompt(request: RepromptStartRequest): Promise<RepromptStartResponse>;
   cancelReprompt(runId: string): Promise<void>;
   captureSelection(): Promise<CaptureSelectionResponse>;
-  acceptResult(runId: string, mode: ResultAcceptMode): Promise<ResultAcceptResponse>;
+  /**
+   * `text` n'est fourni que si le résultat a été repris dans la capsule : sans
+   * lui, le processus principal applique le résultat qu'il a lui-même produit.
+   */
+  acceptResult(runId: string, mode: ResultAcceptMode, text?: string): Promise<ResultAcceptResponse>;
   readConfig(): Promise<SafeConfig>;
   writeConfig(patch: ConfigWriteRequest): Promise<SafeConfig>;
   providersStatus(): Promise<ProviderStatus[]>;
   runDoctor(): Promise<DoctorReport>;
+  copyDoctorReport(): Promise<DoctorCopyResponse>;
   permissionsState(): Promise<PermissionsState>;
   requestPermissions(): Promise<PermissionsRequestResult>;
+  /** Ouvre le volet système d'une permission nommée ; jamais une URL. */
+  openPermissionSettings(pane: SystemPermissionPane): Promise<void>;
+  updatesState(): Promise<DesktopUpdateState>;
+  checkForUpdates(): Promise<DesktopUpdateState>;
+  openUpdateDownload(): Promise<void>;
   listProfiles(): Promise<ProfileSummary[]>;
   profileCatalog(): Promise<ProfileCatalogResponse>;
   readProfile(id: string): Promise<ProfileDetail>;
@@ -589,14 +967,23 @@ export interface ReqraftBridge {
   duplicateProfile(request: ProfileDuplicateRequest): Promise<ProfileMutationResponse>;
   deleteProfile(id: string): Promise<ProfileMutationResponse>;
   exportProfile(id: string): Promise<ProfileExportResponse>;
+  readLocale(locale?: "en" | "fr"): Promise<LocaleResponse>;
   capsulePending(): Promise<CapsulePendingResponse>;
+  /** Propose une hauteur pour la fenêtre capsule ; le principal l'arbitre. */
+  resizeCapsule(height: number): Promise<void>;
   openSettings(): Promise<void>;
+  openWelcomeTour(): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
+  /** Lève la suspension des raccourcis globaux et rend l'état relu après coup. */
+  resumeShortcuts(): Promise<ShortcutStateInfo>;
   onboardingState(): Promise<OnboardingStateResponse>;
+  completeWelcomeTour(): Promise<OnboardingStateResponse>;
   saveCredential(request: CredentialSaveRequest): Promise<CredentialSaveResponse>;
   deleteCredential(request: CredentialDeleteRequest): Promise<CredentialSaveResponse>;
   saveProvider(request: ProviderSaveRequest): Promise<ProviderMutationResponse>;
   deleteProvider(id: string): Promise<ProviderMutationResponse>;
+  testProvider(request: ProviderTestRequest): Promise<ProviderTestResponse>;
+  listModels(request: ModelsListRequest): Promise<ModelsListResponse>;
   completeOnboarding(request: OnboardingCompleteRequest): Promise<OnboardingCompleteResponse>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;

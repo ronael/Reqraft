@@ -1,137 +1,32 @@
+import process from "node:process";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecuteRepromptInput, ExecuteRepromptResult } from "@/application/reprompt.js";
-import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import { REPROMPT_LEVELS } from "@/core/levels.js";
 import type { RepromptResult } from "@/core/types.js";
-import {
-  registerIpcHandlers,
-  sanitizeConfigForRenderer,
-  type IpcEventLike,
-  type IpcMainLike,
-} from "@/apps/desktop/main/ipc.js";
-import { RepromptService, type RunEventSender } from "@/apps/desktop/main/reprompt-service.js";
+import { registerIpcHandlers, sanitizeConfigForRenderer } from "@/apps/desktop/main/ipc.js";
+import { formatDoctorReport } from "@/apps/desktop/main/doctor.js";
 import {
   IPC_CHANNELS,
   PUSH_CHANNELS,
   REQUEST_CHANNELS,
 } from "@/apps/desktop/shared/ipc-channels.js";
+import { mainLocale, setMainLocale } from "@/apps/desktop/main/i18n.js";
+import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
+import { version } from "@/version.js";
 import {
   REPROMPT_LEVEL_IDS,
+  type DoctorReport,
   type RepromptStartResponse,
 } from "@/apps/desktop/shared/ipc-contract.js";
-
-const FAKE_RESULT: RepromptResult = {
-  original: "demande brute",
-  rewritten: "demande reformulée",
-  profile: "general",
-  level: "standard",
-  provider: "mock",
-  model: "mock-model",
-  changes: ["demande clarifiée"],
-  quality: { status: "good", signals: [] },
-};
-
-const MOCK_CONFIG: Config = { ...DEFAULT_CONFIG, defaultProvider: "mock" };
-
-class FakeIpcMain implements IpcMainLike {
-  private readonly handlers = new Map<string, (event: IpcEventLike, payload: unknown) => unknown>();
-
-  handle(channel: string, listener: (event: IpcEventLike, payload: unknown) => unknown): void {
-    this.handlers.set(channel, listener);
-  }
-
-  registeredChannels(): string[] {
-    return [...this.handlers.keys()];
-  }
-
-  invoke(channel: string, payload: unknown, sender: RunEventSender): Promise<unknown> {
-    const handler = this.handlers.get(channel);
-    if (!handler) {
-      return Promise.reject(new Error(`Aucun handler pour ${channel}`));
-    }
-    // Like the real ipcMain: a handler that throws synchronously surfaces as
-    // a rejected promise to the renderer, never as a synchronous throw.
-    try {
-      return Promise.resolve(handler({ sender }, payload));
-    } catch (error) {
-      return Promise.reject(error instanceof Error ? error : new Error(String(error)));
-    }
-  }
-}
-
-function createFakeSender(): {
-  sender: RunEventSender;
-  sent: { channel: string; payload: unknown }[];
-  state: { destroyed: boolean };
-} {
-  const sent: { channel: string; payload: unknown }[] = [];
-  const state = { destroyed: false };
-  const sender: RunEventSender = {
-    send: (channel, payload) => {
-      sent.push({ channel, payload });
-    },
-    isDestroyed: () => state.destroyed,
-  };
-  return { sender, sent, state };
-}
-
-function streamingExecute(
-  result: RepromptResult = FAKE_RESULT,
-): (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult> {
-  return vi.fn((input: ExecuteRepromptInput): Promise<ExecuteRepromptResult> => {
-    input.onDelta?.("fragment-1 ");
-    input.onDelta?.("fragment-2");
-    return Promise.resolve({ result, detectedProfile: false });
-  });
-}
-
-interface Harness {
-  ipcMain: FakeIpcMain;
-  clipboard: { writeText: ReturnType<typeof vi.fn<(text: string) => void>> };
-  execute: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
-  saveConfig: ReturnType<typeof vi.fn>;
-  sender: RunEventSender;
-  sent: { channel: string; payload: unknown }[];
-  state: { destroyed: boolean };
-}
-
-function setup(options: {
-  execute?: (input: ExecuteRepromptInput) => Promise<ExecuteRepromptResult>;
-  config?: Config;
-  env?: NodeJS.ProcessEnv;
-  hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
-}): Harness {
-  const config = options.config ?? MOCK_CONFIG;
-  const env = options.env ?? {};
-  const execute = options.execute ?? streamingExecute();
-  const saveConfig = vi.fn((_config: Config) => Promise.resolve());
-  const { sender, sent, state } = createFakeSender();
-
-  const service = new RepromptService({
-    executeReprompt: execute,
-    loadConfig: () => Promise.resolve(config),
-    env,
-    createRunId: () => "run-1",
-  });
-
-  const ipcMain = new FakeIpcMain();
-  const clipboard = { writeText: vi.fn<(text: string) => void>() };
-  registerIpcHandlers({
-    ipcMain,
-    clipboard,
-    service,
-    loadConfig: () => Promise.resolve(config),
-    saveConfig,
-    hydrateCredentials: options.hydrateCredentials ?? (() => Promise.resolve()),
-    env,
-  });
-  return { ipcMain, clipboard, execute, saveConfig, sender, sent, state };
-}
-
-function sentChannels(harness: Harness, channel: string): unknown[] {
-  return harness.sent.filter((event) => event.channel === channel).map((event) => event.payload);
-}
+import {
+  FAKE_RESULT,
+  MOCK_CONFIG,
+  sentChannels,
+  setup,
+  streamingExecute,
+  type Harness,
+} from "./desktop-ipc-harness.js";
 
 describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
   it("définit les canaux exacts du contrat, en un seul endroit", () => {
@@ -143,9 +38,14 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       configRead: "config:read",
       configWrite: "config:write",
       providersStatus: "providers:status",
+      updatesState: "updates:state",
+      updatesCheck: "updates:check",
+      updatesOpenDownload: "updates:open-download",
       doctorRun: "doctor:run",
+      doctorCopy: "doctor:copy",
       permissionsState: "permissions:state",
       permissionsRequest: "permissions:request",
+      systemOpenPermissionSettings: "system:open-permission-settings",
       profilesList: "profiles:list",
       profilesCatalog: "profiles:catalog",
       profileRead: "profiles:read",
@@ -153,22 +53,29 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       profileDuplicate: "profiles:duplicate",
       profileDelete: "profiles:delete",
       profileExport: "profiles:export",
+      localeRead: "locale:read",
       capsulePending: "capsule:pending",
+      capsuleResize: "capsule:resize",
       windowOpenSettings: "window:open-settings",
+      windowOpenWelcomeTour: "window:open-welcome-tour",
       shortcutsState: "shortcuts:state",
+      shortcutsResume: "shortcuts:resume",
       onboardingState: "onboarding:state",
+      onboardingTourComplete: "onboarding:tour-complete",
       onboardingComplete: "onboarding:complete",
       credentialSave: "credential:save",
       credentialDelete: "credential:delete",
       providerSave: "providers:save",
       providerDelete: "providers:delete",
+      providerTest: "providers:test",
+      modelsList: "models:list",
       runDelta: "run:delta",
       runDone: "run:done",
       runError: "run:error",
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(26);
+    expect(REQUEST_CHANNELS).toHaveLength(38);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 
@@ -181,6 +88,44 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
     for (const channel of REQUEST_CHANNELS) {
       expect(harness.ipcMain.registeredChannels()).toContain(channel);
     }
+  });
+});
+
+describe("locale:read", () => {
+  it("rend la langue arrêtée au démarrage, libellés compris", async () => {
+    const harness = setup({});
+    setMainLocale("fr");
+    try {
+      const response = await harness.ipcMain.invoke(
+        IPC_CHANNELS.localeRead,
+        undefined,
+        harness.sender,
+      );
+      expect(response).toEqual({ locale: "fr", messages: DESKTOP_MESSAGES.fr });
+    } finally {
+      setMainLocale("en");
+    }
+  });
+
+  it("rend une autre langue à la demande, sans changer celle en vigueur", async () => {
+    // L'onboarding montre le choix avant de l'enregistrer : le catalogue
+    // demandé voyage, mais le menu de la barre reste dans sa langue.
+    const harness = setup({});
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.localeRead,
+      { locale: "fr" },
+      harness.sender,
+    );
+
+    expect(response).toEqual({ locale: "fr", messages: DESKTOP_MESSAGES.fr });
+    expect(mainLocale()).toBe("en");
+  });
+
+  it("refuse une langue hors contrat", async () => {
+    const harness = setup({});
+    await expect(
+      harness.ipcMain.invoke(IPC_CHANNELS.localeRead, { locale: "es" }, harness.sender),
+    ).rejects.toThrow();
   });
 });
 
@@ -337,49 +282,6 @@ describe("cycle de vie reprompt via IPC", () => {
   });
 });
 
-describe("result:accept", () => {
-  async function finishRun(harness: Harness): Promise<void> {
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-  }
-
-  it("mode copy : écrit le résultat dans le presse-papiers", async () => {
-    const harness = setup({});
-    await finishRun(harness);
-    const response = (await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "copy" },
-      harness.sender,
-    )) as { applied: boolean };
-    expect(response).toEqual({ applied: true });
-    expect(harness.clipboard.writeText).toHaveBeenCalledWith("demande reformulée");
-  });
-
-  it("mode replace : dégradé explicite tant que le lot 2 n'est pas livré", async () => {
-    const harness = setup({});
-    await finishRun(harness);
-    const response = (await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    )) as { applied: boolean };
-    expect(response).toEqual({ applied: false });
-    expect(harness.clipboard.writeText).not.toHaveBeenCalled();
-  });
-
-  it("runId inconnu : applied false, sans erreur", async () => {
-    const harness = setup({});
-    const response = (await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "inconnu", mode: "copy" },
-      harness.sender,
-    )) as { applied: boolean };
-    expect(response).toEqual({ applied: false });
-  });
-});
-
 describe("config via IPC", () => {
   it("config:read ne laisse jamais passer les en-têtes personnalisés", async () => {
     const config: Config = {
@@ -416,6 +318,47 @@ describe("config via IPC", () => {
     expect(saved.telemetry).toBe(false);
     expect(response.stream).toBe(false);
     expect(response.telemetry).toBe(false);
+  });
+
+  it("config:write relance quand la langue effective change", async () => {
+    const harness = setup({ config: { ...MOCK_CONFIG, uiLocale: "en" } });
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { uiLocale: "fr" }, harness.sender);
+
+    expect(harness.relaunchApp).toHaveBeenCalledOnce();
+  });
+
+  it("config:write ne relance pas quand la préférence change sans changer la langue effective", async () => {
+    const harness = setup({
+      config: { ...MOCK_CONFIG, uiLocale: "fr" },
+      env: { LANG: "fr_FR.UTF-8" },
+    });
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { uiLocale: "auto" }, harness.sender);
+
+    expect(harness.relaunchApp).not.toHaveBeenCalled();
+  });
+
+  it("config:write ne relance pas pour les autres réglages", async () => {
+    const harness = setup({});
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { stream: false }, harness.sender);
+
+    expect(harness.relaunchApp).not.toHaveBeenCalled();
+  });
+
+  it("config:write reteste les mêmes raccourcis quand le renderer les réécrit", async () => {
+    const shortcuts = { capture: "Command+Control+R" };
+    const harness = setup({ config: { ...MOCK_CONFIG, desktopShortcuts: shortcuts } });
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.configWrite,
+      { desktopShortcuts: shortcuts },
+      harness.sender,
+    );
+
+    expect(harness.onShortcutsChanged).toHaveBeenCalledOnce();
+    expect(harness.onShortcutsChanged).toHaveBeenCalledWith(shortcuts);
   });
 
   it("sanitizeConfigForRenderer conserve une config sans providers custom", () => {
@@ -456,7 +399,7 @@ describe("providers:status", () => {
       configured: false,
       source: "not_configured",
     });
-    expect(byId.get("mock")).toMatchObject({ id: "mock", configured: true, source: "builtin" });
+    expect(byId.has("mock")).toBe(false);
     expect(JSON.stringify(statuses)).not.toContain("never-leaks");
   });
 });
@@ -542,37 +485,6 @@ describe("canaux capture et permissions (lot 2)", () => {
     expect(response).toEqual({ accessibility: true });
   });
 
-  it("result:accept replace délègue au service de capture", async () => {
-    const replace = vi.fn(() => Promise.resolve({ applied: true }));
-    const harness = setup({});
-    registerIpcHandlers({
-      ipcMain: harness.ipcMain,
-      clipboard: harness.clipboard,
-      service: new RepromptService({
-        executeReprompt: streamingExecute(),
-        loadConfig: () => Promise.resolve(MOCK_CONFIG),
-        env: {},
-        createRunId: () => "run-1",
-      }),
-      captureService: {
-        consumeStashed: () => ({ empty: true }),
-        replace,
-      } as never,
-    });
-    await harness.ipcMain.invoke(IPC_CHANNELS.repromptStart, { input: "demande" }, harness.sender);
-    await vi.waitFor(() => {
-      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
-    });
-
-    const response = await harness.ipcMain.invoke(
-      IPC_CHANNELS.resultAccept,
-      { runId: "run-1", mode: "replace" },
-      harness.sender,
-    );
-    expect(response).toEqual({ applied: true });
-    expect(replace).toHaveBeenCalledWith("demande reformulée");
-  });
-
   it("permissions sans sonde câblée : mode dégradé explicite (§2.6)", async () => {
     const harness = setup({});
     const state = await harness.ipcMain.invoke(
@@ -583,7 +495,7 @@ describe("canaux capture et permissions (lot 2)", () => {
     expect(state).toEqual({
       accessibility: false,
       canReplace: false,
-      reason: "desktop.permissions_pending",
+      reason: "Permissions not probed yet.",
     });
     const request = await harness.ipcMain.invoke(
       IPC_CHANNELS.permissionsRequest,
@@ -615,6 +527,8 @@ describe("canaux capture et permissions (lot 2)", () => {
     const resolution = {
       registered: [{ accelerator: "Alt+Space", label: "⌥Espace", intent: "capture" as const }],
       rejected: ["Alt+Shift+Space"],
+      conflicts: ["Command+Control+R"],
+      suspended: true,
     };
     registerIpcHandlers({
       ipcMain: harness.ipcMain,
@@ -637,7 +551,156 @@ describe("canaux capture et permissions (lot 2)", () => {
       undefined,
       harness.sender,
     );
-    expect(response).toEqual({ registered: [], rejected: [] });
+    expect(response).toEqual({
+      registered: [],
+      rejected: [],
+      conflicts: [],
+      suspended: false,
+    });
+  });
+
+  it("shortcuts:resume lève la suspension puis relit l'état réel", async () => {
+    const harness = setup({});
+    let suspended = true;
+    const setShortcutsSuspended = vi.fn((next: boolean) => {
+      suspended = next;
+    });
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      setShortcutsSuspended,
+      shortcutState: () => ({ registered: [], rejected: [], conflicts: [], suspended }),
+    });
+
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.shortcutsResume,
+      undefined,
+      harness.sender,
+    );
+
+    expect(setShortcutsSuspended).toHaveBeenCalledWith(false);
+    expect(response).toMatchObject({ suspended: false });
+  });
+
+  it("n'ouvre qu'un volet de permission nommé par le contrat", async () => {
+    const harness = setup({});
+    const openPermissionSettings = vi.fn(() => Promise.resolve());
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      openPermissionSettings,
+    });
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.systemOpenPermissionSettings,
+      { pane: "automation" },
+      harness.sender,
+    );
+    expect(openPermissionSettings).toHaveBeenCalledWith("automation");
+
+    await expect(
+      harness.ipcMain.invoke(
+        IPC_CHANNELS.systemOpenPermissionSettings,
+        { pane: "file:///tmp" },
+        harness.sender,
+      ),
+    ).rejects.toThrow();
+  });
+});
+
+/**
+ * Le rapport partagé dans une issue GitHub.
+ *
+ * Le canal existe précisément pour que le renderer n'ait jamais à formater ni
+ * à transmettre le texte : il demande une copie, le processus principal
+ * reconstruit le rapport et l'écrit lui-même.
+ */
+describe("doctor:copy", () => {
+  it("copie le rapport reconstruit par le main, sur la même source que doctor:run", async () => {
+    const harness = setup({});
+    const runDoctorReport = vi.fn(() =>
+      Promise.resolve({
+        checks: [
+          { id: "config:file", ok: true, detail: "/Users/prenom.nom/.config/reqraft/config.json" },
+          { id: "provider:openai", ok: false, detail: "OPENAI_API_KEY" },
+        ],
+      }),
+    );
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      runDoctorReport,
+      homeDir: () => "/Users/prenom.nom",
+    });
+
+    const shown = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.doctorRun,
+      undefined,
+      harness.sender,
+    )) as DoctorReport;
+    const response = await harness.ipcMain.invoke(
+      IPC_CHANNELS.doctorCopy,
+      undefined,
+      harness.sender,
+    );
+
+    expect(response).toEqual({ copied: true });
+    // Une seule construction pour les deux canaux : le texte partagé décrit
+    // exactement ce que l'onglet affiche.
+    expect(runDoctorReport).toHaveBeenCalledTimes(2);
+    const copied = harness.clipboard.writeText.mock.calls[0]?.[0] ?? "";
+    for (const check of shown.checks) expect(copied).toContain(check.id);
+    expect(copied).toContain("- [ok] config:file: ~/.config/reqraft/config.json");
+    expect(copied).toContain("- [fail] provider:openai: OPENAI_API_KEY");
+    // Le dossier personnel ne part pas dans une issue publique.
+    expect(copied).not.toContain("prenom.nom");
+  });
+
+  it("refuse toute charge utile : le renderer ne dicte jamais ce qui est copié", async () => {
+    const harness = setup({});
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      runDoctorReport: () => Promise.resolve({ checks: [] }),
+    });
+
+    for (const payload of ["texte-arbitraire", { text: "texte-arbitraire" }, null]) {
+      await expect(
+        harness.ipcMain.invoke(IPC_CHANNELS.doctorCopy, payload, harness.sender),
+      ).rejects.toThrow();
+    }
+    expect(harness.clipboard.writeText).not.toHaveBeenCalled();
+  });
+
+  it("n'écrit rien d'autre que le rapport formaté, sentinelles d'environnement comprises", async () => {
+    const env = {
+      OPENAI_API_KEY: "sk-sentinelle-de-cle",
+      REQRAFT_CUSTOM_HEADER: "x-sentinelle-header",
+    };
+    const harness = setup({ env });
+    const report = { checks: [{ id: "provider:openai", ok: false, detail: "OPENAI_API_KEY" }] };
+    registerIpcHandlers({
+      ipcMain: harness.ipcMain,
+      clipboard: harness.clipboard,
+      env,
+      runDoctorReport: () => Promise.resolve(report),
+      homeDir: () => "/Users/prenom.nom",
+    });
+
+    await harness.ipcMain.invoke(IPC_CHANNELS.doctorCopy, undefined, harness.sender);
+
+    // Égalité stricte avec la fonction pure : le main n'ajoute rien au texte,
+    // donc rien de l'environnement ne peut s'y glisser par un autre chemin.
+    const copied = harness.clipboard.writeText.mock.calls[0]?.[0] ?? "";
+    expect(copied).toBe(
+      formatDoctorReport(report, {
+        version,
+        platform: process.platform,
+        homeDir: "/Users/prenom.nom",
+      }),
+    );
+    for (const value of Object.values(env)) expect(copied).not.toContain(value);
+    expect(copied).toContain("OPENAI_API_KEY");
   });
 });
 

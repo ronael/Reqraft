@@ -1,6 +1,8 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   isWayland,
+  openPermissionSettings,
+  PERMISSION_SETTINGS_URLS,
   probePermissions,
   type PermissionsProbe,
 } from "@/apps/desktop/main/permissions.js";
@@ -28,6 +30,22 @@ describe("probePermissions (DESKTOP.md §5.9)", () => {
     expect(report.gap).toBe("none");
   });
 
+  it("macOS : aucune des deux → le message les nomme toutes les deux", async () => {
+    // §5.9 : le message de dégradation doit dire LAQUELLE manque. « Aucune
+    // permission accordée » ne disait rien de ce qu'il faut aller autoriser,
+    // et les deux se demandent dans deux panneaux différents.
+    const report = await probePermissions({
+      platform: "darwin",
+      env: {},
+      isTrustedAccessibilityClient: () => false,
+      hasAutomation: () => Promise.resolve(false),
+    });
+
+    expect(report.gap).toBe("both");
+    expect(report.message).toContain("Accessibility");
+    expect(report.message).toContain("Automation");
+  });
+
   it("macOS : Accessibilité seule → le message nomme l'Automatisation", async () => {
     const report = await probePermissions(
       createProbe({
@@ -39,7 +57,7 @@ describe("probePermissions (DESKTOP.md §5.9)", () => {
     expect(report.accessibility).toBe(true);
     expect(report.canReplace).toBe(false);
     expect(report.gap).toBe("automation");
-    expect(report.message).toContain("Automatisation");
+    expect(report.message).toContain("Automation");
   });
 
   it("macOS : Automatisation seule → le message nomme l'Accessibilité", async () => {
@@ -51,7 +69,7 @@ describe("probePermissions (DESKTOP.md §5.9)", () => {
     );
 
     expect(report.gap).toBe("accessibility");
-    expect(report.message).toContain("Accessibilité");
+    expect(report.message).toContain("Accessibility");
   });
 
   it("macOS : aucune permission → mode dégradé explicite, jamais bloquant", async () => {
@@ -95,5 +113,23 @@ describe("isWayland", () => {
     expect(isWayland({ XDG_SESSION_TYPE: "wayland" }, "darwin")).toBe(false);
     expect(isWayland({ XDG_SESSION_TYPE: "x11" }, "linux")).toBe(false);
     expect(isWayland({}, "linux")).toBe(false);
+  });
+});
+
+describe("openPermissionSettings", () => {
+  it("ouvre uniquement le volet macOS correspondant à l'énumération", async () => {
+    const openExternal = vi.fn(() => Promise.resolve());
+
+    await expect(openPermissionSettings("accessibility", "darwin", openExternal)).resolves.toBe(
+      true,
+    );
+    expect(openExternal).toHaveBeenCalledWith(PERMISSION_SETTINGS_URLS.accessibility);
+  });
+
+  it("reste inerte hors macOS", async () => {
+    const openExternal = vi.fn(() => Promise.resolve());
+
+    await expect(openPermissionSettings("automation", "linux", openExternal)).resolves.toBe(false);
+    expect(openExternal).not.toHaveBeenCalled();
   });
 });

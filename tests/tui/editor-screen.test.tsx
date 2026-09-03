@@ -64,6 +64,7 @@ async function mountScreen(options: HostOptions = {}) {
   let currentFocus: FocusState = INITIAL_FOCUS;
   let currentView: ResultViewMode = "result";
   let externalSetFocus: ((value: FocusState) => void) | null = null;
+  let externalSetOverlay: ((value: OverlayState) => void) | null = null;
   let externalSetResult: ((value: ResultState) => void) | null = null;
   let externalSetView: ((value: ResultViewMode) => void) | null = null;
   let externalSetSubmitted: ((value: string | null) => void) | null = null;
@@ -81,6 +82,7 @@ async function mountScreen(options: HostOptions = {}) {
     currentFocus = focus;
     currentView = view;
     externalSetFocus = setFocus;
+    externalSetOverlay = setOverlay;
     externalSetResult = setResult;
     externalSetView = setView;
     externalSetSubmitted = setSubmittedPrompt;
@@ -92,15 +94,15 @@ async function mountScreen(options: HostOptions = {}) {
         if (id === "focus-next") setFocus((f) => focusNext(f, options));
         if (id === "focus-previous") setFocus((f) => focusPrevious(f, options));
         if (id === "open-profile") {
-          setOverlay(openOverlay(INITIAL_OVERLAY, "profile"));
+          setOverlay(openOverlay("profile"));
           setFocus(suspendFocus);
         }
         if (id === "open-palette") {
-          setOverlay(openOverlay(INITIAL_OVERLAY, "palette"));
+          setOverlay(openOverlay("palette"));
           setFocus(suspendFocus);
         }
         if (id === "open-help") {
-          setOverlay(openOverlay(INITIAL_OVERLAY, "help"));
+          setOverlay(openOverlay("help"));
           setFocus(suspendFocus);
         }
         if (id === "close-overlay") {
@@ -196,6 +198,11 @@ async function mountScreen(options: HostOptions = {}) {
     setFocus: (value: FocusState) => {
       act(() => {
         externalSetFocus?.(value);
+      });
+    },
+    setOverlay: (value: OverlayState) => {
+      act(() => {
+        externalSetOverlay?.(value);
       });
     },
     view: () => currentView,
@@ -521,6 +528,33 @@ describe("EditorScreen · overlays", () => {
     const frame = screen.frame();
     expect(frame).toContain(t("tui.changeProfile"));
     expect(frame).toContain("auto");
+    // La recherche s'annonce : sans cette ligne, rien ne dit qu'on peut taper.
+    expect(frame).toContain(t("tui.picker.searchHint"));
+  });
+
+  test("narrows the profile picker to what was typed", async () => {
+    // Roadmap « passer à l'échelle des profils » : un catalogue qui grandit se
+    // cherche. Le filtrage vit dans une fonction pure, mais c'est ici qu'on
+    // vérifie qu'il atteint bien les lignes rendues.
+    const screen = await mountScreen();
+    await screen.key("p", { ctrl: true });
+    screen.setOverlay({ active: "profile", index: 0, query: "writing" });
+    await screen.settle();
+
+    const frame = screen.frame();
+    expect(frame).toContain("writing");
+    expect(frame).toContain(t("tui.picker.search"));
+    // `clean` est un profil intégré : il doit avoir disparu de la liste.
+    expect(frame).not.toContain("clean");
+  });
+
+  test("says so instead of showing an empty picker", async () => {
+    const screen = await mountScreen();
+    await screen.key("p", { ctrl: true });
+    screen.setOverlay({ active: "profile", index: 0, query: "zzzz-introuvable" });
+    await screen.settle();
+
+    expect(screen.frame()).toContain(t("tui.picker.noMatch"));
   });
 });
 

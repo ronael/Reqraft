@@ -14,6 +14,7 @@ import type {
   RepromptStartRequest,
   RepromptStartResponse,
 } from "@/apps/desktop/shared/ipc-contract.js";
+import { mainLocale } from "./i18n.js";
 
 /** Minimal slice of `WebContents`, injected so the service stays testable. */
 export interface RunEventSender {
@@ -33,7 +34,10 @@ export interface RepromptServiceDependencies {
   onRunEvent?: (event: "start" | "done" | "error" | "cancelled") => void;
 }
 
-const DEFAULT_TRANSLATOR = createTranslator("fr");
+// La langue résolue au démarrage, comme le reste du processus principal :
+// « fr » était codé en dur ici et imposait le français à quiconque n'avait
+// rien demandé. Résolue à la construction, pas à l'import — le service naît
+// après la lecture de la configuration.
 
 /**
  * Owns the lifecycle of reprompt runs for the desktop main process.
@@ -50,7 +54,7 @@ export class RepromptService {
   private readonly schedule: (callback: () => void) => void;
 
   constructor(private readonly dependencies: RepromptServiceDependencies) {
-    this.translator = dependencies.translator ?? DEFAULT_TRANSLATOR;
+    this.translator = dependencies.translator ?? createTranslator(mainLocale());
     this.schedule = dependencies.schedule ?? ((callback) => setTimeout(callback, 0));
   }
 

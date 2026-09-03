@@ -7,6 +7,7 @@ import {
 import { FocusTracker } from "./focus.js";
 import type { MacosBridge } from "./macos.js";
 import type { CaptureSelectionResponse } from "@/apps/desktop/shared/ipc-contract.js";
+import { t } from "./i18n.js";
 
 /**
  * Orchestrates the trigger cycle: global shortcut → record the source app →
@@ -71,7 +72,7 @@ export class CaptureService {
   async replace(text: string): Promise<ReplaceOutcome> {
     const sourceApp = this.focus.current;
     if (sourceApp === null) {
-      return { applied: false, reason: "application source inconnue" };
+      return { applied: false, reason: t("main.replaceSourceUnknown") };
     }
     return await replaceSelection(text, sourceApp, {
       clipboard: this.dependencies.clipboard,

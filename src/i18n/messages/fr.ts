@@ -13,6 +13,8 @@ export const fr = {
   "cli.help.options": () => "Options",
   "cli.help.commands": () => "Commandes",
   "cli.description": () => "Transforme une demande brute en un prompt clair et exploitable.",
+  "cli.update.available": ({ current, latest }) =>
+    `Reqraft ${latest} est disponible (installée : ${current}). Mettez à jour avec npm install -g @reqraft/cli@latest.`,
   "cli.argument.text": () => "Texte à reformuler",
   "cli.option.profile": () => "Profil de reformulation",
   "cli.option.level": () => "Niveau de transformation (minimal, standard, complete)",
@@ -150,6 +152,12 @@ export const fr = {
   "profiles.edit.usage": () => "Usage : rp profiles edit <id>",
   "profiles.edit.builtin": ({ id }) =>
     `« ${id} » est un profil intégré : il n'est pas modifiable. Dupliquez-le avec « rp profiles duplicate ${id} <nouvel-id> ».`,
+  "profiles.edit.project": ({ id }: { id: string }) =>
+    `« ${id} » appartient à ce projet (.reqraft/profiles). Modifiez le fichier dans le dépôt, ou dupliquez-le pour en obtenir une copie personnelle.`,
+  "profiles.remove.project": ({ id }: { id: string }) =>
+    `« ${id} » appartient à ce projet (.reqraft/profiles). Supprimez le fichier dans le dépôt.`,
+  "list.profiles.project": () => "Profils du projet",
+  "list.profiles.shadowed": () => "Masqués par ce projet",
   "profiles.edit.unknown": ({ id }) => `Aucun profil local « ${id} ».`,
   "profiles.edit.keepHint": () => "Entrée conserve la valeur affichée entre crochets.",
   "profiles.edit.done": ({ id, path }) => `Profil local « ${id} » mis à jour (${path})`,
@@ -490,6 +498,14 @@ export const fr = {
   "quality.unsupportedAdditions": ({ additions }) => `Ajouts non demandés : ${additions}.`,
   "quality.disproportionateExpansion": () =>
     "La reformulation est nettement plus développée que la demande d'origine.",
+  "quality.inventedPaths": ({ paths }: { paths: string }) =>
+    `Chemins absents de votre demande : ${paths}.`,
+  "quality.inventedCommands": ({ commands }: { commands: string }) =>
+    `Commandes absentes de votre demande : ${commands}.`,
+  "quality.missingTechnicalTerms": ({ terms }: { terms: string }) =>
+    `Termes techniques perdus dans la reformulation : ${terms}.`,
+  "quality.structuralInflation": () =>
+    "Votre demande est revenue sous forme de plan structuré ; vérifiez que rien n'a été ajouté.",
   "quality.outputTruncated": () => "Le provider a tronqué la sortie générée.",
   "quality.unstructuredResponse": () =>
     "Le provider a renvoyé une réponse non structurée ; le texte a été conservé.",
@@ -551,6 +567,11 @@ export const fr = {
   "tui.tooSmall.body": () =>
     "Reqraft a besoin d'un peu plus d'espace pour afficher l'éditeur de manière fiable.",
   "tui.picker.current": () => "actif",
+  "tui.picker.search": () => "recherche :",
+  "tui.picker.searchHint": () => "tapez pour filtrer",
+  "tui.picker.noMatch": () => "aucun profil ne correspond",
+  "tui.picker.range": ({ from, to, total }: { from: string; to: string; total: string }) =>
+    `${from}–${to} sur ${total}`,
   "tui.palette.title": () => "Commandes",
   "tui.palette.searchPlaceholder": () => "Tapez pour filtrer les commandes…",
   "tui.palette.noResult": () => "Aucune commande correspondante",

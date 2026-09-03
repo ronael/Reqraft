@@ -1,52 +1,93 @@
 import { type ComponentType, useCallback, useEffect, useState } from "react";
-import { Cpu, Plus, SlidersHorizontal, Stethoscope, UserRound, Waypoints } from "lucide-react";
 import {
-  REPROMPT_LEVEL_IDS,
-  SHORTCUT_PRESETS,
+  CircleArrowUp,
+  Cpu,
+  Fingerprint,
+  Globe2,
+  KeyRound,
+  Plus,
+  SlidersHorizontal,
+  Stethoscope,
+  Type,
+  UserRound,
+  Waypoints,
+} from "lucide-react";
+import {
+  type DesktopUpdateState,
   type DoctorReport,
   type PermissionsState,
   type ProviderStatus,
+  type ProviderTestRequest,
+  type ProviderTestResponse,
   type SafeConfig,
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
+import { DiagnosticTab } from "./DiagnosticTab.js";
+import { ModelsTab } from "./ModelsTab.js";
 import { ProfilesTab } from "./ProfilesTab.js";
+import {
+  BuiltinProviderRow,
+  CANCEL_KEY,
+  DefaultProviderBadge,
+  ProviderTestButton,
+  ProviderTestResult,
+  builtinTestRequest,
+  findDefaultProviderRow,
+} from "./ProviderRow.js";
+import { useT, type Translate } from "../shared/i18n.js";
+import { Button } from "../shared/Button.js";
+import { InlineMessage } from "../shared/InlineMessage.js";
+import { ProviderLogo } from "./ProviderLogo.js";
+import { PreferencesTab } from "./PreferencesTab.js";
+import { UpdatesTab } from "./UpdatesTab.js";
+import { version } from "@/version.js";
 
-const TABS = ["Profils", "Providers", "Modèles", "Réglages", "Diagnostic"] as const;
+const TABS = ["profiles", "providers", "models", "preferences", "updates", "diagnostic"] as const;
 type Tab = (typeof TABS)[number];
+
+export function initialSettingsTab(search: string = window.location.search): Tab {
+  const requested = new URLSearchParams(search).get("tab");
+  return TABS.includes(requested as Tab) ? (requested as Tab) : "profiles";
+}
 
 const TAB_META: Record<
   Tab,
   {
     icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
-    title: string;
-    detail: string;
+    titleKey: string;
+    detailKey: string;
   }
 > = {
-  Profils: {
+  profiles: {
     icon: UserRound,
-    title: "Profils",
-    detail: "Style de reformulation et profils locaux.",
+    titleKey: "settings.nav.profiles",
+    detailKey: "settings.profiles.detail",
   },
-  Providers: {
+  providers: {
     icon: Waypoints,
-    title: "Providers",
-    detail: "Vos clés et vos endpoints, sans jamais afficher une clé.",
+    titleKey: "settings.nav.providers",
+    detailKey: "settings.providers.detail",
   },
-  Modèles: {
+  models: {
     icon: Cpu,
-    title: "Modèles",
-    detail: "Provider, modèle et niveau utilisés par défaut.",
+    titleKey: "settings.nav.models",
+    detailKey: "settings.models.detail",
   },
-  Réglages: {
+  preferences: {
     icon: SlidersHorizontal,
-    title: "Réglages",
-    detail: "Raccourcis globaux, permissions et préférences desktop.",
+    titleKey: "settings.nav.preferences",
+    detailKey: "settings.preferences.detail",
   },
-  Diagnostic: {
+  updates: {
+    icon: CircleArrowUp,
+    titleKey: "settings.nav.updates",
+    detailKey: "settings.updates.detail",
+  },
+  diagnostic: {
     icon: Stethoscope,
-    title: "Diagnostic",
-    detail: "Vérifications locales et rapport sans secret.",
+    titleKey: "settings.nav.diagnostic",
+    detailKey: "settings.diagnostic.detail",
   },
 };
 
@@ -57,33 +98,79 @@ const TAB_META: Record<
  * configured/absent states (§2.2).
  */
 export function SettingsApp(): React.JSX.Element {
-  const [tab, setTab] = useState<Tab>("Profils");
+  const t = useT();
+  const [tab, setTab] = useState<Tab>(() => initialSettingsTab());
   const [config, setConfig] = useState<SafeConfig | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);
   const [permissions, setPermissions] = useState<PermissionsState | null>(null);
   const [doctor, setDoctor] = useState<DoctorReport | null>(null);
   const [doctorRunning, setDoctorRunning] = useState(false);
+  // Le diagnostic lui-même peut échouer : `doctor:run` traverse la
+  // configuration, le trousseau et chaque adaptateur. Sans cet état, un rejet
+  // laissait l'onglet sur « Lancez le diagnostic » pour toujours, et la
+  // promesse rejetée n'était rattrapée nulle part.
+  const [doctorFailed, setDoctorFailed] = useState(false);
+  const [updates, setUpdates] = useState<DesktopUpdateState | null>(null);
 
   useEffect(() => {
+    const refreshShortcuts = (): void => {
+      void window.reqraft.shortcutsState().then(setShortcuts);
+    };
     void window.reqraft.readConfig().then(setConfig);
     void window.reqraft.providersStatus().then(setProviders);
-    void window.reqraft.shortcutsState().then(setShortcuts);
+    refreshShortcuts();
     void window.reqraft.permissionsState().then(setPermissions);
+    void window.reqraft.updatesState().then(setUpdates);
+    window.addEventListener("focus", refreshShortcuts);
+    return () => {
+      window.removeEventListener("focus", refreshShortcuts);
+    };
   }, []);
 
   const runDoctor = useCallback(() => {
     setDoctorRunning(true);
+    setDoctorFailed(false);
     void window.reqraft
       .runDoctor()
-      .then(setDoctor)
+      .then((report) => {
+        setDoctor(report);
+      })
+      .catch(() => {
+        // Le rapport précédent reste affiché s'il y en avait un : il décrit
+        // encore la dernière mesure réussie, et l'effacer remplacerait une
+        // information datée par rien du tout. Le message d'état dit, lui, que
+        // cette exécution-ci n'a pas abouti.
+        setDoctorFailed(true);
+      })
       .finally(() => {
         setDoctorRunning(false);
       });
   }, []);
 
+  /**
+   * Le diagnostic est rejoué à chaque entrée dans l'onglet, pas une seule fois
+   * par fenêtre.
+   *
+   * Depuis qu'un échec renvoie vers Réglages ou Providers pour être corrigé, le
+   * trajet normal est : constater, réparer ailleurs, revenir. Un rapport figé
+   * au premier affichage montrerait encore le défaut qu'on vient de réparer, ce
+   * qui se lit comme une réparation sans effet. La mesure est locale — fichier
+   * de configuration, trousseau, `validateConfiguration()` de chaque
+   * adaptateur — et n'ouvre aucune connexion.
+   */
+  useEffect(() => {
+    if (tab !== "diagnostic") return;
+    runDoctor();
+  }, [runDoctor, tab]);
+
   const patchConfig = useCallback((patch: Parameters<typeof window.reqraft.writeConfig>[0]) => {
-    void window.reqraft.writeConfig(patch).then(setConfig);
+    void window.reqraft.writeConfig(patch).then(async (nextConfig) => {
+      setConfig(nextConfig);
+      if (patch.desktopShortcuts !== undefined) {
+        setShortcuts(await window.reqraft.shortcutsState());
+      }
+    });
   }, []);
 
   const askPermissions = useCallback(() => {
@@ -93,6 +180,14 @@ export function SettingsApp(): React.JSX.Element {
       .then(setPermissions);
   }, []);
 
+  const checkForUpdates = useCallback(() => {
+    setUpdates((current) => ({
+      status: "checking",
+      currentVersion: current?.currentVersion ?? version,
+    }));
+    void window.reqraft.checkForUpdates().then(setUpdates);
+  }, []);
+
   // The raw accelerator, not the main process's label: the row compares it to
   // the configured choice, and comparing two strings produced by two different
   // formatters is a false mismatch waiting to happen.
@@ -100,7 +195,10 @@ export function SettingsApp(): React.JSX.Element {
     shortcuts?.registered.find((entry) => entry.intent === "capture")?.accelerator ?? "";
   const inputShortcut =
     shortcuts?.registered.find((entry) => entry.intent === "input")?.accelerator ?? "";
+  const popoverShortcut =
+    shortcuts?.registered.find((entry) => entry.intent === "popover")?.accelerator ?? "";
   const rejectedShortcuts = shortcuts?.rejected ?? [];
+  const conflictingShortcuts = shortcuts?.conflicts ?? [];
   const hasNoShortcut = shortcuts !== null && shortcuts.registered.length === 0;
   const configuredProviderCount = providers.filter((provider) => provider.configured).length;
   const activeTab = TAB_META[tab];
@@ -110,9 +208,9 @@ export function SettingsApp(): React.JSX.Element {
       return permissions.reason;
     }
     if (permissions?.canReplace === true) {
-      return "Accessibilité et Automatisation accordées.";
+      return t("settings.permissionsGranted");
     }
-    return "Requises pour la capture et le remplacement.";
+    return t("settings.permissionsNeeded");
   }
 
   return (
@@ -120,7 +218,7 @@ export function SettingsApp(): React.JSX.Element {
       <div className="settings-titlebar">
         <div className="settings-titlebar-spacer" aria-hidden />
         <div className="settings-title">Reqraft</div>
-        <span className="settings-ready">prêt</span>
+        <span className="settings-ready">{t("settings.ready")}</span>
       </div>
 
       <div className="settings-shell">
@@ -128,22 +226,21 @@ export function SettingsApp(): React.JSX.Element {
           <div className="settings-brand">
             <div>
               <span className="settings-brand-name">reqraft</span>
-              <span className="settings-brand-version">0.4.0</span>
+              <span className="settings-brand-version">{version}</span>
             </div>
-            <p>Shape the request. Keep the intent.</p>
+            <p>{t("settings.tagline")}</p>
           </div>
 
-          <nav className="settings-nav" aria-label="Réglages Reqraft">
+          <nav className="settings-nav" aria-label={t("settings.title")}>
             {TABS.map((label) => (
               <SettingsNavItem
                 key={label}
                 active={label === tab}
-                label={label}
                 meta={TAB_META[label]}
                 onClick={() => {
                   setTab(label);
-                  if (label === "Diagnostic" && doctor === null && !doctorRunning) {
-                    runDoctor();
+                  if (label === "updates" && (updates === null || updates.status === "idle")) {
+                    checkForUpdates();
                   }
                 }}
               />
@@ -156,17 +253,20 @@ export function SettingsApp(): React.JSX.Element {
         <section className="settings-content">
           <header className="settings-screen-header">
             <div>
-              <h1>{activeTab.title}</h1>
-              <p>{activeTab.detail}</p>
+              <h1>{t(activeTab.titleKey)}</h1>
+              <p>{t(activeTab.detailKey)}</p>
             </div>
           </header>
 
           <div className="settings-panel">
-            {tab === "Réglages" && (
-              <RaccourcisTab
+            {tab === "preferences" && (
+              <PreferencesTab
                 captureShortcut={captureShortcut}
                 inputShortcut={inputShortcut}
+                popoverShortcut={popoverShortcut}
                 rejectedShortcuts={rejectedShortcuts}
+                conflictingShortcuts={conflictingShortcuts}
+                shortcutsSuspended={shortcuts?.suspended ?? false}
                 hasNoShortcut={hasNoShortcut}
                 permissionDetail={permissionDetail()}
                 canReplace={permissions?.canReplace ?? null}
@@ -180,10 +280,23 @@ export function SettingsApp(): React.JSX.Element {
                     },
                   });
                 }}
+                onResetShortcuts={() => {
+                  patchConfig({ desktopShortcuts: {} });
+                }}
+                onRetestShortcuts={() => {
+                  patchConfig({ desktopShortcuts: config?.desktopShortcuts ?? {} });
+                }}
+                uiLocale={config?.uiLocale ?? "auto"}
+                onChooseLanguage={(preference) => {
+                  patchConfig({ uiLocale: preference });
+                }}
+                onOpenWelcomeTour={() => {
+                  void window.reqraft.openWelcomeTour();
+                }}
               />
             )}
 
-            {tab === "Providers" && config !== null && (
+            {tab === "providers" && config !== null && (
               <ProvidersTab
                 providers={providers}
                 config={config}
@@ -195,11 +308,11 @@ export function SettingsApp(): React.JSX.Element {
               />
             )}
 
-            {tab === "Modèles" && config !== null && (
+            {tab === "models" && config !== null && (
               <ModelsTab config={config} providers={providers} onPatchConfig={patchConfig} />
             )}
 
-            {tab === "Profils" && config !== null && (
+            {tab === "profiles" && config !== null && (
               <ProfilesTab
                 config={config}
                 onSelectDefault={(id) => {
@@ -208,8 +321,24 @@ export function SettingsApp(): React.JSX.Element {
               />
             )}
 
-            {tab === "Diagnostic" && (
-              <DiagnosticTab doctor={doctor} running={doctorRunning} onRunDoctor={runDoctor} />
+            {tab === "diagnostic" && (
+              <DiagnosticTab
+                doctor={doctor}
+                running={doctorRunning}
+                failed={doctorFailed}
+                onRunDoctor={runDoctor}
+                onOpenTab={setTab}
+              />
+            )}
+
+            {tab === "updates" && (
+              <UpdatesTab
+                state={updates}
+                onCheck={checkForUpdates}
+                onOpenDownload={() => {
+                  void window.reqraft.openUpdateDownload();
+                }}
+              />
             )}
           </div>
         </section>
@@ -218,10 +347,10 @@ export function SettingsApp(): React.JSX.Element {
       <footer className="settings-statusbar">
         <span>
           {config === null
-            ? "configuration en lecture"
+            ? t("settings.loadingConfig")
             : `${config.defaultProvider} · ${config.defaultModel}`}
         </span>
-        <span>Local-first · aucun prompt stocké</span>
+        <span>{t("settings.footer")}</span>
       </footer>
     </main>
   );
@@ -229,17 +358,16 @@ export function SettingsApp(): React.JSX.Element {
 
 interface SettingsNavItemProps {
   active: boolean;
-  label: Tab;
   meta: (typeof TAB_META)[Tab];
   onClick(): void;
 }
 
 function SettingsNavItem({
   active,
-  label,
   meta,
   onClick,
 }: Readonly<SettingsNavItemProps>): React.JSX.Element {
+  const t = useT();
   const Icon = meta.icon;
   return (
     <button
@@ -248,7 +376,9 @@ function SettingsNavItem({
       onClick={onClick}
     >
       <Icon size={15} aria-hidden />
-      <span>{label}</span>
+      {/* Le libellé traduit, pas la clé d'onglet : `label` est un identifiant
+          interne, et l'afficher laissait « Modèles » dans une fenêtre anglaise. */}
+      <span>{t(meta.titleKey)}</span>
     </button>
   );
 }
@@ -262,20 +392,32 @@ function ContextPanel({
   config,
   configuredProviderCount,
 }: Readonly<ContextPanelProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
       <div className="settings-context">
-        <div className="settings-context-title">Contexte</div>
+        <div className="settings-context-title">{t("settings.context")}</div>
         <dl>
-          <ContextRow label="provider" value={config?.defaultProvider ?? "—"} />
-          <ContextRow label="modèle" value={config?.defaultModel ?? "—"} mono />
-          <ContextRow label="profil" value={config?.defaultProfile ?? "—"} />
-          <ContextRow label="niveau" value={config?.defaultLevel ?? "—"} />
+          <ContextRow
+            label={t("settings.context.provider")}
+            value={config?.defaultProvider ?? "—"}
+          />
+          <ContextRow
+            label={t("settings.context.model")}
+            value={config?.defaultModel ?? "—"}
+            mono
+          />
+          <ContextRow label={t("settings.context.profile")} value={config?.defaultProfile ?? "—"} />
+          <ContextRow label={t("settings.context.level")} value={config?.defaultLevel ?? "—"} />
         </dl>
       </div>
       <div className="settings-sidebar-note">
-        {configuredProviderCount} provider configuré
-        {configuredProviderCount > 1 ? "s" : ""} · télémétrie désactivée
+        {t(
+          configuredProviderCount > 1
+            ? "settings.providersConfiguredPlural"
+            : "settings.providersConfigured",
+          { count: String(configuredProviderCount) },
+        )}
       </div>
     </>
   );
@@ -315,36 +457,25 @@ interface EndpointForm {
 export function findEndpointProblem(
   form: EndpointForm,
   takenIds: readonly string[],
+  t: Translate = (key) => key,
 ): string | undefined {
   const id = form.id.trim();
-  if (!id) return "Donnez un identifiant à ce fournisseur.";
+  if (!id) return t("settings.identifierMissing");
   if (!/^[a-z0-9-]+$/.test(id)) {
-    return "L'identifiant n'accepte que des minuscules, des chiffres et des tirets.";
+    return t("settings.identifierFormat");
   }
   if (form.mode === "create" && takenIds.includes(id)) {
-    return "Cet identifiant est déjà pris.";
+    return t("settings.identifierTaken");
   }
   const parsed = URL.parse(form.baseUrl.trim());
   if (parsed?.protocol !== "http:" && parsed?.protocol !== "https:") {
-    return "L'URL de base doit commencer par http:// ou https://.";
+    return t("settings.baseUrlScheme");
   }
   return undefined;
 }
 
-/** How a credential's origin reads, and whether the settings can change it. */
-export function describeProviderSource(provider: ProviderStatus): string {
-  if (!provider.requiresApiKey) return "Aucune clé nécessaire.";
-  switch (provider.source) {
-    case "environment":
-      return `Clé lue dans ${provider.envName ?? "votre environnement"}.`;
-    case "keychain":
-      return "Clé enregistrée dans votre trousseau.";
-    default:
-      return "Aucune clé enregistrée.";
-  }
-}
-
 function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
+  const t = useT();
   const [editing, setEditing] = useState<string | null>(null);
   const [secret, setSecret] = useState("");
   // Removing a key destroys it: the keychain has no undo, and an API key
@@ -354,13 +485,27 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
   const [form, setForm] = useState<EndpointForm | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // One check at a time, and only ever the one that was asked for. Two running
+  // together would race their results onto the same rows, and a second click on
+  // a row already running would test the same thing twice for one answer.
+  const [testing, setTesting] = useState<string | null>(null);
+  const [results, setResults] = useState<Record<string, ProviderTestResponse>>({});
 
   const endpoints = Object.entries(props.config.providers ?? {});
   const keyProviders = props.providers.filter((provider) => provider.requiresApiKey);
+  // One row at most: the tab says which provider is used, it does not choose it.
+  const defaultRow = findDefaultProviderRow(
+    props.config.defaultProvider,
+    endpoints.map(([id]) => id),
+  );
 
   function run(action: () => Promise<void>): void {
     setBusy(true);
     setError(null);
+    // Anything that changes a key or an endpoint invalidates every verdict on
+    // screen: a result kept next to the row it no longer describes is worse
+    // than no result at all.
+    setResults({});
     void action()
       .catch((cause: unknown) => {
         setError(messageOfIpc(cause));
@@ -372,7 +517,11 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
 
   const saveKey = (provider: ProviderStatus): void => {
     run(async () => {
-      const response = await window.reqraft.saveCredential({ provider: provider.id, secret });
+      const response = await window.reqraft.saveCredential({
+        provider: provider.id,
+        secret,
+        preferKeychain: provider.source === "environment",
+      });
       // Cleared at once: a key left in a rendered field is a key on screen.
       setSecret("");
       setEditing(null);
@@ -402,167 +551,224 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
     });
   };
 
+  const runTest = (key: string, request: ProviderTestRequest): void => {
+    if (testing !== null) return;
+    setTesting(key);
+    setError(null);
+    void window.reqraft
+      .testProvider(request)
+      .then((result) => {
+        setResults((current) => ({ ...current, [key]: result }));
+      })
+      .catch((cause: unknown) => {
+        setError(messageOfIpc(cause));
+      })
+      .finally(() => {
+        setTesting(null);
+      });
+  };
+
+  const builtinTest = (provider: ProviderStatus): (() => void) | undefined => {
+    const request = builtinTestRequest(provider);
+    if (!request) return undefined;
+    return () => {
+      runTest(`builtin:${request.id}`, request);
+    };
+  };
+
   const problem = form
     ? findEndpointProblem(
         form,
         endpoints.map(([id]) => id),
+        t,
       )
     : undefined;
 
   return (
     <>
-      <h3 className="settings-subhead">Fournisseurs intégrés</h3>
-      <div className="settings-card-list">
-        {keyProviders.map((provider) => (
-          <BuiltinProviderRow
-            key={provider.id}
-            provider={provider}
-            editing={editing === provider.id}
-            confirming={confirming === provider.id}
-            secret={secret}
-            busy={busy}
-            onSecretChange={setSecret}
-            onStartEdit={() => {
-              setSecret("");
-              setConfirming(null);
-              setEditing(provider.id);
-            }}
-            onCancel={() => {
-              setSecret("");
-              setEditing(null);
-            }}
-            onSave={() => {
-              saveKey(provider);
-            }}
-            onStartRemove={() => {
-              setConfirming(provider.id);
-            }}
-            onCancelRemove={() => {
-              setConfirming(null);
-            }}
-            onRemove={() => {
-              setConfirming(null);
-              removeKey(provider);
-            }}
-          />
-        ))}
-      </div>
-
-      <h3 className="settings-subhead">Fournisseurs compatibles OpenAI</h3>
-      <div className="settings-card-list">
-        {endpoints.length === 0 && !form && (
-          <p className="settings-note muted">
-            Aucun fournisseur personnalisé. Ajoutez-en un pour appeler un serveur local ou une
-            passerelle compatible.
-          </p>
-        )}
-        {endpoints.map(([id, endpoint]) => (
-          <div key={id} className="settings-row">
-            <span>
-              <span className="settings-row-title">{endpoint.name ?? id}</span>
-              <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
-              <span className="settings-row-detail">
-                {endpoint.apiKeyEnv === undefined
-                  ? "Sans clé."
-                  : `Clé lue dans ${endpoint.apiKeyEnv}.`}
-              </span>
-              {confirming === `endpoint:${id}` && (
-                <span className="settings-row-detail provider-confirm">
-                  Retirer « {id} » de votre configuration ?
-                </span>
-              )}
-            </span>
-            <span className="provider-key-control">
-              <button
-                type="button"
-                className="chip chip-active"
-                onClick={() => {
-                  setError(null);
-                  setForm({
-                    mode: "update",
-                    id,
-                    name: endpoint.name ?? "",
-                    baseUrl: endpoint.baseUrl,
-                    apiKeyEnv: endpoint.apiKeyEnv ?? "",
-                  });
-                }}
-              >
-                Modifier
-              </button>
-              {confirming === `endpoint:${id}` ? (
-                <>
-                  <button
-                    type="button"
-                    className="chip chip-danger"
-                    disabled={busy}
-                    onClick={() => {
-                      setConfirming(null);
-                      run(async () => {
-                        props.onChanged(await window.reqraft.deleteProvider(id));
-                      });
-                    }}
-                  >
-                    Confirmer
-                  </button>
-                  <button
-                    type="button"
-                    className="chip"
-                    onClick={() => {
-                      setConfirming(null);
-                    }}
-                  >
-                    Annuler
-                  </button>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  className="chip"
-                  disabled={busy}
-                  onClick={() => {
-                    setConfirming(`endpoint:${id}`);
-                  }}
-                >
-                  Supprimer
-                </button>
-              )}
-            </span>
-          </div>
-        ))}
-      </div>
-
-      {form ? (
-        <EndpointForm
-          form={form}
-          problem={problem}
-          busy={busy}
-          onChange={setForm}
-          onCancel={() => {
-            setForm(null);
-            setError(null);
-          }}
-          onSave={saveEndpoint}
-        />
-      ) : (
-        <div className="settings-actions">
-          <button
-            type="button"
-            className="button-secondary"
-            onClick={() => {
-              setError(null);
-              setForm({
-                mode: "create",
-                id: "local",
-                name: "",
-                baseUrl: "http://localhost:11434/v1",
-                apiKeyEnv: "",
-              });
-            }}
-          >
-            <Plus size={13} aria-hidden /> Ajouter un fournisseur
-          </button>
+      <section className="provider-section">
+        <div className="provider-section-head">
+          <h3 className="settings-subhead">{t("settings.builtinProviders")}</h3>
         </div>
-      )}
+        <div className="provider-list">
+          {keyProviders.map((provider) => (
+            <BuiltinProviderRow
+              key={provider.id}
+              provider={provider}
+              isDefault={defaultRow?.kind === "builtin" && defaultRow.id === provider.id}
+              editing={editing === provider.id}
+              confirming={confirming === provider.id}
+              secret={secret}
+              busy={busy}
+              testing={testing === `builtin:${provider.id}`}
+              testsBlocked={testing !== null}
+              result={results[`builtin:${provider.id}`]}
+              onTest={builtinTest(provider)}
+              onSecretChange={setSecret}
+              onStartEdit={() => {
+                setSecret("");
+                setConfirming(null);
+                setEditing(provider.id);
+              }}
+              onCancel={() => {
+                setSecret("");
+                setEditing(null);
+              }}
+              onSave={() => {
+                saveKey(provider);
+              }}
+              onStartRemove={() => {
+                setConfirming(provider.id);
+              }}
+              onCancelRemove={() => {
+                setConfirming(null);
+              }}
+              onRemove={() => {
+                setConfirming(null);
+                removeKey(provider);
+              }}
+            />
+          ))}
+        </div>
+      </section>
+
+      <section className="provider-section">
+        <div className="provider-section-head">
+          <h3 className="settings-subhead">{t("settings.compatibleProviders")}</h3>
+          {!form && (
+            <Button
+              onClick={() => {
+                setError(null);
+                setForm({
+                  mode: "create",
+                  id: "local",
+                  name: "",
+                  baseUrl: "http://localhost:11434/v1",
+                  apiKeyEnv: "",
+                });
+              }}
+            >
+              <Plus size={13} aria-hidden /> {t("settings.addProvider")}
+            </Button>
+          )}
+        </div>
+        {(endpoints.length > 0 || !form) && (
+          <div className="provider-list">
+            {endpoints.length === 0 && (
+              <p className="provider-empty">{t("settings.noCustomProvider")}</p>
+            )}
+            {endpoints.map(([id, endpoint]) => {
+              const testKey = `endpoint:${id}`;
+              const testResult = results[testKey];
+              const label = endpoint.name ?? id;
+              return (
+                <div key={id} className="provider-row">
+                  <ProviderLogo providerId="endpoint" label={label} />
+                  <span className="provider-copy">
+                    <span className="settings-row-title provider-name">
+                      <span className="provider-name-text">{label}</span>
+                      {defaultRow?.kind === "endpoint" && defaultRow.id === id && (
+                        <DefaultProviderBadge kind="endpoint" />
+                      )}
+                    </span>
+                    <span className="settings-row-detail mono">{endpoint.baseUrl}</span>
+                    <span className="settings-row-detail">
+                      {endpoint.apiKeyEnv === undefined
+                        ? t("settings.endpointNoKey")
+                        : t("settings.keyFromEnv", { envName: endpoint.apiKeyEnv })}
+                    </span>
+                    {testResult !== undefined && testing !== testKey && (
+                      <ProviderTestResult result={testResult} />
+                    )}
+                    {confirming === `endpoint:${id}` && (
+                      <span className="settings-row-detail provider-confirm">
+                        Retirer « {id} » de votre configuration ?
+                      </span>
+                    )}
+                  </span>
+                  <span className="provider-key-control">
+                    {confirming !== `endpoint:${id}` && (
+                      <ProviderTestButton
+                        running={testing === testKey}
+                        blocked={testing !== null || busy}
+                        onTest={() => {
+                          runTest(testKey, { kind: "endpoint", id });
+                        }}
+                      />
+                    )}
+                    <Button
+                      variant="neutral"
+                      onClick={() => {
+                        setError(null);
+                        setForm({
+                          mode: "update",
+                          id,
+                          name: endpoint.name ?? "",
+                          baseUrl: endpoint.baseUrl,
+                          apiKeyEnv: endpoint.apiKeyEnv ?? "",
+                        });
+                      }}
+                    >
+                      {t("settings.edit")}
+                    </Button>
+                    {confirming === `endpoint:${id}` ? (
+                      <>
+                        <button
+                          type="button"
+                          className="chip chip-danger"
+                          disabled={busy}
+                          onClick={() => {
+                            setConfirming(null);
+                            run(async () => {
+                              props.onChanged(await window.reqraft.deleteProvider(id));
+                            });
+                          }}
+                        >
+                          {t("settings.confirm")}
+                        </button>
+                        <button
+                          type="button"
+                          className="chip"
+                          onClick={() => {
+                            setConfirming(null);
+                          }}
+                        >
+                          {t(CANCEL_KEY)}
+                        </button>
+                      </>
+                    ) : (
+                      <button
+                        type="button"
+                        className="chip"
+                        disabled={busy}
+                        onClick={() => {
+                          setConfirming(`endpoint:${id}`);
+                        }}
+                      >
+                        {t("settings.delete")}
+                      </button>
+                    )}
+                  </span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {form && (
+          <EndpointForm
+            form={form}
+            problem={problem}
+            busy={busy}
+            onChange={setForm}
+            onCancel={() => {
+              setForm(null);
+              setError(null);
+            }}
+            onSave={saveEndpoint}
+          />
+        )}
+      </section>
 
       {error !== null && (
         <div className="settings-warning" role="alert">
@@ -570,111 +776,10 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         </div>
       )}
 
-      <p className="settings-warning settings-soft-warning">
-        Les clés sont vérifiées auprès du fournisseur puis rangées dans le trousseau de votre
-        système. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.
-      </p>
+      <p className="settings-note muted">{t("settings.providerTestNote")}</p>
+
+      <p className="settings-warning settings-soft-warning">{t("settings.keysNote")}</p>
     </>
-  );
-}
-
-interface BuiltinProviderRowProps {
-  provider: ProviderStatus;
-  editing: boolean;
-  confirming: boolean;
-  secret: string;
-  busy: boolean;
-  onSecretChange(value: string): void;
-  onStartEdit(): void;
-  onCancel(): void;
-  onSave(): void;
-  onStartRemove(): void;
-  onCancelRemove(): void;
-  onRemove(): void;
-}
-
-function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX.Element {
-  const { provider } = props;
-  return (
-    <div className="settings-row">
-      <span>
-        <span className="settings-row-title">{provider.label}</span>
-        <span className="settings-row-detail">{describeProviderSource(provider)}</span>
-        {provider.source === "environment" && (
-          <span className="settings-row-detail">
-            Une variable d&apos;environnement l&apos;emporte sur le trousseau : retirez-la de votre
-            shell pour utiliser une autre clé.
-          </span>
-        )}
-        {props.confirming && (
-          <span className="settings-row-detail provider-confirm">
-            Supprimer la clé {provider.label} du trousseau ? Elle sera définitivement perdue : le
-            trousseau n&apos;a pas de corbeille, et une clé API ne se réaffiche pas chez le
-            fournisseur. Il faudra en générer une nouvelle.
-          </span>
-        )}
-      </span>
-      {props.editing ? (
-        <span className="provider-key-control">
-          <input
-            className="settings-input mono"
-            type="password"
-            value={props.secret}
-            placeholder="Collez votre clé"
-            autoComplete="off"
-            spellCheck={false}
-            onChange={(event) => {
-              props.onSecretChange(event.target.value);
-            }}
-          />
-          <button
-            type="button"
-            className="button-secondary"
-            disabled={props.secret.trim() === "" || props.busy}
-            onClick={props.onSave}
-          >
-            Vérifier
-          </button>
-          <button type="button" className="chip" onClick={props.onCancel}>
-            Annuler
-          </button>
-        </span>
-      ) : (
-        <span className="provider-key-control">
-          {props.confirming ? (
-            <>
-              <button
-                type="button"
-                className="chip chip-danger"
-                disabled={props.busy}
-                onClick={props.onRemove}
-              >
-                Supprimer définitivement
-              </button>
-              <button type="button" className="chip" onClick={props.onCancelRemove}>
-                Annuler
-              </button>
-            </>
-          ) : (
-            <>
-              <button type="button" className="chip chip-active" onClick={props.onStartEdit}>
-                {provider.configured ? "Remplacer la clé" : "Ajouter une clé"}
-              </button>
-              {provider.source === "keychain" && (
-                <button
-                  type="button"
-                  className="chip"
-                  disabled={props.busy}
-                  onClick={props.onStartRemove}
-                >
-                  Retirer
-                </button>
-              )}
-            </>
-          )}
-        </span>
-      )}
-    </div>
   );
 }
 
@@ -688,62 +793,96 @@ interface EndpointFormProps {
 }
 
 function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
+  const t = useT();
   const { form } = props;
   const field = (
     title: string,
     detail: string,
     value: string,
     key: keyof EndpointForm,
+    Icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>,
     mono = true,
     disabled = false,
   ): React.JSX.Element => (
-    <label className="settings-row">
-      <span>
+    <label className="settings-group-row">
+      <span className="settings-row-icon">
+        <Icon size={16} aria-hidden />
+      </span>
+      <span className="settings-group-copy">
         <span className="settings-row-title">{title}</span>
         <span className="settings-row-detail">{detail}</span>
       </span>
-      <input
-        className={mono ? "settings-input mono" : "settings-input"}
-        value={value}
-        disabled={disabled}
-        onChange={(event) => {
-          props.onChange({ ...form, [key]: event.target.value });
-        }}
-      />
+      <span className="settings-row-control">
+        <input
+          className={mono ? "settings-input mono" : "settings-input"}
+          value={value}
+          disabled={disabled}
+          onChange={(event) => {
+            props.onChange({ ...form, [key]: event.target.value });
+          }}
+        />
+      </span>
     </label>
   );
 
   return (
-    <div className="settings-card-list provider-form">
+    <div className="settings-group provider-form">
       {field(
-        "Identifiant",
-        "Minuscules, chiffres et tirets.",
+        t("settings.identifier"),
+        t("settings.endpointIdDetail"),
         form.id,
         "id",
+        Fingerprint,
         true,
         form.mode === "update",
       )}
-      {field("Nom affiché", "Facultatif.", form.name, "name", false)}
-      {field("URL de base", "L'API compatible OpenAI à appeler.", form.baseUrl, "baseUrl")}
       {field(
-        "Variable de clé",
-        "Facultatif : le nom de la variable d'environnement à lire.",
+        t("settings.endpointNameLabel"),
+        t("settings.endpointNameDetail"),
+        form.name,
+        "name",
+        Type,
+        false,
+        false,
+      )}
+      {field(
+        t("settings.endpointBaseUrlLabel"),
+        t("settings.endpointBaseUrlDetail"),
+        form.baseUrl,
+        "baseUrl",
+        Globe2,
+        true,
+        false,
+      )}
+      {field(
+        t("settings.endpointKeyEnvLabel"),
+        t("settings.endpointKeyEnvDetail"),
         form.apiKeyEnv,
         "apiKeyEnv",
+        KeyRound,
+        true,
+        false,
       )}
-      {props.problem !== undefined && <p className="settings-note muted">{props.problem}</p>}
-      <div className="settings-actions provider-form-actions">
-        <button type="button" className="chip" onClick={props.onCancel}>
-          Annuler
-        </button>
-        <button
-          type="button"
-          className="button-primary"
-          disabled={props.problem !== undefined || props.busy}
-          onClick={props.onSave}
-        >
-          Enregistrer
-        </button>
+      <div className="settings-group-foot settings-group-foot-split provider-form-foot">
+        {props.problem !== undefined ? (
+          <InlineMessage tone="warning" role="alert">
+            {props.problem}
+          </InlineMessage>
+        ) : (
+          <span className="settings-note muted">
+            {t(
+              form.mode === "update" ? "settings.providerFormEdit" : "settings.providerFormCreate",
+            )}
+          </span>
+        )}
+        <div className="settings-actions provider-form-actions">
+          <Button variant="neutral" onClick={props.onCancel}>
+            {t(CANCEL_KEY)}
+          </Button>
+          <Button disabled={props.problem !== undefined || props.busy} onClick={props.onSave}>
+            {t("settings.save")}
+          </Button>
+        </div>
       </div>
     </div>
   );
@@ -753,342 +892,4 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
 function messageOfIpc(cause: unknown): string {
   const raw = cause instanceof Error ? cause.message : String(cause);
   return raw.replace(/^Error invoking remote method '[^']+':\s*/, "").replace(/^Error:\s*/, "");
-}
-
-interface ModelsTabProps {
-  config: SafeConfig;
-  providers: ProviderStatus[];
-  onPatchConfig(patch: Parameters<typeof window.reqraft.writeConfig>[0]): void;
-}
-
-/** Sentinel for the "type your own identifier" entry in the model list. */
-const CUSTOM_MODEL_OPTION = "__custom__";
-
-/**
- * The model that should follow a change of provider.
- *
- * Keeping the previous one is how a configuration ends up naming an Anthropic
- * model with OpenAI selected — accepted by the form, rejected on the first run.
- * A model the new provider already publishes is kept; anything else falls back
- * to what that provider recommends.
- */
-export function modelForProvider(next: ProviderStatus | undefined, currentModel: string): string {
-  if (!next) return currentModel;
-  if (next.models.some((model) => model.id === currentModel)) return currentModel;
-  return (next.models.find((model) => model.recommended) ?? next.models[0])?.id ?? "";
-}
-
-function ModelsTab({
-  config,
-  providers,
-  onPatchConfig,
-}: Readonly<ModelsTabProps>): React.JSX.Element {
-  const current = providers.find((provider) => provider.id === config.defaultProvider);
-  const models = current?.models ?? [];
-  const known = models.some((model) => model.id === config.defaultModel);
-  const [custom, setCustom] = useState(false);
-  // A provider with no catalogue — a custom endpoint — only has the free field.
-  const typing = custom || !known;
-
-  return (
-    <div className="settings-card-list">
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">Provider par défaut</span>
-          <span className="settings-row-detail">Utilisé par la capsule et le popover.</span>
-        </span>
-        <select
-          className="settings-select"
-          value={config.defaultProvider}
-          onChange={(event) => {
-            const providerId = event.target.value as SafeConfig["defaultProvider"];
-            const next = providers.find((provider) => provider.id === providerId);
-            setCustom(false);
-            onPatchConfig({
-              defaultProvider: providerId,
-              defaultModel: modelForProvider(next, config.defaultModel),
-            });
-          }}
-        >
-          {providers.map((provider) => (
-            <option key={provider.id} value={provider.id}>
-              {provider.id}
-            </option>
-          ))}
-        </select>
-      </label>
-
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">Modèle par défaut</span>
-          <span className="settings-row-detail">
-            Les modèles pris en charge par ce provider, ou le vôtre.
-          </span>
-        </span>
-        <select
-          className="settings-select"
-          value={typing ? CUSTOM_MODEL_OPTION : config.defaultModel}
-          onChange={(event) => {
-            if (event.target.value === CUSTOM_MODEL_OPTION) {
-              setCustom(true);
-              return;
-            }
-            setCustom(false);
-            onPatchConfig({ defaultModel: event.target.value });
-          }}
-        >
-          {models.map((model) => (
-            <option key={model.id} value={model.id}>
-              {model.name}
-              {model.recommended ? " — recommandé" : ""}
-            </option>
-          ))}
-          <option value={CUSTOM_MODEL_OPTION}>Autre identifiant…</option>
-        </select>
-      </label>
-
-      {typing && (
-        <label className="settings-row">
-          <span>
-            <span className="settings-row-title">Identifiant du modèle</span>
-            <span className="settings-row-detail">Envoyé tel quel au provider choisi.</span>
-          </span>
-          <input
-            className="settings-input mono"
-            // Keyed on the provider: switching provider changes the value this
-            // field should show, and an uncontrolled input keeps the old one.
-            key={`${config.defaultProvider}:${config.defaultModel}`}
-            defaultValue={config.defaultModel}
-            onBlur={(event) => {
-              if (event.target.value !== config.defaultModel) {
-                onPatchConfig({ defaultModel: event.target.value });
-              }
-            }}
-          />
-        </label>
-      )}
-
-      <label className="settings-row">
-        <span>
-          <span className="settings-row-title">Niveau par défaut</span>
-          <span className="settings-row-detail">
-            S&apos;applique quand le profil ne force aucun niveau.
-          </span>
-        </span>
-        <select
-          className="settings-select"
-          value={config.defaultLevel}
-          onChange={(event) => {
-            onPatchConfig({ defaultLevel: event.target.value as SafeConfig["defaultLevel"] });
-          }}
-        >
-          {REPROMPT_LEVEL_IDS.map((level) => (
-            <option key={level} value={level}>
-              {level}
-            </option>
-          ))}
-        </select>
-      </label>
-    </div>
-  );
-}
-
-interface DiagnosticTabProps {
-  doctor: DoctorReport | null;
-  running: boolean;
-  onRunDoctor(): void;
-}
-
-function DiagnosticTab({
-  doctor,
-  running,
-  onRunDoctor,
-}: Readonly<DiagnosticTabProps>): React.JSX.Element {
-  return (
-    <>
-      {running && <p className="muted">Diagnostic en cours…</p>}
-      <div className="diagnostic-list">
-        {doctor?.checks.map((check) => (
-          <div
-            key={check.id}
-            className={check.ok ? "diagnostic-row" : "diagnostic-row diagnostic-row-risk"}
-          >
-            <span className={check.ok ? "verdict-good" : "verdict-risky"}>
-              {check.ok ? "✓" : "!"}
-            </span>
-            <span className="diagnostic-name">{check.id}</span>
-            {check.detail !== undefined && (
-              <span className="diagnostic-detail">{check.detail}</span>
-            )}
-          </div>
-        ))}
-      </div>
-      <div className="settings-actions">
-        <button type="button" className="button-secondary" onClick={onRunDoctor} disabled={running}>
-          Relancer le diagnostic
-        </button>
-      </div>
-    </>
-  );
-}
-
-interface RaccourcisTabProps {
-  chosen: { capture?: string; input?: string };
-  onChoose(intent: "capture" | "input", accelerator: string): void;
-  captureShortcut: string;
-  inputShortcut: string;
-  rejectedShortcuts: string[];
-  hasNoShortcut: boolean;
-  permissionDetail: string;
-  canReplace: boolean | null;
-  onAskPermissions: () => void;
-}
-
-/** Onglet Raccourcis : raccourcis actifs, conflits visibles (§5.5), permissions. */
-function RaccourcisTab(props: Readonly<RaccourcisTabProps>): React.JSX.Element {
-  return (
-    <>
-      <ShortcutRow
-        title="Reformuler la sélection"
-        detail="Capsule ancrée au curseur"
-        active={props.captureShortcut}
-        presets={SHORTCUT_PRESETS.capture}
-        chosen={props.chosen.capture ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("capture", accelerator);
-        }}
-      />
-      <ShortcutRow
-        title="Ouvrir sans sélection"
-        detail="Capsule centrée, saisie libre"
-        active={props.inputShortcut}
-        presets={SHORTCUT_PRESETS.input}
-        chosen={props.chosen.input ?? ""}
-        onChoose={(accelerator) => {
-          props.onChoose("input", accelerator);
-        }}
-      />
-      <p className="settings-note muted">
-        Un changement prend effet au prochain démarrage : un raccourci global se réserve auprès du
-        système au lancement.
-      </p>
-      {props.rejectedShortcuts.length > 0 && (
-        <div className="settings-warning" role="alert">
-          ! Raccourcis déjà pris par une autre application : {props.rejectedShortcuts.join(", ")}.
-          Un repli a été enregistré — modifie le raccourci concurrent pour utiliser ton choix
-          préféré.
-        </div>
-      )}
-      {props.hasNoShortcut && (
-        <div className="settings-warning" role="alert">
-          ! Aucun raccourci global disponible. Reqraft ne peut pas se déclencher au clavier — libère
-          un raccourci puis relance l’application.
-        </div>
-      )}
-      <div className="settings-row">
-        <div>
-          <div className="settings-row-title">Permissions macOS</div>
-          <div className="settings-row-detail">{props.permissionDetail}</div>
-        </div>
-        {props.canReplace === false && (
-          <button type="button" className="chip chip-active" onClick={props.onAskPermissions}>
-            Autoriser…
-          </button>
-        )}
-      </div>
-    </>
-  );
-}
-
-interface ShortcutRowProps {
-  title: string;
-  detail: string;
-  /** The accelerator actually in force right now, fallback included, raw. */
-  active: string;
-  presets: readonly string[];
-  chosen: string;
-  onChoose(accelerator: string): void;
-}
-
-/**
- * One shortcut: what is in force, and what may be chosen instead.
- *
- * The two are shown separately on purpose. "Automatique" does not mean "none":
- * it means the application walks its own list, and the combination that came
- * out of it is the one displayed beside it. Merging them would hide the case
- * where a preferred choice was refused and something else is answering.
- */
-function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
-  // Raw against raw. Comparing formatted labels made this fire whenever the two
-  // formatters disagreed, which is a bug report about a shortcut that works.
-  const overridden = props.chosen !== "" && props.chosen !== props.active;
-
-  // A value stored before the offered list changed still belongs in the list:
-  // without it the select silently shows its first option, which is a choice
-  // the user never made.
-  const options = props.presets.includes(props.chosen)
-    ? props.presets
-    : [...props.presets, ...(props.chosen === "" ? [] : [props.chosen])];
-
-  return (
-    <div className="settings-row">
-      <div>
-        <div className="settings-row-title">{props.title}</div>
-        <div className="settings-row-detail">{props.detail}</div>
-        {overridden && (
-          <div className="settings-row-detail shortcut-overridden">
-            Choix non disponible : {formatAccelerator(props.active)} est actif à la place.
-          </div>
-        )}
-      </div>
-      <div className="shortcut-control">
-        <kbd>{formatAccelerator(props.active)}</kbd>
-        <select
-          className="settings-select"
-          value={props.chosen}
-          onChange={(event) => {
-            props.onChoose(event.target.value);
-          }}
-        >
-          <option value="">Automatique</option>
-          {options.map((accelerator) => (
-            <option key={accelerator} value={accelerator}>
-              {formatAccelerator(accelerator)}
-            </option>
-          ))}
-        </select>
-      </div>
-    </div>
-  );
-}
-
-/**
- * An accelerator written out in words.
- *
- * `⌘⌃⌥N` is four glyphs someone has to already know; three of them look alike
- * at 11px and ⌃ renders as a bare caret in most interface fonts, so `⌘^⌥N` is
- * what the user actually saw. Words cost a few characters and remove the
- * decoding step entirely — which matters most here, where the whole point is
- * to press the right keys.
- */
-const MODIFIER_LABELS: readonly (readonly [string, string])[] = [
-  ["CommandOrControl", "Cmd"],
-  ["Command", "Cmd"],
-  ["Control", "Ctrl"],
-  ["Alt", "Option"],
-  ["Shift", "Maj"],
-];
-
-export function formatAccelerator(accelerator: string): string {
-  if (accelerator === "") return "—";
-  return accelerator
-    .split("+")
-    .map((part) => MODIFIER_LABELS.find(([name]) => name === part)?.[1] ?? keyLabel(part))
-    .join(" + ");
-}
-
-/** The non-modifier key, spelled where its name is clearer than its glyph. */
-function keyLabel(part: string): string {
-  if (part === "Space") return "Espace";
-  return part;
 }

@@ -1,4 +1,7 @@
 import { REPROMPT_POLICY } from "./reprompt-policy.js";
+import { detectInventedCommands, detectInventedPaths } from "./invention.js";
+import { isStructurallyInflated } from "./structure.js";
+import { detectMissingTechnicalTerms } from "./technical-terms.js";
 import { DEFAULT_REPROMPT_LEVEL } from "./levels.js";
 import type {
   FidelityMode,
@@ -93,7 +96,49 @@ export function assessFidelity(
     });
   }
 
+  signals.push(...assessVerifiableTerms(input, output, mode));
+
+  if (isStructurallyInflated(input, output, level)) {
+    signals.push({
+      code: "structural_inflation",
+      severity: mode === "permissive" ? "info" : "warning",
+    });
+  }
+
   return buildQualityAssessment(signals);
+}
+
+/** Chemins, commandes et littéraux ont une présence objectivement vérifiable. */
+function assessVerifiableTerms(input: string, output: string, mode: FidelityMode): QualitySignal[] {
+  const signals: QualitySignal[] = [];
+  const severity = mode === "permissive" ? "info" : "warning";
+  const paths = detectInventedPaths(input, output);
+  if (paths.length > 0) {
+    signals.push({
+      code: "invented_paths",
+      severity,
+      params: { paths },
+    });
+  }
+
+  const commands = detectInventedCommands(input, output);
+  if (commands.length > 0) {
+    signals.push({
+      code: "invented_commands",
+      severity,
+      params: { commands },
+    });
+  }
+
+  const missingTechnicalTerms = detectMissingTechnicalTerms(input, output);
+  if (missingTechnicalTerms.length > 0) {
+    signals.push({
+      code: "missing_technical_terms",
+      severity,
+      params: { terms: missingTechnicalTerms },
+    });
+  }
+  return signals;
 }
 
 export function buildQualityAssessment(signals: QualitySignal[]): QualityAssessment {

@@ -30,14 +30,15 @@ export function filterProfiles(
 
 export interface ProfileGroup {
   origin: ProfileOriginId;
-  label: string;
+  labelKey: string;
   entries: ProfileCatalogEntry[];
 }
 
-const GROUP_LABELS: Record<ProfileOriginId, string> = {
-  auto: "Automatique",
-  builtin: "Intégrés",
-  local: "Mes profils",
+/** Une clé, pas un libellé : le nom du groupe dépend de la langue. */
+const GROUP_KEYS: Record<ProfileOriginId, string> = {
+  auto: "picker.groupAuto",
+  builtin: "picker.groupBuiltin",
+  local: "picker.groupLocal",
 };
 
 /**
@@ -52,7 +53,7 @@ export function groupProfiles(entries: readonly ProfileCatalogEntry[]): ProfileG
   return order
     .map((origin) => ({
       origin,
-      label: GROUP_LABELS[origin],
+      labelKey: GROUP_KEYS[origin],
       entries: entries.filter((entry) => entry.origin === origin),
     }))
     .filter((group) => group.entries.length > 0);

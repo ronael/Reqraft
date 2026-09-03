@@ -1,4 +1,5 @@
 import { BrowserWindow } from "electron";
+import { t } from "../i18n.js";
 
 /**
  * Onboarding window: what someone sees when they installed the application and
@@ -28,7 +29,7 @@ export function createOnboardingWindow(options: OnboardingWindowOptions): Electr
     minHeight: 520,
     resizable: true,
     show: false,
-    title: "Reqraft — Configuration",
+    title: t("main.onboardingTitle"),
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     autoHideMenuBar: true,
     webPreferences: {

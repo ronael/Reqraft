@@ -39,8 +39,15 @@ export function isListOverlay(overlay: OverlayId | null): boolean {
   );
 }
 
-export function openOverlay(state: OverlayState, overlay: OverlayId): OverlayState {
-  return { active: overlay, index: 0, query: overlay === "palette" ? "" : state.query };
+/**
+ * Ouvre un panneau sur une liste neuve.
+ *
+ * Sans état à reprendre : la recherche repart vide à chaque ouverture, parce
+ * que les sélecteurs se filtrent désormais eux aussi et qu'hériter de la frappe
+ * précédente ouvrirait la liste déjà réduite sans que rien ne l'explique.
+ */
+export function openOverlay(overlay: OverlayId): OverlayState {
+  return { active: overlay, index: 0, query: "" };
 }
 
 export function closeOverlay(state: OverlayState): OverlayState {
@@ -60,6 +67,43 @@ export function clampSelection(state: OverlayState, count: number): OverlayState
 
 export function setQuery(state: OverlayState, query: string): OverlayState {
   return { ...state, query, index: 0 };
+}
+
+export interface VisibleWindow {
+  start: number;
+  end: number;
+}
+
+/**
+ * La tranche de lignes à afficher pour que la ligne surlignée reste visible.
+ *
+ * Le dialogue plafonne déjà sa hauteur et défile au-delà, mais le défilement
+ * appartient au moteur de rendu : rien ne le fait suivre le curseur. Avec un
+ * catalogue de plusieurs dizaines de profils, les flèches emmenaient donc le
+ * surlignage hors de l'écran, et la liste devenait illisible bien avant d'être
+ * pleine.
+ *
+ * La fenêtre ne bouge que lorsqu'il le faut : tant que la ligne visée est déjà
+ * dedans, elle ne glisse pas — une liste qui se recentre à chaque flèche est
+ * illisible pour d'autres raisons.
+ */
+export function visibleWindow(
+  index: number,
+  count: number,
+  capacity: number,
+  previousStart = 0,
+): VisibleWindow {
+  if (count <= 0 || capacity <= 0) return { start: 0, end: 0 };
+  if (count <= capacity) return { start: 0, end: count };
+
+  const cursor = Math.min(Math.max(index, 0), count - 1);
+  const maximumStart = count - capacity;
+  let start = Math.min(Math.max(previousStart, 0), maximumStart);
+
+  if (cursor < start) start = cursor;
+  if (cursor >= start + capacity) start = cursor - capacity + 1;
+
+  return { start, end: start + capacity };
 }
 
 /** True while any overlay holds the keyboard. */

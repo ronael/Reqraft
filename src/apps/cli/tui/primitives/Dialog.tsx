@@ -4,6 +4,24 @@ import { Surface } from "./Surface.js";
 import { ScrollArea } from "./ScrollArea.js";
 import { theme } from "@/apps/cli/tui/theme/index.js";
 
+/**
+ * Border top and bottom, the title row, and one padding row each side, plus a
+ * row of breathing space above and below the dialog.
+ */
+const DIALOG_CHROME_ROWS = 6;
+
+/**
+ * Combien de lignes le corps d'un dialogue peut occuper sans défiler.
+ *
+ * Exportée parce qu'un sélecteur qui découpe lui-même sa liste doit découper à
+ * la même hauteur : deux calculs séparés finiraient par diverger, et une liste
+ * qui croit avoir plus de place qu'elle n'en a repasse sous le défilement du
+ * dialogue — donc hors de vue.
+ */
+export function dialogBodyCapacity(terminalHeight: number): number {
+  return Math.max(1, terminalHeight - DIALOG_CHROME_ROWS);
+}
+
 export interface DialogProps {
   title: string;
   open: boolean;
@@ -56,10 +74,7 @@ export function Dialog({
     Math.max(dialog.minimumWidth, terminalWidth - 4),
   );
 
-  // Border top and bottom, the title row, and one padding row each side, plus
-  // a row of breathing space above and below the dialog.
-  const chrome = 6;
-  const available = Math.max(1, terminalHeight - chrome);
+  const available = dialogBodyCapacity(terminalHeight);
   const bodyRows = Math.max(1, Math.min(contentRows, available));
   const scrolls = contentRows > available;
 

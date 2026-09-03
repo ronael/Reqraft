@@ -33,6 +33,37 @@ export type QualitySignal =
       code: "disproportionate_expansion";
       severity: "info" | "warning";
     }
+  /**
+   * Des chemins ou des commandes que la demande ne contenait pas.
+   *
+   * Séparés des `unsupported_additions` : ceux-là viennent d'une liste de
+   * termes produit, ceux-ci se vérifient — le chemin est dans la demande, ou il
+   * n'y est pas — et ce qu'on affiche est ce qui a été inventé, pas une
+   * catégorie.
+   */
+  | {
+      code: "invented_paths";
+      severity: "info" | "warning";
+      params: { paths: string[] };
+    }
+  | {
+      code: "invented_commands";
+      severity: "info" | "warning";
+      params: { commands: string[] };
+    }
+  | {
+      code: "missing_technical_terms";
+      severity: "info" | "warning";
+      params: { terms: string[] };
+    }
+  /**
+   * La demande est devenue un plan.
+   *
+   * Distinct de `disproportionate_expansion`, qui compte des mots : une phrase
+   * peut devenir six puces sans grossir beaucoup, et c'est pourtant un
+   * changement de nature.
+   */
+  | { code: "structural_inflation"; severity: "info" | "warning" }
   | { code: "output_truncated"; severity: "critical" }
   | { code: "model_warning"; severity: "warning"; detail: string }
   | { code: "unstructured_response"; severity: "warning" }

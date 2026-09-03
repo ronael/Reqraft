@@ -79,6 +79,12 @@ JSON and Markdown. Defaults to the `mock` provider, which never reports a
 `profile` in its response and so is not representative of real accuracy — use
 a real provider for numbers worth trusting.
 
+## Project profiles
+
+A repository can ship its own profiles in `.reqraft/profiles/`, versioned with
+the code. They are read-only from every surface and take precedence over a
+personal profile with the same id. See [Project context](project-context.md).
+
 ## Custom profiles
 
 Custom profile parsing exists internally, but loading user-defined profile files

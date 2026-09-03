@@ -1,5 +1,55 @@
 # Changelog
 
+## 0.6.0-rc.1 (2026-09-03)
+
+### Desktop application
+
+- Added a complete English and French desktop experience, with automatic
+  relaunch after a language change and direct return to the settings screen.
+- Added a six-step first-launch welcome tour, available again from settings,
+  while incomplete installations still open the configuration repair flow.
+- Made providers, models, profiles, shortcuts and interface preferences
+  manageable without using the CLI. Provider credentials remain confined to
+  the main process and the system keychain.
+- Added editable starting prompts and generated results in the capsule, plus
+  editable popover results. Copy, replacement and comparison all use the text
+  currently shown.
+- Added a global popover shortcut, pinned comparison, reversible level
+  navigation and temporary suspension and recovery of global shortcuts.
+- Added actionable diagnostics, a sanitized copyable report, provider checks,
+  model catalogue loading and visible update checks for both the desktop app
+  and the npm package.
+- Reworked settings, notifications, action buttons, scrollbars and compact
+  result metadata around shared components. The capsule now adapts its height
+  only at stable transitions and keeps feedback above its variable-height
+  footer.
+
+### CLI, TUI and fidelity
+
+- Added versioned project context through `.reqraft/config.json` and
+  `.reqraft/profiles/`. Project profiles are read-only, override personal
+  profiles by identifier and cannot carry credentials or machine settings.
+- Added searchable, bounded profile/provider/model pickers in the TUI while
+  preserving keyboard focus and selection as catalogues grow.
+- Added conservative detection of invented paths and commands, lost technical
+  terms and structural inflation. The CLI, TUI and desktop expose the same
+  structured quality findings.
+- Improved fidelity benchmarks with profile-level comparison, a larger
+  hand-written regression corpus and versioned scoring rules.
+
+### Reliability
+
+- Added renderer integration tests, real Electron E2E scenarios and a packaged
+  macOS smoke test covering startup, persistent windows and global shortcuts.
+- Kept the npm package isolated from Electron bundles and installers, with a
+  dry-run release check that validates the exact published file list.
+- Added a macOS manual release checklist for permissions, selection capture,
+  replacement, clipboard preservation, language changes and update behavior.
+
+This is a release candidate. macOS is the validated desktop target; Windows
+and Linux installers remain experimental, and automatic installation waits for
+signed distribution packages.
+
 ## 0.3.1 (2026-08-20)
 
 - Fixed the desktop application failing to start. The main process left `zod`

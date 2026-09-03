@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
-import { modelForProvider } from "@/apps/desktop/renderer/settings/SettingsApp.js";
+import { initialSettingsTab } from "@/apps/desktop/renderer/settings/SettingsApp.js";
+import {
+  describeModelCatalog,
+  modelCatalogRequest,
+  modelCatalogTone,
+  modelForProvider,
+} from "@/apps/desktop/renderer/settings/ModelsTab.js";
 import type { ProviderStatus } from "@/apps/desktop/shared/ipc-contract.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
+import { createDesktopTranslator } from "@/i18n/desktop/index.js";
+
+const t = createDesktopTranslator("fr");
 
 /**
  * Changing the provider in the settings.
@@ -55,8 +64,109 @@ describe("modelForProvider", () => {
     // A custom endpoint publishes nothing: whatever was typed is all there is,
     // and clearing it would silently discard the user's own model.
     const custom = provider("openai-compatible", []);
-    expect(modelForProvider(custom, "mon-modele-local")).toBe("");
+    expect(modelForProvider(custom, "mon-modele-local")).toBe("mon-modele-local");
     expect(modelForProvider(undefined, "mon-modele-local")).toBe("mon-modele-local");
+  });
+});
+
+describe("modelCatalogRequest", () => {
+  it("nomme directement un provider intégré", () => {
+    expect(modelCatalogRequest("anthropic", undefined)).toEqual({
+      kind: "builtin",
+      id: "anthropic",
+    });
+  });
+
+  it("nomme le premier endpoint réellement utilisé par openai-compatible", () => {
+    expect(modelCatalogRequest("openai-compatible", "local")).toEqual({
+      kind: "endpoint",
+      id: "local",
+    });
+    expect(modelCatalogRequest("openai-compatible", undefined)).toBeUndefined();
+  });
+
+  it("laisse le renderer traduire chaque issue sans reprendre un message distant", () => {
+    expect(describeModelCatalog({ status: "loading" }, t)).toContain("Chargement");
+    expect(describeModelCatalog({ status: "error" }, t)).toContain("indisponible");
+    expect(
+      describeModelCatalog(
+        {
+          status: "ready",
+          response: {
+            id: "openai",
+            outcome: "ok",
+            models: [
+              { id: "gpt-5.1", name: "GPT 5.1" },
+              { id: "o3", name: "o3" },
+            ],
+            truncated: false,
+          },
+        },
+        t,
+      ),
+    ).toBe("2 modèles disponibles.");
+  });
+});
+
+describe("modelCatalogTone", () => {
+  it("attend pendant le chargement", () => {
+    expect(modelCatalogTone({ status: "loading" })).toBe("pending");
+  });
+
+  it("ne réserve l'erreur qu'à l'appel qui n'a pas abouti", () => {
+    expect(modelCatalogTone({ status: "error" })).toBe("error");
+    expect(modelCatalogTone({ status: "unavailable" })).toBe("info");
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: { id: "openai-compatible", outcome: "unsupported", models: [], truncated: false },
+      }),
+    ).toBe("info");
+  });
+
+  it("confirme un catalogue chargé, avertit d'un catalogue vide", () => {
+    const models = [{ id: "gpt-5.1", name: "GPT 5.1" }];
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: { id: "openai", outcome: "ok", models, truncated: false },
+      }),
+    ).toBe("success");
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: { id: "openai", outcome: "ok", models: [], truncated: false },
+      }),
+    ).toBe("warning");
+  });
+
+  it("avertit d'une configuration à compléter", () => {
+    expect(
+      modelCatalogTone({
+        status: "ready",
+        response: {
+          id: "anthropic",
+          outcome: "missing_configuration",
+          models: [],
+          truncated: false,
+          missing: ["ANTHROPIC_API_KEY"],
+        },
+      }),
+    ).toBe("warning");
+  });
+});
+
+describe("initialSettingsTab", () => {
+  it("ouvre les profils par défaut", () => {
+    expect(initialSettingsTab("")).toBe("profiles");
+  });
+
+  it("ouvre l'onglet préférences quand la relance le demande", () => {
+    expect(initialSettingsTab("?surface=settings&tab=preferences")).toBe("preferences");
+  });
+
+  it("ignore un onglet inconnu", () => {
+    expect(initialSettingsTab("?surface=settings&tab=language")).toBe("profiles");
   });
 });
 

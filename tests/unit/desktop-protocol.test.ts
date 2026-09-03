@@ -20,6 +20,12 @@ describe("rq:// protocol (renderer over custom scheme)", () => {
     );
   });
 
+  it("rqRendererUrl conserve l'onglet demandé pour les réglages", () => {
+    expect(rqRendererUrl("settings", { tab: "preferences" })).toBe(
+      `${RQ_SCHEME}://${RQ_RENDERER_HOST}/index.html?tab=preferences&surface=settings`,
+    );
+  });
+
   it("mappe la racine sur index.html", () => {
     expect(mapRqUrlToFile(`${RQ_SCHEME}://${RQ_RENDERER_HOST}/`, RENDERER_DIR)).toBe(
       path.join(RENDERER_DIR, "index.html"),

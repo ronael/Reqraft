@@ -96,6 +96,12 @@ export type CredentialProvider = Extract<
   (typeof PROVIDER_DEFINITIONS)[number],
   { supportsSecureAuth: true; requiresApiKey: true }
 >["id"];
+export const CREDENTIAL_PROVIDER_IDS = [
+  "anthropic",
+  "openai",
+  "deepseek",
+  "mistral",
+] as const satisfies readonly CredentialProvider[];
 export type InitProvider = Extract<
   (typeof PROVIDER_DEFINITIONS)[number],
   { visibleInInit: true }

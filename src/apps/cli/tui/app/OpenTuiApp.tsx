@@ -42,12 +42,11 @@ import {
   failGeneration,
 } from "@/apps/cli/ui/generation-state.js";
 import {
+  filterSelectOptions,
   getFallbackModelForProvider,
-  getModelOptions,
+  getPickerOptions,
   NEW_PROFILE_OPTION,
-  getProfileOptions,
-  getProviderOptions,
-  LEVEL_OPTIONS,
+  type PickerId,
 } from "@/apps/cli/ui/modal-options.js";
 import { createOpenTuiRendererOptions } from "@/apps/cli/opentui/renderer-options.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
@@ -94,6 +93,7 @@ import {
   INITIAL_OVERLAY,
   clampSelection,
   closeOverlay,
+  isListOverlay,
   moveSelection,
   openOverlay,
   setQuery,
@@ -267,7 +267,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
   }, []);
 
   const openOverlayAndSuspend = useCallback((overlayId: NonNullable<OverlayState["active"]>) => {
-    setOverlay(openOverlay(INITIAL_OVERLAY, overlayId));
+    setOverlay(openOverlay(overlayId));
     setFocus(suspendFocus);
   }, []);
 
@@ -394,19 +394,25 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
 
   /** Opens the actions overlay for the profile highlighted in the picker. */
   const openProfileActions = useCallback((): void => {
-    const options = getProfileOptions(t);
+    // La liste filtrée, pas le catalogue entier : depuis que la recherche
+    // réduit les lignes, `overlay.index` désigne une position dans ce qui est
+    // affiché — l'indexer autrement viserait un autre profil.
+    const options = filterSelectOptions(
+      getPickerOptions("profile", app.provider, t),
+      overlay.query,
+    );
     const option = options[Math.min(overlay.index, Math.max(0, options.length - 1))];
     // `auto` is a mode, not a stored profile: it has nothing to act on.
     if (!option || option.value === AUTO_PROFILE_ID) return;
     setActionTarget(option.value);
     setPendingDelete(null);
-    setOverlay(openOverlay(INITIAL_OVERLAY, PROFILE_ACTIONS_OVERLAY));
-  }, [overlay.index, t]);
+    setOverlay(openOverlay(PROFILE_ACTIONS_OVERLAY));
+  }, [app.provider, overlay.index, overlay.query, t]);
 
   const openProfileForm = useCallback((next: ProfileFormState): void => {
     setForm(next);
     setPendingDelete(null);
-    setOverlay(openOverlay(INITIAL_OVERLAY, PROFILE_FORM_OVERLAY));
+    setOverlay(openOverlay(PROFILE_FORM_OVERLAY));
   }, []);
 
   /** Loads whichever profile the form should open on, of either origin. */
@@ -662,13 +668,12 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
     if (active === null) return 0;
     switch (active) {
       case "profile":
-        return getProfileOptions(t).length;
       case "level":
-        return LEVEL_OPTIONS.length;
       case "provider":
-        return getProviderOptions().length;
       case "model":
-        return getModelOptions(app.provider).length;
+        // La même liste que celle rendue : compter sur la liste entière ferait
+        // parcourir aux flèches des lignes que la recherche a écartées.
+        return filterSelectOptions(getPickerOptions(active, app.provider, t), overlay.query).length;
       case PROFILE_ACTIONS_OVERLAY:
         return profileActions(
           actionTarget !== null && getProfileOrigin(actionTarget) === "local",
@@ -686,19 +691,12 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
   }, [overlay.active, overlay.query, app.provider, actionTarget, t, context]);
 
   const pickerOptions = useMemo(() => {
-    switch (overlay.active) {
-      case "profile":
-        return getProfileOptions(t);
-      case "level":
-        return LEVEL_OPTIONS;
-      case "provider":
-        return getProviderOptions();
-      case "model":
-        return getModelOptions(app.provider);
-      default:
-        return [];
-    }
-  }, [overlay.active, app.provider, t]);
+    if (!isListOverlay(overlay.active)) return [];
+    return filterSelectOptions(
+      getPickerOptions(overlay.active as PickerId, app.provider, t),
+      overlay.query,
+    );
+  }, [overlay.active, overlay.query, app.provider, t]);
 
   /**
    * Enter inside the actions overlay.
@@ -741,12 +739,15 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
           );
           return;
         case "overlay-backspace":
-          if (active === PALETTE_OVERLAY) {
+          // La palette et les quatre sélecteurs : un catalogue qui grandit se
+          // cherche, et une frappe inerte dans l'un et vivante dans l'autre est
+          // pire que les deux comportements pris séparément.
+          if (active === PALETTE_OVERLAY || isListOverlay(active)) {
             setOverlay((state) => setQuery(state, state.query.slice(0, -1)));
           }
           return;
         case "overlay-type":
-          if (active === PALETTE_OVERLAY) {
+          if (active === PALETTE_OVERLAY || isListOverlay(active)) {
             setOverlay((state) => setQuery(state, state.query + route.text));
           }
           return;

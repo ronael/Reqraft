@@ -1,4 +1,4 @@
-import { loadConfig, saveConfig, configPath } from "@/config/loader.js";
+import { loadConfig, loadUserConfig, saveConfig, configPath } from "@/config/loader.js";
 import { ConfigSchema, configKeys, parseConfigValue, type ConfigKey } from "@/config/schema.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
@@ -70,7 +70,10 @@ async function setConfig(
     output.error(t("config.unknownKey", { key }));
     return EXIT_CODES.INVALID_CONFIGURATION;
   }
-  const config = await loadConfig();
+  // La configuration utilisateur, pas l'effective : partir de l'effective
+  // recopierait dans le fichier personnel ce que le projet impose, et ces
+  // valeurs survivraient au projet.
+  const config = await loadUserConfig();
   const parsedValue = parseConfigValue(key, value);
   const updated = { ...config, [key]: parsedValue };
 

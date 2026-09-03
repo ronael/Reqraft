@@ -1,4 +1,5 @@
 import type { MacosBridge } from "./macos.js";
+import { t } from "./i18n.js";
 
 /**
  * Selection capture and reinjection — the product's critical path
@@ -20,8 +21,28 @@ import type { MacosBridge } from "./macos.js";
 const SENTINEL = "\u0000reqraft-desktop-sentinel\u0000";
 const COPY_TIMEOUT_MS = 300;
 const POLL_INTERVAL_MS = 10;
-/** Time left for the target app to consume the paste before restoring. */
-const PASTE_SETTLE_MS = 150;
+/**
+ * Battement entre l'activation confirmée et la frappe.
+ *
+ * `activateApp` confirme que le *processus* est au premier plan. Sa fenêtre
+ * n'accepte pas les frappes pour autant : ⌘V envoyé dans la foulée atterrit
+ * dans la fenêtre précédente — la capsule — qui n'a aucun champ à ce
+ * moment-là. La sélection reste alors intacte et le remplacement se déclare
+ * quand même réussi. C'est la seconde moitié du constat du spike (§5.2), dont
+ * seule la confirmation avait été implémentée.
+ */
+const ACTIVATE_SETTLE_MS = 120;
+
+/**
+ * Temps laissé à l'application cible pour consommer le collage.
+ *
+ * La frappe est asynchrone : `osascript` rend la main quand l'événement est
+ * posté, pas quand l'application l'a traité. Restaurer le presse-papiers trop
+ * tôt fait coller à l'application l'ancien contenu — la sélection n'est pas
+ * remplacée, et rien ne le signale. 150 ms suffisaient à un éditeur de texte,
+ * pas à une application lourde.
+ */
+const PASTE_SETTLE_MS = 400;
 
 export interface CaptureClipboard {
   readText: () => string;
@@ -37,6 +58,7 @@ export interface CaptureDependencies {
   copyTimeoutMs?: number;
   pollIntervalMs?: number;
   pasteSettleMs?: number;
+  activateSettleMs?: number;
 }
 
 export type CaptureOutcome = { text: string } | { empty: true; reason: string };
@@ -62,7 +84,7 @@ export async function captureSelection(deps: CaptureDependencies): Promise<Captu
   // A non-textual clipboard would not survive the round trip: do not touch
   // it, open the capsule centred in free-input mode instead (§5.1).
   if (hasNonTextContent) {
-    return { empty: true, reason: "presse-papiers non textuel" };
+    return { empty: true, reason: t("main.captureClipboardNotText") };
   }
 
   try {
@@ -71,7 +93,7 @@ export async function captureSelection(deps: CaptureDependencies): Promise<Captu
 
     const captured = await waitForClipboardChange(clipboard, wait, copyTimeoutMs, pollIntervalMs);
     if (captured === null) {
-      return { empty: true, reason: "aucune sélection" };
+      return { empty: true, reason: t("main.captureNoSelection") };
     }
     return { text: captured };
   } catch (error) {
@@ -96,15 +118,15 @@ export async function captureSelection(deps: CaptureDependencies): Promise<Captu
 function describeCaptureFailure(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
   if (message.includes("1002") || message.includes("not allowed to send keystrokes")) {
-    return "accès Accessibilité refusé : autorisez Reqraft dans Réglages Système › Confidentialité et sécurité › Accessibilité";
+    return t("main.captureAccessibilityDenied");
   }
   // -1743 : « Not authorized to send Apple events to System Events ». C'est
   // l'Automatisation, pas l'Accessibilité — deux réglages différents, dans deux
   // panneaux différents, et envoyer quelqu'un dans le mauvais ne mène nulle part.
   if (message.includes("1743") || message.includes("Apple event")) {
-    return "accès Automatisation refusé : autorisez Reqraft à contrôler « System Events » dans Réglages Système › Confidentialité et sécurité › Automatisation";
+    return t("main.captureAutomationDenied");
   }
-  return `capture impossible : ${message}`;
+  return t("main.captureFailed", { detail: message });
 }
 
 /**
@@ -121,18 +143,27 @@ export async function replaceSelection(
   const { clipboard } = deps;
   const wait = deps.wait ?? defaultWait;
   const pasteSettleMs = deps.pasteSettleMs ?? PASTE_SETTLE_MS;
+  const activateSettleMs = deps.activateSettleMs ?? ACTIVATE_SETTLE_MS;
   const original = clipboard.readText();
 
   clipboard.writeText(text);
 
   const restored = await deps.activateApp(sourceApp);
   if (!restored) {
-    return { applied: false, reason: "application source non réactivée" };
+    return { applied: false, reason: t("main.replaceSourceInactive") };
   }
 
+  // Laisser la fenêtre devenir vraiment active avant de frapper.
+  await wait(activateSettleMs);
   await deps.sendKeystroke("v");
   await wait(pasteSettleMs);
-  clipboard.writeText(original);
+
+  // Ne rendre le presse-papiers que s'il porte encore notre texte : entre-temps
+  // l'utilisateur a pu copier autre chose, et le lui écraser serait pire que de
+  // laisser le résultat en place.
+  if (clipboard.readText() === text) {
+    clipboard.writeText(original);
+  }
 
   return { applied: true };
 }

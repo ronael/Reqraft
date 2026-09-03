@@ -7,6 +7,8 @@ import { createTranslator } from "@/i18n/translate.js";
 import { formatUiError } from "@/shared/errors.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
 import { reportProfileCatalogProblems } from "./commands/profiles.js";
+import { notifyCliUpdate, shouldRunCliUpdateNotifier } from "./update-notifier.js";
+import { version } from "@/version.js";
 
 const cliLocalePreference = findUiLocalePreference(process.argv);
 let configuredLocale: string | undefined;
@@ -59,4 +61,14 @@ if (localeBootstrapError) {
   reportTopLevelError(t("cli.invalidLocale"), 2);
 } else {
   await parseProgram();
+  if (
+    shouldRunCliUpdateNotifier({
+      argv: process.argv,
+      env: process.env,
+      stderrIsTTY: process.stderr.isTTY,
+      exitCode: process.exitCode,
+    })
+  ) {
+    await notifyCliUpdate({ currentVersion: version, t }).catch(() => undefined);
+  }
 }

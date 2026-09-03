@@ -16,8 +16,27 @@ export const IPC_CHANNELS = {
   configWrite: "config:write",
   providersStatus: "providers:status",
   doctorRun: "doctor:run",
+  // Partager un diagnostic dans une issue GitHub. Volontairement distinct de
+  // `doctor:run` et sans charge utile : le renderer demande une copie, il ne
+  // fournit jamais le texte. Il n'existe toujours aucun canal presse-papiers
+  // générique — accepter n'importe quelle chaîne du renderer reviendrait à lui
+  // donner le presse-papiers de l'utilisateur. Le seul texte du renderer qui
+  // atteigne le presse-papiers passe par `result:accept`, où il n'est reçu
+  // qu'avec un runId existant, borné et validé par le contrat.
+  doctorCopy: "doctor:copy",
   permissionsState: "permissions:state",
   permissionsRequest: "permissions:request",
+  // Ouvre le volet Confidentialité et sécurité de la permission nommée. Le
+  // renderer envoie un mot d'une énumération de deux valeurs, jamais une URL :
+  // c'est le processus principal qui détient la correspondance, sinon
+  // `shell.openExternal` deviendrait un lanceur de schémas piloté par le
+  // renderer. Nécessaire parce que macOS ne réaffiche pas l'invite
+  // Accessibilité après un refus, et n'a aucune invite pour l'Automatisation —
+  // sans ce chemin, un échec de permission n'a plus de suite dans l'app.
+  systemOpenPermissionSettings: "system:open-permission-settings",
+  updatesState: "updates:state",
+  updatesCheck: "updates:check",
+  updatesOpenDownload: "updates:open-download",
   // Contract amendment (WORKLOG lot 4): the popover needs the profile catalog,
   // and both popover and capsule need to open the settings window. §8.1's
   // table predates those surfaces; channels are still defined ONLY here.
@@ -31,13 +50,29 @@ export const IPC_CHANNELS = {
   profileDuplicate: "profiles:duplicate",
   profileDelete: "profiles:delete",
   profileExport: "profiles:export",
+  // La langue de l'interface, résolue par le processus principal. Le renderer
+  // la demande au montage plutôt que d'embarquer les catalogues : une seule
+  // source de vérité, partagée avec le CLI.
+  localeRead: "locale:read",
   // Doublon volontaire de `capsule:opened` : un message poussé se perd si le
   // renderer n'écoute pas encore, et la capsule reste alors sur son état de
   // départ, sablier compris. Elle peut donc aussi demander pourquoi elle est
   // ouverte, au montage.
   capsulePending: "capsule:pending",
+  // La hauteur de la capsule, proposée par le renderer et arbitrée par le
+  // processus principal. Le renderer n'a jamais accès à `BrowserWindow` : il
+  // envoie un nombre borné, et seul le principal connaît la zone de travail,
+  // l'ancre de la session et le côté d'ouverture. Voir
+  // `shared/capsule-geometry.ts` pour les trois régimes de hauteur.
+  capsuleResize: "capsule:resize",
   windowOpenSettings: "window:open-settings",
+  windowOpenWelcomeTour: "window:open-welcome-tour",
   shortcutsState: "shortcuts:state",
+  // Reprend les raccourcis globaux suspendus depuis le menu de la barre. La
+  // suspension est visible dans le Diagnostic ; sans ce canal, la seule façon
+  // de la lever serait de retrouver la case dans le menu du tray, ce que
+  // l'onglet ne peut ni montrer ni désigner.
+  shortcutsResume: "shortcuts:resume",
   // Desktop onboarding: someone who installed only the application must be
   // able to configure it without the CLI. `onboarding:state` reports whether
   // a usable configuration exists and offers the choices; `credential:save`
@@ -45,6 +80,7 @@ export const IPC_CHANNELS = {
   // hold one; `onboarding:complete` persists the result through the shared
   // configuration domain.
   onboardingState: "onboarding:state",
+  onboardingTourComplete: "onboarding:tour-complete",
   onboardingComplete: "onboarding:complete",
   credentialSave: "credential:save",
   // Managing providers after setup. Configuring one only during onboarding
@@ -53,6 +89,17 @@ export const IPC_CHANNELS = {
   credentialDelete: "credential:delete",
   providerSave: "providers:save",
   providerDelete: "providers:delete",
+  // Checking a provider without leaving the settings. The passive status only
+  // says whether a key was found, never whether what is configured holds
+  // together — the answer used to require running the whole diagnostic, which
+  // tests every provider at once and reports none of them individually.
+  providerTest: "providers:test",
+  // Le catalogue réel d'un fournisseur, pour l'onglet Modèles. Distinct de
+  // `providers:status`, qui ne porte que les préréglages figés du dépôt : ceux-
+  // là vieillissent, et rien dans les réglages ne permettait de choisir un
+  // modèle sorti depuis. La requête ne nomme qu'un fournisseur ; les
+  // credentials restent hydratés et utilisés dans le processus principal.
+  modelsList: "models:list",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -75,8 +122,13 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.configWrite,
   IPC_CHANNELS.providersStatus,
   IPC_CHANNELS.doctorRun,
+  IPC_CHANNELS.doctorCopy,
   IPC_CHANNELS.permissionsState,
   IPC_CHANNELS.permissionsRequest,
+  IPC_CHANNELS.systemOpenPermissionSettings,
+  IPC_CHANNELS.updatesState,
+  IPC_CHANNELS.updatesCheck,
+  IPC_CHANNELS.updatesOpenDownload,
   IPC_CHANNELS.profilesList,
   IPC_CHANNELS.profilesCatalog,
   IPC_CHANNELS.profileRead,
@@ -84,15 +136,22 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.profileDuplicate,
   IPC_CHANNELS.profileDelete,
   IPC_CHANNELS.profileExport,
+  IPC_CHANNELS.localeRead,
   IPC_CHANNELS.capsulePending,
+  IPC_CHANNELS.capsuleResize,
   IPC_CHANNELS.windowOpenSettings,
+  IPC_CHANNELS.windowOpenWelcomeTour,
   IPC_CHANNELS.shortcutsState,
+  IPC_CHANNELS.shortcutsResume,
   IPC_CHANNELS.onboardingState,
+  IPC_CHANNELS.onboardingTourComplete,
   IPC_CHANNELS.onboardingComplete,
   IPC_CHANNELS.credentialSave,
   IPC_CHANNELS.credentialDelete,
   IPC_CHANNELS.providerSave,
   IPC_CHANNELS.providerDelete,
+  IPC_CHANNELS.providerTest,
+  IPC_CHANNELS.modelsList,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

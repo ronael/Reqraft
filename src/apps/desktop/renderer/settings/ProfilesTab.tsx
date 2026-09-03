@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { useT, type Translate } from "../shared/i18n.js";
 import {
   Check,
   Circle,
@@ -18,6 +19,8 @@ import {
   type ProfileSaveRequest,
   type SafeConfig,
 } from "@/apps/desktop/shared/ipc-contract.js";
+import { Button } from "../shared/Button.js";
+import { InlineMessage } from "../shared/InlineMessage.js";
 
 /**
  * Settings → Profils.
@@ -82,19 +85,23 @@ const ID_PATTERN = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
  * One message at a time, in field order, so the user is not handed a list to
  * map back onto rows.
  */
-export function findFormProblem(form: FormState, taken: readonly string[]): string | undefined {
-  if (form.name.trim() === "") return "Le nom est obligatoire.";
-  if (form.id.trim() === "") return "L'identifiant est obligatoire.";
+export function findFormProblem(
+  form: FormState,
+  taken: readonly string[],
+  t: Translate = (key) => key,
+): string | undefined {
+  if (form.name.trim() === "") return t("profiles.nameRequired");
+  if (form.id.trim() === "") return t("profiles.idRequired");
   if (!ID_PATTERN.test(form.id.trim())) {
-    return "Identifiant invalide : minuscules, chiffres et tirets uniquement.";
+    return t("profiles.idInvalid");
   }
   // An edit keeps its own id, so it is not a collision with itself.
   if (form.mode !== "update" && taken.includes(form.id.trim())) {
-    return `L'identifiant « ${form.id.trim()} » est déjà pris.`;
+    return t("profiles.idTaken", { id: form.id.trim() });
   }
   if (form.mode === "duplicate") return undefined;
-  if (form.description.trim() === "") return "La description est obligatoire.";
-  if (form.instructions.trim() === "") return "Les instructions sont obligatoires.";
+  if (form.description.trim() === "") return t("profiles.descriptionRequired");
+  if (form.instructions.trim() === "") return t("profiles.instructionsRequired");
   return undefined;
 }
 
@@ -107,6 +114,7 @@ export function ProfilesTab({
   config,
   onSelectDefault,
 }: Readonly<ProfilesTabProps>): React.JSX.Element {
+  const t = useT();
   const [catalog, setCatalog] = useState<ProfileCatalogResponse | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [problem, setProblem] = useState<string | undefined>(undefined);
@@ -172,7 +180,7 @@ export function ProfilesTab({
 
   const submit = useCallback(async () => {
     if (form === null) return;
-    const found = findFormProblem(form, takenIds);
+    const found = findFormProblem(form, takenIds, t);
     if (found !== undefined) {
       setProblem(found);
       return;
@@ -203,7 +211,7 @@ export function ProfilesTab({
           }),
     );
     if (ok) setForm(null);
-  }, [form, run, takenIds]);
+  }, [form, run, t, takenIds]);
 
   if (form !== null) {
     return (
@@ -230,36 +238,34 @@ export function ProfilesTab({
     <>
       {error !== null && <p className="settings-warning">{error}</p>}
       {catalog?.problems.map((entry) => (
-        <p key={entry.path} className="settings-warning">
+        // Un profil masqué par le projet fonctionne : il n'est pas un
+        // avertissement, seulement une note. Les peindre pareil apprendrait à
+        // ignorer les deux.
+        <p
+          key={entry.path}
+          className={entry.kind === "shadowed" ? "settings-note muted" : "settings-warning"}
+        >
           {entry.detail}
         </p>
       ))}
 
       <div className="profile-toolbar">
-        <p className="profile-intro">
-          Le profil sélectionné est celui que la capsule utilise. Un profil intégré se duplique pour
-          obtenir une copie modifiable.
-        </p>
-        <button
-          type="button"
-          className="button-primary profile-new"
+        <p className="profile-intro">{t("profiles.intro")}</p>
+        <Button
+          className="profile-new"
           onClick={() => {
             setError(null);
             setForm({ ...EMPTY_FORM });
           }}
         >
           <Plus size={15} aria-hidden />
-          Nouveau profil local
-        </button>
+          {t("profiles.new")}
+        </Button>
       </div>
 
-      {locals.length === 0 && (
-        <p className="settings-note muted">
-          Aucun profil local. « Nouveau profil local » en crée un, ou dupliquez un profil intégré.
-        </p>
-      )}
+      {locals.length === 0 && <p className="profile-empty-note">{t("profiles.empty")}</p>}
 
-      <div className="profile-list">
+      <div className="profile-list" role="list">
         {entries.map((entry) => (
           <ProfileRow
             key={entry.id}
@@ -338,55 +344,76 @@ function ProfileRow({
   onSelectDefault,
   onStartDelete,
 }: Readonly<ProfileRowProps>): React.JSX.Element {
+  const t = useT();
   const isLocal = entry.origin === "local";
   const isAuto = entry.origin === "auto";
+  const meta = profileMeta(entry, isDefault, t);
 
   return (
-    <div className={isDefault ? "profile-row profile-row-active" : "profile-row"}>
+    <div className={isDefault ? "profile-row profile-row-active" : "profile-row"} role="listitem">
       <div className="profile-identity">
-        <div className="settings-row-title">
-          {entry.name}
-          <span className="profile-origin">{profileOriginLabel(entry.origin)}</span>
+        <div className="profile-card-head">
+          <div className="settings-row-title profile-name">
+            <span className="profile-name-text">{entry.name}</span>
+            <span className="profile-origin">{profileOriginLabel(entry.origin, t)}</span>
+          </div>
         </div>
         <div className="settings-row-detail profile-description">{entry.description}</div>
-        {entry.defaultLevel !== undefined && (
-          <div className="settings-row-detail profile-meta">niveau {entry.defaultLevel}</div>
-        )}
         {confirming && (
           <div className="settings-row-detail profile-confirm">
-            Supprimer « {entry.id} » ? Cette action est définitive.
+            {t("profiles.confirmDeleteQuestion", { id: entry.id })}
           </div>
         )}
       </div>
 
-      <div className="profile-actions">
-        {confirming ? (
-          <DeleteConfirmationActions
-            busy={busy}
-            onCancel={onCancelDelete}
-            onConfirm={onConfirmDelete}
-          />
-        ) : (
-          <ProfileRowActions
-            isAuto={isAuto}
-            isDefault={isDefault}
-            isLocal={isLocal}
-            onDuplicate={onDuplicate}
-            onEdit={onEdit}
-            onExport={onExport}
-            onSelectDefault={onSelectDefault}
-            onStartDelete={onStartDelete}
-          />
-        )}
+      <div className="profile-row-footer">
+        <div className="settings-row-detail profile-meta">{meta}</div>
+        <div className="profile-actions">
+          {confirming ? (
+            <DeleteConfirmationActions
+              busy={busy}
+              onCancel={onCancelDelete}
+              onConfirm={onConfirmDelete}
+            />
+          ) : (
+            <ProfileRowActions
+              isAuto={isAuto}
+              isDefault={isDefault}
+              isLocal={isLocal}
+              onDuplicate={onDuplicate}
+              onEdit={onEdit}
+              onExport={onExport}
+              onSelectDefault={onSelectDefault}
+              onStartDelete={onStartDelete}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function profileOriginLabel(origin: ProfileCatalogEntry["origin"]): string {
+function profileOriginLabel(
+  origin: ProfileCatalogEntry["origin"],
+  t: Translate = (key) => key,
+): string {
+  // `Auto` et `Local` sont les mêmes mots dans les deux langues ; seul
+  // « Intégré » change.
   if (origin === "auto") return "Auto";
   if (origin === "local") return "Local";
-  return "Intégré";
+  return t("profiles.builtin");
+}
+
+function profileMeta(
+  entry: ProfileCatalogEntry,
+  isDefault: boolean,
+  t: Translate = (key) => key,
+): string {
+  if (entry.defaultLevel !== undefined) {
+    return t("profiles.levelMeta", { level: entry.defaultLevel });
+  }
+  if (isDefault) return t("profiles.tooltipInUse");
+  return entry.id;
 }
 
 interface DeleteConfirmationActionsProps {
@@ -400,17 +427,18 @@ function DeleteConfirmationActions({
   onCancel,
   onConfirm,
 }: Readonly<DeleteConfirmationActionsProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
       <IconButton
-        label="Confirmer la suppression"
+        label={t("profiles.confirmDelete")}
         tone="danger"
         disabled={busy}
         onClick={onConfirm}
       >
         <Check size={15} aria-hidden />
       </IconButton>
-      <IconButton label="Annuler" onClick={onCancel}>
+      <IconButton label={t("settings.cancel")} onClick={onCancel}>
         <X size={15} aria-hidden />
       </IconButton>
     </>
@@ -438,10 +466,11 @@ function ProfileRowActions({
   onSelectDefault,
   onStartDelete,
 }: Readonly<ProfileRowActionsProps>): React.JSX.Element {
+  const t = useT();
   return (
     <>
       <IconButton
-        label={isDefault ? "Profil utilisé par la capsule" : "Utiliser ce profil"}
+        label={isDefault ? t("profiles.tooltipInUse") : t("profiles.use")}
         active={isDefault}
         // Not disabled: a radio you cannot press reads as broken, and
         // re-selecting the current one is harmless.
@@ -449,39 +478,26 @@ function ProfileRowActions({
       >
         {isDefault ? <CircleDot size={15} aria-hidden /> : <Circle size={15} aria-hidden />}
       </IconButton>
-      <IconButton
-        label={isLocal ? "Modifier" : "Un profil intégré n'est pas modifiable"}
-        disabled={!isLocal}
-        onClick={onEdit}
-      >
-        <Pencil size={15} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={
-          isAuto
-            ? "Le profil automatique ne se duplique pas"
-            : "Dupliquer vers un nouveau profil local"
-        }
-        disabled={isAuto}
-        onClick={onDuplicate}
-      >
-        <CopyPlus size={15} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={isAuto ? "Le profil automatique ne s'exporte pas" : "Exporter en JSON"}
-        disabled={isAuto}
-        onClick={onExport}
-      >
-        <Download size={15} aria-hidden />
-      </IconButton>
-      <IconButton
-        label={isLocal ? "Supprimer" : "Un profil intégré n'est pas supprimable"}
-        tone="danger"
-        disabled={!isLocal}
-        onClick={onStartDelete}
-      >
-        <Trash2 size={15} aria-hidden />
-      </IconButton>
+      {isLocal && (
+        <IconButton label={t("settings.edit")} onClick={onEdit}>
+          <Pencil size={15} aria-hidden />
+        </IconButton>
+      )}
+      {!isAuto && (
+        <IconButton label={t("profiles.duplicate")} onClick={onDuplicate}>
+          <CopyPlus size={15} aria-hidden />
+        </IconButton>
+      )}
+      {!isAuto && (
+        <IconButton label={t("profiles.export")} onClick={onExport}>
+          <Download size={15} aria-hidden />
+        </IconButton>
+      )}
+      {isLocal && (
+        <IconButton label={t("settings.delete")} tone="danger" onClick={onStartDelete}>
+          <Trash2 size={15} aria-hidden />
+        </IconButton>
+      )}
     </>
   );
 }
@@ -507,131 +523,147 @@ function ProfileForm({
   onCancel,
   onSubmit,
 }: Readonly<ProfileFormProps>): React.JSX.Element {
+  const t = useT();
   const setField = (patch: Partial<FormState>): void => {
     onChange({ ...form, ...patch });
   };
   const duplicate = form.mode === "duplicate";
 
   return (
-    <>
-      <div className="settings-row">
-        <div className="settings-row-title">
-          {form.mode === "update" && `Modifier « ${form.sourceId ?? ""} »`}
-          {form.mode === "duplicate" && `Dupliquer « ${form.sourceId ?? ""} »`}
-          {form.mode === "create" && "Nouveau profil local"}
+    <section className="settings-section profile-form">
+      <header className="profile-form-head">
+        <div className="profile-form-title">
+          {form.mode === "update" && t("profiles.formUpdateTitle", { id: form.sourceId ?? "" })}
+          {form.mode === "duplicate" &&
+            t("profiles.formDuplicateTitle", { id: form.sourceId ?? "" })}
+          {form.mode === "create" && t("profiles.formCreateTitle")}
         </div>
-      </div>
+      </header>
 
-      {duplicate && (
-        <p className="settings-note muted">
-          La copie reprend la description, le niveau et les instructions du profil source.
-          Choisissez seulement son identifiant local et son nom.
-        </p>
+      {(duplicate || problem !== undefined || error !== null) && (
+        <div className="settings-messages profile-form-messages">
+          {duplicate && <InlineMessage tone="info">{t("profiles.duplicateNote")}</InlineMessage>}
+          {problem !== undefined && (
+            <InlineMessage tone="warning" role="alert">
+              {problem}
+            </InlineMessage>
+          )}
+          {error !== null && (
+            <InlineMessage tone="error" role="alert">
+              {error}
+            </InlineMessage>
+          )}
+        </div>
       )}
 
-      {problem !== undefined && <p className="settings-warning">{problem}</p>}
-      {error !== null && <p className="settings-warning">{error}</p>}
-
-      <label className="settings-row">
-        <span className="settings-row-title">Nom</span>
-        <input
-          className="settings-input"
-          value={form.name}
-          onChange={(event) => {
-            const name = event.target.value;
-            // The id follows the name until the user types one of their own.
-            const follows = form.mode !== "update" && form.id === suggestId(form.name);
-            setField(follows ? { name, id: suggestId(name) } : { name });
-          }}
-        />
-      </label>
-
-      <label className="settings-row">
-        <span className="settings-row-title">
-          Identifiant
-          {form.mode === "update" && <span className="profile-origin">non modifiable</span>}
-        </span>
-        <input
-          className="settings-input"
-          value={form.id}
-          disabled={form.mode === "update"}
-          onChange={(event) => {
-            setField({ id: event.target.value });
-          }}
-        />
-      </label>
-
-      {!duplicate && (
-        <>
-          <label className="settings-row">
-            <span className="settings-row-title">Description</span>
+      <div className="settings-group profile-form-group">
+        <div className="profile-form-grid">
+          <label className="profile-field">
+            <span>{t("profiles.name")}</span>
             <input
               className="settings-input"
-              value={form.description}
+              value={form.name}
               onChange={(event) => {
-                setField({ description: event.target.value });
+                const name = event.target.value;
+                // The id follows the name until the user types one of their own.
+                const follows = form.mode !== "update" && form.id === suggestId(form.name);
+                setField(follows ? { name, id: suggestId(name) } : { name });
               }}
             />
           </label>
 
-          <label className="settings-row">
-            <span className="settings-row-title">Base</span>
-            <select
-              className="settings-select"
-              value={form.extends}
+          <label className="profile-field">
+            <span>
+              {t("settings.identifier")}
+              {form.mode === "update" && (
+                <span className="profile-origin">{t("profiles.notEditableTag")}</span>
+              )}
+            </span>
+            <input
+              className="settings-input"
+              value={form.id}
+              disabled={form.mode === "update"}
               onChange={(event) => {
-                setField({ extends: event.target.value });
-              }}
-            >
-              <option value="">aucune</option>
-              {bases.map((id) => (
-                <option key={id} value={id}>
-                  {id}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <label className="settings-row">
-            <span className="settings-row-title">Niveau par défaut</span>
-            <select
-              className="settings-select"
-              value={form.defaultLevel}
-              onChange={(event) => {
-                setField({ defaultLevel: event.target.value as FormState["defaultLevel"] });
-              }}
-            >
-              {REPROMPT_LEVEL_IDS.map((level) => (
-                <option key={level} value={level}>
-                  {level}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <div className="settings-row profile-instructions">
-            <span className="settings-row-title">Instructions</span>
-            <textarea
-              className="settings-input profile-textarea"
-              rows={6}
-              value={form.instructions}
-              onChange={(event) => {
-                setField({ instructions: event.target.value });
+                setField({ id: event.target.value });
               }}
             />
+          </label>
+
+          {!duplicate && (
+            <>
+              <label className="profile-field profile-field-wide">
+                <span>{t("profiles.description")}</span>
+                <input
+                  className="settings-input"
+                  value={form.description}
+                  onChange={(event) => {
+                    setField({ description: event.target.value });
+                  }}
+                />
+              </label>
+
+              <label className="profile-field">
+                <span>{t("profiles.base")}</span>
+                <select
+                  className="settings-select"
+                  value={form.extends}
+                  onChange={(event) => {
+                    setField({ extends: event.target.value });
+                  }}
+                >
+                  <option value="">{t("profiles.noneLevel")}</option>
+                  {bases.map((id) => (
+                    <option key={id} value={id}>
+                      {id}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="profile-field">
+                <span>{t("profiles.defaultLevel")}</span>
+                <select
+                  className="settings-select"
+                  value={form.defaultLevel}
+                  onChange={(event) => {
+                    setField({ defaultLevel: event.target.value as FormState["defaultLevel"] });
+                  }}
+                >
+                  {REPROMPT_LEVEL_IDS.map((level) => (
+                    <option key={level} value={level}>
+                      {level}
+                    </option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="profile-field profile-field-wide profile-instructions">
+                <span>{t("profiles.instructions")}</span>
+                <textarea
+                  className="settings-input profile-textarea"
+                  rows={6}
+                  value={form.instructions}
+                  onChange={(event) => {
+                    setField({ instructions: event.target.value });
+                  }}
+                />
+              </label>
+            </>
+          )}
+        </div>
+
+        <div className="settings-group-foot">
+          <div className="settings-actions profile-form-actions">
+            <Button variant="neutral" onClick={onCancel}>
+              {t("settings.cancel")}
+            </Button>
+            <Button disabled={busy || problem !== undefined} onClick={onSubmit}>
+              {busy ? t("settings.saving") : t("settings.save")}
+            </Button>
           </div>
-        </>
-      )}
-
-      <div className="settings-actions profile-form-actions">
-        <button type="button" onClick={onCancel}>
-          Annuler
-        </button>
-        <button type="button" className="button-primary" disabled={busy} onClick={onSubmit}>
-          {busy ? "Enregistrement…" : "Enregistrer"}
-        </button>
+        </div>
       </div>
-    </>
+    </section>
   );
 }
 

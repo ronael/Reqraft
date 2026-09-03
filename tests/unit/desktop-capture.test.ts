@@ -94,7 +94,7 @@ describe("captureSelection (DESKTOP.md §5.1)", () => {
 
     const outcome = await captureSelection(deps);
 
-    expect(outcome).toEqual({ empty: true, reason: "aucune sélection" });
+    expect(outcome).toEqual({ empty: true, reason: "no selection" });
     expect(clipboard.currentText).toBe("contenu original");
   });
 
@@ -105,7 +105,7 @@ describe("captureSelection (DESKTOP.md §5.1)", () => {
 
     const outcome = await captureSelection(deps);
 
-    expect(outcome).toEqual({ empty: true, reason: "presse-papiers non textuel" });
+    expect(outcome).toEqual({ empty: true, reason: "clipboard is not text" });
     expect(deps.sentKeystrokes).toEqual([]);
     expect(clipboard.writes).toEqual([]);
     expect(clipboard.availableFormats()).toEqual(["public.png"]);
@@ -154,6 +154,51 @@ describe("replaceSelection (DESKTOP.md §5.2)", () => {
     expect(clipboard.currentText).toBe("presse-papiers utilisateur");
   });
 
+  it("laisse la fenêtre devenir active avant de frapper", async () => {
+    // `activateApp` confirme que le processus est au premier plan, pas que sa
+    // fenêtre accepte les frappes. ⌘V envoyé dans la foulée atterrissait dans
+    // la fenêtre précédente — la capsule — et la sélection restait intacte,
+    // pendant que le remplacement se déclarait réussi.
+    const clipboard = new FakeClipboard();
+    clipboard.writeText("presse-papiers utilisateur");
+    const deps = createDeps(clipboard);
+    const order: string[] = [];
+    deps.activateApp = () => {
+      order.push("activate");
+      return Promise.resolve(true);
+    };
+    deps.wait = (ms) => {
+      order.push(`wait:${String(ms)}`);
+      return Promise.resolve();
+    };
+    deps.sendKeystroke = () => {
+      order.push("keystroke");
+      return Promise.resolve();
+    };
+    deps.activateSettleMs = 7;
+
+    await replaceSelection("résultat", "TextEdit", deps);
+
+    expect(order.slice(0, 3)).toEqual(["activate", "wait:7", "keystroke"]);
+  });
+
+  it("ne reprend pas un presse-papiers que l'utilisateur a changé entre-temps", async () => {
+    // Le presse-papiers est rendu après le collage. Si quelqu'un a copié autre
+    // chose pendant ce battement, le lui écraser lui prend son contenu.
+    const clipboard = new FakeClipboard();
+    clipboard.writeText("presse-papiers utilisateur");
+    const deps = createDeps(clipboard);
+    deps.sendKeystroke = () => {
+      clipboard.writeText("copié pendant le collage");
+      return Promise.resolve();
+    };
+
+    const outcome = await replaceSelection("résultat", "TextEdit", deps);
+
+    expect(outcome).toEqual({ applied: true });
+    expect(clipboard.currentText).toBe("copié pendant le collage");
+  });
+
   it("ne colle jamais sans confirmation du basculement", async () => {
     const clipboard = new FakeClipboard();
     clipboard.writeText("presse-papiers utilisateur");
@@ -162,7 +207,10 @@ describe("replaceSelection (DESKTOP.md §5.2)", () => {
 
     const outcome = await replaceSelection("résultat", "AppInjouable", deps);
 
-    expect(outcome).toEqual({ applied: false, reason: "application source non réactivée" });
+    expect(outcome).toEqual({
+      applied: false,
+      reason: "source app did not come back to the front",
+    });
     expect(deps.sentKeystrokes).toEqual([]);
     // Fallback gracieux : le texte reste disponible pour un collage manuel.
     expect(clipboard.currentText).toBe("résultat");
@@ -212,7 +260,7 @@ describe("CaptureService", () => {
 
     const outcome = await service.replace("résultat");
 
-    expect(outcome).toEqual({ applied: false, reason: "application source inconnue" });
+    expect(outcome).toEqual({ applied: false, reason: "source app unknown" });
   });
 
   it("replace réinjecte dans l'app mémorisée, pas dans l'app au premier plan", async () => {
@@ -268,7 +316,7 @@ describe("permission manquante : dégradation, jamais de rejet nu", () => {
     const reason = "reason" in outcome ? outcome.reason : "";
     // « osascript » ne veut rien dire pour quelqu'un qui n'a jamais lancé ce
     // programme ; ce qu'il faut, c'est le chemin dans les réglages.
-    expect(reason).toContain("Accessibilité");
+    expect(reason).toContain("Accessibility");
     expect(reason).not.toContain("osascript");
   });
 
@@ -312,8 +360,8 @@ describe("la raison d'un échec remonte jusqu'à la capsule", () => {
     const outcome = await captureSelection(deps);
 
     const reason = "reason" in outcome ? outcome.reason : "";
-    expect(reason).toContain("Automatisation");
-    expect(reason).not.toContain("Accessibilité");
+    expect(reason).toContain("Automation");
+    expect(reason).not.toContain("Accessibility");
   });
 
   it("le service garde la raison au lieu de la jeter", async () => {
@@ -331,6 +379,6 @@ describe("la raison d'un échec remonte jusqu'à la capsule", () => {
 
     const stashed = await service.trigger();
 
-    expect("reason" in stashed ? stashed.reason : undefined).toContain("Automatisation");
+    expect("reason" in stashed ? stashed.reason : undefined).toContain("Automation");
   });
 });

@@ -26,20 +26,20 @@ describe("overlay model", () => {
   });
 
   it("opens an overlay, resetting the selection", () => {
-    const opened = openOverlay(INITIAL_OVERLAY, "profile");
+    const opened = openOverlay("profile");
     expect(isActive(opened, "profile")).toBe(true);
     expect(hasOverlay(opened)).toBe(true);
     expect(opened.index).toBe(0);
   });
 
   it("closes an overlay", () => {
-    const closed = closeOverlay(openOverlay(INITIAL_OVERLAY, "model"));
+    const closed = closeOverlay(openOverlay("model"));
     expect(hasOverlay(closed)).toBe(false);
     expect(closed.active).toBeNull();
   });
 
   it("moves the selection within bounds and wraps", () => {
-    const opened = openOverlay(INITIAL_OVERLAY, "level");
+    const opened = openOverlay("level");
     expect(moveSelection(opened, 1, 3).index).toBe(1);
     expect(moveSelection(opened, -1, 3).index).toBe(2);
     // A list with no rows cannot move anywhere.
@@ -47,7 +47,7 @@ describe("overlay model", () => {
   });
 
   it("clamps the selection when the list shrinks", () => {
-    const opened = { ...openOverlay(INITIAL_OVERLAY, "palette"), index: 5 };
+    const opened = { ...openOverlay("palette"), index: 5 };
     expect(clampSelection(opened, 2).index).toBe(1);
     expect(clampSelection(opened, 0).index).toBe(0);
   });

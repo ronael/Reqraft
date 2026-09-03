@@ -7,10 +7,11 @@ import {
   type IpcMainLike,
 } from "@/apps/desktop/main/ipc.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
-import type {
-  OnboardingStateResponse,
-  CredentialSaveResponse,
-  OnboardingCompleteResponse,
+import {
+  CURRENT_WELCOME_TOUR_VERSION,
+  type OnboardingStateResponse,
+  type CredentialSaveResponse,
+  type OnboardingCompleteResponse,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
@@ -49,6 +50,7 @@ let saved: Config[];
 let stored: { provider: string; secret: string }[];
 let fileExists: boolean;
 let completed: number;
+let tourCompleted: number;
 
 interface HarnessOptions {
   env?: NodeJS.ProcessEnv;
@@ -61,6 +63,7 @@ function harness(options: HarnessOptions = {}): void {
   saved = [];
   stored = [];
   completed = 0;
+  tourCompleted = 0;
   fileExists = options.configFileExists ?? false;
   config = options.config ?? { ...DEFAULT_CONFIG };
 
@@ -87,6 +90,9 @@ function harness(options: HarnessOptions = {}): void {
     onOnboardingComplete: () => {
       completed += 1;
     },
+    onWelcomeTourComplete: () => {
+      tourCompleted += 1;
+    },
   });
 }
 
@@ -110,8 +116,38 @@ describe("onboarding:state", () => {
       config: { ...DEFAULT_CONFIG, defaultProvider: "anthropic" },
     });
 
-    expect(await state()).toMatchObject({ required: false });
+    expect(await state()).toMatchObject({ required: false, welcomeTourRequired: true });
     expect((await state()).blocker).toBeUndefined();
+  });
+
+  it("requires the tour until its current version has been completed", async () => {
+    harness({
+      configFileExists: true,
+      env: { ANTHROPIC_API_KEY: SECRET },
+      config: {
+        ...DEFAULT_CONFIG,
+        defaultProvider: "anthropic",
+        desktopWelcomeTourVersion: CURRENT_WELCOME_TOUR_VERSION,
+      },
+    });
+
+    expect(await state()).toMatchObject({ required: false, welcomeTourRequired: false });
+  });
+
+  it("persists tour completion and closes it only on a usable installation", async () => {
+    harness({
+      configFileExists: true,
+      env: { ANTHROPIC_API_KEY: SECRET },
+      config: { ...DEFAULT_CONFIG, defaultProvider: "anthropic" },
+    });
+
+    const next = (await ipcMain.invoke(
+      IPC_CHANNELS.onboardingTourComplete,
+    )) as OnboardingStateResponse;
+
+    expect(saved.at(-1)?.desktopWelcomeTourVersion).toBe(CURRENT_WELCOME_TOUR_VERSION);
+    expect(next.welcomeTourRequired).toBe(false);
+    expect(tourCompleted).toBe(1);
   });
 
   it("reports a saved configuration whose key never arrived", async () => {
@@ -187,7 +223,7 @@ describe("credential:save", () => {
         provider: "openai-compatible",
         secret: SECRET,
       }),
-    ).rejects.toThrow(/trousseau/);
+    ).rejects.toThrow(/keychain/);
     expect(stored).toEqual([]);
   });
 
@@ -268,7 +304,7 @@ describe("onboarding:complete", () => {
   it("refuses a provider that cannot be chosen", async () => {
     await expect(
       ipcMain.invoke(IPC_CHANNELS.onboardingComplete, { ...request, provider: "mock" }),
-    ).rejects.toThrow(/ne peut pas être choisi/);
+    ).rejects.toThrow(/cannot be chosen/);
     expect(saved).toEqual([]);
   });
 

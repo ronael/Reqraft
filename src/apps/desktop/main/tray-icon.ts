@@ -8,6 +8,8 @@
  * rose on error — the three tray states of DESKTOP.md lot 4.
  */
 
+import { t } from "./i18n.js";
+
 export type TrayState = "repos" | "busy" | "error";
 
 const ICONS: Record<TrayState, string> = {
@@ -23,12 +25,16 @@ export function trayIconPng(state: TrayState): Buffer {
   return Buffer.from(ICONS[state], "base64");
 }
 
-const TOOLTIPS: Record<TrayState, string> = {
-  repos: "Reqraft — prêt",
-  busy: "Reqraft — reformulation en cours…",
-  error: "Reqraft — une erreur est survenue",
+const TOOLTIP_KEYS: Record<TrayState, string> = {
+  repos: "main.trayIdle",
+  busy: "main.trayBusy",
+  error: "main.trayError",
 };
 
 export function trayTooltip(state: TrayState): string {
-  return TOOLTIPS[state];
+  return t(TOOLTIP_KEYS[state]);
+}
+
+export function suspendedTrayTooltip(): string {
+  return t("main.trayShortcutsSuspendedTooltip");
 }

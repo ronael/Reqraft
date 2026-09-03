@@ -11,11 +11,19 @@
  * Electron-free: the register function is injected.
  */
 
+import { t } from "./i18n.js";
+import type { ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
+
+export type { ShortcutIntent };
+
 export interface ShortcutCandidate {
-  /** Accelerator tried first: ⌥Espace, the product default (§3). */
+  /** Electron accelerator attempted for this intent. */
   accelerator: string;
-  /** What the shortcut opens: capture-first capsule, or free-input capsule. */
-  intent: "capture" | "input";
+  /**
+   * What the shortcut opens: capture-first capsule, free-input capsule, or the
+   * menu-bar popover.
+   */
+  intent: ShortcutIntent;
 }
 
 /**
@@ -63,8 +71,10 @@ export const EXCLUDED_ACCELERATORS: readonly string[] = [
 export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
   { accelerator: "Command+Control+R", intent: "capture" },
   { accelerator: "Command+Control+N", intent: "input" },
+  { accelerator: "Command+Control+O", intent: "popover" },
   { accelerator: "Command+Control+J", intent: "capture" },
   { accelerator: "Command+Control+K", intent: "input" },
+  { accelerator: "Command+Control+T", intent: "popover" },
 ];
 
 /**
@@ -86,9 +96,17 @@ export function isUsableAccelerator(accelerator: string): boolean {
 export type ShortcutRegistrar = (accelerator: string, handler: () => void) => boolean;
 
 export interface ShortcutResolution {
-  registered: { accelerator: string; label: string; intent: "capture" | "input" }[];
+  registered: { accelerator: string; label: string; intent: ShortcutIntent }[];
   /** Accelerators whose registration returned false — already taken. */
   rejected: string[];
+  /**
+   * Accelerators skipped because another intent of ours already holds them.
+   *
+   * Never handed to `register()`: one accelerator cannot reliably represent
+   * two commands. The combination is dropped for this intent, the fallback
+   * chain continues, and the collision is reported instead of being absorbed.
+   */
+  conflicts: string[];
 }
 
 /** Human-readable label with macOS symbols: `Control+Alt+R` → `⌃⌥R`. */
@@ -100,36 +118,62 @@ export function prettyAccelerator(accelerator: string): string {
     .replace("Alt", "⌥")
     .replace("Shift", "⇧")
     .replaceAll("+", "")
-    .replace("Space", "Espace");
+    .replace("Space", t("shortcut.space"));
+}
+
+/** The three intents, in the order they are served. */
+export const SHORTCUT_INTENTS = ["capture", "input", "popover"] as const;
+
+export interface ShortcutHandlers {
+  onCapture: () => void;
+  onInput: () => void;
+  /** Opens or hides the menu-bar popover without touching the tray icon. */
+  onPopover: () => void;
+}
+
+export type PreferredShortcuts = Partial<Record<ShortcutIntent, string>>;
+
+export interface ShortcutRegistryController {
+  unregisterAll(): void;
+  isSuspended(): boolean;
+  setSuspended(suspended: boolean): void;
 }
 
 /**
- * Registers one shortcut per intent (capture, free input), walking the
+ * Registers one shortcut per intent (capture, free input, popover), walking the
  * candidate list in order.
  *
  * `forced` (env `REQRAFT_SHORTCUT` in dev) pins a single accelerator for the
  * capture intent: an explicit choice that fails must be visible, not silently
- * worked around.
+ * worked around. It leaves the other two intents unregistered, which is the
+ * point — it is a development override for one combination, not a keymap.
  */
 export function registerShortcuts(
   register: ShortcutRegistrar,
-  handlers: { onCapture: () => void; onInput: () => void },
+  handlers: ShortcutHandlers,
   forced?: string,
-  preferred?: { capture?: string; input?: string },
+  preferred?: PreferredShortcuts,
 ): ShortcutResolution {
   const registered: ShortcutResolution["registered"] = [];
   const rejected: string[] = [];
-  const intents = new Set<"capture" | "input">(["capture", "input"]);
+  const conflicts: string[] = [];
+  const intents = new Set<ShortcutIntent>(SHORTCUT_INTENTS);
+  // What we already hold. Two intents may not depend on platform-specific
+  // behaviour for a second registration of the same accelerator.
+  const claimed = new Set<string>();
+  // A preferred choice can also be the first built-in candidate. If it is
+  // unavailable, retrying the exact same pair only duplicates the warning.
+  const attempted = new Set<string>();
 
   // A configured choice is tried first, then the built-in chain takes over —
   // so a shortcut that stops working (a newly installed application took it)
   // degrades to a working one instead of to nothing.
   const chosen: ShortcutCandidate[] = [];
-  if (preferred?.capture !== undefined && isUsableAccelerator(preferred.capture)) {
-    chosen.push({ accelerator: preferred.capture, intent: "capture" });
-  }
-  if (preferred?.input !== undefined && isUsableAccelerator(preferred.input)) {
-    chosen.push({ accelerator: preferred.input, intent: "input" });
+  for (const intent of SHORTCUT_INTENTS) {
+    const accelerator = preferred?.[intent];
+    if (accelerator !== undefined && isUsableAccelerator(accelerator)) {
+      chosen.push({ accelerator, intent });
+    }
   }
 
   const candidates = forced
@@ -137,21 +181,52 @@ export function registerShortcuts(
     : [...chosen, ...SHORTCUT_CANDIDATES];
 
   for (const candidate of candidates) {
-    if (!intents.has(candidate.intent)) {
-      continue;
-    }
-    const handler = candidate.intent === "capture" ? handlers.onCapture : handlers.onInput;
-    if (register(candidate.accelerator, handler)) {
-      registered.push({
-        accelerator: candidate.accelerator,
-        label: prettyAccelerator(candidate.accelerator),
-        intent: candidate.intent,
-      });
-      intents.delete(candidate.intent);
-    } else {
-      rejected.push(candidate.accelerator);
+    const attempt = `${candidate.intent}:${candidate.accelerator}`;
+    if (intents.has(candidate.intent) && !attempted.has(attempt)) {
+      attempted.add(attempt);
+      if (claimed.has(candidate.accelerator)) {
+        conflicts.push(candidate.accelerator);
+      } else if (register(candidate.accelerator, handlerFor(candidate.intent, handlers))) {
+        registered.push({
+          accelerator: candidate.accelerator,
+          label: prettyAccelerator(candidate.accelerator),
+          intent: candidate.intent,
+        });
+        claimed.add(candidate.accelerator);
+        intents.delete(candidate.intent);
+      } else {
+        rejected.push(candidate.accelerator);
+      }
     }
   }
 
-  return { registered, rejected };
+  return { registered, rejected, conflicts };
+}
+
+/**
+ * Replaces the active keymap without losing it when shortcuts are suspended.
+ * Electron refuses registrations while suspended, so settings changes briefly
+ * resume the registry, replace every binding, then restore the previous state.
+ */
+export function replaceShortcuts(
+  controller: ShortcutRegistryController,
+  register: ShortcutRegistrar,
+  handlers: ShortcutHandlers,
+  forced?: string,
+  preferred?: PreferredShortcuts,
+): ShortcutResolution {
+  const suspended = controller.isSuspended();
+  if (suspended) controller.setSuspended(false);
+  try {
+    controller.unregisterAll();
+    return registerShortcuts(register, handlers, forced, preferred);
+  } finally {
+    if (suspended) controller.setSuspended(true);
+  }
+}
+
+function handlerFor(intent: ShortcutIntent, handlers: ShortcutHandlers): () => void {
+  if (intent === "capture") return handlers.onCapture;
+  if (intent === "input") return handlers.onInput;
+  return handlers.onPopover;
 }

@@ -49,8 +49,15 @@ export function resolveProfile(requested: string): {
   return { profile, detected: false };
 }
 
-/** Built-in profiles first, in registry order, then local ones by file name. */
+/**
+ * Les intégrés d'abord, dans l'ordre du registre, puis ceux du projet, puis les
+ * profils personnels, par nom de fichier.
+ *
+ * Ceux du projet passent avant : dans un dépôt qui en fournit, ce sont eux la
+ * convention, et un sélecteur qui les enterre sous les profils personnels rate
+ * ce que « contexte par projet » veut dire.
+ */
 export function listProfiles(): PromptProfile[] {
   const catalog = getProfileCatalog();
-  return [...catalog.builtin, ...catalog.local];
+  return [...catalog.builtin, ...catalog.project, ...catalog.local];
 }

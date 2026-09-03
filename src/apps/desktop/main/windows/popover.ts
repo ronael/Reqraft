@@ -72,15 +72,16 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
       // Même faille que la capsule : `quitting` ne redescend jamais, et sur
       // macOS l'application survit sans fenêtre. Sortir en silence laisserait
       // l'icône de la barre de menus sans effet, sans rien dire.
-      console.error("Reqraft : popover détruit, relancez l'application.");
+      console.error("Reqraft: the popover was destroyed, restart the application.");
       return;
     }
+    const anchor = anchorBounds(trayBounds);
     const display = screen.getDisplayNearestPoint({
-      x: trayBounds.x,
-      y: trayBounds.y,
+      x: anchor.x,
+      y: anchor.y,
     });
     const { x, y } = placePopover(
-      trayBounds,
+      anchor,
       { width: POPOVER_WIDTH, height: POPOVER_HEIGHT },
       display.workArea,
     );
@@ -107,5 +108,28 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
         window.hide();
       }
     },
+  };
+}
+
+/**
+ * Where the popover hangs from when there is no icon rectangle to hang from.
+ *
+ * `Tray.getBounds()` answers a zero-sized rectangle on the platforms that do
+ * not expose the icon geometry, and the global shortcut can fire before the
+ * menu bar has laid the icon out. Placing at that rectangle would pin the
+ * panel to the top-left corner of the leftmost display, which reads as a bug.
+ * The top centre of the screen the cursor is on is where the icon would have
+ * been — near enough that the panel still looks anchored to the menu bar.
+ */
+function anchorBounds(trayBounds: Electron.Rectangle): Electron.Rectangle {
+  if (trayBounds.width > 0 && trayBounds.height > 0) {
+    return trayBounds;
+  }
+  const { workArea } = screen.getDisplayNearestPoint(screen.getCursorScreenPoint());
+  return {
+    x: Math.round(workArea.x + workArea.width / 2),
+    y: workArea.y,
+    width: 0,
+    height: 0,
   };
 }
