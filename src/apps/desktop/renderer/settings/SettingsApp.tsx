@@ -286,7 +286,7 @@ export function SettingsApp(): React.JSX.Element {
           </header>
 
           <div key={tab} className={settingsTabClass("settings-panel", tabSwitched)}>
-            {tab === "preferences" && (
+            {tab === "preferences" && config !== null && (
               <PreferencesTab
                 captureShortcut={captureShortcut}
                 inputShortcut={inputShortcut}
@@ -298,11 +298,11 @@ export function SettingsApp(): React.JSX.Element {
                 permissionDetail={permissionDetail()}
                 canReplace={permissions?.canReplace ?? null}
                 onAskPermissions={askPermissions}
-                chosen={config?.desktopShortcuts ?? {}}
+                chosen={config.desktopShortcuts ?? {}}
                 onChoose={(intent, accelerator) => {
                   patchConfig({
                     desktopShortcuts: {
-                      ...(config?.desktopShortcuts ?? {}),
+                      ...(config.desktopShortcuts ?? {}),
                       [intent]: accelerator === "" ? undefined : accelerator,
                     },
                   });
@@ -311,15 +311,20 @@ export function SettingsApp(): React.JSX.Element {
                   patchConfig({ desktopShortcuts: {} });
                 }}
                 onRetestShortcuts={() => {
-                  patchConfig({ desktopShortcuts: config?.desktopShortcuts ?? {} });
+                  patchConfig({ desktopShortcuts: config.desktopShortcuts ?? {} });
                 }}
-                uiLocale={config?.uiLocale ?? "auto"}
+                uiLocale={config.uiLocale}
                 onChooseLanguage={(preference) => {
                   patchConfig({ uiLocale: preference });
                 }}
                 onOpenWelcomeTour={() => {
                   void window.reqraft.openWelcomeTour();
                 }}
+                timeoutMs={config.timeoutMs}
+                maxOutputTokens={config.maxOutputTokens}
+                fidelityMode={config.fidelityMode}
+                outputLanguage={config.outputLanguage}
+                onPatchConfig={patchConfig}
               />
             )}
 

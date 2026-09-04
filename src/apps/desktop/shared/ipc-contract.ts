@@ -41,6 +41,10 @@ export { AUTO_PROFILE_ID };
  */
 export const REPROMPT_LEVEL_IDS = ["minimal", "standard", "complete"] as const;
 
+/** Fidelity values exposed to the renderer without importing the core. */
+export const FIDELITY_MODE_IDS = ["permissive", "balanced", "strict"] as const;
+export type DesktopFidelityMode = (typeof FIDELITY_MODE_IDS)[number];
+
 export const RepromptStartRequestSchema = z
   .object({
     input: z.string().min(1),

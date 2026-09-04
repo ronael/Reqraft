@@ -3676,6 +3676,14 @@ kbd {
   width: min(200px, 30vw);
 }
 
+.settings-row-error {
+  display: block;
+  margin-top: 6px;
+  color: #fda4af;
+  font-size: 11px;
+  line-height: 16px;
+}
+
 .provider-form {
   margin-top: 10px;
 }
@@ -3819,6 +3827,23 @@ kbd {
 .settings-row-control:not(.shortcut-control) > .settings-input {
   width: min(220px, 30vw);
   flex-shrink: 0;
+}
+
+.settings-row-control:not(.shortcut-control) > .settings-input.settings-input-compact {
+  width: min(120px, 20vw);
+}
+
+.settings-row-control-language {
+  width: min(360px, 42vw);
+  flex-wrap: wrap;
+}
+
+.settings-row-control.settings-row-control-language > .settings-select {
+  width: 150px;
+}
+
+.settings-row-control.settings-row-control-language > .settings-input {
+  width: min(190px, 24vw);
 }
 
 .settings-group-foot {

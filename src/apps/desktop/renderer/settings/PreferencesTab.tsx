@@ -1,5 +1,9 @@
+import { useId, useState } from "react";
 import {
   Compass,
+  Gauge,
+  Globe,
+  Hash,
   Languages,
   PanelTop,
   RefreshCw,
@@ -7,10 +11,17 @@ import {
   ShieldCheck,
   SquarePen,
   TextSelect,
+  Timer,
   type LucideIcon,
 } from "lucide-react";
 import { useT } from "../shared/i18n.js";
-import { SHORTCUT_PRESETS, type ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
+import {
+  FIDELITY_MODE_IDS,
+  SHORTCUT_PRESETS,
+  type ConfigWriteRequest,
+  type DesktopFidelityMode,
+  type ShortcutIntent,
+} from "@/apps/desktop/shared/ipc-contract.js";
 import { formatAccelerator } from "../shared/shortcut-labels.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage } from "../shared/InlineMessage.js";
@@ -36,6 +47,11 @@ export interface PreferencesTabProps {
   uiLocale: UiLocalePreference;
   onChooseLanguage(preference: UiLocalePreference): void;
   onOpenWelcomeTour(): void;
+  timeoutMs: number;
+  maxOutputTokens?: number;
+  fidelityMode: DesktopFidelityMode;
+  outputLanguage: string;
+  onPatchConfig(patch: ConfigWriteRequest): void;
 }
 
 /** Onglet Réglages (R4) : raccourcis et conflits (§5.5), langue, permissions. */
@@ -125,6 +141,43 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
                 </Button>
               </span>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <section className="settings-section">
+        <div className="settings-section-head">
+          <h3 className="settings-subhead">{t("settings.preferences.generationGroup")}</h3>
+        </div>
+        <div className="settings-group">
+          <div className="settings-group-rows">
+            <FidelityRow
+              chosen={props.fidelityMode}
+              onChoose={(fidelityMode) => {
+                props.onPatchConfig({ fidelityMode });
+              }}
+            />
+            <OutputLanguageRow
+              key={`output-language:${props.outputLanguage}`}
+              value={props.outputLanguage}
+              onCommit={(outputLanguage) => {
+                props.onPatchConfig({ outputLanguage });
+              }}
+            />
+            <TimeoutRow
+              key={`timeout:${String(props.timeoutMs)}`}
+              timeoutMs={props.timeoutMs}
+              onCommit={(timeoutMs) => {
+                props.onPatchConfig({ timeoutMs });
+              }}
+            />
+            <MaxOutputTokensRow
+              key={`max-output-tokens:${String(props.maxOutputTokens ?? "auto")}`}
+              value={props.maxOutputTokens}
+              onCommit={(maxOutputTokens) => {
+                props.onPatchConfig({ maxOutputTokens });
+              }}
+            />
           </div>
         </div>
       </section>
@@ -246,6 +299,264 @@ function LanguageRow(
         </select>
       </span>
     </div>
+  );
+}
+
+function EditableRow(
+  props: Readonly<{
+    icon: LucideIcon;
+    title: string;
+    detail: string;
+    controlId: string;
+    errorId: string;
+    error: string | null;
+    controlClassName?: string;
+    children: React.ReactNode;
+  }>,
+): React.JSX.Element {
+  const Icon = props.icon;
+  return (
+    <div className="settings-group-row">
+      <span className="settings-row-icon">
+        <Icon size={18} strokeWidth={1.7} aria-hidden />
+      </span>
+      <span className="settings-group-copy">
+        <label className="settings-row-title" htmlFor={props.controlId}>
+          {props.title}
+        </label>
+        <span className="settings-row-detail">{props.detail}</span>
+        {props.error !== null && (
+          <span className="settings-row-error" id={props.errorId} role="alert">
+            {props.error}
+          </span>
+        )}
+      </span>
+      <span className={["settings-row-control", props.controlClassName].filter(Boolean).join(" ")}>
+        {props.children}
+      </span>
+    </div>
+  );
+}
+
+function FidelityRow(
+  props: Readonly<{
+    chosen: DesktopFidelityMode;
+    onChoose(mode: DesktopFidelityMode): void;
+  }>,
+): React.JSX.Element {
+  const t = useT();
+  const controlId = useId();
+  const labels: Record<DesktopFidelityMode, string> = {
+    strict: t("settings.fidelityStrict"),
+    balanced: t("settings.fidelityBalanced"),
+    permissive: t("settings.fidelityPermissive"),
+  };
+  return (
+    <EditableRow
+      icon={Gauge}
+      title={t("settings.fidelity")}
+      detail={t("settings.fidelityDetail")}
+      controlId={controlId}
+      errorId={`${controlId}-error`}
+      error={null}
+    >
+      <select
+        id={controlId}
+        className="settings-select"
+        value={props.chosen}
+        onChange={(event) => {
+          props.onChoose(event.target.value as DesktopFidelityMode);
+        }}
+      >
+        {FIDELITY_MODE_IDS.map((mode) => (
+          <option key={mode} value={mode}>
+            {labels[mode]}
+          </option>
+        ))}
+      </select>
+    </EditableRow>
+  );
+}
+
+function TimeoutRow(
+  props: Readonly<{ timeoutMs: number; onCommit(timeoutMs: number): void }>,
+): React.JSX.Element {
+  const t = useT();
+  const controlId = useId();
+  const errorId = `${controlId}-error`;
+  const [draft, setDraft] = useState(() => String(props.timeoutMs / 1000));
+  const [error, setError] = useState<string | null>(null);
+
+  const commit = (): void => {
+    const seconds = Number(draft.trim().replace(",", "."));
+    const milliseconds = Math.round(seconds * 1000);
+    if (draft.trim() === "" || !Number.isFinite(seconds) || milliseconds <= 0) {
+      setError(t("settings.timeoutInvalid"));
+      return;
+    }
+    setError(null);
+    if (milliseconds !== props.timeoutMs) props.onCommit(milliseconds);
+  };
+
+  return (
+    <EditableRow
+      icon={Timer}
+      title={t("settings.timeout")}
+      detail={t("settings.timeoutDetail")}
+      controlId={controlId}
+      errorId={errorId}
+      error={error}
+    >
+      <input
+        id={controlId}
+        className="settings-input settings-input-compact"
+        type="number"
+        inputMode="decimal"
+        min={1}
+        step={1}
+        value={draft}
+        aria-invalid={error !== null}
+        aria-describedby={error === null ? undefined : errorId}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          setError(null);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+      />
+      <span className="settings-row-detail">{t("settings.timeoutUnit")}</span>
+    </EditableRow>
+  );
+}
+
+function MaxOutputTokensRow(
+  props: Readonly<{ value?: number; onCommit(value: number | undefined): void }>,
+): React.JSX.Element {
+  const t = useT();
+  const controlId = useId();
+  const errorId = `${controlId}-error`;
+  const [draft, setDraft] = useState(() => (props.value === undefined ? "" : String(props.value)));
+  const [error, setError] = useState<string | null>(null);
+
+  const commit = (): void => {
+    const raw = draft.trim();
+    if (raw === "") {
+      setError(null);
+      if (props.value !== undefined) props.onCommit(undefined);
+      return;
+    }
+    const parsed = Number(raw);
+    if (!Number.isInteger(parsed) || parsed <= 0) {
+      setError(t("settings.maxOutputTokensInvalid"));
+      return;
+    }
+    setError(null);
+    if (parsed !== props.value) props.onCommit(parsed);
+  };
+
+  return (
+    <EditableRow
+      icon={Hash}
+      title={t("settings.maxOutputTokens")}
+      detail={t("settings.maxOutputTokensDetail")}
+      controlId={controlId}
+      errorId={errorId}
+      error={error}
+    >
+      <input
+        id={controlId}
+        className="settings-input settings-input-compact"
+        type="number"
+        inputMode="numeric"
+        min={1}
+        step={1}
+        value={draft}
+        placeholder={t("settings.maxOutputTokensAuto")}
+        aria-invalid={error !== null}
+        aria-describedby={error === null ? undefined : errorId}
+        onChange={(event) => {
+          setDraft(event.target.value);
+          setError(null);
+        }}
+        onBlur={commit}
+        onKeyDown={(event) => {
+          if (event.key === "Enter") event.currentTarget.blur();
+        }}
+      />
+    </EditableRow>
+  );
+}
+
+function OutputLanguageRow(
+  props: Readonly<{ value: string; onCommit(value: string): void }>,
+): React.JSX.Element {
+  const t = useT();
+  const controlId = useId();
+  const customId = `${controlId}-custom`;
+  const errorId = `${controlId}-error`;
+  const [custom, setCustom] = useState(() => props.value !== "auto");
+  const [draft, setDraft] = useState(() => (props.value === "auto" ? "" : props.value));
+  const [error, setError] = useState<string | null>(null);
+
+  const commit = (): void => {
+    const value = draft.trim();
+    if (value === "") {
+      setError(t("settings.outputLanguageInvalid"));
+      return;
+    }
+    setError(null);
+    if (value !== props.value) props.onCommit(value);
+  };
+
+  return (
+    <EditableRow
+      icon={Globe}
+      title={t("settings.outputLanguage")}
+      detail={t("settings.outputLanguageDetail")}
+      controlId={controlId}
+      errorId={errorId}
+      error={error}
+      controlClassName="settings-row-control-language"
+    >
+      <select
+        id={controlId}
+        className="settings-select"
+        value={custom ? "custom" : "auto"}
+        onChange={(event) => {
+          if (event.target.value === "custom") {
+            setCustom(true);
+            return;
+          }
+          setCustom(false);
+          setError(null);
+          if (props.value !== "auto") props.onCommit("auto");
+        }}
+      >
+        <option value="auto">{t("settings.outputLanguageAuto")}</option>
+        <option value="custom">{t("settings.outputLanguageCustom")}</option>
+      </select>
+      {custom && (
+        <input
+          id={customId}
+          className="settings-input"
+          value={draft}
+          aria-label={t("settings.outputLanguageCustomLabel")}
+          placeholder={t("settings.outputLanguagePlaceholder")}
+          aria-invalid={error !== null}
+          aria-describedby={error === null ? undefined : errorId}
+          onChange={(event) => {
+            setDraft(event.target.value);
+            setError(null);
+          }}
+          onBlur={commit}
+          onKeyDown={(event) => {
+            if (event.key === "Enter") event.currentTarget.blur();
+          }}
+        />
+      )}
+    </EditableRow>
   );
 }
 

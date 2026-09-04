@@ -3,7 +3,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { ExecuteRepromptInput, ExecuteRepromptResult } from "@/application/reprompt.js";
 import type { Config } from "@/config/schema.js";
 import { REPROMPT_LEVELS } from "@/core/levels.js";
-import type { RepromptResult } from "@/core/types.js";
+import { FIDELITY_MODES, type RepromptResult } from "@/core/types.js";
 import { registerIpcHandlers, sanitizeConfigForRenderer } from "@/apps/desktop/main/ipc.js";
 import { formatDoctorReport } from "@/apps/desktop/main/doctor.js";
 import {
@@ -15,6 +15,7 @@ import { mainLocale, setMainLocale } from "@/apps/desktop/main/i18n.js";
 import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
 import { version } from "@/version.js";
 import {
+  FIDELITY_MODE_IDS,
   REPROMPT_LEVEL_IDS,
   type DoctorReport,
   type RepromptStartResponse,
@@ -81,6 +82,10 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
 
   it("les niveaux du contrat renderer ne dérivent pas du cœur", () => {
     expect([...REPROMPT_LEVEL_IDS]).toEqual([...REPROMPT_LEVELS]);
+  });
+
+  it("les modes de fidélité du renderer ne dérivent pas du cœur", () => {
+    expect([...FIDELITY_MODE_IDS]).toEqual([...FIDELITY_MODES]);
   });
 
   it("enregistre un handler pour chaque canal requête du contrat", () => {

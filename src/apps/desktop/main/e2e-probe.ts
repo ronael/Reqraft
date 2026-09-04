@@ -75,6 +75,7 @@ export interface E2eScenarioReport {
   ui?: CapsuleUiReport;
   popoverUi?: PopoverUiReport;
   diagnosticUi?: DiagnosticUiReport;
+  preferencesUi?: PreferencesUiReport;
   /** Les accélérateurs que le menu applicatif détient réellement. */
   menuAccelerators?: string[];
   error?: string;
@@ -88,6 +89,15 @@ export interface DiagnosticUiReport {
   rerunVisible: boolean;
   statusbarVisible: boolean;
   documentOverflows: boolean;
+  shot?: string;
+}
+
+export interface PreferencesUiReport {
+  window: { width: number; height: number };
+  generationRows: number;
+  generationVisible: boolean;
+  customLanguageVisible: boolean;
+  panelOverflowsHorizontally: boolean;
   shot?: string;
 }
 
@@ -146,12 +156,65 @@ export async function runE2eScenario(
         return { name, popoverUi: await runPopoverErrorScenario(popoverTargets(targets)) };
       case "settings-diagnostic":
         return { name, diagnosticUi: await diagnosticScenario(targets) };
+      case "settings-preferences":
+        return { name, preferencesUi: await preferencesScenario(targets) };
       default:
         return { name, error: `unknown scenario: ${name}` };
     }
   } catch (cause) {
     return { name, error: cause instanceof Error ? cause.message : String(cause) };
   }
+}
+
+async function preferencesScenario(targets: E2eScenarioTargets): Promise<PreferencesUiReport> {
+  targets.openSettings("preferences");
+  const target = targets.settingsWindow();
+  await waitForRenderer(
+    target,
+    `document.querySelector(".settings-input-compact") !== null`,
+    "generation preferences",
+  );
+  await target.webContents.executeJavaScript(
+    `(() => {
+      const select = [...document.querySelectorAll("select")].find((node) => node.querySelector('option[value="custom"]') !== null);
+      if (select === undefined) return;
+      select.value = "custom";
+      select.dispatchEvent(new Event("change", { bubbles: true }));
+    })()`,
+    true,
+  );
+  await waitForRenderer(
+    target,
+    `document.querySelector(".settings-row-control-language > .settings-input") !== null`,
+    "custom output language",
+  );
+  await target.webContents.executeJavaScript(
+    `document.querySelector(".settings-input-compact")?.closest(".settings-section")?.scrollIntoView({ block: "center" })`,
+    true,
+  );
+  await new Promise((resolve) => setTimeout(resolve, 200));
+  const measured = (await target.webContents.executeJavaScript(
+    `(() => {
+      const input = document.querySelector(".settings-input-compact");
+      const section = input?.closest(".settings-section");
+      const panel = document.querySelector(".settings-panel");
+      const rect = section?.getBoundingClientRect();
+      return {
+        window: { width: window.innerWidth, height: window.innerHeight },
+        generationRows: section?.querySelectorAll(".settings-group-row").length ?? 0,
+        generationVisible: rect !== undefined && rect.top >= 0 && rect.bottom <= window.innerHeight,
+        customLanguageVisible: document.querySelector(".settings-row-control-language > .settings-input") !== null,
+        panelOverflowsHorizontally: panel !== null && panel.scrollWidth > panel.clientWidth + 1,
+      };
+    })()`,
+    true,
+  )) as Omit<PreferencesUiReport, "shot">;
+  const directory = process.env[DESKTOP_E2E_SHOTS];
+  if (directory === undefined || directory === "") return measured;
+  await mkdir(directory, { recursive: true });
+  const shot = path.join(directory, "settings-preferences.png");
+  await writeFile(shot, (await target.webContents.capturePage()).toPNG());
+  return { ...measured, shot };
 }
 
 /** Ouvre et mesure le Diagnostic dans la vraie fenêtre de réglages. */

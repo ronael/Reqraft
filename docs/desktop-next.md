@@ -117,8 +117,9 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
   l'actualiser. Une réponse obsolète est ignorée. Les catalogues absents, vides
   ou en erreur gardent le champ d'identifiant manuel, et un modèle courant qui
   n'apparaît pas dans la liste n'est jamais effacé automatiquement.
-- Exposer `timeoutMs`, `maxOutputTokens`, `fidelityMode`, `outputLanguage` —
-  tous dans le schéma de config, aucun n'est éditable au desktop aujourd'hui.
+- **Livré : réglages de génération avancés.** `timeoutMs`, `maxOutputTokens`,
+  `fidelityMode` et `outputLanguage` sont éditables dans l'onglet Général, avec
+  validation inline et conversion secondes/millisecondes à la frontière UI.
 
 ### Profils
 

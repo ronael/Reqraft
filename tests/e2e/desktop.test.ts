@@ -80,6 +80,14 @@ interface DesktopE2ePayload {
       documentOverflows: boolean;
       shot?: string;
     };
+    preferencesUi?: {
+      window: { width: number; height: number };
+      generationRows: number;
+      generationVisible: boolean;
+      customLanguageVisible: boolean;
+      panelOverflowsHorizontally: boolean;
+      shot?: string;
+    };
     menuAccelerators?: string[];
     error?: string;
   };
@@ -456,6 +464,31 @@ describeElectron("settings diagnostic — vraie fenêtre", () => {
       expect(ui.rerunVisible).toBe(true);
       expect(ui.statusbarVisible).toBe(true);
       expect(ui.documentOverflows).toBe(false);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+});
+
+describeElectron("settings preferences — vraie fenêtre", () => {
+  it(
+    "garde les réglages de génération alignés à 900 × 640",
+    async () => {
+      const payload = await runDesktopProbe(
+        {
+          REQRAFT_DESKTOP_E2E_SCENARIO: "settings-preferences",
+          REQRAFT_DESKTOP_E2E_SHOTS: process.env.REQRAFT_DESKTOP_E2E_SHOTS ?? "",
+        },
+        MOCK_CONFIG,
+      );
+
+      expect(payload.scenario?.error).toBeUndefined();
+      const ui = payload.scenario?.preferencesUi;
+      if (ui === undefined) throw new Error("les préférences n'ont rendu aucune mesure");
+      expect(ui.window).toEqual({ width: 900, height: 640 });
+      expect(ui.generationRows).toBe(4);
+      expect(ui.generationVisible).toBe(true);
+      expect(ui.customLanguageVisible).toBe(true);
+      expect(ui.panelOverflowsHorizontally).toBe(false);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );
