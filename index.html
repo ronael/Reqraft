@@ -9,7 +9,7 @@
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="Reqraft" />
 <meta property="og:title" content="Reqraft — Shape the request. Keep the intent." />
-<meta property="og:description" content="Download the Reqraft desktop beta for macOS, or use the open-source CLI to turn rough requests into clear prompts." />
+<meta property="og:description" content="Download Reqraft for macOS, Windows or Linux, or use the open-source CLI to turn rough requests into clear prompts." />
 <meta property="og:url" content="https://ronael.github.io/Reqraft/" />
 <meta property="og:image" content="https://ronael.github.io/Reqraft/docs/assets/reqraft-social.png" />
 <meta property="og:image:width" content="1280" />
@@ -17,7 +17,7 @@
 <meta property="og:image:alt" content="Reqraft — Shape the request. Keep the intent." />
 <meta name="twitter:card" content="summary_large_image" />
 <meta name="twitter:title" content="Reqraft — Shape the request. Keep the intent." />
-<meta name="twitter:description" content="Download the Reqraft desktop beta for macOS, or use the open-source CLI to turn rough requests into clear prompts." />
+<meta name="twitter:description" content="Download Reqraft for macOS, Windows or Linux, or use the open-source CLI to turn rough requests into clear prompts." />
 <meta name="twitter:image" content="https://ronael.github.io/Reqraft/docs/assets/reqraft-social.png" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -102,6 +102,11 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .download-btn .download-copy{display:flex;flex-direction:column;gap:1px;line-height:1.2}
 .download-btn strong{font-size:12.5px;font-weight:600}
 .download-btn small{font-family:var(--mono);font-size:9.5px;color:#66616f}
+.download-btn.platform-ready .download-icon{animation:download-arrow-story .52s cubic-bezier(.32,.72,0,1) both}
+.download-btn.platform-ready .download-copy strong{animation:download-copy-story .42s .1s cubic-bezier(.32,.72,0,1) both}
+.download-btn.platform-ready .download-copy small{animation:download-copy-story .42s .2s cubic-bezier(.32,.72,0,1) both}
+@keyframes download-arrow-story{0%{opacity:0;transform:translateY(-7px)}55%{opacity:1;transform:translateY(3px)}100%{opacity:1;transform:none}}
+@keyframes download-copy-story{from{opacity:0;transform:translateX(-5px)}to{opacity:1;transform:none}}
 .gh-link{font-size:13.5px;color:var(--tx2);display:inline-flex;gap:7px;align-items:center;border-bottom:1px solid var(--line2);padding-bottom:2px;transition:color .2s,border-color .2s}
 .gh-link:hover{color:#fff;border-color:var(--tx3)}
 
@@ -364,7 +369,10 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .release-meta{font-family:var(--mono);font-size:11px;line-height:1.8;color:var(--tx3)}
 .release-meta strong{display:block;color:var(--rq3);font-weight:500;letter-spacing:.08em;text-transform:uppercase}
 .download-list{margin-top:54px;border-top:1px solid var(--line2)}
-.download-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(240px,1.4fr) auto;gap:26px;align-items:center;padding:22px 0;border-bottom:1px solid var(--line)}
+.download-row{display:grid;grid-template-columns:minmax(150px,.8fr) minmax(240px,1.4fr) auto;gap:26px;align-items:center;padding:22px 12px;border-bottom:1px solid var(--line);transition:background .35s ease}
+.download-row.is-platform-match{background:linear-gradient(90deg,rgba(139,92,246,.1),transparent 72%)}
+.download-row.is-platform-match .platform-mark{animation:platform-confirm .5s .28s cubic-bezier(.32,.72,0,1) both;border-color:var(--rq-line);color:var(--rq3)}
+@keyframes platform-confirm{from{opacity:.35;transform:scale(.88)}to{opacity:1;transform:none}}
 .platform-title{display:flex;align-items:center;gap:11px;color:#fff;font-size:15px;font-weight:500}
 .platform-mark{width:30px;height:30px;display:grid;place-items:center;border:1px solid var(--line2);border-radius:7px;background:rgba(255,255,255,.025);font-family:var(--mono);font-size:10px;color:var(--tx2)}
 .platform-copy{font-size:13px;color:var(--tx3)}
@@ -471,11 +479,11 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   <div class="hero-fade"></div>
   <div class="wrap hero-grid">
     <div>
-      <div class="alpha-status"><span>Desktop beta</span><span class="phase">v0.6.0</span></div>
+      <div class="alpha-status"><span data-release-status>Desktop preview</span><span class="phase">v0.6.0</span></div>
       <h1>Shape the request.<br><em>Keep the intent.</em></h1>
-      <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>now from a native macOS app or the open-source CLI.</strong></p>
+      <p class="hero-sub">Reqraft takes the rough thing you were about to send an AI and turns it into a clear instruction — <strong>now from a native desktop app or the open-source CLI.</strong></p>
       <div class="hero-cta">
-        <a class="download-btn" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-mac-arm64.dmg" aria-label="Download Reqraft desktop beta for macOS on Apple silicon"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Download for macOS</strong><small>Apple silicon · beta</small></span></a>
+        <a class="download-btn" href="#download" data-platform-download aria-label="View Reqraft desktop downloads"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Choose a desktop build</strong><small>Detecting your platform</small></span></a>
         <button class="install" id="installHero" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpHero">copy</span></button>
         <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">View on GitHub <span>→</span></a>
       </div>
@@ -723,35 +731,35 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   <div class="wrap">
     <div class="download-head rv">
       <div>
-        <div class="kick"><b>Beta</b> Desktop downloads</div>
+        <div class="kick"><b>Beta + Alpha</b> Desktop downloads</div>
         <h2>Try Reqraft<br><em>on your desktop.</em></h2>
       </div>
       <div class="release-meta"><strong>v0.6.0</strong>macOS is the tested desktop release. Windows and Linux builds are available for early compatibility testing.</div>
     </div>
 
     <div class="download-list rv">
-      <div class="download-row">
+      <div class="download-row" data-platform-row="macos">
         <div class="platform-title"><span class="platform-mark">mac</span><span>macOS</span></div>
-        <div class="platform-copy"><strong>Apple silicon</strong> · Native desktop app<div class="platform-state tested">Tested beta</div></div>
+        <div class="platform-copy"><strong>Apple silicon</strong> · Native desktop app<div class="platform-state tested">Beta</div></div>
         <div class="download-actions">
-          <a class="download-link primary" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-mac-arm64.dmg"><span aria-hidden="true">&#8595;</span> DMG</a>
-          <a class="download-link" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-mac-arm64.zip"><span aria-hidden="true">&#8595;</span> ZIP</a>
+          <a class="download-link" data-platform-link href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-mac-arm64.dmg"><span aria-hidden="true">&#8595;</span> DMG</a>
+          <a class="download-link" data-platform-link href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-mac-arm64.zip"><span aria-hidden="true">&#8595;</span> ZIP</a>
         </div>
       </div>
-      <div class="download-row">
+      <div class="download-row" data-platform-row="windows">
         <div class="platform-title"><span class="platform-mark">win</span><span>Windows</span></div>
-        <div class="platform-copy"><strong>x64</strong> · Early compatibility build<div class="platform-state">Experimental</div></div>
-        <div class="download-actions"><a class="download-link" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-win-x64-experimental.exe"><span aria-hidden="true">&#8595;</span> EXE</a></div>
+        <div class="platform-copy"><strong>x64</strong> · Early compatibility build<div class="platform-state">Alpha</div></div>
+        <div class="download-actions"><a class="download-link" data-platform-link href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-win-x64-experimental.exe"><span aria-hidden="true">&#8595;</span> EXE</a></div>
       </div>
-      <div class="download-row">
+      <div class="download-row" data-platform-row="linux">
         <div class="platform-title"><span class="platform-mark">linux</span><span>Linux</span></div>
-        <div class="platform-copy"><strong>x86_64</strong> · Early compatibility build<div class="platform-state">Experimental</div></div>
-        <div class="download-actions"><a class="download-link" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-linux-x86_64-experimental.AppImage"><span aria-hidden="true">&#8595;</span> AppImage</a></div>
+        <div class="platform-copy"><strong>x86_64</strong> · Early compatibility build<div class="platform-state">Alpha</div></div>
+        <div class="download-actions"><a class="download-link" data-platform-link href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-linux-x86_64-experimental.AppImage"><span aria-hidden="true">&#8595;</span> AppImage</a></div>
       </div>
     </div>
 
     <div class="download-notice rv">
-      <span>Beta builds are currently unsigned. macOS may ask you to confirm the first launch.</span>
+      <span>Desktop builds are currently unsigned. Your system may ask you to confirm the first launch.</span>
       <a href="https://github.com/ronael/Reqraft/releases/tag/v0.6.0" target="_blank" rel="noopener">Release notes and all files →</a>
     </div>
   </div>
@@ -799,7 +807,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
     <div class="rv">
       <h2>Write it rough.<br><em>Send it right.</em></h2>
       <div class="row">
-        <a class="download-btn" href="https://github.com/ronael/Reqraft/releases/download/v0.6.0/Reqraft-0.6.0-mac-arm64.dmg" aria-label="Download Reqraft desktop beta for macOS on Apple silicon"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Download for macOS</strong><small>Apple silicon · beta</small></span></a>
+        <a class="download-btn" href="#download" data-platform-download aria-label="View Reqraft desktop downloads"><span class="download-icon" aria-hidden="true">&#8595;</span><span class="download-copy"><strong>Choose a desktop build</strong><small>Detecting your platform</small></span></a>
         <button class="install" id="installFinal" type="button"><span class="dollar">$</span>npm install -g @reqraft/cli<span class="cp" id="cpFinal">copy</span></button>
         <a class="gh-link" href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">github.com/ronael/Reqraft <span>→</span></a>
       </div>
@@ -825,6 +833,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   </div>
 </footer>
 
+<script type="module" src="./docs/assets/download-platform.js"></script>
 <script>
 (() => {
 "use strict";
