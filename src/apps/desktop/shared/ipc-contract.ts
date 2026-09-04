@@ -1,6 +1,11 @@
 import { z } from "zod";
 import { RepromptLevelSchema } from "@/core/levels.js";
-import { ConfigSchema, type Config, type ConfigKey } from "@/config/schema.js";
+import {
+  ConfigSchema,
+  DesktopShortcutsConfigSchema,
+  type Config,
+  type ConfigKey,
+} from "@/config/schema.js";
 import type { RepromptResult } from "@/core/types.js";
 import type { UiError } from "@/shared/errors.js";
 import {
@@ -15,6 +20,11 @@ import {
   OPENAI_COMPATIBLE_PROVIDER_ID,
 } from "@/providers/catalog.js";
 import type { SetupBlocker } from "@/config/setup.js";
+import {
+  FIDELITY_MODE_IDS,
+  REPROMPT_LEVEL_IDS,
+  type FidelityModeId,
+} from "@/shared/reprompt-contract.js";
 
 /**
  * Re-exported so the renderer can recognise the `auto` sentinel without
@@ -35,15 +45,15 @@ export { AUTO_PROFILE_ID };
 // --- Renderer → main, requests ------------------------------------------------
 
 /**
- * Level cycle for the capsule's ⇥ shortcut. Mirrors `core/levels.ts`
- * REPROMPT_LEVELS — the renderer may not import the core (§4.2), and a unit
- * test fails if the two lists drift.
+ * Level cycle for the capsule's ⇥ shortcut, and the fidelity scale beside it.
+ *
+ * Re-exported, no longer restated: both lists are declared once in
+ * `@/shared/reprompt-contract.js`, which the core reads too. The renderer may
+ * not import the core (§4.2), so it reads them from here — but there is only
+ * one list, so there is nothing left to drift.
  */
-export const REPROMPT_LEVEL_IDS = ["minimal", "standard", "complete"] as const;
-
-/** Fidelity values exposed to the renderer without importing the core. */
-export const FIDELITY_MODE_IDS = ["permissive", "balanced", "strict"] as const;
-export type DesktopFidelityMode = (typeof FIDELITY_MODE_IDS)[number];
+export { REPROMPT_LEVEL_IDS, FIDELITY_MODE_IDS };
+export type DesktopFidelityMode = FidelityModeId;
 
 export const RepromptStartRequestSchema = z
   .object({
@@ -119,7 +129,45 @@ export const LocaleReadRequestSchema = z
   .optional();
 export type LocaleReadRequest = z.infer<typeof LocaleReadRequestSchema>;
 
-export const ConfigWriteRequestSchema = ConfigSchema.partial();
+/**
+ * Ce qu'un écran de réglages a le droit d'écrire, et rien d'autre.
+ *
+ * Le contrat était `ConfigSchema.partial()`. `ConfigSchema` est `passthrough` :
+ * toute clé traversait, et `partial()` n'en retirait aucune. Un renderer — que
+ * tout le reste du contrat traite comme non fiable — pouvait donc réécrire
+ * `providers`, dont les en-têtes personnalisés portent un jeton
+ * d'authentification, rallumer `telemetry`, ou remettre à zéro l'état que le
+ * processus principal tient lui-même (parcours de bienvenue, dernière version
+ * annoncée, fournisseurs à lire dans le trousseau).
+ *
+ * La liste ci-dessous est celle des champs que les écrans Desktop passent
+ * réellement à `window.reqraft.writeConfig` : `ModelsTab` (fournisseur, modèle,
+ * niveau), `ProfilesTab` (profil par défaut), `PreferencesTab` (fidélité,
+ * langue de sortie, délai, tokens maximum) et `SettingsApp` (langue de
+ * l'interface, raccourcis). Les autres réglages du fichier restent au CLI, et
+ * les fournisseurs gardent leurs canaux dédiés (`providers:save`,
+ * `providers:delete`), qui savent, eux, préserver les en-têtes.
+ *
+ * `strict()` refuse toute clé inconnue plutôt que de la laisser passer : un
+ * champ ajouté au fichier de configuration n'est pas éditable ici tant qu'il
+ * n'a pas été nommé, ce qui est le sens du refus par défaut.
+ */
+export const ConfigWriteRequestSchema = ConfigSchema.pick({
+  defaultProvider: true,
+  defaultModel: true,
+  defaultProfile: true,
+  defaultLevel: true,
+  fidelityMode: true,
+  outputLanguage: true,
+  timeoutMs: true,
+  maxOutputTokens: true,
+  uiLocale: true,
+})
+  // La version stricte de la même forme : un intent inconnu sous
+  // `desktopShortcuts` serait enregistré sans jamais être enregistrable.
+  .extend({ desktopShortcuts: DesktopShortcutsConfigSchema.strict().optional() })
+  .partial()
+  .strict();
 export type ConfigWriteRequest = z.infer<typeof ConfigWriteRequestSchema>;
 
 // --- Renderer → main, responses -----------------------------------------------

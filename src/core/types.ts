@@ -1,10 +1,16 @@
 import type { RepromptLevel } from "./levels.js";
+import {
+  DEFAULT_FIDELITY_MODE_ID,
+  FIDELITY_MODE_IDS,
+  type FidelityModeId,
+} from "@/shared/reprompt-contract.js";
 
 export type { RepromptLevel };
 
-export const FIDELITY_MODES = ["permissive", "balanced", "strict"] as const;
-export type FidelityMode = (typeof FIDELITY_MODES)[number];
-export const DEFAULT_FIDELITY_MODE = "balanced" satisfies FidelityMode;
+/** Même raison que les niveaux : la liste fait autorité dans `@/shared`. */
+export const FIDELITY_MODES = FIDELITY_MODE_IDS;
+export type FidelityMode = FidelityModeId;
+export const DEFAULT_FIDELITY_MODE = DEFAULT_FIDELITY_MODE_ID;
 export type QualityStatus = "good" | "review" | "risky";
 export type QualitySeverity = "info" | "warning" | "critical";
 

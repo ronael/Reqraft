@@ -32,6 +32,19 @@ export const OpenAICompatibleProviderConfigSchema = z
   })
   .strict();
 
+/**
+ * Desktop global shortcuts, as the configuration file records them.
+ *
+ * Named on its own so the desktop IPC contract can reuse the exact same shape
+ * — in its strict flavour — rather than restating the three intents. A second
+ * copy would be one more place to forget when a fourth one appears.
+ */
+export const DesktopShortcutsConfigSchema = z.object({
+  capture: z.string().trim().min(1).optional(),
+  input: z.string().trim().min(1).optional(),
+  popover: z.string().trim().min(1).optional(),
+});
+
 export const ConfigSchema = z
   .object({
     defaultProvider: z.enum(BUILTIN_PROVIDER_IDS).default(DEFAULT_PROVIDER_ID),
@@ -56,13 +69,7 @@ export const ConfigSchema = z
      * candidate list, and writing the resolved value into the file would turn
      * a fallback into a decision the user never made.
      */
-    desktopShortcuts: z
-      .object({
-        capture: z.string().trim().min(1).optional(),
-        input: z.string().trim().min(1).optional(),
-        popover: z.string().trim().min(1).optional(),
-      })
-      .optional(),
+    desktopShortcuts: DesktopShortcutsConfigSchema.optional(),
     /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */
     desktopWelcomeTourVersion: z.number().int().nonnegative().optional(),
     /** Dernière version Desktop déjà annoncée par une notification native. */

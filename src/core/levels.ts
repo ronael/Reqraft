@@ -1,10 +1,22 @@
 import { z } from "zod";
 import { ReqraftError } from "./errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
+import {
+  DEFAULT_REPROMPT_LEVEL_ID,
+  REPROMPT_LEVEL_IDS,
+  type RepromptLevelId,
+} from "@/shared/reprompt-contract.js";
 
-export const REPROMPT_LEVELS = ["minimal", "standard", "complete"] as const;
-export type RepromptLevel = (typeof REPROMPT_LEVELS)[number];
-export const DEFAULT_REPROMPT_LEVEL = "standard" satisfies RepromptLevel;
+/**
+ * Les niveaux viennent de `@/shared/reprompt-contract.js`, pas d'ici.
+ *
+ * Le renderer Desktop ne peut pas importer le cœur, et il lui faut pourtant la
+ * même liste : elle vit donc dans un module neutre que les deux côtés lisent.
+ * Le cœur en garde ses noms historiques et construit le schéma Zod par-dessus.
+ */
+export const REPROMPT_LEVELS = REPROMPT_LEVEL_IDS;
+export type RepromptLevel = RepromptLevelId;
+export const DEFAULT_REPROMPT_LEVEL = DEFAULT_REPROMPT_LEVEL_ID;
 export const RepromptLevelSchema = z.enum(REPROMPT_LEVELS);
 
 export function parseLevel(level: string): RepromptLevel {

@@ -2,8 +2,7 @@ import process from "node:process";
 import { describe, expect, it, vi } from "vitest";
 import type { ExecuteRepromptInput, ExecuteRepromptResult } from "@/application/reprompt.js";
 import type { Config } from "@/config/schema.js";
-import { REPROMPT_LEVELS } from "@/core/levels.js";
-import { FIDELITY_MODES, type RepromptResult } from "@/core/types.js";
+import type { RepromptResult } from "@/core/types.js";
 import { registerIpcHandlers, sanitizeConfigForRenderer } from "@/apps/desktop/main/ipc.js";
 import { formatDoctorReport } from "@/apps/desktop/main/doctor.js";
 import {
@@ -14,12 +13,7 @@ import {
 import { mainLocale, setMainLocale } from "@/apps/desktop/main/i18n.js";
 import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
 import { version } from "@/version.js";
-import {
-  FIDELITY_MODE_IDS,
-  REPROMPT_LEVEL_IDS,
-  type DoctorReport,
-  type RepromptStartResponse,
-} from "@/apps/desktop/shared/ipc-contract.js";
+import type { DoctorReport, RepromptStartResponse } from "@/apps/desktop/shared/ipc-contract.js";
 import {
   FAKE_RESULT,
   MOCK_CONFIG,
@@ -78,14 +72,6 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
     });
     expect(REQUEST_CHANNELS).toHaveLength(38);
     expect(PUSH_CHANNELS).toHaveLength(5);
-  });
-
-  it("les niveaux du contrat renderer ne dérivent pas du cœur", () => {
-    expect([...REPROMPT_LEVEL_IDS]).toEqual([...REPROMPT_LEVELS]);
-  });
-
-  it("les modes de fidélité du renderer ne dérivent pas du cœur", () => {
-    expect([...FIDELITY_MODE_IDS]).toEqual([...FIDELITY_MODES]);
   });
 
   it("enregistre un handler pour chaque canal requête du contrat", () => {
@@ -310,18 +296,21 @@ describe("config via IPC", () => {
     expect(JSON.stringify(response)).toContain("https://llm.example.com");
   });
 
-  it("config:write fusionne le patch et force telemetry à false", async () => {
+  it("config:write fusionne le patch et laisse telemetry à false", async () => {
+    // La télémétrie n'entre plus par ce canal — le schéma la refuse — mais le
+    // principal continue de l'écrire à `false` : la surface Desktop ne l'allume
+    // jamais, quelle que soit la valeur trouvée dans le fichier.
     const harness = setup({});
     const response = (await harness.ipcMain.invoke(
       IPC_CHANNELS.configWrite,
-      { stream: false, telemetry: true },
+      { outputLanguage: "fr" },
       harness.sender,
     )) as Config;
     expect(harness.saveConfig).toHaveBeenCalledOnce();
     const saved = harness.saveConfig.mock.calls[0]?.[0] as Config;
-    expect(saved.stream).toBe(false);
+    expect(saved.outputLanguage).toBe("fr");
     expect(saved.telemetry).toBe(false);
-    expect(response.stream).toBe(false);
+    expect(response.outputLanguage).toBe("fr");
     expect(response.telemetry).toBe(false);
   });
 
@@ -347,7 +336,11 @@ describe("config via IPC", () => {
   it("config:write ne relance pas pour les autres réglages", async () => {
     const harness = setup({});
 
-    await harness.ipcMain.invoke(IPC_CHANNELS.configWrite, { stream: false }, harness.sender);
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.configWrite,
+      { outputLanguage: "fr" },
+      harness.sender,
+    );
 
     expect(harness.relaunchApp).not.toHaveBeenCalled();
   });
