@@ -22,7 +22,8 @@ pnpm release          # push main, create the package version tag, push the tag
 
 ## Releasing
 
-1. Update the version in `package.json` and `src/version.ts`.
+1. Update the version in `package.json`, then run `pnpm version:sync` to align
+   the application and website references.
 2. Add the matching section to `CHANGELOG.md` and commit these changes on
    `main`.
 3. Run `pnpm release`.
