@@ -78,9 +78,12 @@ import {
   DESKTOP_E2E_REJECT_SHORTCUTS,
   DESKTOP_E2E_SCENARIO,
   runE2eScenario,
-  type E2eScenarioReport,
   type E2eScenarioTargets,
 } from "./e2e-probe.js";
+import type {
+  DesktopE2eReadyPayload,
+  E2eScenarioReport,
+} from "@/apps/desktop/shared/e2e-report.js";
 
 const OPEN_SETTINGS_ARG_PREFIX = "--reqraft-open-settings=";
 const SETTINGS_TAB_AFTER_RELAUNCH = "preferences";
@@ -235,19 +238,21 @@ async function reportDesktopE2eReadiness(options: {
     }));
 
   const permissions = await probePermissions(options.permissionsProbe);
-  process.stdout.write(
-    `REQRAFT_DESKTOP_E2E_READY ${JSON.stringify({
-      ready: true,
-      platform: process.platform,
-      appName: app.getName(),
-      version: app.getVersion(),
-      windowCount: windows.length,
-      windows,
-      shortcuts: options.shortcuts,
-      permissions,
-      ...(scenario === undefined ? {} : { scenario }),
-    })}\n`,
-  );
+  // Annoté plutôt que déduit : la ligne écrite ici est relue telle quelle par
+  // `tests/e2e/desktop.test.ts`, et le type partagé est ce qui empêche les
+  // deux bouts du format de diverger sans que rien ne le dise.
+  const payload: DesktopE2eReadyPayload = {
+    ready: true,
+    platform: process.platform,
+    appName: app.getName(),
+    version: app.getVersion(),
+    windowCount: windows.length,
+    windows,
+    shortcuts: options.shortcuts,
+    permissions,
+    ...(scenario === undefined ? {} : { scenario }),
+  };
+  process.stdout.write(`REQRAFT_DESKTOP_E2E_READY ${JSON.stringify(payload)}\n`);
   if (process.env[DESKTOP_E2E_HOLD] !== "1") {
     app.quit();
   }

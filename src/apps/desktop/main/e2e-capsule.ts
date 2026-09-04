@@ -13,6 +13,7 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import type { CapsuleMeasure, CapsuleUiReport } from "@/apps/desktop/shared/e2e-report.js";
 
 /** Le strict nécessaire d'une `BrowserWindow` pour piloter et mesurer. */
 export interface CapsuleUiWindow {
@@ -44,48 +45,6 @@ export interface CapsuleUiTargets {
    * humaine, pas aux assertions — la suite automatique n'écrit rien par défaut.
    */
   shotsDir?: string;
-}
-
-/** Un rectangle tel que le moteur de rendu le donne, arrondi au pixel. */
-export interface Rect {
-  top: number;
-  bottom: number;
-  height: number;
-}
-
-/** Ce qu'un état de la capsule occupe réellement à l'écran. */
-export interface CapsuleMeasure {
-  name: string;
-  window: { x: number; y: number; width: number; height: number };
-  viewport: { width: number; height: number };
-  band: Rect;
-  footer: Rect;
-  bar: Rect;
-  body: { clientHeight: number; scrollHeight: number; scrollTop: number; overflows: boolean };
-  /**
-   * La hauteur que le contenu demanderait sans borne.
-   *
-   * C'est l'entrée d'une décision de hauteur adaptative : bandeau + barre +
-   * corps déroulé + pied. Elle est prise dans le rendu réel, jamais estimée à
-   * partir d'un nombre de caractères.
-   */
-  naturalHeight: number;
-  /** Le pied tient-il entièrement dans la fenêtre ? */
-  footerVisible: boolean;
-  /** Le vide sous le contenu quand il n'occupe pas toute la hauteur offerte. */
-  slack: number;
-  toast: Rect | null;
-  /** Le fichier PNG écrit pour cet état, quand les captures sont demandées. */
-  shot?: string;
-}
-
-export interface CapsuleUiReport {
-  measures: CapsuleMeasure[];
-  /** `⌘R` pendant l'édition a-t-il rechargé la fenêtre ? */
-  reloadedOnRerunShortcut: boolean;
-  /** Le nombre de runs ouverts après la frappe : la relance a-t-elle eu lieu ? */
-  textAfterRerunShortcut: string;
-  error?: string;
 }
 
 const MOUNTED = ".capsule";

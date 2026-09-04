@@ -14,8 +14,11 @@ import {
   CAPSULE_RESERVED_HEIGHT,
   CAPSULE_WIDTH,
 } from "@/apps/desktop/shared/capsule-geometry.js";
-import type { CapsuleUiReport } from "@/apps/desktop/main/e2e-capsule.js";
-import type { PopoverUiReport } from "@/apps/desktop/main/e2e-popover.js";
+import type {
+  CapsuleUiReport,
+  DesktopE2eReadyPayload,
+  PopoverUiReport,
+} from "@/apps/desktop/shared/e2e-report.js";
 
 const electronPath =
   process.platform === "win32"
@@ -35,63 +38,6 @@ function canRunElectronSuite(): boolean {
 const canRunElectron = canRunElectronSuite();
 const describeElectron = canRunElectron ? describe : describe.skip;
 const ELECTRON_TEST_TIMEOUT_MS = 45_000;
-
-interface DesktopE2ePayload {
-  ready: boolean;
-  platform: NodeJS.Platform;
-  appName: string;
-  version: string;
-  windowCount: number;
-  windows: { surface: string; destroyed: boolean; visible: boolean }[];
-  shortcuts: {
-    registered: {
-      accelerator: string;
-      label: string;
-      intent: "capture" | "input" | "popover";
-    }[];
-    rejected: string[];
-    conflicts: string[];
-  };
-  permissions: {
-    accessibility: boolean;
-    automation: boolean;
-    canReplace: boolean;
-    gap: string;
-    message: string;
-  };
-  scenario?: {
-    name: string;
-    capsuleVisible?: boolean;
-    capsuleMode?: string;
-    popoverVisible?: boolean;
-    popoverHidden?: boolean;
-    shortcutsSuspended?: boolean;
-    shortcutsResumed?: boolean;
-    run?: { rewritten: string; model: string; profile: string };
-    ui?: CapsuleUiReport;
-    popoverUi?: PopoverUiReport;
-    diagnosticUi?: {
-      window: { width: number; height: number };
-      failedChecks: number;
-      actions: number;
-      summaryGap: number;
-      rerunVisible: boolean;
-      statusbarVisible: boolean;
-      documentOverflows: boolean;
-      shot?: string;
-    };
-    preferencesUi?: {
-      window: { width: number; height: number };
-      generationRows: number;
-      generationVisible: boolean;
-      customLanguageVisible: boolean;
-      panelOverflowsHorizontally: boolean;
-      shot?: string;
-    };
-    menuAccelerators?: string[];
-    error?: string;
-  };
-}
 
 /** La configuration minimale qui laisse un run partir, sans clé ni réseau. */
 const MOCK_CONFIG = {
@@ -172,7 +118,7 @@ function spawnDesktop(
 function waitForReadiness(
   child: ChildProcessByStdio<null, Readable, Readable>,
   timeoutMs = 40_000,
-): Promise<DesktopE2ePayload> {
+): Promise<DesktopE2eReadyPayload> {
   return new Promise((resolve, reject) => {
     let stdout = "";
     let stderr = "";
@@ -199,7 +145,9 @@ function waitForReadiness(
         .find((candidate) => candidate.startsWith("REQRAFT_DESKTOP_E2E_READY "));
       if (line !== undefined) {
         finish(() => {
-          resolve(JSON.parse(line.slice("REQRAFT_DESKTOP_E2E_READY ".length)) as DesktopE2ePayload);
+          resolve(
+            JSON.parse(line.slice("REQRAFT_DESKTOP_E2E_READY ".length)) as DesktopE2eReadyPayload,
+          );
         });
       }
     });
@@ -267,7 +215,7 @@ async function terminate(child: ChildProcessByStdio<null, Readable, Readable>): 
 async function runDesktopProbe(
   extraEnv: NodeJS.ProcessEnv = {},
   config?: Record<string, unknown>,
-): Promise<DesktopE2ePayload> {
+): Promise<DesktopE2eReadyPayload> {
   expect(existsSync(mainEntry), `${mainEntry} is missing; run pnpm build:desktop first`).toBe(true);
 
   const home = await createIsolatedHome();

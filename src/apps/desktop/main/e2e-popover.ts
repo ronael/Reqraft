@@ -12,50 +12,8 @@
 
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
-import type { CapsuleUiWindow, Rect } from "./e2e-capsule.js";
-
-/** Ce qu'un état du popover occupe réellement à l'écran. */
-export interface PopoverMeasure {
-  name: string;
-  window: { width: number; height: number };
-  viewport: { width: number; height: number };
-  prompt: Rect;
-  content: {
-    clientHeight: number;
-    scrollHeight: number;
-    scrollTop: number;
-    /** Le contenu déborde en hauteur, donc il défile. */
-    overflows: boolean;
-    /** Il déborde en largeur : un texte long coupé sur le bord droit. */
-    overflowsSideways: boolean;
-  };
-  footer: Rect;
-  copy: Rect | null;
-  /** Le pied tient-il entièrement dans la fenêtre ? */
-  footerVisible: boolean;
-  /** L'action de copie est-elle atteignable, et au bon endroit ? */
-  copyVisible: boolean;
-  copyInFooter: boolean;
-  copyInContent: boolean;
-  /** Le texte que le champ du résultat porte, ou `null` s'il n'existe pas. */
-  resultValue: string | null;
-  /** Le résultat défile avec le contenu ; le prompt reste hors de cette zone. */
-  resultInContent: boolean;
-  promptInContent: boolean;
-  toast: Rect | null;
-  /** La page elle-même déborde-t-elle de la fenêtre ? Elle ne doit jamais. */
-  documentOverflows: boolean;
-  /** Le fichier PNG écrit pour cet état, quand les captures sont demandées. */
-  shot?: string;
-}
-
-export interface PopoverUiReport {
-  measures: PopoverMeasure[];
-  /** `⌘⏎` depuis le champ du résultat a-t-il rechargé la fenêtre ? */
-  reloadedOnRerunShortcut: boolean;
-  /** Le prompt tel qu'il est resté après la relance au clavier. */
-  promptAfterRerun: string;
-}
+import type { CapsuleUiWindow } from "./e2e-capsule.js";
+import type { PopoverMeasure, PopoverUiReport } from "@/apps/desktop/shared/e2e-report.js";
 
 interface PopoverUiTargets {
   window: () => CapsuleUiWindow;

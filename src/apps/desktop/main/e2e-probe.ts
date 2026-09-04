@@ -3,15 +3,15 @@ import path from "node:path";
 import {
   runCapsuleErrorScenario,
   runCapsuleUiScenario,
-  type CapsuleUiReport,
   type CapsuleUiTargets,
   type CapsuleUiWindow,
 } from "./e2e-capsule.js";
-import {
-  runPopoverErrorScenario,
-  runPopoverUiScenario,
-  type PopoverUiReport,
-} from "./e2e-popover.js";
+import { runPopoverErrorScenario, runPopoverUiScenario } from "./e2e-popover.js";
+import type {
+  DiagnosticUiReport,
+  E2eScenarioReport,
+  PreferencesUiReport,
+} from "@/apps/desktop/shared/e2e-report.js";
 import type { RepromptService } from "./reprompt-service.js";
 import type { ShortcutHandlers } from "./shortcuts.js";
 import type { CapsuleOpenedPayload, RepromptResult } from "@/apps/desktop/shared/ipc-contract.js";
@@ -59,46 +59,6 @@ export interface E2eScenarioTargets {
   capsuleWindow: () => CapsuleUiWindow;
   /** Les libellés des accélérateurs du menu applicatif, tels qu'installés. */
   menuAccelerators: () => string[];
-}
-
-export interface E2eScenarioReport {
-  name: string;
-  capsuleVisible?: boolean;
-  capsuleMode?: string;
-  /** Le popover après le premier appui, puis après le second : une bascule. */
-  popoverVisible?: boolean;
-  popoverHidden?: boolean;
-  shortcutsSuspended?: boolean;
-  shortcutsResumed?: boolean;
-  run?: { rewritten: string; model: string; profile: string };
-  /** Les mesures prises dans le vrai renderer (scénarios `capsule-ui*`). */
-  ui?: CapsuleUiReport;
-  popoverUi?: PopoverUiReport;
-  diagnosticUi?: DiagnosticUiReport;
-  preferencesUi?: PreferencesUiReport;
-  /** Les accélérateurs que le menu applicatif détient réellement. */
-  menuAccelerators?: string[];
-  error?: string;
-}
-
-export interface DiagnosticUiReport {
-  window: { width: number; height: number };
-  failedChecks: number;
-  actions: number;
-  summaryGap: number;
-  rerunVisible: boolean;
-  statusbarVisible: boolean;
-  documentOverflows: boolean;
-  shot?: string;
-}
-
-export interface PreferencesUiReport {
-  window: { width: number; height: number };
-  generationRows: number;
-  generationVisible: boolean;
-  customLanguageVisible: boolean;
-  panelOverflowsHorizontally: boolean;
-  shot?: string;
 }
 
 /**
