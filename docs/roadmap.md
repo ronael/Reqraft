@@ -154,14 +154,65 @@ repli.
 **Sortie :** une suite de régression démontre que Reqraft améliore la forme
 d'une demande sans dégrader son intention.
 
+## Next — rendre Windows réellement utilisable
+
+Les premières exécutions manuelles sur Windows ont commencé. Elles confirment
+que construire et ouvrir l'installateur ne suffit pas encore à déclarer la
+plateforme supportée. L'artefact reste **Alpha** et conserve son suffixe
+`-experimental` jusqu'à validation de tout le parcours ci-dessous.
+
+- Écrire une checklist Windows reproductible : installation propre, premier
+  lancement, onboarding, providers, modèles, profils, réglages, diagnostic,
+  raccourcis globaux, redémarrage et désinstallation.
+- Implémenter des adaptateurs Windows pour capturer la sélection active et
+  remplacer le texte dans l'application source. Garder le même contrat
+  `CaptureService` que macOS et isoler les API Windows dans `desktop/main`, sans
+  condition de plateforme dans le domaine, le CLI ou les renderers.
+- Ajouter un stockage sécurisé dans Windows Credential Manager. Les variables
+  d'environnement restent un repli explicite, pas l'unique méthode de
+  configuration de l'application.
+- Vérifier le comportement natif du tray, des raccourcis, du presse-papiers, de
+  la fenêtre toujours au premier plan, du focus rendu à l'application source et
+  des chemins de configuration Windows.
+- Faire tourner en CI Windows les scénarios Electron qui n'agissent pas sur le
+  bureau réel : démarrage du paquet, onboarding, IPC, réglages, providers,
+  modèles, profils et diagnostic. La capture et la réinjection restent des tests
+  manuels ou des tests sur machine Windows dédiée tant qu'ils pilotent la session
+  graphique de l'utilisateur.
+- Documenter les limites SmartScreen et signer l'installateur avant de passer
+  de l'Alpha à la Beta. Brancher ensuite le même canal de mise à jour explicite
+  que macOS, puis seulement l'installation automatique.
+
+**Critère de sortie Windows Beta :** une installation issue d'une release
+signée passe la checklist sur une machine Windows propre ; capture,
+reformulation, copie et remplacement fonctionnent dans plusieurs applications ;
+les scénarios automatisables sont verts en CI ; aucune régression CLI ou macOS
+n'est introduite.
+
+### Travail depuis plusieurs machines
+
+- Une conversation lancée sur Windows part du dernier `origin/main` et traite
+  un seul problème observable ou un seul lot cohérent.
+- Elle ajoute un test de régression lorsque le comportement est automatisable,
+  exécute les tests ciblés puis `pnpm quality`, et produit des commits sans
+  mélanger captures locales, artefacts de build ou changements non liés.
+- Avant intégration, relire les commits depuis la branche principale et rejouer
+  la batterie commune. Les constats dépendants de Windows doivent inclure la
+  version de Windows, l'architecture, le parcours exact et une capture lorsque
+  l'écart est visuel.
+
 ## Later — distribution desktop
 
 - Signature et notarisation macOS, puis téléchargement et installation
   automatiques. La détection et le lien vers la release sont déjà livrés ; le
   remplacement automatique du binaire attend un paquet signé et un canal de
   publication compatible avec l'updater.
-- Évaluer Windows et Linux selon une demande réelle ; ne pas confondre un
-  installateur expérimental avec une plateforme pleinement supportée.
+- Le bouton principal du site détecte déjà la plateforme et propose le DMG
+  macOS, l'EXE Windows ou l'AppImage Linux correspondant. Conserver un choix
+  manuel visible et ne jamais proposer un binaire desktop aux plateformes
+  mobiles ou inconnues.
+- Évaluer Linux selon une demande réelle ; ne pas confondre un installateur
+  expérimental avec une plateforme pleinement supportée.
 
 **Sortie :** les plateformes déclarées supportées ont un parcours
 d'installation, de mise à jour et de diagnostic testé.

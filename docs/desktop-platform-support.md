@@ -13,14 +13,15 @@ table in the release notes saying what they are worth.
 | Platform | Build | Manual validation | Distribution |
 |---|---|---|---|
 | macOS arm64 | yes | yes | GitHub Release (`.dmg`, `.zip`) |
-| Windows x64 | yes | **no** | GitHub Release, marked `-experimental` |
+| Windows x64 | yes | **in progress** | GitHub Release, marked `-experimental` |
 | Linux x64 | yes | **no** | GitHub Release, marked `-experimental` |
 
 ## Why Windows and Linux say `-experimental`
 
-They build, and they are published so they can be tried — but nobody has run
-them. The app leans on macOS APIs for the parts that matter: selection capture
-and reinjection go through `osascript`, and permissions through the
+They build, and they are published so they can be tried. Windows manual testing
+has started, but the complete product path has not been validated; Linux has not
+been run yet. The app leans on macOS APIs for the parts that matter: selection
+capture and reinjection go through `osascript`, and permissions through the
 Accessibility and Automation prompts. Those paths have no implementation on
 the other two platforms yet, so an installer that launches may still be an app
 that cannot do its job.
