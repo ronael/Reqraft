@@ -1,6 +1,11 @@
 import type { RepromptRequest } from "./types.js";
 import type { PromptProfile } from "@/profiles/types.js";
-import { BASE_SYSTEM_PROMPT } from "@/profiles/base.js";
+import {
+  BASE_SYSTEM_PROMPT,
+  DIRECT_REWRITE_RULE,
+  FRAGMENT_PRESERVATION_RULE,
+} from "@/profiles/base.js";
+import { CLEAN_PROFILE_GUIDANCE } from "@/profiles/clean.js";
 import { BUILTIN_PROFILES } from "@/profiles/registry.js";
 import { describeLevel } from "./levels.js";
 
@@ -147,6 +152,8 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
     "Niveau standard : corrige, clarifie et structure légèrement ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable sans élargir le périmètre.",
     "N'ajoute pas de sections, CTA, témoignages, palettes, contraintes responsive ou critères de validation absents de l'entrée. Demande plutôt de vérifier l'existant.",
     "Une demande courte doit rester concise, sauf si l’action demandée nécessite naturellement un résultat développé.",
+    DIRECT_REWRITE_RULE,
+    FRAGMENT_PRESERVATION_RULE,
     levelAwareProfileGuidance(request.profile, request.level),
     "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
   ].join("\n");
@@ -182,9 +189,7 @@ function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
  * `minimal` outranks both, as `core/levels.ts` states and the prompt repeats.
  */
 /**
- * Built-in ids, so a profile with no hand-written line can be told apart from
- * one the user wrote. `clean` is a built-in that has no line yet, and it must
- * not start sending its whole block just because of that gap.
+ * Built-in ids distinguish condensed guidance from user-authored instructions.
  */
 const BUILTIN_PROFILE_ID_SET: ReadonlySet<string> = new Set(
   BUILTIN_PROFILES.map((profile) => profile.id),
@@ -211,6 +216,8 @@ export function levelAwareProfileGuidance(
   }
 
   switch (profile.id) {
+    case "clean":
+      return CLEAN_PROFILE_GUIDANCE;
     case "web-design":
       return "Profil web-design : précise l'objectif et la référence visuelle présentes dans l'entrée. Pour une landing page/interface, demande de respecter les conventions, composants et styles existants ; n'invente pas de sections, contenus, palette ou responsive non demandés. Si l'entrée mentionne des conventions sans précision, formule-les comme conventions existantes du projet.";
     case "frontend":
@@ -239,6 +246,8 @@ export function buildMinimalPrompt(input: string): BuiltPrompt {
   const systemPrompt = [
     "Tu es un assistant de reprompting. Reformule la demande brute suivante en un prompt clair et fidèle.",
     "Règles : conserve l'intention, corrige les fautes, ne invente rien.",
+    DIRECT_REWRITE_RULE,
+    FRAGMENT_PRESERVATION_RULE,
     "Réponds au format JSON strict avec : rewritten (string), changes (string[]), warnings (string[]).",
   ].join("\n");
 

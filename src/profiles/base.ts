@@ -1,6 +1,14 @@
+/** Also carried by compact prompts, which do not send the full base rules. */
+export const DIRECT_REWRITE_RULE =
+  "Reformule le texte lui-même ; ne délègue pas sa correction à une autre IA, sauf demande explicite.";
+export const FRAGMENT_PRESERVATION_RULE =
+  "Un message ou fragment reste un texte, sans inventer d'action ; garde les termes ambigus et abréviations sans deviner leur sens.";
+
 export const BASE_RULES = [
   "Conserver strictement l'intention de l'utilisateur.",
   "Corriger l'orthographe, la grammaire et les formulations ambiguës.",
+  DIRECT_REWRITE_RULE,
+  FRAGMENT_PRESERVATION_RULE,
   "Conserver les noms techniques, commandes, chemins, technologies et identifiants.",
   "Ne jamais inventer de fonctionnalité, contrainte, fichier ou décision.",
   "Ne complète jamais une demande avec des décisions produit, sections, fonctionnalités, technologies, contenus ou contraintes absents du texte original.",

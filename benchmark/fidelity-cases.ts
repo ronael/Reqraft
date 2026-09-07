@@ -189,6 +189,16 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
 
   // clean — la correction ne doit rien reformuler d'autre.
   {
+    // Régression remontée avec GPT-5.1 : l'entrée était citée sous une
+    // nouvelle instruction « Clarifie et reformule la demande suivante… ».
+    id: "clean-ambiguous-conversation-fragment",
+    input: "ema conv :",
+    profile: "clean",
+    level: "standard",
+    forbiddenAdditions: ["reformule", "clarifie", "orthographe", "grammaire"],
+    mustPreserve: ["ema", "conv"],
+  },
+  {
     id: "clean-typo-only",
     input: "corrige les fautes dans ce paragraphe, ne change rien d'autre",
     profile: "clean",

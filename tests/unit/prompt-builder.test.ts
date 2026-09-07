@@ -5,8 +5,40 @@ import { codeProfile } from "@/profiles/code.js";
 import { debugProfile } from "@/profiles/debug.js";
 import { frontendProfile } from "@/profiles/frontend.js";
 import { webDesignProfile } from "@/profiles/web-design.js";
+import { cleanProfile } from "@/profiles/clean.js";
 
 describe("prompt builder", () => {
+  it.each(["minimal", "standard", "complete"] as const)(
+    "keeps messages and ambiguous fragments as text at level %s",
+    (level) => {
+      for (const includeChanges of [false, true]) {
+        const requests = [
+          buildPrompt({ input: "ema conv :", profile: cleanProfile, level, includeChanges }),
+          buildAutoDetectPrompt({ input: "ema conv :", level, includeChanges }),
+        ];
+        for (const { systemPrompt, userPrompt } of requests) {
+          expect(systemPrompt).toContain("ne délègue pas sa correction");
+          expect(systemPrompt).toContain("sans deviner leur sens");
+          expect(userPrompt).toContain("ema conv :");
+        }
+      }
+    },
+  );
+
+  it("gives clean its own direct text correction guidance in explicit and automatic mode", () => {
+    for (const { systemPrompt } of [
+      buildPrompt({
+        input: "salut",
+        profile: cleanProfile,
+        level: "standard",
+        includeChanges: false,
+      }),
+      buildAutoDetectPrompt({ input: "salut", level: "standard", includeChanges: false }),
+    ]) {
+      expect(systemPrompt).toContain("Profil clean : corrige directement le texte");
+    }
+  });
+
   it("tells standard web-design prompts to be actionable, not just corrected", () => {
     const { systemPrompt } = buildPrompt({
       input: "je voudrais que me crée une landing page style apple en respectant les convention",
