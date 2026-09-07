@@ -496,6 +496,8 @@ export const en = {
     `Technical terms missing from the reformulation: ${terms}.`,
   "quality.structuralInflation": () =>
     "Your request came back as a structured plan; check that nothing was added.",
+  "quality.rewriteInstruction": () =>
+    "The model asks for a rewrite instead of rewriting your text directly.",
   "quality.outputTruncated": () => "The provider truncated the generated output.",
   "quality.unstructuredResponse": () =>
     "The provider returned an unstructured response; the text was preserved.",

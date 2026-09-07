@@ -3,6 +3,7 @@ import { detectInventedCommands, detectInventedPaths } from "./invention.js";
 import { isStructurallyInflated } from "./structure.js";
 import { detectMissingTechnicalTerms } from "./technical-terms.js";
 import { DEFAULT_REPROMPT_LEVEL } from "./levels.js";
+import { hasRewriteInstructionWrapper } from "./rewrite-instruction.js";
 import type {
   FidelityMode,
   QualityAssessment,
@@ -80,6 +81,13 @@ export function assessFidelity(
 ): QualityAssessment {
   const signals: QualitySignal[] = [];
   const additions = detectUnsupportedAdditions(input, output);
+
+  if (hasRewriteInstructionWrapper(input, output)) {
+    signals.push({
+      code: "rewrite_instruction",
+      severity: mode === "permissive" ? "info" : "warning",
+    });
+  }
 
   if (additions.length > 0) {
     signals.push({

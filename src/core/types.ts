@@ -70,6 +70,8 @@ export type QualitySignal =
    * changement de nature.
    */
   | { code: "structural_inflation"; severity: "info" | "warning" }
+  /** An unrequested editing instruction wrapped around the unchanged source. */
+  | { code: "rewrite_instruction"; severity: "info" | "warning" }
   | { code: "output_truncated"; severity: "critical" }
   | { code: "model_warning"; severity: "warning"; detail: string }
   | { code: "unstructured_response"; severity: "warning" }

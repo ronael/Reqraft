@@ -86,6 +86,22 @@ The formula is intentionally explainable and non-blocking. It must be changed
 only with benchmark evidence, because some valid tasks such as plans naturally
 expand short requests.
 
+#### Editing instruction added
+
+Messages and incomplete fragments must be rewritten directly, preserving unclear
+terms and abbreviations instead of guessing their meaning. This applies to
+automatic profile selection as well as explicit `clean` requests, including
+compact prompts. A message does not become a request to another AI just because
+it has no explicit action.
+
+The local `rewrite_instruction` finding detects a narrow failure: a French or
+English editing instruction followed by the unchanged source text, optionally
+quoted or fenced. Requests already mentioning editing are excluded. This check
+does not claim to detect all semantic drift or wrappers around changed text.
+It requires review in balanced/strict modes and remains informational in
+permissive mode. The model output is retained; no silent replacement or extra
+generation is performed.
+
 #### Structure added
 
 Word count misses one frequent case: a sentence that comes back as a six-bullet

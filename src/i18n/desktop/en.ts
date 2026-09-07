@@ -531,4 +531,6 @@ export const DESKTOP_EN = {
   "capsule.missingTechnicalTerms": "missing from the result: {list}",
   "capsule.structuralInflation": "came back as a structured plan",
   "capsule.restructured": "! restructured",
+  "capsule.rewriteInstruction": "! added instruction",
+  "capsule.rewriteInstructionDetail": "the model asks for a rewrite instead of doing it",
 } as const;

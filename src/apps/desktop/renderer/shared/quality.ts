@@ -29,6 +29,12 @@ export function describeQualityFinding(
   t: Translate,
 ): QualityFinding | null {
   const visible = signals.filter((signal) => signal.severity !== "info");
+  if (visible.some((signal) => signal.code === "rewrite_instruction")) {
+    return {
+      label: t("capsule.rewriteInstruction"),
+      detail: t("capsule.rewriteInstructionDetail"),
+    };
+  }
   // Par priorité, pas dans l'ordre du tableau : celui-ci suit l'ordre où les
   // détections tournent, qui n'a rien à voir avec ce qui aide le plus.
   const paths = visible.find((signal) => signal.code === "invented_paths");

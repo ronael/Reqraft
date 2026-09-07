@@ -506,6 +506,8 @@ export const fr = {
     `Termes techniques perdus dans la reformulation : ${terms}.`,
   "quality.structuralInflation": () =>
     "Votre demande est revenue sous forme de plan structuré ; vérifiez que rien n'a été ajouté.",
+  "quality.rewriteInstruction": () =>
+    "Le modèle demande de reformuler votre texte au lieu de le reformuler directement.",
   "quality.outputTruncated": () => "Le provider a tronqué la sortie générée.",
   "quality.unstructuredResponse": () =>
     "Le provider a renvoyé une réponse non structurée ; le texte a été conservé.",

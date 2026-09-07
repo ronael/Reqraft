@@ -530,4 +530,6 @@ export const DESKTOP_FR = {
   "capsule.missingTechnicalTerms": "absents du résultat : {list}",
   "capsule.structuralInflation": "revenue sous forme de plan",
   "capsule.restructured": "! restructurée",
+  "capsule.rewriteInstruction": "! consigne ajoutée",
+  "capsule.rewriteInstructionDetail": "le modèle demande de reformuler au lieu de le faire",
 } as const;

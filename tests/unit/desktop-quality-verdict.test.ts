@@ -16,6 +16,14 @@ const t = createDesktopTranslator("fr");
 type Signals = RepromptResult["quality"]["signals"];
 
 describe("describeQualityFinding", () => {
+  it("signale une consigne ajoutée au lieu de rassurer sur la fidélité", () => {
+    const signals: Signals = [{ code: "rewrite_instruction", severity: "warning" }];
+    expect(describeQualityFinding(signals, t)).toEqual({
+      label: "! consigne ajoutée",
+      detail: "le modèle demande de reformuler au lieu de le faire",
+    });
+  });
+
   it("nomme les chemins ajoutés", () => {
     const signals: Signals = [
       { code: "invented_paths", severity: "warning", params: { paths: ["src/auth/session.ts"] } },

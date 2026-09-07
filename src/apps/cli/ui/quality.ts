@@ -38,6 +38,8 @@ export function describeQualitySignal(
       return t("quality.missingTechnicalTerms", { terms: signal.params.terms.join(", ") });
     case "structural_inflation":
       return t("quality.structuralInflation");
+    case "rewrite_instruction":
+      return t("quality.rewriteInstruction");
     case "output_truncated":
       return t("quality.outputTruncated");
     case "unstructured_response":

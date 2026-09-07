@@ -506,6 +506,7 @@ export interface MessageParameters {
   "quality.inventedCommands": { commands: string };
   "quality.missingTechnicalTerms": { terms: string };
   "quality.structuralInflation": undefined;
+  "quality.rewriteInstruction": undefined;
   "quality.outputTruncated": undefined;
   "quality.unstructuredResponse": undefined;
   "quality.modelWarning": { detail: string };
