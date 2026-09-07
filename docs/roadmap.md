@@ -51,6 +51,10 @@ et le TUI.
 - Résultat éditable directement dans la capsule avant copie ou remplacement ;
   la comparaison reflète la version modifiée et le processus principal valide
   le texte avec le `runId` dans une seule opération IPC.
+- Action « Corriger seulement » depuis un résultat ou sa comparaison : relance
+  explicite du texte de départ avec `clean` + `minimal`, limitée à la session.
+  Le verdict distingue absence d'alerte locale, texte conservé et résultat
+  retouché manuellement.
 - Retours d'actions transitoires unifiés dans un toast partagé, superposé au
   contenu de la capsule, du popover et des réglages afin de rester visible sur
   les résultats longs sans déplacer l'interface.
@@ -121,6 +125,12 @@ conventions différentes, tout en conservant les réglages utilisateur comme
 repli.
 
 ## Later — fidélité et qualité
+
+- Corpus de messages du quotidien ajouté au benchmark de fidélité : un cas
+  remonté en usage réel et six cas synthétiques, essais répétés, parcours auto
+  et explicite, sorties intégrales et critères de relecture humaine. Les
+  consignes qui délèguent la correction et les interprétations interdites de
+  fragments échouent au score. Voir [le protocole](fidelity-benchmark.md).
 
 - ~~Améliorer les détections locales : chemins et commandes.~~ Fait : un chemin
   ou une commande présents dans la sortie et absents de la demande sont

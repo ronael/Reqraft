@@ -7,6 +7,12 @@ export interface FidelityBenchmarkCase {
   level: RepromptLevel;
   forbiddenAdditions: string[];
   mustPreserve?: string[];
+  /** Subset for conversational regressions; the full corpus remains the default. */
+  suite?: "conversation";
+  /** Human review criterion; automatic checks alone cannot establish fidelity. */
+  reviewFocus?: string;
+  /** Only for fragments whose ambiguity must remain unresolved. */
+  acceptableOutputs?: string[];
 }
 
 export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
@@ -192,11 +198,78 @@ export const FIDELITY_BENCHMARK_CASES: FidelityBenchmarkCase[] = [
     // Régression remontée avec GPT-5.1 : l'entrée était citée sous une
     // nouvelle instruction « Clarifie et reformule la demande suivante… ».
     id: "clean-ambiguous-conversation-fragment",
+    suite: "conversation",
+    reviewFocus: "Conserver l'ambiguïté, sans développer ema ni conv et sans ajouter de consigne.",
+    acceptableOutputs: ["ema conv :"],
     input: "ema conv :",
     profile: "clean",
     level: "standard",
     forbiddenAdditions: ["reformule", "clarifie", "orthographe", "grammaire"],
     mustPreserve: ["ema", "conv"],
+  },
+
+  // Synthetic everyday messages complement the user-reported fragment above.
+  {
+    id: "clean-conversation-greeting",
+    suite: "conversation",
+    input: "salut paul je serais la demain",
+    profile: "clean",
+    level: "standard",
+    forbiddenAdditions: ["reformule", "réécris", "cordialement", "réunion", "9 h"],
+    mustPreserve: ["salut", "paul", "demain"],
+    reviewFocus: "Corriger serai/là en gardant le tutoiement et le ton informel.",
+  },
+  {
+    id: "clean-conversation-negation",
+    suite: "conversation",
+    input: "je pourrais pas venir demain desolé",
+    profile: "clean",
+    level: "minimal",
+    forbiddenAdditions: ["reformule", "réécris", "malade", "rendez-vous"],
+    mustPreserve: ["pas", "venir", "demain"],
+    reviewFocus: "Conserver le refus et ne pas inventer de motif d'absence.",
+  },
+  {
+    id: "clean-conversation-english",
+    suite: "conversation",
+    input: "hey sam ill send it tomorow",
+    profile: "clean",
+    level: "minimal",
+    forbiddenAdditions: ["rewrite", "rephrase", "attached", "bonjour", "best regards"],
+    mustPreserve: ["sam", "send", "tomorrow"],
+    reviewFocus: "Corriger I'll/tomorrow en anglais, sans objet ni formule de clôture inventés.",
+  },
+  {
+    id: "clean-conversation-mixed-technical",
+    suite: "conversation",
+    input: "le build est ok mais parseResult renvoi undefined",
+    profile: "clean",
+    level: "standard",
+    forbiddenAdditions: ["reformule", "réécris", "ajoute un test", "src/", "npm install"],
+    mustPreserve: ["build", "parseResult", "undefined"],
+    reviewFocus:
+      "Corriger le message en conservant les identifiants ; ne pas inventer un diagnostic.",
+  },
+  {
+    id: "clean-conversation-unknown-abbreviation",
+    suite: "conversation",
+    input: "qzr msg :",
+    profile: "clean",
+    level: "complete",
+    forbiddenAdditions: ["reformule", "clarifie", "orthographe", "grammaire"],
+    mustPreserve: ["qzr", "msg"],
+    acceptableOutputs: ["qzr msg :"],
+    reviewFocus: "Même au niveau complet, un fragment indéchiffrable peut rester inchangé.",
+  },
+  {
+    id: "clean-conversation-question",
+    suite: "conversation",
+    input: "tu peux m'envoyé le lien stp ?",
+    profile: "clean",
+    level: "standard",
+    forbiddenAdditions: ["reformule", "réécris", "https://", "voici le lien"],
+    mustPreserve: ["tu", "lien"],
+    reviewFocus: "Corriger la question, sans y répondre ni inventer un lien.",
   },
   {
     id: "clean-typo-only",
