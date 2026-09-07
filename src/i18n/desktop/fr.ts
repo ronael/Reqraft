@@ -22,7 +22,7 @@ export const DESKTOP_FR = {
   "capsule.compareTitle": "Comparaison épinglée (⌘D) · ⌥ maintenu pour un coup d'œil",
   "capsule.copy": "copier",
   "capsule.rerun": "relancer",
-  "capsule.correctOnly": "Corriger seulement",
+  "capsule.correctOnly": "Corriger",
   "capsule.correctOnlyTitle":
     "Relancer depuis le texte de départ avec le profil clean au niveau minimal",
   "capsule.textPreserved": "✓ texte conservé",

@@ -13,7 +13,8 @@ import {
 } from "./desktop-capsule-harness.js";
 
 afterEach(cleanup);
-const correction = (): HTMLElement => screen.getByRole("button", { name: "Correct only" });
+const correction = (): HTMLElement =>
+  screen.getByRole("button", { name: EN["capsule.correctOnly"] });
 
 it("corrects the current source with clean/minimal, without reusing the generated output", async () => {
   const harness = monterCapsule();
@@ -31,7 +32,7 @@ it("corrects the current source with clean/minimal, without reusing the generate
     level: "minimal",
   });
   expect(harness.bridge.acceptResult).not.toHaveBeenCalled();
-  expect(screen.queryByRole("button", { name: "Correct only" })).toBeNull();
+  expect(screen.queryByRole("button", { name: EN["capsule.correctOnly"] })).toBeNull();
 });
 
 it("shows preserved text as an outcome and updates the verdict after an edit", async () => {
@@ -62,7 +63,7 @@ it("works from comparison and keeps the choice for reruns within this session on
     expect(champResultat().value).toBe(result.rewritten);
   });
   expect(document.querySelector(".capsule-diff")).toBeNull();
-  expect(screen.queryByRole("button", { name: "Correct only" })).toBeNull();
+  expect(screen.queryByRole("button", { name: EN["capsule.correctOnly"] })).toBeNull();
 
   await harness.user.click(commande(EN["capsule.rerun"]));
   expect(harness.bridge.startReprompt).toHaveBeenLastCalledWith({

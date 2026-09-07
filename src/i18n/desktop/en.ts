@@ -29,7 +29,7 @@ export const DESKTOP_EN = {
   "capsule.compareTitle": "Pinned comparison (⌘D) · hold ⌥ for a glance",
   "capsule.copy": "copy",
   "capsule.rerun": "rerun",
-  "capsule.correctOnly": "Correct only",
+  "capsule.correctOnly": "Correct",
   "capsule.correctOnlyTitle": "Rerun the source text with the clean profile at minimal level",
   "capsule.textPreserved": "✓ text preserved",
   "capsule.textPreservedDetail": "the source text was left unchanged",

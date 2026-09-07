@@ -171,7 +171,7 @@ verdict.
 Editing the source instead marks the result as needing a rerun: the displayed
 generation still belongs to the previous source text.
 
-“Correct only” reruns the current source text with the existing `clean` profile
+“Correct” reruns the current source text with the existing `clean` profile
 and `minimal` level. It is an explicit new provider request, available from a
 result or its comparison; it never copies or applies text automatically. The
 choice lasts for reruns in that capsule session and resets on the next capture.
