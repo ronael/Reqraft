@@ -19,11 +19,12 @@ import type {
   DesktopE2eReadyPayload,
   PopoverUiReport,
 } from "@/apps/desktop/shared/e2e-report.js";
+import {
+  desktopExecutable,
+  desktopTestConfigDirectory,
+  desktopTestEnvironment,
+} from "./desktop-process.js";
 
-const electronPath =
-  process.platform === "win32"
-    ? path.resolve("node_modules/.bin/electron.cmd")
-    : path.resolve("node_modules/.bin/electron");
 const mainEntry = path.resolve("release/desktop/bundle/main/index.mjs");
 const isCodexSeatbelt = process.env.CODEX_SANDBOX === "seatbelt";
 const hasLinuxDisplay =
@@ -77,21 +78,15 @@ async function createIsolatedHome(): Promise<string> {
  * clé ni réseau, ce qui rend le scénario reproductible partout.
  */
 async function writeConfig(home: string, config: Record<string, unknown>): Promise<void> {
-  // La même règle que `src/config/paths.ts`, à la main : la calculer ici avec
-  // le `os.homedir()` du processus de test donnerait le dossier de la vraie
-  // installation, pas celui du HOME isolé passé à l'enfant.
-  const directory =
-    process.platform === "darwin"
-      ? path.join(home, "Library", "Application Support", "rp")
-      : path.join(home, ".config", "rp");
+  const directory = desktopTestConfigDirectory(home);
   await mkdir(directory, { recursive: true });
   await writeFile(path.join(directory, "config.json"), JSON.stringify(config), "utf8");
 }
 
 /**
- * Lance le bundle desktop réel dans un HOME isolé.
+ * Lance le bundle desktop réel dans un profil utilisateur isolé.
  *
- * Deux isolations, pas une : `HOME` déplace la configuration, et
+ * Deux isolations, pas une : l'environnement déplace la configuration, et
  * `--user-data-dir` déplace le verrou d'instance unique — que `userData` ne
  * suit pas sur macOS. Sans le second, la nouvelle instance partage le verrou,
  * quitte en silence avec le code 0, et le test croit à un crash muet.
@@ -101,15 +96,12 @@ function spawnDesktop(
   userDataDir: string,
   extraEnv: NodeJS.ProcessEnv,
 ): ChildProcessByStdio<null, Readable, Readable> {
-  const env: NodeJS.ProcessEnv = {
+  const env = desktopTestEnvironment(home, {
     ...process.env,
     ...extraEnv,
-    HOME: home,
-    XDG_CONFIG_HOME: path.join(home, ".config"),
-  };
-  delete env.ELECTRON_RUN_AS_NODE;
+  });
 
-  return spawn(electronPath, [mainEntry, `--user-data-dir=${userDataDir}`], {
+  return spawn(desktopExecutable(), [mainEntry, `--user-data-dir=${userDataDir}`], {
     env,
     stdio: ["ignore", "pipe", "pipe"],
   });
