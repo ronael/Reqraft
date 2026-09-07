@@ -627,6 +627,11 @@ button:disabled {
   flex-wrap: wrap;
 }
 
+.capsule-correction {
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
 .capsule-term {
   max-width: 100%;
   overflow: hidden;

@@ -1,6 +1,7 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import {
+  runCapsuleCorrectionScenario,
   runCapsuleErrorScenario,
   runCapsuleUiScenario,
   type CapsuleUiTargets,
@@ -110,6 +111,8 @@ export async function runE2eScenario(
         };
       case "capsule-error":
         return { name, ui: await runCapsuleErrorScenario(uiTargets(targets)) };
+      case "capsule-correction":
+        return { name, ui: await runCapsuleCorrectionScenario(uiTargets(targets)) };
       case "popover-ui":
         return { name, popoverUi: await runPopoverUiScenario(popoverTargets(targets)) };
       case "popover-error":

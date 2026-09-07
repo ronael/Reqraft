@@ -367,6 +367,44 @@ export async function runCapsuleUiScenario(targets: CapsuleUiTargets): Promise<C
   return { measures, reloadedOnRerunShortcut: alive !== marker, textAfterRerunShortcut };
 }
 
+/** La correction a son propre trajet court, indépendant de la campagne de géométrie. */
+export async function runCapsuleCorrectionScenario(
+  targets: CapsuleUiTargets,
+): Promise<CapsuleUiReport> {
+  const target = await runOnce(targets, "salut paul a demain");
+  // Même une régression du raccourci d'acceptation ne doit pas toucher au
+  // presse-papiers de la machine : un résultat vidé est refusé avant l'IPC.
+  // L'intégration React vérifie l'absence d'acceptation avec un résultat non vide.
+  await fill(target, RESULT, "");
+  await blurField(target, RESULT);
+  // Depuis la comparaison, Entrée sur le bouton doit relancer clean/minimal,
+  // pas accepter le résultat précédent dans l'application source.
+  await evaluate<boolean>(target, clickScript(COMPARE));
+  await waitForSelector(target, DIFF);
+  await evaluate(target, `document.querySelector("button.capsule-correction").focus()`);
+  target.webContents.sendInputEvent({ type: "keyDown", keyCode: "Return" });
+  target.webContents.sendInputEvent({ type: "char", keyCode: "\r" });
+  target.webContents.sendInputEvent({ type: "keyUp", keyCode: "Return" });
+  await waitForSelector(target, RESULT);
+  await settle();
+  const correctionOnly = await evaluate<NonNullable<CapsuleUiReport["correctionOnly"]>>(
+    target,
+    `({
+    profile: document.querySelector(".capsule-profile b")?.textContent ?? "",
+    metadata: document.querySelector(".capsule-meta")?.textContent ?? "",
+    text: document.querySelector(${JSON.stringify(RESULT)}).value,
+    actionVisible: document.querySelector(".capsule-correction") !== null,
+  })`,
+  );
+
+  return {
+    measures: [await measure(target, "correction-only", targets.shotsDir)],
+    reloadedOnRerunShortcut: false,
+    textAfterRerunShortcut: "",
+    correctionOnly,
+  };
+}
+
 /**
  * L'annonce, dans la fenêtre telle qu'elle est.
  *

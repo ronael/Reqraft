@@ -160,3 +160,20 @@ preservation score, whose version is incremented when that rule changes.
 
 The JSON output exposes the structured `quality.signals` collection. Human CLI
 output sends quality diagnostics to stderr, preserving a clean prompt on stdout.
+
+The desktop capsule describes `good` without informative signals as “no alerts”,
+not as proof of semantic fidelity. An exactly unchanged output is labelled “text
+preserved”; warnings and informative signals take precedence. When the user edits
+the generated output, the verdict changes to “edited · review”: the original
+checks do not assess that new text. Returning to the generated text restores its
+verdict.
+
+Editing the source instead marks the result as needing a rerun: the displayed
+generation still belongs to the previous source text.
+
+“Correct only” reruns the current source text with the existing `clean` profile
+and `minimal` level. It is an explicit new provider request, available from a
+result or its comparison; it never copies or applies text automatically. The
+choice lasts for reruns in that capsule session and resets on the next capture.
+It composes the existing profile/level/reformulate capabilities; CLI and TUI can
+make the same choices without a new engine mode. No prompt history is stored.

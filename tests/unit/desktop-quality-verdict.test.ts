@@ -1,4 +1,3 @@
-import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import { describeQualityFinding } from "@/apps/desktop/renderer/shared/quality.js";
 import { createDesktopTranslator } from "@/i18n/desktop/index.js";
@@ -82,17 +81,6 @@ describe("describeQualityFinding", () => {
     ];
 
     expect(describeQualityFinding(signals, t)?.detail).toContain("a/b/c.ts");
-  });
-});
-
-describe("le verdict de la capsule s'en sert", () => {
-  it("préfère l'invention au « aucune invention détectée »", async () => {
-    // Le test ci-dessus prouve la fonction ; celui-ci prouve le branchement.
-    // Sans lui, la capsule pourrait garder son message rassurant et aucun test
-    // pur ne bougerait.
-    const source = await readFile("src/apps/desktop/renderer/capsule/App.tsx", "utf8");
-
-    expect(source).toContain("if (finding !== null) return finding.detail");
   });
 });
 

@@ -6,7 +6,7 @@ import { ResultEditor } from "../shared/ResultEditor.js";
 import { useCapsuleHeight } from "./useCapsuleHeight.js";
 import { useT } from "../shared/i18n.js";
 import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
-import { describeQualityFinding } from "../shared/quality.js";
+import { describeQualityVerdict } from "../shared/quality.js";
 import {
   AUTO_PROFILE_ID,
   type ProfileCatalogEntry,
@@ -33,14 +33,18 @@ const GENERATING = "generating";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
-/** Les libellés de qualité passent par le traducteur, comme le reste. */
-const QUALITY_KEYS: Record<RepromptResult["quality"]["status"], string> = {
-  good: "capsule.qualityGood",
-  review: "capsule.qualityReview",
-  risky: "capsule.qualityRisky",
-};
-
 const PROMPT_EMPTY_MESSAGE = "capsule.promptEmpty";
+const CORRECTION_PROFILE = "clean";
+
+function offersCorrectionOnly(
+  state: CapsuleState,
+  picking: boolean,
+  result: RepromptResult | null,
+): boolean {
+  const ready = state === "ready" || state === "comparison";
+  if (!ready || picking || result === null) return false;
+  return result.profile !== CORRECTION_PROFILE || result.level !== "minimal";
+}
 
 export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
   const currentIndex = REPROMPT_LEVEL_IDS.indexOf(current);
@@ -198,6 +202,8 @@ interface CapsuleFooterProps {
   verdictLabel: string;
   verdictDetail: string;
   verdictItems: string[];
+  verdictTone: RepromptResult["quality"]["status"];
+  canCorrectOnly: boolean;
   profileLabel: string;
   pickable: boolean;
   level: Level;
@@ -208,6 +214,7 @@ interface CapsuleFooterProps {
   onCompare(): void;
   onCopy(): void;
   onRerun(): void;
+  onCorrectOnly(): void;
   onLevel(): void;
   onCancel(): void;
   onClose(): void;
@@ -260,9 +267,7 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
             {props.finalResult !== null && (
               <>
                 <div className="capsule-verdict-head">
-                  <span className={`verdict-${props.finalResult.quality.status}`}>
-                    {props.verdictLabel}
-                  </span>
+                  <span className={`verdict-${props.verdictTone}`}>{props.verdictLabel}</span>
                   <span
                     className="capsule-meta"
                     title={`${levelLabel} ${props.finalResult.level} · ${props.finalResult.model}`}
@@ -290,6 +295,16 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                     </>
                   ) : (
                     <span className="muted">{props.verdictDetail}</span>
+                  )}
+                  {props.canCorrectOnly && (
+                    <button
+                      type="button"
+                      className="capsule-key capsule-correction"
+                      title={t("capsule.correctOnlyTitle")}
+                      onClick={props.onCorrectOnly}
+                    >
+                      {t("capsule.correctOnly")}
+                    </button>
                   )}
                 </div>
               </>
@@ -430,7 +445,7 @@ export function App(): React.JSX.Element {
   }, []);
 
   const startRun = useCallback(
-    (text: string, chosenLevel: Level) => {
+    (text: string, chosenLevel: Level, profileId: string | null = chosenProfile) => {
       // Entrer dans `analysis` ici, pas chez l'appelant.
       //
       // Trois chemins sur cinq l'oubliaient — ⌘R, ⇥ et la pastille de niveau —
@@ -451,11 +466,12 @@ export function App(): React.JSX.Element {
       // ne montre.
       setEdited(null);
       setEditing(false);
+      activeRunId.current = null;
       window.reqraft
         .startReprompt({
           input: text,
           level: chosenLevel,
-          ...(chosenProfile === null ? {} : { profileId: chosenProfile }),
+          ...(profileId === null ? {} : { profileId }),
         })
         .then((response) => {
           activeRunId.current = response.runId;
@@ -506,7 +522,7 @@ export function App(): React.JSX.Element {
           setInput(capture.text);
           setOrigin(capture.sourceApp);
           dispatch("captured");
-          startRun(capture.text, "standard");
+          startRun(capture.text, "standard", null);
         } else {
           // Une capture vide a deux causes très différentes : rien n'était
           // sélectionné, ou macOS a refusé. Seule la seconde demande une
@@ -692,41 +708,6 @@ export function App(): React.JSX.Element {
     }
   }, []);
 
-  /**
-   * Relance en imposant un profil.
-   *
-   * `startRun` lit `chosenProfile` dans l'état, qui n'est pas encore à jour
-   * quand on vient de cliquer : le profil arriverait avec un run de retard.
-   */
-  const startRunAvecProfil = useCallback(
-    (text: string, chosenLevel: Level, profileId: string) => {
-      setStartedAt(Date.now());
-      setElapsedMs(0);
-      setStreamedBoth(() => "");
-      setResult(null);
-      setError(null);
-      setNotice(null);
-      setEdited(null);
-      setEditing(false);
-      dispatch("rerun");
-      window.reqraft
-        .startReprompt({ input: text, level: chosenLevel, profileId })
-        .then((response) => {
-          activeRunId.current = response.runId;
-          setRequestedProfile(response.requestedProfile);
-          dispatch("run-accepted");
-        })
-        .catch((reason: unknown) => {
-          setError({
-            title: t("capsule.error"),
-            message: reason instanceof Error ? reason.message : String(reason),
-          });
-          dispatch("failed");
-        });
-    },
-    [dispatch, setStreamedBoth, t],
-  );
-
   const copier = useCallback(() => {
     const runId = activeRunId.current;
     if (runId === null) {
@@ -758,6 +739,16 @@ export function App(): React.JSX.Element {
     }
     startRun(input, level);
   }, [annoncer, input, level, promptEstVide, startRun, t]);
+
+  const corrigerSeulement = useCallback(() => {
+    if (promptEstVide) {
+      annoncer(t(PROMPT_EMPTY_MESSAGE), "warning");
+      return;
+    }
+    setChosenProfile(CORRECTION_PROFILE);
+    setLevel("minimal");
+    startRun(input, "minimal", CORRECTION_PROFILE);
+  }, [annoncer, input, promptEstVide, startRun, t]);
 
   /** ⇥ monte d'un niveau, ⇧⇥ redescend ; le clic n'a pas de modificateur. */
   const changerNiveau = useCallback(
@@ -832,6 +823,13 @@ export function App(): React.JSX.Element {
       // retard après un focus programmatique : dans cet intervalle, ⌘R tapé
       // dans le champ ne doit surtout pas devenir une relance.
       const target = event.target;
+      // Entrée sur un bouton active ce bouton ; elle ne remplace pas aussi la sélection.
+      if (
+        event.key === "Enter" &&
+        target instanceof HTMLElement &&
+        target.closest("button") !== null
+      )
+        return;
       const eventComesFromEditor =
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLInputElement ||
@@ -938,27 +936,9 @@ export function App(): React.JSX.Element {
   const promptVisibleOutsideComparison = state !== "input" && state !== "comparison";
   const promptVisible = promptVisibleOutsideComparison && (input !== "" || promptEditable);
 
-  const finding = describeQualityFinding(finalResult?.quality.signals ?? [], t);
-
-  function computeVerdictLabel(): string {
-    if (finalResult === null) {
-      return "";
-    }
-    if (finding !== null) {
-      return finding.label;
-    }
-    if (expansion === true) {
-      return t("capsule.expansionDetected");
-    }
-    return t(QUALITY_KEYS[finalResult.quality.status]);
-  }
-  const verdictLabel = computeVerdictLabel();
-
-  function computeVerdictDetail(): string {
-    if (finding !== null) return finding.detail;
-    return expansion === true ? t("capsule.expansionDetail") : t("capsule.noInvention");
-  }
-  const verdictDetail = computeVerdictDetail();
+  const verdict =
+    finalResult === null ? null : describeQualityVerdict(finalResult, finalText, t, input);
+  const canCorrectOnly = offersCorrectionOnly(state, picking, result);
 
   // `result.profile` is the profile actually applied and outranks anything
   // known at start. Until it arrives, an explicit request is already its own
@@ -982,9 +962,9 @@ export function App(): React.JSX.Element {
         annoncer(t(PROMPT_EMPTY_MESSAGE), "warning");
         return;
       }
-      startRunAvecProfil(input, level, id);
+      startRun(input, level, id);
     },
-    [annoncer, input, level, promptEstVide, startRunAvecProfil, state, t],
+    [annoncer, input, level, promptEstVide, startRun, state, t],
   );
 
   return (
@@ -1111,9 +1091,11 @@ export function App(): React.JSX.Element {
           running={running}
           elapsedMs={elapsedMs}
           finalResult={finalResult}
-          verdictLabel={verdictLabel}
-          verdictDetail={verdictDetail}
-          verdictItems={finding?.items ?? []}
+          verdictLabel={verdict?.label ?? ""}
+          verdictDetail={verdict?.detail ?? ""}
+          verdictItems={verdict?.items ?? []}
+          verdictTone={verdict?.tone ?? "good"}
+          canCorrectOnly={canCorrectOnly}
           profileLabel={profilAffiche}
           pickable={profilChoisissable}
           onPick={() => {
@@ -1132,6 +1114,7 @@ export function App(): React.JSX.Element {
           onCompare={basculerComparaison}
           onCopy={copier}
           onRerun={relancer}
+          onCorrectOnly={corrigerSeulement}
           onLevel={() => {
             changerNiveau(1);
           }}

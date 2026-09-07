@@ -57,6 +57,7 @@ export interface CapsuleUiReport {
   reloadedOnRerunShortcut: boolean;
   /** Le nombre de runs ouverts après la frappe : la relance a-t-elle eu lieu ? */
   textAfterRerunShortcut: string;
+  correctionOnly?: { profile: string; metadata: string; text: string; actionVisible: boolean };
   error?: string;
 }
 

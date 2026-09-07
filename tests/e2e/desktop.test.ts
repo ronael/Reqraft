@@ -469,6 +469,25 @@ describeElectron("capsule — géométrie et clavier dans la vraie fenêtre", ()
   }
 
   it(
+    "corrects only from comparison through the real IPC and engine",
+    async () => {
+      const payload = await runDesktopProbe(
+        { REQRAFT_DESKTOP_E2E_SCENARIO: "capsule-correction" },
+        MOCK_CONFIG,
+      );
+      expect(payload.scenario?.error).toBeUndefined();
+      const ui = payload.scenario?.ui;
+      if (ui === undefined) throw new Error("Missing correction report");
+      expect(ui.correctionOnly?.profile).toBe("clean");
+      expect(ui.correctionOnly?.metadata).toContain("minimal");
+      expect(ui.correctionOnly?.text).toBe("[mock] salut paul a demain");
+      expect(ui.correctionOnly?.actionVisible).toBe(false);
+      expect(mesure(ui.measures, "correction-only").footerVisible).toBe(true);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
     "adapte sa hauteur à chaque état posé, sans jamais perdre son pied",
     async () => {
       const ui = await capsuleUi();

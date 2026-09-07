@@ -24,6 +24,60 @@ export interface QualityFinding {
   items?: string[];
 }
 
+export interface QualityVerdict extends QualityFinding {
+  tone: RepromptResult["quality"]["status"];
+}
+
+/** Les contrôles portent sur la génération reçue, jamais sur une édition ultérieure. */
+export function describeQualityVerdict(
+  result: RepromptResult,
+  finalText: string,
+  t: Translate,
+  sourceText = result.original,
+): QualityVerdict {
+  if (sourceText !== result.original) {
+    return {
+      label: t("capsule.sourceEditedVerdict"),
+      detail: t("capsule.sourceEditedDetail"),
+      tone: "review",
+    };
+  }
+  if (finalText !== result.rewritten) {
+    return { label: t("capsule.editedVerdict"), detail: t("capsule.editedDetail"), tone: "review" };
+  }
+  const { signals, status } = result.quality;
+  const finding = describeQualityFinding(signals, t);
+  if (finding !== null) return { ...finding, tone: status };
+  if (
+    signals.some(
+      (signal) => signal.code === "disproportionate_expansion" && signal.severity !== "info",
+    )
+  ) {
+    return {
+      label: t("capsule.expansionDetected"),
+      detail: t("capsule.expansionDetail"),
+      tone: status,
+    };
+  }
+  if (status !== "good") {
+    return {
+      label: t(status === "risky" ? "capsule.qualityRisky" : "capsule.qualityReview"),
+      detail: t("capsule.checkResult"),
+      tone: status,
+    };
+  }
+  if (signals.length > 0) {
+    return {
+      label: t("capsule.informativeSignals"),
+      detail: t("capsule.checkResult"),
+      tone: status,
+    };
+  }
+  return result.original === result.rewritten
+    ? { label: t("capsule.textPreserved"), detail: t("capsule.textPreservedDetail"), tone: status }
+    : { label: t("capsule.qualityGood"), detail: t("capsule.noInvention"), tone: status };
+}
+
 export function describeQualityFinding(
   signals: RepromptResult["quality"]["signals"],
   t: Translate,
