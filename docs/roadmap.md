@@ -161,9 +161,10 @@ que construire et ouvrir l'installateur ne suffit pas encore à déclarer la
 plateforme supportée. L'artefact reste **Alpha** et conserve son suffixe
 `-experimental` jusqu'à validation de tout le parcours ci-dessous.
 
-- Écrire une checklist Windows reproductible : installation propre, premier
-  lancement, onboarding, providers, modèles, profils, réglages, diagnostic,
-  raccourcis globaux, redémarrage et désinstallation.
+- ~~Écrire une checklist Windows reproductible.~~ Fait :
+  [checklist desktop Windows](desktop-windows-manual-checklist.md), de
+  l'installation propre à la désinstallation, avec relevé d'environnement,
+  parcours Alpha et critères natifs restant à valider avant la Beta.
 - Implémenter des adaptateurs Windows pour capturer la sélection active et
   remplacer le texte dans l'application source. Garder le même contrat
   `CaptureService` que macOS et isoler les API Windows dans `desktop/main`, sans
@@ -179,6 +180,11 @@ plateforme supportée. L'artefact reste **Alpha** et conserve son suffixe
   modèles, profils et diagnostic. La capture et la réinjection restent des tests
   manuels ou des tests sur machine Windows dédiée tant qu'ils pilotent la session
   graphique de l'utilisateur.
+  Préparation du lanceur faite : exécution directe du binaire Electron,
+  isolation de `APPDATA`/`LOCALAPPDATA`/`USERPROFILE` et fixtures au bon endroit,
+  couvertes par `tests/unit/desktop-process.test.ts`. L'exécution native Windows
+  et l'activation en CI restent à faire ; la CI actuelle ignore les E2E Electron
+  pendant `pnpm quality`.
 - Documenter les limites SmartScreen et signer l'installateur avant de passer
   de l'Alpha à la Beta. Brancher ensuite le même canal de mise à jour explicite
   que macOS, puis seulement l'installation automatique.
