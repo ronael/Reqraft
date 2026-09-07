@@ -4,10 +4,13 @@ import {
   BASE_SYSTEM_PROMPT,
   DIRECT_REWRITE_RULE,
   FRAGMENT_PRESERVATION_RULE,
+  REWRITE_ROLE,
 } from "@/profiles/base.js";
 import { CLEAN_PROFILE_GUIDANCE } from "@/profiles/clean.js";
 import { BUILTIN_PROFILES } from "@/profiles/registry.js";
 import { describeLevel } from "./levels.js";
+
+const USER_TEXT_LABEL = "Texte à reformuler :";
 
 export interface BuiltPrompt {
   systemPrompt: string;
@@ -60,7 +63,7 @@ export function buildAutoDetectPrompt(request: AutoDetectPromptInput): BuiltProm
         ).join("\n");
 
   const systemPrompt = [
-    "Tu es un assistant de reprompting. Tu reformules des demandes brutes en prompts clairs, fidèles et directement exploitables par une IA.",
+    REWRITE_ROLE,
     "",
     "Règles communes :",
     BASE_SYSTEM_PROMPT,
@@ -76,7 +79,7 @@ export function buildAutoDetectPrompt(request: AutoDetectPromptInput): BuiltProm
     levelDescription,
     "",
     "Contraintes de sortie :",
-    "- Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier.",
+    "- Le champ rewritten doit contenir uniquement le texte final complet, prêt à copier.",
     `- Le champ profile doit contenir exactement l'un de ces identifiants : ${BUILTIN_PROFILES.map((profile) => profile.id).join(", ")}.`,
     "- Garde warnings vide sauf ambiguïté critique.",
     "- N'ajoute pas d'analyse, de justification, de résumé ou de variantes hors du champ rewritten.",
@@ -89,7 +92,7 @@ export function buildAutoDetectPrompt(request: AutoDetectPromptInput): BuiltProm
   ].join("\n");
 
   const userPrompt = [
-    "Reformule la demande suivante :",
+    USER_TEXT_LABEL,
     "",
     "```",
     request.input,
@@ -108,7 +111,7 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
   const levelDescription = describeLevel(request.level);
 
   const systemPrompt = [
-    "Tu es un assistant de reprompting. Tu reformules des demandes brutes en prompts clairs, fidèles et directement exploitables par une IA.",
+    REWRITE_ROLE,
     "",
     "Règles communes :",
     BASE_SYSTEM_PROMPT,
@@ -122,7 +125,7 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
     levelDescription,
     "",
     "Contraintes de sortie :",
-    "- Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier.",
+    "- Le champ rewritten doit contenir uniquement le texte final complet, prêt à copier.",
     "- Garde warnings vide sauf ambiguïté critique.",
     "- N'ajoute pas d'analyse, de justification, de résumé ou de variantes hors du champ rewritten.",
     "- Reste concis : chaque token généré doit aider l'utilisateur.",
@@ -134,7 +137,7 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
   ].join("\n");
 
   const userPrompt = [
-    "Reformule la demande suivante :",
+    USER_TEXT_LABEL,
     "",
     "```",
     request.input,
@@ -147,19 +150,19 @@ export function buildPrompt(request: PromptBuildInput): BuiltPrompt {
 
 function buildCompactStandardPrompt(request: PromptBuildInput): BuiltPrompt {
   const systemPrompt = [
-    "Tu es un assistant de reprompting. Transforme une demande brute en prompt clair, fidèle et directement exploitable par une IA.",
+    REWRITE_ROLE,
     "Règles : conserve l'intention, la langue, les termes techniques et les contraintes ; n'invente pas de contexte, de marque, de sections, de fonctionnalités, de fichiers ni de décisions.",
-    "Niveau standard : corrige, clarifie et structure légèrement ; ne te limite pas à corriger la grammaire si la demande implique création, implémentation ou conception ; produis un brief actionnable sans élargir le périmètre.",
+    "Niveau standard : corrige et clarifie ; pour une demande de création, implémentation ou conception, ne te limite pas à corriger la grammaire : produis un brief actionnable sans élargir le périmètre.",
     "N'ajoute pas de sections, CTA, témoignages, palettes, contraintes responsive ou critères de validation absents de l'entrée. Demande plutôt de vérifier l'existant.",
     "Une demande courte doit rester concise, sauf si l’action demandée nécessite naturellement un résultat développé.",
     DIRECT_REWRITE_RULE,
     FRAGMENT_PRESERVATION_RULE,
     levelAwareProfileGuidance(request.profile, request.level),
-    "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le prompt final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
+    "Sortie : JSON strict uniquement avec rewritten (string) et warnings (string[]). Le champ rewritten doit contenir uniquement le texte final complet, prêt à copier. Garde warnings vide sauf ambiguïté critique.",
   ].join("\n");
 
   const userPrompt = [
-    "Demande à reformuler :",
+    USER_TEXT_LABEL,
     "```",
     request.input,
     "```",
@@ -244,7 +247,7 @@ export function levelAwareProfileGuidance(
 
 export function buildMinimalPrompt(input: string): BuiltPrompt {
   const systemPrompt = [
-    "Tu es un assistant de reprompting. Reformule la demande brute suivante en un prompt clair et fidèle.",
+    REWRITE_ROLE,
     "Règles : conserve l'intention, corrige les fautes, ne invente rien.",
     DIRECT_REWRITE_RULE,
     FRAGMENT_PRESERVATION_RULE,

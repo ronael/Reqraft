@@ -1,7 +1,7 @@
 import type { PromptProfile } from "./types.js";
 
 export const CLEAN_PROFILE_GUIDANCE =
-  "Profil clean : corrige directement le texte fourni ; préserve son ton et sa structure, sans ajouter de contexte, de sections ni de consigne autour du texte.";
+  'Profil clean : corrige directement le texte fourni ; préserve son ton et sa structure, sans ajouter de contexte, de sections ni de consigne autour du texte. Exemples de rewritten : "salut paul" → "Salut Paul." ; "xyz note :" → "xyz note :". Si le sens est incertain, conserve le fragment tel quel.';
 
 export const cleanProfile: PromptProfile = {
   id: "clean",

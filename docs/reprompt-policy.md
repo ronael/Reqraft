@@ -94,6 +94,12 @@ automatic profile selection as well as explicit `clean` requests, including
 compact prompts. A message does not become a request to another AI just because
 it has no explicit action.
 
+The role and output contract both describe rewriting text, preserving its nature:
+request, message or fragment. Only an actual request may become an actionable
+brief. An incomplete fragment may remain unchanged; `clean` includes examples of
+direct correction and fragment preservation. This distinction matters even when
+the output format is valid JSON: a valid envelope can still contain the wrong task.
+
 The local `rewrite_instruction` finding detects a narrow failure: a French or
 English editing instruction followed by the unchanged source text, optionally
 quoted or fenced. Requests already mentioning editing are excluded. This check

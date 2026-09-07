@@ -41,7 +41,7 @@ export function describeLevel(level: RepromptLevel): string {
 - pour une demande courte, produire une seule phrase courte.`;
     case "complete":
       return `Niveau complet :
-- produire un brief rigoureux mais fidèle ;
+- si l'entrée contient une demande, produire un brief rigoureux mais fidèle ;
 - utiliser les sections Objectif, Contraintes et À vérifier uniquement lorsque la demande est complexe ou réellement sous-spécifiée ;
 - pour une action triviale, rester concis et signaler seulement l'information manquante qui bloque l'exécution ;
 - ne résous pas les informations manquantes avec des décisions inventées ;
@@ -53,7 +53,7 @@ export function describeLevel(level: RepromptLevel): string {
       return `Niveau standard :
 - corriger et clarifier la demande ;
 - ne te limite pas à corriger la grammaire lorsque la demande implique une création, une implémentation ou une conception ;
-- produire un brief actionnable, directement exploitable par une IA ;
+- si l'entrée contient une demande, produire un brief actionnable, directement exploitable par une IA ;
 - structurer en sections courtes lorsque cela rend le prompt plus utile ;
 - conserver l'intention sans inventer de données métier spécifiques ;
 - rendre les contraintes visibles.`;

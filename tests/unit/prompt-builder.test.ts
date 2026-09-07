@@ -17,6 +17,10 @@ describe("prompt builder", () => {
           buildAutoDetectPrompt({ input: "ema conv :", level, includeChanges }),
         ];
         for (const { systemPrompt, userPrompt } of requests) {
+          expect(systemPrompt).toContain("Conserve sa nature : demande, message ou fragment");
+          expect(systemPrompt).toContain("Un fragment incomplet peut rester inchangé");
+          expect(systemPrompt).not.toContain("uniquement le prompt final");
+          expect(userPrompt).toContain("Texte à reformuler");
           expect(systemPrompt).toContain("ne délègue pas sa correction");
           expect(systemPrompt).toContain("sans deviner leur sens");
           expect(userPrompt).toContain("ema conv :");
@@ -49,7 +53,7 @@ describe("prompt builder", () => {
 
     expect(systemPrompt).toContain("ne te limite pas à corriger");
     expect(systemPrompt).toContain("brief actionnable");
-    expect(systemPrompt).toContain("Le champ rewritten doit contenir uniquement le prompt final");
+    expect(systemPrompt).toContain("Le champ rewritten doit contenir uniquement le texte final");
     expect(systemPrompt).toContain("N'ajoute pas de sections");
     expect(systemPrompt).toContain(
       "Une demande courte doit rester concise, sauf si l’action demandée",
