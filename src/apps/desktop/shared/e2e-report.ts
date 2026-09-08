@@ -116,6 +116,9 @@ export interface DiagnosticUiReport {
 }
 
 export interface PreferencesUiReport {
+  autoLanguageAligned: boolean;
+  controlsAligned: boolean;
+  timeoutUnitBeforeInput: boolean;
   window: { width: number; height: number };
   generationRows: number;
   generationVisible: boolean;

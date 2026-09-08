@@ -137,6 +137,14 @@ async function preferencesScenario(targets: E2eScenarioTargets): Promise<Prefere
     `document.querySelector(".settings-input-compact") !== null`,
     "generation preferences",
   );
+  const autoLanguageAligned = (await target.webContents.executeJavaScript(
+    `(() => {
+      const controls = [...document.querySelectorAll(".settings-input-compact")];
+      const language = document.querySelector(".settings-row-control-language > select");
+      return Math.abs(language.getBoundingClientRect().right - controls.at(-1).getBoundingClientRect().right) <= 1;
+    })()`,
+    true,
+  )) as boolean;
   await target.webContents.executeJavaScript(
     `(() => {
       const select = [...document.querySelectorAll("select")].find((node) => node.querySelector('option[value="custom"]') !== null);
@@ -166,18 +174,24 @@ async function preferencesScenario(targets: E2eScenarioTargets): Promise<Prefere
         window: { width: window.innerWidth, height: window.innerHeight },
         generationRows: section?.querySelectorAll(".settings-group-row").length ?? 0,
         generationVisible: rect !== undefined && rect.top >= 0 && rect.bottom <= window.innerHeight,
+        controlsAligned: (() => {
+          const controls = [...section.querySelectorAll(".settings-row-control > :last-child")];
+          const edges = controls.map((node) => node.getBoundingClientRect().right);
+          return Math.max(...edges) - Math.min(...edges) <= 1;
+        })(),
+        timeoutUnitBeforeInput: input?.previousElementSibling?.classList.contains("settings-row-detail") === true,
         customLanguageVisible: document.querySelector(".settings-row-control-language > .settings-input") !== null,
         panelOverflowsHorizontally: panel !== null && panel.scrollWidth > panel.clientWidth + 1,
       };
     })()`,
     true,
-  )) as Omit<PreferencesUiReport, "shot">;
+  )) as Omit<PreferencesUiReport, "shot" | "autoLanguageAligned">;
   const directory = process.env[DESKTOP_E2E_SHOTS];
-  if (directory === undefined || directory === "") return measured;
+  if (directory === undefined || directory === "") return { ...measured, autoLanguageAligned };
   await mkdir(directory, { recursive: true });
   const shot = path.join(directory, "settings-preferences.png");
   await writeFile(shot, (await target.webContents.capturePage()).toPNG());
-  return { ...measured, shot };
+  return { ...measured, autoLanguageAligned, shot };
 }
 
 /** Ouvre et mesure le Diagnostic dans la vraie fenêtre de réglages. */

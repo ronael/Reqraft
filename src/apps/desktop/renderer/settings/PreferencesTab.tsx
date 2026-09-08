@@ -407,6 +407,7 @@ function TimeoutRow(
       errorId={errorId}
       error={error}
     >
+      <span className="settings-row-detail">{t("settings.timeoutUnit")}</span>
       <input
         id={controlId}
         className="settings-input settings-input-compact"
@@ -426,7 +427,6 @@ function TimeoutRow(
           if (event.key === "Enter") event.currentTarget.blur();
         }}
       />
-      <span className="settings-row-detail">{t("settings.timeoutUnit")}</span>
     </EditableRow>
   );
 }

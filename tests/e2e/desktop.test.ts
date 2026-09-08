@@ -428,6 +428,9 @@ describeElectron("settings preferences — vraie fenêtre", () => {
       expect(ui.generationRows).toBe(4);
       expect(ui.generationVisible).toBe(true);
       expect(ui.customLanguageVisible).toBe(true);
+      expect(ui.autoLanguageAligned).toBe(true);
+      expect(ui.controlsAligned).toBe(true);
+      expect(ui.timeoutUnitBeforeInput).toBe(true);
       expect(ui.panelOverflowsHorizontally).toBe(false);
     },
     ELECTRON_TEST_TIMEOUT_MS,

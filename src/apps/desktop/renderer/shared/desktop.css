@@ -3839,6 +3839,7 @@ kbd {
 }
 
 .settings-row-control-language {
+  justify-content: flex-end;
   width: min(360px, 42vw);
   flex-wrap: wrap;
 }
