@@ -134,6 +134,8 @@ export interface DesktopIpcDependencies {
   env?: NodeJS.ProcessEnv;
   /** Injectable so Windows capability is covered without running tests on Windows. */
   platform?: NodeJS.Platform;
+  /** Desktop-specific secure backend availability (for example Electron DPAPI). */
+  secureCredentialStorageAvailable?: boolean;
   /** Lot 2: capture/reinjection orchestrator. Absent in tests → degraded. */
   captureService?: CaptureService;
   /** Lot 2: permissions probe (§5.9). Absent → explicit degraded mode. */
@@ -267,9 +269,9 @@ const EMPTY_SHORTCUT_STATE: ShortcutStateInfo = {
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
   const env = dependencies.env ?? process.env;
-  const secureCredentialStorage = supportsSecureCredentialStorage(
-    dependencies.platform ?? process.platform,
-  );
+  const secureCredentialStorage =
+    dependencies.secureCredentialStorageAvailable ??
+    supportsSecureCredentialStorage(dependencies.platform ?? process.platform);
   const load = dependencies.loadConfig ?? loadConfig;
   const loadUser = dependencies.loadUserConfig ?? dependencies.loadConfig ?? loadUserConfig;
   const save = dependencies.saveConfig ?? saveConfig;
@@ -806,6 +808,11 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
       throw new Error(t("main.errorProviderNoStoredKey", { provider }));
     }
     await removeCredential(provider);
+    const config = await load();
+    if (config.desktopKeychainProviders?.includes(provider)) {
+      Reflect.deleteProperty(env, getProviderEnvName(provider));
+      await hydrate(env);
+    }
     return { providers: await listProviderStatuses(env, hydrate, load, secureCredentialStorage) };
   });
 

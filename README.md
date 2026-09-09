@@ -259,7 +259,8 @@ rp auth status
 rp auth logout openai
 ```
 
-macOS uses Keychain and Linux uses Secret Service. Windows currently uses environment variables.
+macOS uses Keychain and Linux uses Secret Service. The Windows desktop app uses
+Electron safeStorage backed by DPAPI; the Windows CLI uses environment variables.
 
 Environment variables remain available for CI, containers and unsupported credential stores:
 

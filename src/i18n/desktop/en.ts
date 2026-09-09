@@ -179,7 +179,7 @@ export const DESKTOP_EN = {
   "settings.pasteKey": "Paste your key",
   "settings.noKeyStored": "No key stored.",
   "settings.secureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
-  "settings.keyInKeychain": "Key stored in your keychain.",
+  "settings.keyInKeychain": "Key stored securely by your system.",
   "settings.keyNotNeeded": "No key needed.",
   "settings.keyFromEnv": "Key read from {envName}.",
   "settings.defaultProvider": "Default provider",
@@ -234,13 +234,13 @@ export const DESKTOP_EN = {
   "settings.noCustomProvider":
     "No custom provider yet. Add one to call a local server or a compatible gateway.",
   "settings.keysNote":
-    "Where supported, keys are verified with the provider then stored in your system keychain. They are never written to your configuration, nor shown here.",
+    "Keys are verified with the provider then protected by your system's secure storage. They are never written to your configuration, nor shown here.",
   "settings.shortcutRestart":
     "Changes take effect immediately. If a combination is unavailable, Reqraft activates a fallback.",
   "settings.shortcutsReset": "Reset",
   "settings.shortcutsRetest": "Retry",
   "settings.replaceEnvInApp":
-    "This key comes from the launch environment. Replace it here to make the app use the keychain instead.",
+    "This key comes from the launch environment. Replace it here to use secure system storage instead.",
   "profiles.intro":
     "The selected profile is the one the capsule uses. A built-in profile is duplicated to get an editable copy.",
   "profiles.empty":
@@ -281,7 +281,7 @@ export const DESKTOP_EN = {
   "onboarding.baseUrlDetail": "The OpenAI-compatible API address to call.",
   "onboarding.apiKey": "{provider} API key",
   "onboarding.apiKeyDetail":
-    "Verified then stored in your system keychain. It is never written to your configuration file.",
+    "Verified then protected by your system's secure storage. It is never written to your configuration file.",
   "onboarding.verifyAndSave": "Verify and save",
   "onboarding.model": "Model",
   "onboarding.modelDetail": "What the provider will run.",
@@ -303,12 +303,12 @@ export const DESKTOP_EN = {
     "Save an API key for {provider}: without it the application cannot send anything.",
   "onboarding.ready": "Everything is ready: you can finish.",
   "onboarding.keyFromEnv": "Key detected in {envName}.",
-  "onboarding.keyInKeychain": "Key found in your system keychain.",
+  "onboarding.keyInKeychain": "Key found in secure system storage.",
   "onboarding.providerDeclared": "Provider declared in your configuration.",
   "onboarding.keyNotNeeded": "No key needed.",
   "onboarding.keyNotNeededProvider": "No key needed for this provider.",
   "onboarding.noKeyYet": "No key stored yet.",
-  "onboarding.keySaved": "{provider} key verified and stored in your keychain.",
+  "onboarding.keySaved": "{provider} key verified and stored securely.",
   "onboarding.savedIncomplete":
     "Configuration saved, but incomplete: a usable key is still missing.",
   "onboarding.unreadable": "Unreadable configuration: {reason}",
@@ -506,18 +506,18 @@ export const DESKTOP_EN = {
   "onboarding.tour.providers.ecosystemDetail": "Native providers and OpenAI-compatible endpoints",
   "onboarding.tour.providers.addKey": "Add a key",
   "onboarding.tour.providers.compatible": "Add an OpenAI-compatible endpoint",
-  "onboarding.tour.providers.keychain": "Keys are protected by the macOS Keychain",
+  "onboarding.tour.providers.keychain": "Keys are protected by secure system storage",
   "onboarding.tour.capture.editing": "editing",
   "onboarding.tour.privacy.title": "Your requests remain ephemeral",
   "onboarding.tour.privacy.body":
-    "Reqraft does not retain your prompts. You choose the provider and keys stay in the system keychain.",
+    "Reqraft does not retain your prompts. You choose the provider and keys stay in secure system storage.",
   "onboarding.tour.privacy.private": "private",
   "onboarding.tour.privacy.example":
     "Clarify this request without adding features or losing any constraint.",
   "onboarding.tour.privacy.telemetry": "Telemetry off · content not retained",
   "onboarding.tour.privacy.ephemeral": "No prompt stored",
   "onboarding.tour.privacy.ephemeralDetail": "Text exists only for the duration of the rewrite.",
-  "onboarding.tour.privacy.keychain": "Keys protected by macOS",
+  "onboarding.tour.privacy.keychain": "Keys protected by your system",
   "onboarding.tour.privacy.keychainDetail": "They are never sent back to the interface.",
   "onboarding.tour.privacy.available": "Always one shortcut away",
   "onboarding.tour.privacy.availableDetail":
@@ -531,7 +531,7 @@ export const DESKTOP_EN = {
   "profiles.levelMeta": "level {level}",
   "profiles.confirmDeleteQuestion": "Delete “{id}”? This cannot be undone.",
   "settings.confirmDeleteKey":
-    "Delete the {provider} key from the keychain? It will be lost for good: the keychain has no bin, and an API key is never shown again by the provider. You would have to generate a new one.",
+    "Delete the securely stored {provider} key? It will be lost for good, and an API key is never shown again by the provider. You would have to generate a new one.",
   "picker.availableOne": "{count} available",
   "capsule.replaceUnavailableWhy":
     "Replacement unavailable ({reason}) — result copied, ⌘V to paste.",

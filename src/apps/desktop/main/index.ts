@@ -11,6 +11,7 @@ import {
   ipcMain,
   Menu,
   Notification,
+  safeStorage,
   screen,
   shell,
   systemPreferences,
@@ -34,11 +35,11 @@ import { ConfigSchema } from "@/config/schema.js";
  * eux sont lancés depuis un dossier choisi.
  */
 const loadConfig = (): ReturnType<typeof loadLayeredConfig> => loadLayeredConfig(null);
-import { hydrateCredentials } from "@/auth/credentials.js";
+import { hydrateCredentials, login } from "@/auth/credentials.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
-import { buildOnboardingState, registerIpcHandlers } from "./ipc.js";
+import { buildOnboardingState, registerIpcHandlers, type DesktopIpcDependencies } from "./ipc.js";
 import { createMacosBridge, createOsascriptRunner } from "./macos.js";
 import { installDesktopMenu } from "./menu.js";
 import {
@@ -65,6 +66,7 @@ import { createOnboardingWindow } from "./windows/onboarding.js";
 import { createTray, type TrayController } from "./tray.js";
 import { DesktopUpdateService } from "./update-service.js";
 import { createDesktopCredentialEnvironment } from "./credential-environment.js";
+import { createWindowsCredentialStore } from "./windows-credential-store.js";
 import { version } from "@/version.js";
 import type { TrayState } from "./tray-icon.js";
 import { createCapsuleWindow, type CapsuleWindow } from "./windows/capsule.js";
@@ -449,6 +451,79 @@ function createMainTray(
   });
 }
 
+interface DesktopCredentialRuntime {
+  readonly hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
+  readonly secureStorageAvailable: boolean;
+  readonly ipcDependencies: Pick<DesktopIpcDependencies, "storeCredential" | "removeCredential">;
+}
+
+async function initializeDesktopCredentials(): Promise<{
+  runtime: DesktopCredentialRuntime;
+  env: NodeJS.ProcessEnv;
+}> {
+  const initialConfig = await loadConfig();
+  const runtime = createDesktopCredentialRuntime();
+  const env = await createDesktopCredentialEnvironment(process.env, initialConfig, runtime.hydrate);
+  return { runtime, env };
+}
+
+function createWindowEnvironment(): {
+  windowDefaults: { preloadPath: string };
+  withSurface: (
+    surface?: "popover" | "settings" | "onboarding",
+    params?: Readonly<Record<string, string>>,
+  ) => string | undefined;
+} {
+  const mainDir = path.dirname(fileURLToPath(import.meta.url));
+  registerRendererProtocol(path.join(mainDir, "../renderer"));
+  const devServerUrl = process.env.REQRAFT_DESKTOP_DEV_SERVER;
+  return {
+    windowDefaults: { preloadPath: path.join(mainDir, "../preload/index.cjs") },
+    withSurface: (surface, params) => devServerSurfaceUrl(devServerUrl, surface, params),
+  };
+}
+
+/** Selects the desktop credential backend without leaking platform branches into IPC. */
+function createDesktopCredentialRuntime(): DesktopCredentialRuntime {
+  const usesWindowsStore = process.platform === "win32";
+  if (!usesWindowsStore) {
+    return {
+      hydrate: hydrateCredentials,
+      secureStorageAvailable: process.platform === "darwin" || process.platform === "linux",
+      ipcDependencies: {},
+    };
+  }
+
+  const windowsStore = createWindowsCredentialStore({
+    filePath: path.join(app.getPath("userData"), "credentials.v1.json"),
+    safeStorage,
+  });
+  const hydrate = async (env: NodeJS.ProcessEnv): Promise<void> => {
+    await hydrateCredentials(env);
+    await windowsStore.hydrate(env);
+  };
+
+  return {
+    hydrate,
+    secureStorageAvailable: windowsStore.available,
+    ipcDependencies: {
+      storeCredential: async (provider, secret, env) => {
+        await login(provider, {
+          env,
+          readSecret: () => Promise.resolve(secret),
+          setCredential: async (id, value) => {
+            await windowsStore.set(id, value);
+          },
+          output: { log: () => undefined, write: () => undefined },
+        });
+      },
+      removeCredential: async (provider) => {
+        await windowsStore.delete(provider);
+      },
+    },
+  };
+}
+
 function devServerSurfaceUrl(
   devServerUrl: string | undefined,
   surface?: "popover" | "settings" | "onboarding",
@@ -467,11 +542,17 @@ function devServerSurfaceUrl(
 
 async function openStartupWindow(options: {
   env: NodeJS.ProcessEnv;
+  hydrateCredentials: (env: NodeJS.ProcessEnv) => Promise<void>;
+  secureCredentialStorageAvailable: boolean;
   openOnboarding: () => void;
   openSettings: (tab?: string) => void;
 }): Promise<void> {
-  const onboarding = await buildOnboardingState(options.env, hydrateCredentials, loadConfig, () =>
-    existsSync(configPath()),
+  const onboarding = await buildOnboardingState(
+    options.env,
+    options.hydrateCredentials,
+    loadConfig,
+    () => existsSync(configPath()),
+    options.secureCredentialStorageAvailable,
   );
   if (onboarding.required || onboarding.welcomeTourRequired) {
     options.openOnboarding();
@@ -570,8 +651,7 @@ function bootstrap(): void {
     await applyConfiguredLocale();
     await preloadProfileCatalog();
 
-    const initialConfig = await loadConfig();
-    const desktopEnv = await createDesktopCredentialEnvironment(process.env, initialConfig);
+    const { runtime: credentialRuntime, env: desktopEnv } = await initializeDesktopCredentials();
 
     const relaunchApp = createRelauncher();
     const bridge = createMacosBridge(createOsascriptRunner());
@@ -583,16 +663,7 @@ function bootstrap(): void {
       process.platform,
     );
 
-    const mainDir = path.dirname(fileURLToPath(import.meta.url));
-    registerRendererProtocol(path.join(mainDir, "../renderer"));
-    const devServerUrl = process.env.REQRAFT_DESKTOP_DEV_SERVER;
-    const withSurface = (
-      surface?: "popover" | "settings" | "onboarding",
-      params?: Readonly<Record<string, string>>,
-    ): string | undefined => devServerSurfaceUrl(devServerUrl, surface, params);
-    const windowDefaults = {
-      preloadPath: path.join(mainDir, "../preload/index.cjs"),
-    };
+    const { withSurface, windowDefaults } = createWindowEnvironment();
 
     const capsuleOptions = {
       ...windowDefaults,
@@ -697,6 +768,10 @@ function bootstrap(): void {
       ipcMain,
       clipboard,
       env: desktopEnv,
+      platform: process.platform,
+      secureCredentialStorageAvailable: credentialRuntime.secureStorageAvailable,
+      hydrateCredentials: credentialRuntime.hydrate,
+      ...credentialRuntime.ipcDependencies,
       loadConfig,
       loadUserConfig,
       saveConfig,
@@ -749,7 +824,13 @@ function bootstrap(): void {
     });
 
     try {
-      await openStartupWindow({ env: desktopEnv, openOnboarding, openSettings });
+      await openStartupWindow({
+        env: desktopEnv,
+        hydrateCredentials: credentialRuntime.hydrate,
+        secureCredentialStorageAvailable: credentialRuntime.secureStorageAvailable,
+        openOnboarding,
+        openSettings,
+      });
     } catch (error) {
       console.error("Reqraft: could not determine the setup state:", error);
     }

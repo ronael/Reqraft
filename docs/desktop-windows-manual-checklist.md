@@ -14,16 +14,16 @@ disponibles. Voir [le statut des plateformes](desktop-platform-support.md) et
 
 Copier ces informations dans le rapport de test, sans clé API ni texte personnel :
 
-| Information | Valeur à renseigner |
-|---|---|
-| Date, personne | |
-| Version Reqraft, tag/commit, lien de l'artefact | |
-| Windows : édition, version et build (`winver`) | |
-| Architecture, disposition clavier, langue système | |
-| Nombre d'écrans, résolution, mise à l'échelle | |
-| Installation vierge ou mise à niveau depuis quelle version | |
-| Signature et avertissement SmartScreen observés | |
-| Applications sources et versions | |
+| Information                                                | Valeur à renseigner |
+| ---------------------------------------------------------- | ------------------- |
+| Date, personne                                             |                     |
+| Version Reqraft, tag/commit, lien de l'artefact            |                     |
+| Windows : édition, version et build (`winver`)             |                     |
+| Architecture, disposition clavier, langue système          |                     |
+| Nombre d'écrans, résolution, mise à l'échelle              |                     |
+| Installation vierge ou mise à niveau depuis quelle version |                     |
+| Signature et avertissement SmartScreen observés            |                     |
+| Applications sources et versions                           |                     |
 
 Pour chaque contrôle, noter **réussi**, **échoué** ou **non testé**, avec le
 parcours exact, le résultat attendu et le résultat observé. Un blocage connu
@@ -55,9 +55,9 @@ cocher une ligne simplement parce que le build ou un test injecté passe.
       Desktop, quitter, relancer sans variable d'environnement et générer.
       La clé ne doit pas apparaître dans les réponses IPC, logs ou
       `%APPDATA%\rp\config.json`. Tester ensuite son remplacement et son retrait.
-- [ ] En Alpha, relever l'erreur actuelle de stockage. Si une variable
-      d'environnement est utilisée pour poursuivre les essais, le noter comme
-      repli ; cela ne valide pas la ligne précédente.
+- [ ] Si DPAPI est indisponible, vérifier que l'interface propose explicitement
+      la variable d'environnement correspondante, sans laisser saisir une clé
+      qui échouera ensuite. Ce repli ne valide pas la ligne précédente.
 - [ ] Retirer la clé active puis relancer : la réparation est proposée sans
       rejouer automatiquement la découverte, et l'erreur indique une action utile.
 - [ ] Ajouter, modifier puis supprimer un endpoint compatible OpenAI de test ;
@@ -135,7 +135,7 @@ séparé. Les fixtures suivent les chemins de `src/config/paths.ts`, vérifiés 
 `tests/unit/desktop-process.test.ts`.
 
 Ces E2E testent le bundle avec des services injectés ; ils ne prouvent pas la
-capture native, le stockage Credential Manager, la signature ou l'installation.
+capture native, le stockage DPAPI sur une vraie session Windows, la signature ou l'installation.
 Leur exécution Windows et leur branchement en CI restent à valider. Conserver le
 suffixe `-experimental` tant que les critères Windows Beta de la roadmap ne sont
 pas tous atteints.

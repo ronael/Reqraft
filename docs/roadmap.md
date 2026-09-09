@@ -179,9 +179,10 @@ plateforme supportée. L'artefact reste **Alpha** et conserve son suffixe
   remplacer le texte dans l'application source. Garder le même contrat
   `CaptureService` que macOS et isoler les API Windows dans `desktop/main`, sans
   condition de plateforme dans le domaine, le CLI ou les renderers.
-- Ajouter un stockage sécurisé dans Windows Credential Manager. Les variables
-  d'environnement restent un repli explicite, pas l'unique méthode de
-  configuration de l'application.
+- ~~Ajouter un stockage sécurisé à l'application Windows.~~ Fait avec Electron
+  `safeStorage`, qui chiffre les clés avec DPAPI pour le compte Windows courant.
+  Les variables d'environnement restent un repli explicite quand DPAPI n'est
+  pas disponible. Le CLI Windows continue de les utiliser directement.
 - Vérifier le comportement natif du tray, des raccourcis, du presse-papiers, de
   la fenêtre toujours au premier plan, du focus rendu à l'application source et
   des chemins de configuration Windows.

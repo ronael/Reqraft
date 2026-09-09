@@ -64,6 +64,7 @@ function harness(
   initial?: Partial<Config>,
   platform: NodeJS.Platform = "darwin",
   env: NodeJS.ProcessEnv = {},
+  secureCredentialStorage?: "available",
 ): void {
   ipcMain = new FakeIpcMain();
   saved = [];
@@ -75,6 +76,7 @@ function harness(
     clipboard: { writeText: vi.fn() },
     env,
     platform,
+    ...(secureCredentialStorage === undefined ? {} : { secureCredentialStorageAvailable: true }),
     loadConfig: () => Promise.resolve(config),
     saveConfig: (next) => {
       saved.push(next);
@@ -257,6 +259,20 @@ describe("credential:delete", () => {
     expect(response).toHaveProperty("providers");
     expect(JSON.stringify(response)).not.toContain(TOKEN);
   });
+
+  it("retire aussi la clé hydratée de l'environnement desktop", async () => {
+    const env = { ANTHROPIC_API_KEY: "hydrated-key" };
+    harness({ desktopKeychainProviders: ["anthropic"] }, "darwin", env);
+
+    const response = (await ipcMain.invoke(IPC_CHANNELS.credentialDelete, {
+      provider: "anthropic",
+    })) as { providers: { id: string; configured: boolean }[] };
+
+    expect(env.ANTHROPIC_API_KEY).toBeUndefined();
+    expect(response.providers.find((provider) => provider.id === "anthropic")?.configured).toBe(
+      false,
+    );
+  });
 });
 
 describe("credential:save from the Desktop", () => {
@@ -338,6 +354,19 @@ describe("ce que les statuts disent aux réglages", () => {
 
     expect(providers.find((provider) => provider.id === "anthropic")?.supportsSecureAuth).toBe(
       false,
+    );
+  });
+
+  it("annonce la saisie intégrée sur Windows quand DPAPI est disponible", async () => {
+    harness(undefined, "win32", {}, "available");
+
+    const providers = (await ipcMain.invoke(IPC_CHANNELS.providersStatus)) as {
+      id: string;
+      supportsSecureAuth: boolean;
+    }[];
+
+    expect(providers.find((provider) => provider.id === "anthropic")?.supportsSecureAuth).toBe(
+      true,
     );
   });
 

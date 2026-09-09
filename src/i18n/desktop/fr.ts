@@ -173,7 +173,7 @@ export const DESKTOP_FR = {
   "settings.pasteKey": "Collez votre clé",
   "settings.noKeyStored": "Aucune clé enregistrée.",
   "settings.secureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
-  "settings.keyInKeychain": "Clé enregistrée dans votre trousseau.",
+  "settings.keyInKeychain": "Clé protégée par le stockage sécurisé du système.",
   "settings.keyNotNeeded": "Aucune clé nécessaire.",
   "settings.keyFromEnv": "Clé lue dans {envName}.",
   "settings.defaultProvider": "Provider par défaut",
@@ -230,13 +230,13 @@ export const DESKTOP_FR = {
   "settings.noCustomProvider":
     "Aucun fournisseur personnalisé. Ajoutez-en un pour appeler un serveur local ou une passerelle compatible.",
   "settings.keysNote":
-    "Quand le système le permet, les clés sont vérifiées auprès du fournisseur puis rangées dans son trousseau. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.",
+    "Les clés sont vérifiées auprès du fournisseur puis protégées par le stockage sécurisé du système. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.",
   "settings.shortcutRestart":
     "Les changements s'appliquent immédiatement. Si une combinaison est indisponible, Reqraft active un repli.",
   "settings.shortcutsReset": "Réinitialiser",
   "settings.shortcutsRetest": "Retester",
   "settings.replaceEnvInApp":
-    "Cette clé vient de l'environnement de lancement. Remplacez-la ici pour que l'application utilise plutôt le trousseau.",
+    "Cette clé vient de l'environnement de lancement. Remplacez-la ici pour utiliser plutôt le stockage sécurisé du système.",
   "profiles.intro":
     "Le profil sélectionné est celui que la capsule utilise. Un profil intégré se duplique pour obtenir une copie modifiable.",
   "profiles.empty":
@@ -277,7 +277,7 @@ export const DESKTOP_FR = {
   "onboarding.baseUrlDetail": "L'adresse de l'API compatible OpenAI à appeler.",
   "onboarding.apiKey": "Clé API {provider}",
   "onboarding.apiKeyDetail":
-    "Vérifiée puis rangée dans le trousseau de votre système. Elle n'est jamais écrite dans votre fichier de configuration.",
+    "Vérifiée puis protégée par le stockage sécurisé du système. Elle n'est jamais écrite dans votre fichier de configuration.",
   "onboarding.verifyAndSave": "Vérifier et enregistrer",
   "onboarding.model": "Modèle",
   "onboarding.modelDetail": "Ce que le fournisseur exécutera.",
@@ -299,12 +299,12 @@ export const DESKTOP_FR = {
     "Enregistrez une clé API pour {provider} : sans elle, l'application ne peut rien envoyer.",
   "onboarding.ready": "Tout est prêt : vous pouvez terminer.",
   "onboarding.keyFromEnv": "Clé détectée dans {envName}.",
-  "onboarding.keyInKeychain": "Clé trouvée dans le trousseau de votre système.",
+  "onboarding.keyInKeychain": "Clé trouvée dans le stockage sécurisé du système.",
   "onboarding.providerDeclared": "Fournisseur déclaré dans votre configuration.",
   "onboarding.keyNotNeeded": "Aucune clé nécessaire.",
   "onboarding.keyNotNeededProvider": "Aucune clé nécessaire pour ce fournisseur.",
   "onboarding.noKeyYet": "Aucune clé enregistrée pour l'instant.",
-  "onboarding.keySaved": "Clé {provider} vérifiée et enregistrée dans votre trousseau.",
+  "onboarding.keySaved": "Clé {provider} vérifiée et enregistrée de façon sécurisée.",
   "onboarding.savedIncomplete":
     "Configuration enregistrée, mais incomplète : il manque encore une clé utilisable.",
   "onboarding.unreadable": "Configuration illisible : {reason}",
@@ -505,11 +505,12 @@ export const DESKTOP_FR = {
     "Fournisseurs natifs et endpoints compatibles OpenAI",
   "onboarding.tour.providers.addKey": "Ajouter une clé",
   "onboarding.tour.providers.compatible": "Ajouter un fournisseur compatible OpenAI",
-  "onboarding.tour.providers.keychain": "Les clés sont protégées par le trousseau macOS",
+  "onboarding.tour.providers.keychain":
+    "Les clés sont protégées par le stockage sécurisé du système",
   "onboarding.tour.capture.editing": "modification",
   "onboarding.tour.privacy.title": "Vos demandes restent éphémères",
   "onboarding.tour.privacy.body":
-    "Reqraft ne conserve pas vos prompts. Vous choisissez le fournisseur et les clés restent dans le trousseau du système.",
+    "Reqraft ne conserve pas vos prompts. Vous choisissez le fournisseur et les clés restent dans le stockage sécurisé du système.",
   "onboarding.tour.privacy.private": "privé",
   "onboarding.tour.privacy.example":
     "Clarifie cette demande sans ajouter de fonctionnalité ni perdre de contrainte.",
@@ -517,7 +518,7 @@ export const DESKTOP_FR = {
   "onboarding.tour.privacy.ephemeral": "Aucun prompt enregistré",
   "onboarding.tour.privacy.ephemeralDetail":
     "Le texte existe seulement le temps de la reformulation.",
-  "onboarding.tour.privacy.keychain": "Clés protégées par macOS",
+  "onboarding.tour.privacy.keychain": "Clés protégées par votre système",
   "onboarding.tour.privacy.keychainDetail": "Elles ne sont jamais renvoyées à l'interface.",
   "onboarding.tour.privacy.available": "Toujours à portée de raccourci",
   "onboarding.tour.privacy.availableDetail":
@@ -531,7 +532,7 @@ export const DESKTOP_FR = {
   "profiles.levelMeta": "niveau {level}",
   "profiles.confirmDeleteQuestion": "Supprimer « {id} » ? Cette action est définitive.",
   "settings.confirmDeleteKey":
-    "Supprimer la clé {provider} du trousseau ? Elle sera définitivement perdue : le trousseau n'a pas de corbeille, et une clé API ne se réaffiche pas chez le fournisseur. Il faudra en générer une nouvelle.",
+    "Supprimer la clé {provider} du stockage sécurisé ? Elle sera définitivement perdue, et une clé API ne se réaffiche pas chez le fournisseur. Il faudra en générer une nouvelle.",
   "picker.availableOne": "{count} disponible",
   "capsule.replaceUnavailableWhy":
     "Remplacement indisponible ({reason}) — résultat copié, ⌘V pour coller.",

@@ -5,12 +5,19 @@ import {
   credentialStatus,
   login,
   logout,
+  supportsSecureCredentialStorage,
 } from "@/auth/credentials.js";
 import { ProviderError } from "@/providers/errors.js";
 import { formatUiError } from "@/shared/errors.js";
 import type { CredentialProvider } from "@/providers/catalog.js";
 
 describe("secure credentials", () => {
+  it("keeps the existing native credential backends on macOS and Linux", () => {
+    expect(supportsSecureCredentialStorage("darwin")).toBe(true);
+    expect(supportsSecureCredentialStorage("linux")).toBe(true);
+    expect(supportsSecureCredentialStorage("win32")).toBe(false);
+  });
+
   it.each(["ta-clé", "votre-clé", "your-api-key"])(
     "rejects placeholder credential %s",
     (secret) => {
