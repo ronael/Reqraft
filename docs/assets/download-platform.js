@@ -1,24 +1,24 @@
-const RELEASE_BASE = "https://github.com/ronael/Reqraft/releases/download/v0.6.0";
+const RELEASE_BASE = "https://github.com/ronael/Reqraft/releases/download/v0.6.1";
 
 export const DOWNLOAD_TARGETS = {
   macos: {
     label: "Download for macOS",
     detail: "Apple silicon \u00b7 Beta",
-    href: `${RELEASE_BASE}/Reqraft-0.6.0-mac-arm64.dmg`,
+    href: `${RELEASE_BASE}/Reqraft-0.6.1-mac-arm64.dmg`,
     ariaLabel: "Download Reqraft desktop Beta for macOS on Apple silicon",
     releaseStatus: "Desktop Beta",
   },
   windows: {
     label: "Download for Windows",
     detail: "Windows x64 \u00b7 Alpha",
-    href: `${RELEASE_BASE}/Reqraft-0.6.0-win-x64-experimental.exe`,
+    href: `${RELEASE_BASE}/Reqraft-0.6.1-win-x64-experimental.exe`,
     ariaLabel: "Download Reqraft desktop Alpha for Windows x64",
     releaseStatus: "Desktop Alpha",
   },
   linux: {
     label: "Download for Linux",
     detail: "Linux x86_64 \u00b7 Alpha",
-    href: `${RELEASE_BASE}/Reqraft-0.6.0-linux-x86_64-experimental.AppImage`,
+    href: `${RELEASE_BASE}/Reqraft-0.6.1-linux-x86_64-experimental.AppImage`,
     ariaLabel: "Download Reqraft desktop Alpha for Linux x86_64",
     releaseStatus: "Desktop Alpha",
   },
