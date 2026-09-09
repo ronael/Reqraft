@@ -7,6 +7,8 @@
  * filled on the other side.
  */
 const SETTINGS_TITLE = "Reqraft — Settings";
+const SECURE_STORAGE_UNAVAILABLE =
+  "Secure credential storage is not available on this system. Set {envName}, then fully quit and reopen Reqraft.";
 
 export const DESKTOP_EN = {
   "capsule.newReformulation": "new reformulation",
@@ -176,6 +178,7 @@ export const DESKTOP_EN = {
   "settings.edit": "Edit",
   "settings.pasteKey": "Paste your key",
   "settings.noKeyStored": "No key stored.",
+  "settings.secureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
   "settings.keyInKeychain": "Key stored in your keychain.",
   "settings.keyNotNeeded": "No key needed.",
   "settings.keyFromEnv": "Key read from {envName}.",
@@ -231,7 +234,7 @@ export const DESKTOP_EN = {
   "settings.noCustomProvider":
     "No custom provider yet. Add one to call a local server or a compatible gateway.",
   "settings.keysNote":
-    "Keys are verified with the provider then stored in your system keychain. They are never written to your configuration, nor shown here.",
+    "Where supported, keys are verified with the provider then stored in your system keychain. They are never written to your configuration, nor shown here.",
   "settings.shortcutRestart":
     "Changes take effect immediately. If a combination is unavailable, Reqraft activates a fallback.",
   "settings.shortcutsReset": "Reset",
@@ -543,4 +546,6 @@ export const DESKTOP_EN = {
   "capsule.restructured": "! restructured",
   "capsule.rewriteInstruction": "! added instruction",
   "capsule.rewriteInstructionDetail": "the model asks for a rewrite instead of doing it",
+  "onboarding.secureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
+  "main.errorSecureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
 } as const;

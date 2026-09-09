@@ -252,6 +252,17 @@ describe("validation du formulaire, côté renderer", () => {
     expect(problem).toContain("clé API");
   });
 
+  it("indique la variable Windows quand le trousseau n'est pas disponible", () => {
+    const unavailable = {
+      ...provider,
+      credentialConfigured: false,
+      credentialSource: "not_configured" as const,
+      supportsSecureAuth: false,
+    };
+
+    expect(describeCredentialSource(unavailable, t)).toContain("ANTHROPIC_API_KEY");
+  });
+
   it("réclame un modèle", () => {
     expect(findOnboardingProblem({ ...form, model: "  " }, provider, t)).toContain("modèle");
   });
@@ -301,7 +312,15 @@ describe("ce que la fenêtre dit de la clé", () => {
 
   it("signale bien la clé manquante quand il en faut une", () => {
     expect(
-      describeCredentialSource({ ...base, id: "anthropic", requiresApiKey: true }, t),
+      describeCredentialSource(
+        {
+          ...base,
+          id: "anthropic",
+          requiresApiKey: true,
+          supportsSecureAuth: true,
+        },
+        t,
+      ),
     ).toContain("Aucune clé enregistrée");
   });
 });

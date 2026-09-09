@@ -30,6 +30,13 @@ const PLACEHOLDER_CREDENTIALS = new Set([
   "api-key",
 ]);
 
+/** Whether Reqraft has a native secure credential backend on this platform. */
+export function supportsSecureCredentialStorage(
+  platform: NodeJS.Platform = process.platform,
+): boolean {
+  return platform === "darwin" || platform === "linux";
+}
+
 export async function hydrateCredentials(env: NodeJS.ProcessEnv): Promise<void> {
   assertEnvironmentCredentials(env);
   for (const { id: provider } of listCredentialProviders()) {

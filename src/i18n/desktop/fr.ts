@@ -1,5 +1,7 @@
 /** Chaînes de l'interface desktop, en français. Voir `en.ts` pour le contrat. */
 const SETTINGS_TITLE = "Reqraft — Réglages";
+const SECURE_STORAGE_UNAVAILABLE =
+  "Le stockage sécurisé des identifiants n'est pas disponible sur ce système. Définissez {envName}, puis quittez complètement et relancez Reqraft.";
 
 export const DESKTOP_FR = {
   "capsule.newReformulation": "nouvelle reformulation",
@@ -170,6 +172,7 @@ export const DESKTOP_FR = {
   "settings.edit": "Modifier",
   "settings.pasteKey": "Collez votre clé",
   "settings.noKeyStored": "Aucune clé enregistrée.",
+  "settings.secureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
   "settings.keyInKeychain": "Clé enregistrée dans votre trousseau.",
   "settings.keyNotNeeded": "Aucune clé nécessaire.",
   "settings.keyFromEnv": "Clé lue dans {envName}.",
@@ -227,7 +230,7 @@ export const DESKTOP_FR = {
   "settings.noCustomProvider":
     "Aucun fournisseur personnalisé. Ajoutez-en un pour appeler un serveur local ou une passerelle compatible.",
   "settings.keysNote":
-    "Les clés sont vérifiées auprès du fournisseur puis rangées dans le trousseau de votre système. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.",
+    "Quand le système le permet, les clés sont vérifiées auprès du fournisseur puis rangées dans son trousseau. Elles ne sont jamais écrites dans votre configuration, ni affichées ici.",
   "settings.shortcutRestart":
     "Les changements s'appliquent immédiatement. Si une combinaison est indisponible, Reqraft active un repli.",
   "settings.shortcutsReset": "Réinitialiser",
@@ -543,4 +546,6 @@ export const DESKTOP_FR = {
   "capsule.restructured": "! restructurée",
   "capsule.rewriteInstruction": "! consigne ajoutée",
   "capsule.rewriteInstructionDetail": "le modèle demande de reformuler au lieu de le faire",
+  "onboarding.secureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
+  "main.errorSecureStorageUnavailable": SECURE_STORAGE_UNAVAILABLE,
 } as const;

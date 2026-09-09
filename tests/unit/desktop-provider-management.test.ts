@@ -60,7 +60,11 @@ let config: Config;
 let saved: Config[];
 let removed: string[];
 
-function harness(initial?: Partial<Config>): void {
+function harness(
+  initial?: Partial<Config>,
+  platform: NodeJS.Platform = "darwin",
+  env: NodeJS.ProcessEnv = {},
+): void {
   ipcMain = new FakeIpcMain();
   saved = [];
   removed = [];
@@ -69,7 +73,8 @@ function harness(initial?: Partial<Config>): void {
   registerIpcHandlers({
     ipcMain,
     clipboard: { writeText: vi.fn() },
-    env: {},
+    env,
+    platform,
     loadConfig: () => Promise.resolve(config),
     saveConfig: (next) => {
       saved.push(next);
@@ -322,6 +327,43 @@ describe("ce que les statuts disent aux réglages", () => {
       false,
     );
   });
+
+  it("n'annonce pas de stockage sécurisé sur Windows", async () => {
+    harness(undefined, "win32");
+
+    const providers = (await ipcMain.invoke(IPC_CHANNELS.providersStatus)) as {
+      id: string;
+      supportsSecureAuth: boolean;
+    }[];
+
+    expect(providers.find((provider) => provider.id === "anthropic")?.supportsSecureAuth).toBe(
+      false,
+    );
+  });
+
+  it("garde une variable Windows comme source même après une ancienne préférence keychain", async () => {
+    harness({ desktopKeychainProviders: ["anthropic"] }, "win32", {
+      ANTHROPIC_API_KEY: "windows-env-key",
+    });
+
+    const providers = (await ipcMain.invoke(IPC_CHANNELS.providersStatus)) as {
+      id: string;
+      source: string;
+    }[];
+
+    expect(providers.find((provider) => provider.id === "anthropic")?.source).toBe("environment");
+  });
+
+  it("refuse la saisie intégrée sur Windows avant toute validation distante", async () => {
+    harness(undefined, "win32");
+
+    await expect(
+      ipcMain.invoke(IPC_CHANNELS.credentialSave, {
+        provider: "anthropic",
+        secret: "not-sent-anywhere",
+      }),
+    ).rejects.toThrow(/ANTHROPIC_API_KEY/);
+  });
 });
 
 describe("le formulaire d'endpoint, côté renderer", () => {
@@ -396,6 +438,20 @@ describe("ce que la ligne d'un fournisseur annonce", () => {
     expect(
       describeProviderSource({ ...provider, configured: false, source: "not_configured" }, t),
     ).toContain("Aucune clé enregistrée");
+  });
+
+  it("indique la variable à définir quand le stockage sécurisé est indisponible", () => {
+    expect(
+      describeProviderSource(
+        {
+          ...provider,
+          configured: false,
+          source: "not_configured",
+          supportsSecureAuth: false,
+        },
+        t,
+      ),
+    ).toContain("ANTHROPIC_API_KEY");
   });
 });
 

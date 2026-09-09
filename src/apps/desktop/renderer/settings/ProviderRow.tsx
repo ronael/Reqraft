@@ -38,7 +38,9 @@ export function describeProviderSource(
     case "keychain":
       return t("settings.keyInKeychain");
     default:
-      return t("settings.noKeyStored");
+      return provider.supportsSecureAuth
+        ? t("settings.noKeyStored")
+        : t("settings.secureStorageUnavailable", { envName: provider.envName ?? "" });
   }
 }
 
@@ -228,6 +230,14 @@ interface BuiltinProviderRowProps {
 export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): React.JSX.Element {
   const t = useT();
   const { provider } = props;
+  let editCredentialButton: React.JSX.Element | null = null;
+  if (provider.supportsSecureAuth) {
+    editCredentialButton = (
+      <Button variant="neutral" onClick={props.onStartEdit}>
+        {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
+      </Button>
+    );
+  }
   return (
     <div className="provider-row">
       <ProviderLogo providerId={provider.id} label={provider.label} />
@@ -237,7 +247,7 @@ export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): Re
           {props.isDefault && <DefaultProviderBadge kind="builtin" />}
         </span>
         <span className="settings-row-detail">{describeProviderSource(provider, t)}</span>
-        {provider.source === "environment" && (
+        {provider.source === "environment" && provider.supportsSecureAuth && (
           <span className="settings-row-detail">{t("settings.replaceEnvInApp")}</span>
         )}
         {props.result !== undefined && !props.testing && (
@@ -298,9 +308,7 @@ export function BuiltinProviderRow(props: Readonly<BuiltinProviderRowProps>): Re
                   onTest={props.onTest}
                 />
               )}
-              <Button variant="neutral" onClick={props.onStartEdit}>
-                {provider.configured ? t("settings.replaceKey") : t("settings.addKey")}
-              </Button>
+              {editCredentialButton}
               {provider.source === "keychain" && (
                 <button
                   type="button"

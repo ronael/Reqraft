@@ -91,6 +91,9 @@ export function describeCredentialSource(
   if (!provider.requiresApiKey && !provider.credentialConfigured) {
     return t("onboarding.keyNotNeededProvider");
   }
+  if (provider.requiresApiKey && !provider.credentialConfigured && !provider.supportsSecureAuth) {
+    return t("onboarding.secureStorageUnavailable", { envName: provider.envName ?? "" });
+  }
 
   switch (provider.credentialSource) {
     case "environment":
@@ -190,7 +193,14 @@ export function OnboardingApp(): React.JSX.Element {
 
   const provider = state.providers.find((candidate) => candidate.id === form.provider);
   const problem = findOnboardingProblem(form, provider, t);
-  const needsKey = provider?.requiresApiKey === true && !provider.credentialConfigured;
+  const needsKey =
+    provider?.requiresApiKey === true &&
+    !provider.credentialConfigured &&
+    provider.supportsSecureAuth;
+  const needsEnvironmentKey =
+    provider?.requiresApiKey === true &&
+    !provider.credentialConfigured &&
+    !provider.supportsSecureAuth;
 
   if (shouldShowWelcomeTour(state.welcomeTourRequired, tourDismissed, forceWelcomeTour)) {
     return (
@@ -416,6 +426,15 @@ export function OnboardingApp(): React.JSX.Element {
                 </Button>
               </span>
             </label>
+          )}
+
+          {needsEnvironmentKey && (
+            <div className="settings-warning settings-soft-warning" role="status">
+              <TriangleAlert size={13} aria-hidden />{" "}
+              {t("onboarding.secureStorageUnavailable", {
+                envName: provider.envName ?? "",
+              })}
+            </div>
           )}
 
           <label className="onboarding-field">

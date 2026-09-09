@@ -3,7 +3,12 @@ import { homedir } from "node:os";
 import { existsSync } from "node:fs";
 import { writeFile } from "node:fs/promises";
 import { executeReprompt } from "@/application/reprompt.js";
-import { hydrateCredentials, login, logout } from "@/auth/credentials.js";
+import {
+  hydrateCredentials,
+  login,
+  logout,
+  supportsSecureCredentialStorage,
+} from "@/auth/credentials.js";
 import {
   configPath,
   loadConfig,
@@ -127,6 +132,8 @@ export interface DesktopIpcDependencies {
   saveConfig?: (config: Config) => Promise<void>;
   hydrateCredentials?: (env: NodeJS.ProcessEnv) => Promise<void>;
   env?: NodeJS.ProcessEnv;
+  /** Injectable so Windows capability is covered without running tests on Windows. */
+  platform?: NodeJS.Platform;
   /** Lot 2: capture/reinjection orchestrator. Absent in tests → degraded. */
   captureService?: CaptureService;
   /** Lot 2: permissions probe (§5.9). Absent → explicit degraded mode. */
@@ -260,6 +267,9 @@ const EMPTY_SHORTCUT_STATE: ShortcutStateInfo = {
 
 export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
   const env = dependencies.env ?? process.env;
+  const secureCredentialStorage = supportsSecureCredentialStorage(
+    dependencies.platform ?? process.platform,
+  );
   const load = dependencies.loadConfig ?? loadConfig;
   const loadUser = dependencies.loadUserConfig ?? dependencies.loadConfig ?? loadUserConfig;
   const save = dependencies.saveConfig ?? saveConfig;
@@ -348,7 +358,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     return sanitizeConfigForRenderer(merged);
   });
 
-  registerProviderStatusHandler(ipcMain, env, hydrate, load);
+  registerProviderStatusHandler(ipcMain, env, hydrate, load, secureCredentialStorage);
 
   registerUpdateHandlers(dependencies);
 
@@ -356,7 +366,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
   const storeCredential = dependencies.storeCredential ?? defaultStoreCredential;
   const removeCredential = dependencies.removeCredential ?? defaultRemoveCredential;
   const onboardingState = (): Promise<OnboardingStateResponse> =>
-    buildOnboardingState(env, hydrate, load, configExists);
+    buildOnboardingState(env, hydrate, load, configExists, secureCredentialStorage);
 
   ipcMain.handle(IPC_CHANNELS.onboardingState, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
@@ -387,6 +397,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     save,
     hydrate,
     storeCredential,
+    secureCredentialStorage,
   });
 
   registerProviderManagementHandlers({
@@ -397,6 +408,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     hydrate,
     removeCredential,
     create: dependencies.createProvider ?? createProvider,
+    secureCredentialStorage,
   });
 
   ipcMain.handle(IPC_CHANNELS.onboardingComplete, async (_event, payload) => {
@@ -706,6 +718,7 @@ async function listProviderStatuses(
   env: NodeJS.ProcessEnv,
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>,
   load: () => Promise<Config>,
+  secureCredentialStorage = supportsSecureCredentialStorage(),
 ): Promise<ProviderStatus[]> {
   // Hydration copies keychain entries into a throwaway env so the source of
   // each credential stays distinguishable. Values never leave the main.
@@ -721,10 +734,10 @@ async function listProviderStatuses(
       label: getProviderDefinition(definition.id).label,
       models: modelsForProvider(definition.id),
       requiresApiKey: true,
-      supportsSecureAuth: true,
+      supportsSecureAuth: secureCredentialStorage,
       envName,
     };
-    if (preferredKeychainProviders.has(definition.id) && env[envName]) {
+    if (secureCredentialStorage && preferredKeychainProviders.has(definition.id) && env[envName]) {
       return { ...shared, configured: true, source: "keychain" as const };
     }
     if (env[envName]) {
@@ -759,6 +772,7 @@ interface ProviderHandlerDependencies {
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
   removeCredential: (provider: CredentialProvider) => Promise<void>;
   create: NonNullable<DesktopIpcDependencies["createProvider"]>;
+  secureCredentialStorage: boolean;
 }
 
 /**
@@ -769,7 +783,8 @@ interface ProviderHandlerDependencies {
  * and because `registerIpcHandlers` is long enough already.
  */
 function registerProviderManagementHandlers(dependencies: ProviderHandlerDependencies): void {
-  const { ipcMain, env, load, save, hydrate, removeCredential, create } = dependencies;
+  const { ipcMain, env, load, save, hydrate, removeCredential, create, secureCredentialStorage } =
+    dependencies;
 
   ipcMain.handle(IPC_CHANNELS.providerTest, async (_event, payload) => {
     const request = ProviderTestRequestSchema.parse(payload);
@@ -791,7 +806,7 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
       throw new Error(t("main.errorProviderNoStoredKey", { provider }));
     }
     await removeCredential(provider);
-    return { providers: await listProviderStatuses(env, hydrate, load) };
+    return { providers: await listProviderStatuses(env, hydrate, load, secureCredentialStorage) };
   });
 
   ipcMain.handle(IPC_CHANNELS.providerSave, async (_event, payload) => {
@@ -820,7 +835,7 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
     await save(next);
     return {
       config: sanitizeConfigForRenderer(next),
-      providers: await listProviderStatuses(env, hydrate, load),
+      providers: await listProviderStatuses(env, hydrate, load, secureCredentialStorage),
     };
   });
 
@@ -855,7 +870,7 @@ function registerProviderManagementHandlers(dependencies: ProviderHandlerDepende
     await save(next);
     return {
       config: sanitizeConfigForRenderer(next),
-      providers: await listProviderStatuses(env, hydrate, load),
+      providers: await listProviderStatuses(env, hydrate, load, secureCredentialStorage),
     };
   });
 }
@@ -1200,8 +1215,9 @@ export async function buildOnboardingState(
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>,
   load: () => Promise<Config>,
   configFileExists: () => boolean,
+  secureCredentialStorage = supportsSecureCredentialStorage(),
 ): Promise<OnboardingStateResponse> {
-  const statuses = await listProviderStatuses(env, hydrate, load);
+  const statuses = await listProviderStatuses(env, hydrate, load, secureCredentialStorage);
   const statusById = new Map(statuses.map((status) => [status.id, status]));
   const config = await load();
 
@@ -1214,7 +1230,7 @@ export async function buildOnboardingState(
         label: definition.label,
         requiresApiKey: definition.requiresApiKey,
         ...(definition.apiKeyEnvName === undefined ? {} : { envName: definition.apiKeyEnvName }),
-        supportsSecureAuth: definition.supportsSecureAuth,
+        supportsSecureAuth: status?.supportsSecureAuth ?? false,
         credentialConfigured: status?.configured ?? false,
         credentialSource: status?.source ?? ("not_configured" as const),
         models: modelsForProvider(definition.id),
@@ -1299,10 +1315,11 @@ function registerProviderStatusHandler(
   env: NodeJS.ProcessEnv,
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>,
   load: () => Promise<Config>,
+  secureCredentialStorage: boolean,
 ): void {
   ipcMain.handle(IPC_CHANNELS.providersStatus, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
-    return listProviderStatuses(env, hydrate, load);
+    return listProviderStatuses(env, hydrate, load, secureCredentialStorage);
   });
 }
 
@@ -1314,11 +1331,19 @@ function registerCredentialSaveHandler(options: {
   save: (config: Config) => Promise<void>;
   hydrate: (env: NodeJS.ProcessEnv) => Promise<void>;
   storeCredential: NonNullable<DesktopIpcDependencies["storeCredential"]>;
+  secureCredentialStorage: boolean;
 }): void {
   options.ipcMain.handle(IPC_CHANNELS.credentialSave, async (_event, payload) => {
     const request = CredentialSaveRequestSchema.parse(payload);
     if (!isCredentialProvider(request.provider)) {
       throw new Error(t("main.errorProviderNotStorable", { provider: request.provider }));
+    }
+    if (!options.secureCredentialStorage) {
+      throw new Error(
+        t("main.errorSecureStorageUnavailable", {
+          envName: getProviderEnvName(request.provider),
+        }),
+      );
     }
     await options.storeCredential(request.provider, request.secret, options.env);
     if (request.preferKeychain === true) {
@@ -1332,7 +1357,12 @@ function registerCredentialSaveHandler(options: {
       await options.hydrate(options.env);
     }
     return {
-      providers: await listProviderStatuses(options.env, options.hydrate, options.load),
+      providers: await listProviderStatuses(
+        options.env,
+        options.hydrate,
+        options.load,
+        options.secureCredentialStorage,
+      ),
     };
   });
 }
