@@ -289,6 +289,7 @@ describe("credential:save from the Desktop", () => {
       ipcMain: localIpc,
       clipboard: { writeText: vi.fn() },
       env,
+      secureCredentialStorageAvailable: true,
       loadConfig: () => Promise.resolve(current),
       loadUserConfig: () => Promise.resolve(current),
       saveConfig: (next) => {

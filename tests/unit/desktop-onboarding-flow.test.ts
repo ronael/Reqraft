@@ -75,6 +75,7 @@ beforeEach(async () => {
     ipcMain,
     clipboard: { writeText: vi.fn() },
     env,
+    secureCredentialStorageAvailable: true,
     configFileExists: () => existsSync(file),
     loadConfig: async () => (existsSync(file) ? await readSavedConfig() : ConfigSchema.parse({})),
     saveConfig: async (next) => {

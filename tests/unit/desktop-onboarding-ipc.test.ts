@@ -71,6 +71,7 @@ function harness(options: HarnessOptions = {}): void {
     ipcMain,
     clipboard: { writeText: vi.fn() },
     env: options.env ?? {},
+    secureCredentialStorageAvailable: true,
     loadConfig: () => Promise.resolve(config),
     saveConfig: (next) => {
       saved.push(next);
