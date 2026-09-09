@@ -276,6 +276,42 @@ describe("credential:delete", () => {
 });
 
 describe("credential:save from the Desktop", () => {
+  it("makes a first OpenAI DPAPI key available immediately without a restart", async () => {
+    const localIpc = new FakeIpcMain();
+    const env: NodeJS.ProcessEnv = {};
+    let storedOpenAiKey: string | undefined;
+    const hydrateCredentials = vi.fn((target: NodeJS.ProcessEnv) => {
+      if (storedOpenAiKey !== undefined) target.OPENAI_API_KEY ??= storedOpenAiKey;
+      return Promise.resolve();
+    });
+    registerIpcHandlers({
+      ipcMain: localIpc,
+      clipboard: { writeText: vi.fn() },
+      env,
+      platform: "win32",
+      secureCredentialStorageAvailable: true,
+      loadConfig: () =>
+        Promise.resolve({ ...DEFAULT_CONFIG, defaultProvider: "openai", defaultModel: "gpt-5.1" }),
+      loadUserConfig: () =>
+        Promise.resolve({ ...DEFAULT_CONFIG, defaultProvider: "openai", defaultModel: "gpt-5.1" }),
+      saveConfig: () => Promise.resolve(),
+      hydrateCredentials,
+      storeCredential: (_provider, secret) => {
+        storedOpenAiKey = secret;
+        return Promise.resolve();
+      },
+      configFileExists: () => true,
+    });
+
+    const response = (await localIpc.invoke(IPC_CHANNELS.credentialSave, {
+      provider: "openai",
+      secret: "sk-openai-dpapi",
+    })) as { providers: { id: string; configured: boolean }[] };
+
+    expect(env.OPENAI_API_KEY).toBe("sk-openai-dpapi");
+    expect(response.providers.find((provider) => provider.id === "openai")?.configured).toBe(true);
+  });
+
   it("can replace a launch-environment key with the verified keychain value", async () => {
     const localIpc = new FakeIpcMain();
     const env = { ANTHROPIC_API_KEY: "launch-key" };

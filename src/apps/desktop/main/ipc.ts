@@ -920,7 +920,12 @@ function registerDoctorHandlers(
       ? await dependencies.probePermissions()
       : undefined;
     const shortcuts = dependencies.shortcutState?.();
-    return await buildDoctorReport({ env, permissions, shortcuts });
+    return await buildDoctorReport({
+      env,
+      permissions,
+      shortcuts,
+      hydrateCredentials: dependencies.hydrateCredentials,
+    });
   };
 
   ipcMain.handle(IPC_CHANNELS.doctorRun, async (_event, payload) => {
@@ -1352,17 +1357,28 @@ function registerCredentialSaveHandler(options: {
         }),
       );
     }
+    const envName = getProviderEnvName(request.provider);
+    // With no effective key, the one entered here necessarily becomes the
+    // Desktop source. An existing launch variable keeps its documented
+    // priority unless the renderer explicitly asks to replace it.
+    const selectStoredCredential = request.preferKeychain === true || !options.env[envName];
     await options.storeCredential(request.provider, request.secret, options.env);
-    if (request.preferKeychain === true) {
+    if (selectStoredCredential) {
       const current = await options.loadUser();
       const preferred = new Set(current.desktopKeychainProviders ?? []);
       preferred.add(request.provider);
-      await options.save(
-        ConfigSchema.parse({ ...current, desktopKeychainProviders: [...preferred] }),
-      );
-      Reflect.deleteProperty(options.env, getProviderEnvName(request.provider));
-      await options.hydrate(options.env);
+      if (!current.desktopKeychainProviders?.includes(request.provider)) {
+        await options.save(
+          ConfigSchema.parse({ ...current, desktopKeychainProviders: [...preferred] }),
+        );
+      }
+      Reflect.deleteProperty(options.env, envName);
     }
+    // The main process owns one long-lived environment shared by generation,
+    // diagnostics and provider tests. Persisting a key without hydrating that
+    // environment makes the save appear successful but unusable until restart
+    // (most visible with the Windows DPAPI backend).
+    await options.hydrate(options.env);
     return {
       providers: await listProviderStatuses(
         options.env,

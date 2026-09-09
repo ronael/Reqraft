@@ -614,6 +614,35 @@ describe("canaux capture et permissions (lot 2)", () => {
  * reconstruit le rapport et l'écrit lui-même.
  */
 describe("doctor:copy", () => {
+  it("uses the injected desktop credential backend for an OpenAI diagnostic", async () => {
+    const env: NodeJS.ProcessEnv = {};
+    const hydrateCredentials = vi.fn((target: NodeJS.ProcessEnv) => {
+      target.OPENAI_API_KEY = "sk-dpapi-not-returned";
+      return Promise.resolve();
+    });
+    const harness = setup({
+      env,
+      hydrateCredentials,
+      config: {
+        ...MOCK_CONFIG,
+        defaultProvider: "openai",
+        defaultModel: "gpt-5.1",
+      },
+    });
+
+    const report = (await harness.ipcMain.invoke(
+      IPC_CHANNELS.doctorRun,
+      undefined,
+      harness.sender,
+    )) as DoctorReport;
+
+    expect(hydrateCredentials).toHaveBeenCalledWith(env);
+    expect(report.checks.find((check) => check.id === "provider:openai")).toMatchObject({
+      ok: true,
+    });
+    expect(JSON.stringify(report)).not.toContain("sk-dpapi-not-returned");
+  });
+
   it("copie le rapport reconstruit par le main, sur la même source que doctor:run", async () => {
     const harness = setup({});
     const runDoctorReport = vi.fn(() =>
