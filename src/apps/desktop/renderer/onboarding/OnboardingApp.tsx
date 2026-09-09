@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useLocale, useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
+import { Select, type SelectOption } from "../shared/Select.js";
 import { CheckCircle2, KeyRound, Loader2, TriangleAlert } from "lucide-react";
 import { groupProfiles } from "../shared/profiles.js";
 import { shouldShowWelcomeTour, WelcomeTour } from "./WelcomeTour.js";
@@ -226,8 +227,8 @@ export function OnboardingApp(): React.JSX.Element {
   };
 
   const onProviderChange = (id: string): void => {
-    // Looked up rather than cast: the value comes from a <select> whose
-    // options this same list built, so the option object is the typed id.
+    // Looked up rather than cast: the value comes from the options this same
+    // catalogue built, so the option object remains the typed source of truth.
     const next = state.providers.find((candidate) => candidate.id === id);
     if (!next) return;
     // The model must follow the provider: keeping the previous one would send
@@ -236,6 +237,14 @@ export function OnboardingApp(): React.JSX.Element {
     update({ provider: next.id, model: recommended?.id ?? "" });
     setNotice(null);
   };
+
+  const profileOptions: SelectOption[] = groupProfiles(profiles).flatMap((group) =>
+    group.entries.map((entry) => ({
+      value: entry.id,
+      label: entry.name,
+      group: t(group.labelKey),
+    })),
+  );
 
   const onSaveCredential = async (): Promise<void> => {
     if (!provider) return;
@@ -306,27 +315,28 @@ export function OnboardingApp(): React.JSX.Element {
         </header>
 
         <div className="onboarding-card">
-          <label className="onboarding-field">
-            <span className="onboarding-label">
+          <div className="onboarding-field">
+            <span id="onboarding-language-label" className="onboarding-label">
               <span className="onboarding-label-title">{t("onboarding.language")}</span>
               <span className="onboarding-label-detail">{t("onboarding.languageDetail")}</span>
             </span>
-            <select
-              className="settings-select"
+            <Select
+              ariaLabelledBy="onboarding-language-label"
               value={locale ?? "en"}
-              onChange={(event) => {
-                const next = event.target.value as "en" | "fr";
+              options={[
+                { value: "en", label: t("settings.languageEn") },
+                { value: "fr", label: t("settings.languageFr") },
+              ]}
+              onChange={(value) => {
+                const next = value as "en" | "fr";
                 setChosenLocale(next);
                 previewLocale(next);
               }}
-            >
-              <option value="en">{t("settings.languageEn")}</option>
-              <option value="fr">{t("settings.languageFr")}</option>
-            </select>
-          </label>
+            />
+          </div>
 
-          <label className="onboarding-field">
-            <span className="onboarding-label">
+          <div className="onboarding-field">
+            <span id="onboarding-provider-label" className="onboarding-label">
               <span className="onboarding-label-title">{t("onboarding.provider")}</span>
               <span className="onboarding-label-detail">{t("onboarding.providerDetail")}</span>
               {provider && (
@@ -342,20 +352,16 @@ export function OnboardingApp(): React.JSX.Element {
                 </span>
               )}
             </span>
-            <select
-              className="settings-select"
+            <Select
+              ariaLabelledBy="onboarding-provider-label"
               value={form.provider}
-              onChange={(event) => {
-                onProviderChange(event.target.value);
-              }}
-            >
-              {state.providers.map((candidate) => (
-                <option key={candidate.id} value={candidate.id}>
-                  {candidate.label}
-                </option>
-              ))}
-            </select>
-          </label>
+              options={state.providers.map((candidate) => ({
+                value: candidate.id,
+                label: candidate.label,
+              }))}
+              onChange={onProviderChange}
+            />
+          </div>
 
           {form.provider === COMPATIBLE_PROVIDER_ID && (
             <>
@@ -437,29 +443,28 @@ export function OnboardingApp(): React.JSX.Element {
             </div>
           )}
 
-          <label className="onboarding-field">
-            <span className="onboarding-label">
+          <div className="onboarding-field">
+            <span id="onboarding-model-label" className="onboarding-label">
               <span className="onboarding-label-title">{t("onboarding.model")}</span>
               <span className="onboarding-label-detail">{t("onboarding.modelDetail")}</span>
             </span>
             {provider && provider.models.length > 0 ? (
-              <select
-                className="settings-select"
+              <Select
+                ariaLabelledBy="onboarding-model-label"
                 value={form.model}
-                onChange={(event) => {
-                  update({ model: event.target.value });
+                options={[
+                  ...provider.models.map((model) => ({
+                    value: model.id,
+                    label: `${model.name}${model.recommended ? t("common.recommendedSuffix") : ""}`,
+                  })),
+                  ...(provider.models.every((model) => model.id !== form.model)
+                    ? [{ value: form.model, label: form.model }]
+                    : []),
+                ]}
+                onChange={(value) => {
+                  update({ model: value });
                 }}
-              >
-                {provider.models.map((model) => (
-                  <option key={model.id} value={model.id}>
-                    {model.name}
-                    {model.recommended ? t("common.recommendedSuffix") : ""}
-                  </option>
-                ))}
-                {provider.models.every((model) => model.id !== form.model) && (
-                  <option value={form.model}>{form.model}</option>
-                )}
-              </select>
+              />
             ) : (
               <input
                 className="settings-input mono"
@@ -470,55 +475,44 @@ export function OnboardingApp(): React.JSX.Element {
                 }}
               />
             )}
-          </label>
+          </div>
 
           {profiles.length > 0 && (
-            <label className="onboarding-field">
-              <span className="onboarding-label">
+            <div className="onboarding-field">
+              <span id="onboarding-profile-label" className="onboarding-label">
                 <span className="onboarding-label-title">{t("onboarding.defaultProfile")}</span>
                 <span className="onboarding-label-detail">
                   {t("onboarding.defaultProfileDetail")}
                 </span>
               </span>
-              <select
-                className="settings-select"
+              <Select
+                ariaLabelledBy="onboarding-profile-label"
                 value={form.profile}
-                onChange={(event) => {
-                  update({ profile: event.target.value });
+                options={profileOptions}
+                onChange={(value) => {
+                  update({ profile: value });
                 }}
-              >
-                {groupProfiles(profiles).map((group) => (
-                  <optgroup key={group.origin} label={t(group.labelKey)}>
-                    {group.entries.map((entry) => (
-                      <option key={entry.id} value={entry.id}>
-                        {entry.name}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </label>
+              />
+            </div>
           )}
 
-          <label className="onboarding-field">
-            <span className="onboarding-label">
+          <div className="onboarding-field">
+            <span id="onboarding-level-label" className="onboarding-label">
               <span className="onboarding-label-title">{t("onboarding.level")}</span>
               <span className="onboarding-label-detail">{t("onboarding.levelDetail")}</span>
             </span>
-            <select
-              className="settings-select"
+            <Select
+              ariaLabelledBy="onboarding-level-label"
               value={form.level}
-              onChange={(event) => {
-                update({ level: event.target.value as OnboardingForm["level"] });
+              options={REPROMPT_LEVEL_IDS.map((level) => ({
+                value: level,
+                label: t(LEVEL_KEYS[level]),
+              }))}
+              onChange={(value) => {
+                update({ level: value as OnboardingForm["level"] });
               }}
-            >
-              {REPROMPT_LEVEL_IDS.map((level) => (
-                <option key={level} value={level}>
-                  {t(LEVEL_KEYS[level])}
-                </option>
-              ))}
-            </select>
-          </label>
+            />
+          </div>
         </div>
 
         {notice !== null && (
