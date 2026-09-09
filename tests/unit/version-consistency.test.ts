@@ -26,6 +26,7 @@ import {
  */
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
+const TARGET_VERSION = "9.8.7";
 
 const temporaryRoots: string[] = [];
 
@@ -69,23 +70,24 @@ describe("cohérence de version", () => {
   });
 
   it("signale un fichier resté en arrière", () => {
-    const root = fixtureRoot("0.7.0");
-    // Seul package.json a bougé : tout le reste est encore en 0.6.0.
-    const drift = findVersionDrift(root, "0.7.0");
+    const repositoryVersion = readPackageVersion(ROOT);
+    const root = fixtureRoot(TARGET_VERSION);
+    // Seul package.json a bougé : tout le reste porte encore la version du dépôt.
+    const drift = findVersionDrift(root, TARGET_VERSION);
 
     expect(drift.length).toBeGreaterThan(0);
     expect(drift.map((entry) => entry.file)).toContain("src/version.ts");
     expect(drift.map((entry) => entry.file)).toContain("index.html");
     expect(drift.map((entry) => entry.file)).toContain("docs/assets/download-platform.js");
     for (const entry of drift) {
-      expect(entry.found).toBe("0.6.0");
+      expect(entry.found).toBe(repositoryVersion);
     }
   });
 
   it("répare, et la vérification redevient muette", () => {
-    const root = fixtureRoot("0.7.0");
+    const root = fixtureRoot(TARGET_VERSION);
 
-    const written = applyVersion(root, "0.7.0");
+    const written = applyVersion(root, TARGET_VERSION);
 
     const alphabetically = (a: string, b: string): number => a.localeCompare(b);
     expect([...written].sort(alphabetically)).toEqual([
@@ -93,46 +95,47 @@ describe("cohérence de version", () => {
       "index.html",
       "src/version.ts",
     ]);
-    expect(findVersionDrift(root, "0.7.0")).toEqual([]);
-    expect(applyVersion(root, "0.7.0")).toEqual([]);
+    expect(findVersionDrift(root, TARGET_VERSION)).toEqual([]);
+    expect(applyVersion(root, TARGET_VERSION)).toEqual([]);
   });
 
   it("signale un repère supprimé même après une tentative de synchronisation", () => {
-    const root = fixtureRoot("0.7.0");
+    const root = fixtureRoot(TARGET_VERSION);
     const versionFile = path.join(root, "src/version.ts");
     writeFileSync(versionFile, "export const currentVersion = getVersion();\n");
 
-    expect(() => synchronizeVersion(root, "0.7.0")).toThrow(
+    expect(() => synchronizeVersion(root, TARGET_VERSION)).toThrow(
       "src/version.ts (constante exportée) : aucune occurrence trouvée",
     );
   });
 
   it("ne change que le numéro : URLs et noms d'artefacts gardent leur forme", () => {
-    const root = fixtureRoot("0.7.0");
-    applyVersion(root, "0.7.0");
+    const repositoryVersion = readPackageVersion(ROOT);
+    const root = fixtureRoot(TARGET_VERSION);
+    applyVersion(root, TARGET_VERSION);
 
     const html = readFileSync(path.join(root, "index.html"), "utf8");
     expect(html).toContain(
-      "https://github.com/ronael/Reqraft/releases/download/v0.7.0/Reqraft-0.7.0-mac-arm64.dmg",
+      `https://github.com/ronael/Reqraft/releases/download/v${TARGET_VERSION}/Reqraft-${TARGET_VERSION}-mac-arm64.dmg`,
     );
     expect(html).toContain(
-      "https://github.com/ronael/Reqraft/releases/download/v0.7.0/Reqraft-0.7.0-win-x64-experimental.exe",
+      `https://github.com/ronael/Reqraft/releases/download/v${TARGET_VERSION}/Reqraft-${TARGET_VERSION}-win-x64-experimental.exe`,
     );
     expect(html).toContain(
-      "https://github.com/ronael/Reqraft/releases/download/v0.7.0/Reqraft-0.7.0-linux-x86_64-experimental.AppImage",
+      `https://github.com/ronael/Reqraft/releases/download/v${TARGET_VERSION}/Reqraft-${TARGET_VERSION}-linux-x86_64-experimental.AppImage`,
     );
-    expect(html).toContain("https://github.com/ronael/Reqraft/releases/tag/v0.7.0");
-    expect(html).not.toContain("0.6.0");
+    expect(html).toContain(`https://github.com/ronael/Reqraft/releases/tag/v${TARGET_VERSION}`);
+    expect(html).not.toContain(repositoryVersion);
 
     const downloads = readFileSync(path.join(root, "docs/assets/download-platform.js"), "utf8");
     expect(downloads).toContain(
-      'const RELEASE_BASE = "https://github.com/ronael/Reqraft/releases/download/v0.7.0";',
+      `const RELEASE_BASE = "https://github.com/ronael/Reqraft/releases/download/v${TARGET_VERSION}";`,
     );
-    expect(downloads).toContain("Reqraft-0.7.0-mac-arm64.dmg");
-    expect(downloads).not.toContain("0.6.0");
+    expect(downloads).toContain(`Reqraft-${TARGET_VERSION}-mac-arm64.dmg`);
+    expect(downloads).not.toContain(repositoryVersion);
 
     expect(readFileSync(path.join(root, "src/version.ts"), "utf8").trim()).toBe(
-      'export const version = "0.7.0";',
+      `export const version = "${TARGET_VERSION}";`,
     );
   });
 
