@@ -1,5 +1,6 @@
-import { Menu, Tray, app, nativeImage } from "electron";
-import { suspendedTrayTooltip, trayIconPng, trayTooltip, type TrayState } from "./tray-icon.js";
+import { createTrayImage } from "./tray-image.js";
+import { Menu, Tray, app } from "electron";
+import { suspendedTrayTooltip, trayTooltip, type TrayState } from "./tray-icon.js";
 import { t } from "./i18n.js";
 import { createShortcutSuspensionMenuItem } from "./tray-menu.js";
 
@@ -36,7 +37,7 @@ export function createTray(actions: TrayActions): TrayController {
   let state: TrayState = "repos";
   let shortcutsSuspended = false;
   let availableUpdate: { version: string; onOpen: () => void } | null = null;
-  const tray = new Tray(nativeImage.createFromBuffer(trayIconPng(state)));
+  const tray = new Tray(createTrayImage(state));
 
   const contextMenu = (): Electron.Menu =>
     Menu.buildFromTemplate([
@@ -62,7 +63,7 @@ export function createTray(actions: TrayActions): TrayController {
 
   function applyState(next: TrayState): void {
     state = next;
-    tray.setImage(nativeImage.createFromBuffer(trayIconPng(next)));
+    tray.setImage(createTrayImage(next));
     tray.setToolTip(shortcutsSuspended ? suspendedTrayTooltip() : trayTooltip(next));
   }
 

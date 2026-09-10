@@ -27,7 +27,9 @@ This requires the project's Electron and a graphical session. It regenerates:
 
 - `build/icon.png` — 1024px application icon for electron-builder;
 - `src/apps/desktop/main/tray-icons.generated.json` — 18px transparent
-  monograms in idle, busy and error colors from the shared palette;
+  monograms in idle, busy and error colors from the shared palette. On macOS,
+  idle is a native template image: the menu bar chooses its neutral tint. Busy
+  stays violet and error stays rose. Windows/Linux retain their colored icons;
 - the public SVG, frameless symbol, social and README banners.
 
 `BrandMark` consumes the master in the capsule, settings and welcome tour.
