@@ -924,6 +924,7 @@ function registerDoctorHandlers(
       env,
       permissions,
       shortcuts,
+      loadConfig: dependencies.loadConfig,
       hydrateCredentials: dependencies.hydrateCredentials,
     });
   };
