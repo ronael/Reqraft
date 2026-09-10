@@ -1,7 +1,13 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 44 30" fill="none">
-<rect x="0.7" y="0.7" width="42.6" height="28.6" rx="8.9" fill="#8b5cf6" fill-opacity=".12" stroke="#a78bfa" stroke-opacity=".28" stroke-width="1.4"/>
-<g fill="#a78bfa" transform="translate(10 19.6) scale(.02 -.02)">
-<path transform="translate(0 0)" d="M108 0V550H206V444H207Q215 498 253.5 529.0Q292 560 356 560Q441 560 488.0 507.5Q535 455 535 360V312H436V359Q436 474 323 474Q266 474 236.5 441.0Q207 408 207 347V0Z"/>
-<path transform="translate(600 0)" d="M413 -180V-21L415 104H413Q403 51 363.5 20.5Q324 -10 264 -10Q181 -10 132.0 45.5Q83 101 83 197V354Q83 449 132.0 504.5Q181 560 264 560Q325 560 365.0 529.0Q405 498 414 444V550H512V-180ZM298 76Q351 76 382.0 109.0Q413 142 413 202V348Q413 408 382.0 441.0Q351 474 298 474Q243 474 212.5 446.0Q182 418 182 357V193Q182 132 212.5 104.0Q243 76 298 76Z"/>
-</g>
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" fill="none">
+  <title>Reqraft — geometric rq</title>
+  <g id="background">
+    <rect x="20" y="20" width="472" height="472" rx="112" fill="#101017"/>
+  </g>
+  <g id="frame">
+    <rect x="20" y="20" width="472" height="472" rx="112" stroke="#a78bfa" stroke-width="18"/>
+  </g>
+  <g id="monogram" fill="#a78bfa">
+    <path id="letter-r" d="M108 316V228C108 181 140 144 185 144H190Q196 144 196 150V182Q196 188 190 188H185C163 188 152 202 152 228V316Q152 322 146 322H114Q108 322 108 316Z"/>
+    <path id="letter-q" d="M364 249C364 217 340 191 311 191C282 191 257 216 257 249C257 287 298 313 331 289Q337 285 342 290L355 311Q359 317 354 321C293 365 213 322 213 249C213 192 257 147 311 147C365 147 408 192 408 249V383Q408 389 402 389H370Q364 389 364 383Z"/>
+  </g>
 </svg>

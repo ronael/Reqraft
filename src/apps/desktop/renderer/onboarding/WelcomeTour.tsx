@@ -1,3 +1,4 @@
+import { BrandMark } from "../shared/BrandMark.js";
 import { type CSSProperties, useCallback, useEffect, useState } from "react";
 import {
   ArrowLeft,
@@ -338,7 +339,7 @@ function WindowControls(): React.JSX.Element {
 function TourShortcut({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   return (
     <div className="tour-shortcut">
-      <b className="tour-shortcut-brand">rq</b>
+      <BrandMark />
       <kbd>{formatAccelerator("Command+Control+R", t)}</kbd>
     </div>
   );
@@ -362,7 +363,7 @@ function ProductCapsule({
   return (
     <div className={`tour-product-capsule ${className}`}>
       <div className="tour-product-capsule-band">
-        <b>rq</b>
+        <BrandMark />
         <span>
           {sourceApp === undefined
             ? t("capsule.newReformulation")
@@ -598,6 +599,7 @@ function ProductSettingsFrame({
       <div className="tour-product-settings-shell">
         <aside className="tour-product-settings-sidebar">
           <div className="tour-product-settings-brand">
+            <BrandMark />
             <strong>reqraft</strong>
             <small>{version}</small>
             <p>{t("settings.tagline")}</p>

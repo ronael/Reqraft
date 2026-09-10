@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
+<link rel="icon" type="image/svg+xml" href="docs/assets/reqraft-mark.svg" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Reqraft — Shape the request. Keep the intent.</title>
 <meta name="description" content="Reqraft is a desktop beta and open-source CLI that turns rough requests into clear prompts, with local fidelity checks for scope drift." />
@@ -51,7 +52,8 @@ a{color:inherit;text-decoration:none}
 .top.scrolled{background:rgba(7,7,10,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-color:var(--line)}
 .top-in{display:flex;align-items:center;justify-content:space-between;height:56px}
 .logo{display:flex;align-items:center;gap:9px;font-weight:600;font-size:14px;letter-spacing:.01em}
-.logo .mark{font-family:var(--mono);font-weight:500;color:var(--rq);font-size:13px;border:1px solid var(--rq-line);border-radius:6px;padding:1px 6px;background:var(--rq-dim)}
+.mark{display:inline-block;width:26px;height:26px;vertical-align:middle;flex-shrink:0}
+.rqn .mark,.rqb .mark{width:18px;height:18px}
 .top nav{display:flex;gap:26px;font-size:12.5px;color:var(--tx2)}
 .top nav a{transition:color .2s}
 .top nav a:hover{color:#fff}
@@ -458,7 +460,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 
 <header class="top" id="topbar">
   <div class="wrap top-in">
-    <a class="logo" href="#"><span class="mark">rq</span>Reqraft</a>
+    <a class="logo" href="#"><img class="mark" src="docs/assets/reqraft-mark.svg" alt="" />Reqraft</a>
     <nav>
       <a href="#transform">Rewrite</a>
       <a href="#fidelity">Fidelity</a>
@@ -686,7 +688,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
         <div class="stage-caption"><span>macOS beta · profile <b id="sceneProfile" style="color:var(--rq3);font-weight:500">frontend</b></span><span>default shortcut · ⌥ space</span></div>
         <div class="menubar">
           <div class="l"><span>●</span><span id="sceneApp" style="font-weight:600;color:var(--tx2)">Code</span><span>File</span><span>Edit</span><span>View</span></div>
-          <div class="r"><span class="rqb"><i id="mbDot"></i>rq</span><span>13:25</span></div>
+          <div class="r"><span class="rqb"><i id="mbDot"></i><img class="mark" src="docs/assets/reqraft-mark.svg" alt="Reqraft" /></span><span>13:25</span></div>
         </div>
         <div class="editor app-code" id="sceneWindow">
           <div class="editor-head"><i class="r1" aria-hidden="true">&#8203;</i><i class="r2" aria-hidden="true">&#8203;</i><i class="r3" aria-hidden="true">&#8203;</i><span id="sceneDocumentLabel">Header.tsx</span></div>
@@ -705,7 +707,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 
         <div class="capsule" id="capsule">
           <div class="cap-head">
-            <span class="rqn">rq</span><span id="capSource">selection · Code</span>
+            <span class="rqn"><img class="mark" src="docs/assets/reqraft-mark.svg" alt="Reqraft" /></span><span id="capSource">selection · Code</span>
             <span class="ctx" id="capCtx"><span id="capCtxTxt">local analysis…</span></span>
           </div>
           <div class="cap-act" id="capAct"></div>
@@ -823,7 +825,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 
 <footer>
   <div class="wrap foot">
-    <div class="l"><span class="mark">rq</span><span>Reqraft — shape the request, keep the intent.</span></div>
+    <div class="l"><img class="mark" src="docs/assets/reqraft-mark.svg" alt="" /><span>Reqraft — shape the request, keep the intent.</span></div>
     <div class="fl">
       <a href="https://github.com/ronael/Reqraft" target="_blank" rel="noopener">GitHub</a>
       <a href="https://www.npmjs.com/package/@reqraft/cli" target="_blank" rel="noopener">npm</a>
