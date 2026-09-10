@@ -1,3 +1,4 @@
+import { BrandMark } from "../shared/BrandMark.js";
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
@@ -131,7 +132,7 @@ function CapsuleHeader(props: Readonly<CapsuleHeaderProps>): React.JSX.Element {
   const t = useT();
   return (
     <header className="capsule-band">
-      <span className="capsule-brand">rq</span>
+      <BrandMark />
       <span className="capsule-origin">
         {props.origin !== null
           ? t("capsule.selectionFrom", { app: props.origin })

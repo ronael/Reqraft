@@ -124,10 +124,17 @@ body {
   -webkit-app-region: drag;
 }
 
-.capsule-brand {
-  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-  font-weight: 600;
-  color: var(--rq-accent);
+.brand-mark {
+  display: block;
+  flex-shrink: 0;
+  width: 29px;
+  height: 20px;
+}
+
+.settings-brand-heading {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .capsule-origin {

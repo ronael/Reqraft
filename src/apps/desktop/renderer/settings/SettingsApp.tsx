@@ -1,3 +1,4 @@
+import { BrandMark } from "../shared/BrandMark.js";
 import { type ComponentType, useCallback, useEffect, useState } from "react";
 import {
   CircleArrowUp,
@@ -244,7 +245,8 @@ export function SettingsApp(): React.JSX.Element {
       <div className="settings-shell">
         <aside className="settings-sidebar">
           <div className="settings-brand">
-            <div>
+            <div className="settings-brand-heading">
+              <BrandMark />
               <span className="settings-brand-name">reqraft</span>
               <span className="settings-brand-version">{version}</span>
             </div>
