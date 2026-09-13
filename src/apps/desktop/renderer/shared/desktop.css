@@ -1813,7 +1813,8 @@ kbd {
 }
 
 .profile-field .settings-input,
-.profile-field .settings-select {
+.profile-field .settings-select,
+.profile-field .design-select {
   width: 100%;
 }
 
@@ -1860,7 +1861,8 @@ kbd {
   border-radius: 8px;
 }
 
-.shortcut-control > .settings-select {
+.shortcut-control > .settings-select,
+.shortcut-control > .design-select {
   width: 148px;
   flex-shrink: 0;
 }
@@ -3978,7 +3980,8 @@ kbd {
 }
 
 .settings-row-control:not(.shortcut-control) > .settings-select,
-.settings-row-control:not(.shortcut-control) > .settings-input {
+.settings-row-control:not(.shortcut-control) > .settings-input,
+.settings-row-control:not(.shortcut-control) > .design-select {
   width: min(220px, 30vw);
   flex-shrink: 0;
 }
@@ -3993,7 +3996,8 @@ kbd {
   flex-wrap: wrap;
 }
 
-.settings-row-control.settings-row-control-language > .settings-select {
+.settings-row-control.settings-row-control-language > .settings-select,
+.settings-row-control.settings-row-control-language > .design-select {
   width: 150px;
 }
 

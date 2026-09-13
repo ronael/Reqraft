@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.4 (2026-09-13)
+
+### Desktop application
+
+- Fixed global shortcut defaults and their visible labels on Windows and Linux:
+  portable `Ctrl+Alt` combinations now replace the macOS-only Command family.
+- Unified all desktop Settings selectors under Reqraft's custom, keyboard
+  accessible component, avoiding platform-specific native menus.
+
 ## 0.6.0 (2026-09-03)
 
 ### Desktop application

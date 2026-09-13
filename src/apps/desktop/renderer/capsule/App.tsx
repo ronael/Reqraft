@@ -6,13 +6,14 @@ import { PromptEditor } from "./PromptEditor.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
 import { useCapsuleHeight } from "./useCapsuleHeight.js";
 import { useT } from "../shared/i18n.js";
-import { CAPSULE_COMPARE_KEY } from "../shared/shortcut-labels.js";
+import { CAPSULE_SHORTCUTS, formatCapsuleShortcut } from "../shared/shortcut-labels.js";
 import { describeQualityVerdict } from "../shared/quality.js";
 import {
   AUTO_PROFILE_ID,
   type ProfileCatalogEntry,
   REPROMPT_LEVEL_IDS,
   type CapsuleOpenedPayload,
+  type DesktopPlatform,
   type RepromptResult,
   type UiError,
 } from "@/apps/desktop/shared/ipc-contract.js";
@@ -193,6 +194,7 @@ function CapsuleSource(
 }
 
 interface CapsuleFooterProps {
+  platform: DesktopPlatform;
   state: CapsuleState;
   expansion: boolean;
   /** La comparaison est-elle épinglée (⌘D), plutôt que maintenue (⌥) ? */
@@ -246,7 +248,11 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
           >
             {props.level}
           </button>
-          <CapsuleKey touche="⌘⏎" className="capsule-hint-key" onClick={props.onSubmit}>
+          <CapsuleKey
+            touche={formatCapsuleShortcut(CAPSULE_SHORTCUTS.submit, props.platform)}
+            className="capsule-hint-key"
+            onClick={props.onSubmit}
+          >
             {t("capsule.reformulate")}
           </CapsuleKey>
         </div>
@@ -337,17 +343,23 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                     maintient pas, ⌥ non plus une fois la souris partie. Le
                     maintien de ⌥ reste actif, et l'infobulle le dit. */}
                 <CapsuleKey
-                  touche={CAPSULE_COMPARE_KEY}
+                  touche={formatCapsuleShortcut(CAPSULE_SHORTCUTS.compare, props.platform)}
                   pressed={props.comparisonPinned}
                   title={t("capsule.compareTitle")}
                   onClick={props.onCompare}
                 >
                   {t("capsule.compare")}
                 </CapsuleKey>
-                <CapsuleKey touche="⌘C" onClick={props.onCopy}>
+                <CapsuleKey
+                  touche={formatCapsuleShortcut(CAPSULE_SHORTCUTS.copy, props.platform)}
+                  onClick={props.onCopy}
+                >
                   {t("capsule.copy")}
                 </CapsuleKey>
-                <CapsuleKey touche="⌘R" onClick={props.onRerun}>
+                <CapsuleKey
+                  touche={formatCapsuleShortcut(CAPSULE_SHORTCUTS.rerun, props.platform)}
+                  onClick={props.onRerun}
+                >
                   {t("capsule.rerun")}
                 </CapsuleKey>
                 <CapsuleKey touche="⇥" title={t("capsule.levelCycleTitle")} onClick={props.onLevel}>
@@ -357,7 +369,10 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
             )}
             {props.running && (
               <>
-                <CapsuleKey touche="⌘." onClick={props.onCancel}>
+                <CapsuleKey
+                  touche={formatCapsuleShortcut(CAPSULE_SHORTCUTS.interrupt, props.platform)}
+                  onClick={props.onCancel}
+                >
                   {t("capsule.interrupt")}
                 </CapsuleKey>
                 {/* La capsule travaille sans le focus : le dire évite d'attendre
@@ -377,6 +392,7 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
 
 export function App(): React.JSX.Element {
   const t = useT();
+  const platform = window.reqraft.platform;
   const [state, setState] = useState<CapsuleState>("capture");
   const [input, setInput] = useState("");
   const [origin, setOrigin] = useState<string | null>(null);
@@ -841,8 +857,8 @@ export function App(): React.JSX.Element {
       };
       // Couper le navigateur d'abord, et sur la frappe : une répétition de ⌘D
       // n'a plus de commande à exécuter mais reste une frappe de la capsule.
-      if (preventsBrowserDefault(event, keyboardContext)) event.preventDefault();
-      const intent = resolveCapsuleKeyDown(event, keyboardContext);
+      if (preventsBrowserDefault(event, keyboardContext, platform)) event.preventDefault();
+      const intent = resolveCapsuleKeyDown(event, keyboardContext, platform);
       if (intent !== null) executer[intent]();
     };
     const onKeyUp = (event: KeyboardEvent): void => {
@@ -864,6 +880,7 @@ export function App(): React.JSX.Element {
     copier,
     fermer,
     relancer,
+    platform,
   ]);
 
   /**
@@ -1012,7 +1029,11 @@ export function App(): React.JSX.Element {
                     setInput(event.target.value);
                   }}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter" && event.metaKey && input.trim() !== "") {
+                    if (
+                      event.key === "Enter" &&
+                      (platform === "darwin" ? event.metaKey : event.ctrlKey) &&
+                      input.trim() !== ""
+                    ) {
                       dispatch("submitted");
                       startRun(input, level);
                     }
@@ -1086,6 +1107,7 @@ export function App(): React.JSX.Element {
 
       <div className="capsule-bottom">
         <CapsuleFooter
+          platform={platform}
           state={state}
           expansion={expansion === true}
           comparisonPinned={comparison.pinned}

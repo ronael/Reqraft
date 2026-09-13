@@ -12,7 +12,7 @@
  */
 
 import { t } from "./i18n.js";
-import type { ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
+import type { DesktopPlatform, ShortcutIntent } from "@/apps/desktop/shared/ipc-contract.js";
 
 export type { ShortcutIntent };
 
@@ -56,17 +56,13 @@ export const EXCLUDED_ACCELERATORS: readonly string[] = [
 /**
  * Ordered candidates, most to least desirable.
  *
- * ⌘⌃ is the family chosen deliberately. A global shortcut takes the keystroke
- * away from whatever has focus, so the question is not "is it free in macOS"
- * but "will a browser, an editor or an IDE want it". ⌘⌃ is the one two-modifier
- * family applications almost never bind: ⌘ and ⌘⇧ carry their menus, ⌃ and ⌃⌥
- * carry terminal and IDE bindings, and ⌥ is dead-key territory for text input.
+ * macOS retains the ⌘⌃ family, which its common applications rarely claim.
+ * Electron ignores `Command` on Windows and Linux, so those platforms use
+ * `CommandOrControl+Alt`: CommandOrControl means Ctrl outside macOS.
  *
- * The previous defaults failed exactly there: ⌃⇧R is the browsers' hard reload
- * on Windows and Linux, and ⌃⌥R is bound in several IDE keymaps.
- *
- * The letters avoid what macOS already spends ⌘⌃ on — F, Q, D and Space, all
- * listed above.
+ * The letters avoid browser reloads and the key combinations commonly claimed
+ * by the operating systems. Registration is still confirmed with Electron, so
+ * a binding claimed by an installed application visibly falls back.
  */
 export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
   { accelerator: "Command+Control+R", intent: "capture" },
@@ -77,6 +73,25 @@ export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
   { accelerator: "Command+Control+T", intent: "popover" },
 ];
 
+export const PORTABLE_SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
+  { accelerator: "CommandOrControl+Alt+R", intent: "capture" },
+  { accelerator: "CommandOrControl+Alt+N", intent: "input" },
+  { accelerator: "CommandOrControl+Alt+O", intent: "popover" },
+  { accelerator: "CommandOrControl+Alt+J", intent: "capture" },
+  { accelerator: "CommandOrControl+Alt+K", intent: "input" },
+  { accelerator: "CommandOrControl+Alt+T", intent: "popover" },
+];
+
+function desktopPlatform(platform: NodeJS.Platform): DesktopPlatform {
+  return platform === "darwin" || platform === "win32" ? platform : "linux";
+}
+
+export function shortcutCandidates(platform: NodeJS.Platform): readonly ShortcutCandidate[] {
+  return desktopPlatform(platform) === "darwin"
+    ? SHORTCUT_CANDIDATES
+    : PORTABLE_SHORTCUT_CANDIDATES;
+}
+
 /**
  * Whether an accelerator may be offered or accepted at all.
  *
@@ -84,10 +99,17 @@ export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
  * register it: a refusal here is explainable, whereas an excluded combination
  * that "registers" leaves the user pressing a key that does nothing.
  */
-export function isUsableAccelerator(accelerator: string): boolean {
+export function isUsableAccelerator(
+  accelerator: string,
+  platform: NodeJS.Platform = process.platform,
+): boolean {
   const trimmed = accelerator.trim();
   if (trimmed === "") return false;
   if (EXCLUDED_ACCELERATORS.includes(trimmed)) return false;
+  // Electron documents `Command` as a no-op on Windows and Linux. A choice
+  // saved on macOS must therefore fall back to a usable cross-platform default
+  // when that same configuration is opened elsewhere.
+  if (platform !== "darwin" && trimmed.split("+").includes("Command")) return false;
   // A bare key with no modifier would swallow that key everywhere on the
   // system, which is never what someone means by a global shortcut.
   return trimmed.includes("+");
@@ -109,16 +131,23 @@ export interface ShortcutResolution {
   conflicts: string[];
 }
 
-/** Human-readable label with macOS symbols: `Control+Alt+R` → `⌃⌥R`. */
-export function prettyAccelerator(accelerator: string): string {
+/** Human-readable label appropriate to the operating system. */
+export function prettyAccelerator(
+  accelerator: string,
+  platform: NodeJS.Platform = process.platform,
+): string {
+  const macOS = desktopPlatform(platform) === "darwin";
   return accelerator
-    .replace("CommandOrControl", "⌘")
-    .replace("Command", "⌘")
-    .replace("Control", "⌃")
-    .replace("Alt", "⌥")
-    .replace("Shift", "⇧")
-    .replaceAll("+", "")
-    .replace("Space", t("shortcut.space"));
+    .split("+")
+    .map((part) => {
+      if (part === "CommandOrControl") return macOS ? "⌘" : "Ctrl";
+      if (part === "Command") return "⌘";
+      if (part === "Control") return macOS ? "⌃" : "Ctrl";
+      if (part === "Alt") return macOS ? "⌥" : "Alt";
+      if (part === "Shift") return macOS ? "⇧" : "Shift";
+      return part === "Space" ? t("shortcut.space") : part;
+    })
+    .join(macOS ? "" : "+");
 }
 
 /** The three intents, in the order they are served. */
@@ -153,6 +182,7 @@ export function registerShortcuts(
   handlers: ShortcutHandlers,
   forced?: string,
   preferred?: PreferredShortcuts,
+  platform: NodeJS.Platform = process.platform,
 ): ShortcutResolution {
   const registered: ShortcutResolution["registered"] = [];
   const rejected: string[] = [];
@@ -171,14 +201,14 @@ export function registerShortcuts(
   const chosen: ShortcutCandidate[] = [];
   for (const intent of SHORTCUT_INTENTS) {
     const accelerator = preferred?.[intent];
-    if (accelerator !== undefined && isUsableAccelerator(accelerator)) {
+    if (accelerator !== undefined && isUsableAccelerator(accelerator, platform)) {
       chosen.push({ accelerator, intent });
     }
   }
 
   const candidates = forced
     ? [{ accelerator: forced, intent: "capture" as const }]
-    : [...chosen, ...SHORTCUT_CANDIDATES];
+    : [...chosen, ...shortcutCandidates(platform)];
 
   for (const candidate of candidates) {
     const attempt = `${candidate.intent}:${candidate.accelerator}`;
@@ -189,7 +219,7 @@ export function registerShortcuts(
       } else if (register(candidate.accelerator, handlerFor(candidate.intent, handlers))) {
         registered.push({
           accelerator: candidate.accelerator,
-          label: prettyAccelerator(candidate.accelerator),
+          label: prettyAccelerator(candidate.accelerator, platform),
           intent: candidate.intent,
         });
         claimed.add(candidate.accelerator);
@@ -214,12 +244,13 @@ export function replaceShortcuts(
   handlers: ShortcutHandlers,
   forced?: string,
   preferred?: PreferredShortcuts,
+  platform: NodeJS.Platform = process.platform,
 ): ShortcutResolution {
   const suspended = controller.isSuspended();
   if (suspended) controller.setSuspended(false);
   try {
     controller.unregisterAll();
-    return registerShortcuts(register, handlers, forced, preferred);
+    return registerShortcuts(register, handlers, forced, preferred, platform);
   } finally {
     if (suspended) controller.setSuspended(true);
   }

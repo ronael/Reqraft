@@ -1,11 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
   EXCLUDED_ACCELERATORS,
+  PORTABLE_SHORTCUT_CANDIDATES,
   SHORTCUT_CANDIDATES,
   isUsableAccelerator,
   prettyAccelerator,
   registerShortcuts,
   replaceShortcuts,
+  shortcutCandidates,
   type ShortcutRegistrar,
 } from "@/apps/desktop/main/shortcuts.js";
 import { SHORTCUT_PRESETS } from "@/apps/desktop/shared/ipc-contract.js";
@@ -38,7 +40,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "Command+Control+O",
     );
 
-    const resolution = registerShortcuts(register, handlers);
+    const resolution = registerShortcuts(register, handlers, undefined, undefined, "darwin");
 
     expect(resolution.registered).toEqual([
       { accelerator: "Command+Control+R", label: "⌘⌃R", intent: "capture" },
@@ -58,7 +60,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "Command+Control+T",
     );
 
-    const resolution = registerShortcuts(register, handlers);
+    const resolution = registerShortcuts(register, handlers, undefined, undefined, "darwin");
 
     expect(resolution.rejected).toEqual([
       "Command+Control+R",
@@ -69,6 +71,22 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "Command+Control+J",
       "Command+Control+K",
       "Command+Control+T",
+    ]);
+  });
+
+  it.each(["win32", "linux"] as const)("enregistre Ctrl+Alt sous %s", (platform) => {
+    const { register } = registrarTaking(
+      "CommandOrControl+Alt+R",
+      "CommandOrControl+Alt+N",
+      "CommandOrControl+Alt+O",
+    );
+
+    const resolution = registerShortcuts(register, handlers, undefined, undefined, platform);
+
+    expect(resolution.registered).toEqual([
+      { accelerator: "CommandOrControl+Alt+R", label: "Ctrl+Alt+R", intent: "capture" },
+      { accelerator: "CommandOrControl+Alt+N", label: "Ctrl+Alt+N", intent: "input" },
+      { accelerator: "CommandOrControl+Alt+O", label: "Ctrl+Alt+O", intent: "popover" },
     ]);
   });
 
@@ -118,6 +136,9 @@ describe("replaceShortcuts", () => {
         return true;
       },
       handlers,
+      undefined,
+      undefined,
+      "darwin",
     );
 
     expect(events.slice(0, 3)).toEqual(["resume", "unregister", "register:Command+Control+R"]);
@@ -129,21 +150,28 @@ describe("replaceShortcuts", () => {
 
 describe("prettyAccelerator", () => {
   it("produit les symboles macOS", () => {
-    expect(prettyAccelerator("Control+Alt+R")).toBe("⌃⌥R");
-    expect(prettyAccelerator("Command+Shift+Space")).toBe("⌘⇧Space");
+    expect(prettyAccelerator("Control+Alt+R", "darwin")).toBe("⌃⌥R");
+    expect(prettyAccelerator("Command+Shift+Space", "darwin")).toBe("⌘⇧Space");
+  });
+
+  it.each(["win32", "linux"] as const)("writes Control and Alt on %s", (platform) => {
+    expect(prettyAccelerator("CommandOrControl+Alt+R", platform)).toBe("Ctrl+Alt+R");
+  });
+
+  it.each(["win32", "linux"] as const)("uses portable candidates on %s", (platform) => {
+    expect(shortcutCandidates(platform)).toBe(PORTABLE_SHORTCUT_CANDIDATES);
+    expect(PORTABLE_SHORTCUT_CANDIDATES.map(({ accelerator }) => accelerator)).toContain(
+      "CommandOrControl+Alt+R",
+    );
   });
 });
 
 describe("raccourcis contestés et choix de l'utilisateur", () => {
   it("évite les familles que navigateurs et IDE revendiquent", () => {
-    // Un raccourci global prend la frappe à l'application au premier plan :
-    // ⌃⇧R est le rechargement forcé des navigateurs sous Windows et Linux, et
-    // ⌃⌥R est lié dans plusieurs keymaps d'IDE.
+    // macOS garde ses raccourcis historiques ; Windows et Linux reçoivent une
+    // famille Electron portable.
     const accelerators = SHORTCUT_CANDIDATES.map((candidate) => candidate.accelerator);
     expect(accelerators).not.toContain("Control+Shift+R");
-    expect(accelerators).not.toContain("Control+Alt+R");
-    // ⌘⌃ est la seule famille à deux modificateurs que les applications ne
-    // lient presque jamais.
     for (const accelerator of accelerators) {
       expect(accelerator.startsWith("Command+Control+")).toBe(true);
     }
@@ -202,6 +230,11 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
     expect(isUsableAccelerator("Control+Alt+R")).toBe(true);
   });
 
+  it.each(["win32", "linux"] as const)("écarte Command, inopérant sous %s", (platform) => {
+    expect(isUsableAccelerator("Command+Control+R", platform)).toBe(false);
+    expect(isUsableAccelerator("CommandOrControl+Alt+R", platform)).toBe(true);
+  });
+
   it("essaie d'abord le choix de l'utilisateur", () => {
     const tried: string[] = [];
     const resolution = registerShortcuts(
@@ -211,12 +244,12 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
       },
       handlers,
       undefined,
-      { capture: "Command+Alt+K", input: "Command+Alt+Shift+K" },
+      { capture: "CommandOrControl+Alt+L", input: "CommandOrControl+Alt+Shift+K" },
     );
 
-    expect(tried[0]).toBe("Command+Alt+K");
+    expect(tried[0]).toBe("CommandOrControl+Alt+L");
     expect(resolution.registered.find((e) => e.intent === "capture")?.accelerator).toBe(
-      "Command+Alt+K",
+      "CommandOrControl+Alt+L",
     );
   });
 
@@ -224,13 +257,14 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
     // Une application installée depuis peut avoir pris la combinaison : le
     // repli vaut mieux qu'un raccourci mort.
     const resolution = registerShortcuts(
-      (accelerator) => accelerator !== "Command+Alt+K",
+      (accelerator) => accelerator !== "CommandOrControl+Alt+L",
       handlers,
       undefined,
-      { capture: "Command+Alt+K" },
+      { capture: "CommandOrControl+Alt+L" },
+      "darwin",
     );
 
-    expect(resolution.rejected).toContain("Command+Alt+K");
+    expect(resolution.rejected).toContain("CommandOrControl+Alt+L");
     expect(resolution.registered.find((e) => e.intent === "capture")?.accelerator).toBe(
       "Command+Control+R",
     );
@@ -246,6 +280,7 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
       handlers,
       undefined,
       { capture: "Command+Control+R" },
+      "darwin",
     );
 
     expect(tried.filter((accelerator) => accelerator === "Command+Control+R")).toHaveLength(1);
@@ -290,16 +325,17 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
       handlers,
       undefined,
       {
-        capture: "Command+Alt+K",
-        input: "Command+Alt+K",
-        popover: "Command+Alt+P",
+        capture: "CommandOrControl+Alt+L",
+        input: "CommandOrControl+Alt+L",
+        popover: "CommandOrControl+Alt+Q",
       },
+      "darwin",
     );
 
-    expect(calls.filter((accelerator) => accelerator === "Command+Alt+K")).toHaveLength(1);
-    expect(resolution.conflicts).toEqual(["Command+Alt+K"]);
+    expect(calls.filter((accelerator) => accelerator === "CommandOrControl+Alt+L")).toHaveLength(1);
+    expect(resolution.conflicts).toEqual(["CommandOrControl+Alt+L"]);
     expect(resolution.registered.find((entry) => entry.intent === "capture")?.accelerator).toBe(
-      "Command+Alt+K",
+      "CommandOrControl+Alt+L",
     );
     expect(resolution.registered.find((entry) => entry.intent === "input")?.accelerator).toBe(
       "Command+Control+N",

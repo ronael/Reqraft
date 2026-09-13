@@ -1,4 +1,6 @@
 import type { CapsuleEvent, CapsuleState } from "@/apps/desktop/shared/capsule-machine.js";
+import type { DesktopPlatform } from "@/apps/desktop/shared/ipc-contract.js";
+import { hasPrimaryModifier } from "../shared/shortcut-labels.js";
 
 /**
  * Les commandes clavier de la capsule, et l'état que deux d'entre elles
@@ -33,6 +35,7 @@ export type CapsuleIntent =
 export interface CapsuleKeyStroke {
   readonly key: string;
   readonly metaKey?: boolean;
+  readonly ctrlKey?: boolean;
   readonly shiftKey?: boolean;
   /** L'appui est tenu, et le système répète le `keydown`. */
   readonly repeat?: boolean;
@@ -56,10 +59,14 @@ function normaliser(key: string): string {
   return key.length === 1 ? key.toLowerCase() : key;
 }
 
-function resoudreCommande(key: string, stroke: CapsuleKeyStroke): CapsuleIntent | null {
-  if (stroke.metaKey === true) {
-    // `⌘⇥` appartient au système, et `⌘⏎` n'a pas de sens devant un résultat :
-    // aucune combinaison avec ⌘ ne retombe sur les touches nues.
+function resoudreCommande(
+  key: string,
+  stroke: CapsuleKeyStroke,
+  platform: DesktopPlatform,
+): CapsuleIntent | null {
+  if (hasPrimaryModifier(stroke, platform)) {
+    // Le raccourci principal appartient au système avec ⇥, et ne retombe pas
+    // sur les touches nues devant un résultat.
     if (key === "c") return "copy";
     if (key === "d") return PIN_COMPARISON;
     if (key === "r") return "rerun";
@@ -91,20 +98,22 @@ export interface CapsuleKeyContext {
 function commandeDeLaFrappe(
   stroke: CapsuleKeyStroke,
   context: CapsuleKeyContext,
+  platform: DesktopPlatform,
 ): CapsuleIntent | null {
   const key = normaliser(stroke.key);
   if (key === "Escape") return "close";
-  if (key === "." && stroke.metaKey === true) return "cancel";
+  if (key === "." && hasPrimaryModifier(stroke, platform)) return "cancel";
   if (context.editing || !commandable(context.state)) return null;
-  return resoudreCommande(key, stroke);
+  return resoudreCommande(key, stroke, platform);
 }
 
 /** La commande demandée par un appui, ou `null` si la frappe ne dit rien ici. */
 export function resolveCapsuleKeyDown(
   stroke: CapsuleKeyStroke,
   context: CapsuleKeyContext,
+  platform: DesktopPlatform = "darwin",
 ): CapsuleIntent | null {
-  const intent = commandeDeLaFrappe(stroke, context);
+  const intent = commandeDeLaFrappe(stroke, context, platform);
   // ⌘D est la seule commande qui bascule, donc la seule que la répétition
   // trahit : un appui un peu tenu enchaîne les `keydown`, chacun inverserait
   // l'épinglage, et l'état final dépendrait de la durée de l'appui — la
@@ -150,15 +159,16 @@ const COUPE_LE_DEFAUT: ReadonlySet<CapsuleIntent> = new Set<CapsuleIntent>([
 export function preventsBrowserDefault(
   stroke: CapsuleKeyStroke,
   context: CapsuleKeyContext,
+  platform: DesktopPlatform = "darwin",
 ): boolean {
-  if (context.editing && stroke.metaKey === true) {
+  if (context.editing && hasPrimaryModifier(stroke, platform)) {
     const key = normaliser(stroke.key);
     // Le champ garde ses commandes de texte (⌘C notamment), mais ni le
     // rechargement de la fenêtre ni le signet du navigateur ne doivent prendre
     // le relais quand les commandes Reqraft sont suspendues pendant l'édition.
     if (key === "r" || key === "d") return true;
   }
-  const intent = commandeDeLaFrappe(stroke, context);
+  const intent = commandeDeLaFrappe(stroke, context, platform);
   return intent !== null && COUPE_LE_DEFAUT.has(intent);
 }
 

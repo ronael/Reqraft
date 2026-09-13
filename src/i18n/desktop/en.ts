@@ -524,6 +524,7 @@ export const DESKTOP_EN = {
     "The menu bar keeps Reqraft available without the Dock.",
   "shortcut.cmd": "Cmd",
   "shortcut.ctrl": "Ctrl",
+  "shortcut.alt": "Alt",
   "shortcut.option": "Option",
   "shortcut.shift": "Shift",
   "settings.providersConfigured": "{count} provider configured · telemetry off",

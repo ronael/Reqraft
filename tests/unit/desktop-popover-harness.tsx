@@ -7,6 +7,7 @@ import { DESKTOP_EN } from "@/i18n/desktop/en.js";
 import type {
   ProfileCatalogEntry,
   ProfileCatalogResponse,
+  DesktopPlatform,
   RepromptResult,
   RepromptStartRequest,
   RepromptStartResponse,
@@ -60,6 +61,8 @@ export interface PopoverHarnessOptions {
   profiles?: ProfileCatalogEntry[];
   /** Ce que `result:accept` répond. */
   accept?: ResultAcceptResponse;
+  /** Le système dont le renderer doit présenter et écouter les raccourcis. */
+  platform?: DesktopPlatform;
 }
 
 const EMPTY_CATALOG: ProfileCatalogResponse = { entries: [], problems: [] };
@@ -117,6 +120,7 @@ export async function monterPopover(options: PopoverHarnessOptions = {}): Promis
   const openSettings: PopoverBridgeSpies["openSettings"] = vi.fn(() => Promise.resolve());
 
   const partial = {
+    platform: options.platform ?? "darwin",
     startReprompt,
     acceptResult,
     openSettings,

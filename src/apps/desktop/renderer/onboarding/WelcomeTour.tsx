@@ -22,7 +22,12 @@ import {
   Waypoints,
 } from "lucide-react";
 import { useT, type Translate } from "../shared/i18n.js";
-import { CAPSULE_COMPARE_KEY, formatAccelerator } from "../shared/shortcut-labels.js";
+import {
+  CAPSULE_SHORTCUTS,
+  formatAccelerator,
+  formatCapsuleShortcut,
+} from "../shared/shortcut-labels.js";
+import type { DesktopPlatform } from "@/apps/desktop/shared/ipc-contract.js";
 import { Button } from "../shared/Button.js";
 import { version } from "@/version.js";
 
@@ -112,16 +117,24 @@ export const WELCOME_TOUR_AI_BRANDS = [
  *
  * Le balisage rendu est inchangé : mêmes classes, même ordre.
  */
-export const WELCOME_TOUR_CAPSULE_KEYS: readonly {
+export function welcomeTourCapsuleKeys(platform: DesktopPlatform): readonly {
   readonly touche: string;
   readonly label: string;
   readonly variant?: string;
-}[] = [
-  { touche: "↵", label: "capsule.replace", variant: "key-primary" },
-  { touche: CAPSULE_COMPARE_KEY, label: "capsule.compare" },
-  { touche: "⌘C", label: "capsule.copy" },
-  { touche: "esc", label: "capsule.close", variant: "key-close" },
-];
+}[] {
+  return [
+    { touche: "↵", label: "capsule.replace", variant: "key-primary" },
+    {
+      touche: formatCapsuleShortcut(CAPSULE_SHORTCUTS.compare, platform),
+      label: "capsule.compare",
+    },
+    { touche: formatCapsuleShortcut(CAPSULE_SHORTCUTS.copy, platform), label: "capsule.copy" },
+    { touche: "esc", label: "capsule.close", variant: "key-close" },
+  ];
+}
+
+/** macOS remains the static-tour default; the rendered tour receives its platform. */
+export const WELCOME_TOUR_CAPSULE_KEYS = welcomeTourCapsuleKeys("darwin");
 
 export const WELCOME_TOUR_PROVIDERS = [
   {
@@ -170,6 +183,7 @@ export function shouldShowWelcomeTour(
 
 export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.JSX.Element {
   const t = useT();
+  const platform = window.reqraft.platform;
   const [index, setIndex] = useState(0);
   const [direction, setDirection] = useState<TourDirection>("forward");
   const [animationRun, setAnimationRun] = useState(0);
@@ -238,6 +252,7 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
             visual={slide.visual}
             animationRun={animationRun}
             t={t}
+            platform={platform}
             onReplay={() => {
               setAnimationRun((run) => run + 1);
             }}
@@ -292,11 +307,13 @@ function TourVisual({
   visual,
   animationRun,
   t,
+  platform,
   onReplay,
 }: Readonly<{
   visual: (typeof WELCOME_TOUR_SLIDES)[number]["visual"];
   animationRun: number;
   t: Translate;
+  platform: DesktopPlatform;
   onReplay(): void;
 }>): React.JSX.Element {
   return (
@@ -315,12 +332,12 @@ function TourVisual({
         className="onboarding-tour-scene-content"
         aria-hidden
       >
-        {visual === "mail" ? <MailVisual t={t} /> : null}
-        {visual === "chat" ? <ChatVisual t={t} /> : null}
-        {visual === "code" ? <CodeVisual t={t} /> : null}
-        {visual === "profiles" ? <ProfilesVisual t={t} /> : null}
-        {visual === "providers" ? <ProvidersVisual t={t} /> : null}
-        {visual === "privacy" ? <PrivacyVisual t={t} /> : null}
+        {visual === "mail" ? <MailVisual t={t} platform={platform} /> : null}
+        {visual === "chat" ? <ChatVisual t={t} platform={platform} /> : null}
+        {visual === "code" ? <CodeVisual t={t} platform={platform} /> : null}
+        {visual === "profiles" ? <ProfilesVisual t={t} platform={platform} /> : null}
+        {visual === "providers" ? <ProvidersVisual t={t} platform={platform} /> : null}
+        {visual === "privacy" ? <PrivacyVisual t={t} platform={platform} /> : null}
       </div>
     </div>
   );
@@ -336,11 +353,14 @@ function WindowControls(): React.JSX.Element {
   );
 }
 
-function TourShortcut({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function TourShortcut({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   return (
     <div className="tour-shortcut">
       <BrandMark />
-      <kbd>{formatAccelerator("Command+Control+R", t)}</kbd>
+      <kbd>{formatAccelerator("CommandOrControl+Alt+R", t, platform)}</kbd>
     </div>
   );
 }
@@ -352,6 +372,7 @@ function ProductCapsule({
   resultKey,
   sourceApp,
   className = "",
+  platform,
 }: Readonly<{
   t: Translate;
   profile: string;
@@ -359,6 +380,7 @@ function ProductCapsule({
   resultKey: Parameters<Translate>[0];
   sourceApp?: string;
   className?: string;
+  platform: DesktopPlatform;
 }>): React.JSX.Element {
   return (
     <div className={`tour-product-capsule ${className}`}>
@@ -386,7 +408,7 @@ function ProductCapsule({
       </div>
       <div className="tour-product-capsule-actions">
         <b>{profile}</b>
-        {WELCOME_TOUR_CAPSULE_KEYS.map(({ touche, label, variant }) => (
+        {welcomeTourCapsuleKeys(platform).map(({ touche, label, variant }) => (
           <span
             key={label}
             className={variant === undefined ? "capsule-key" : `capsule-key ${variant}`}
@@ -400,7 +422,10 @@ function ProductCapsule({
   );
 }
 
-function ProductPopover({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function ProductPopover({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   return (
     <div className="tour-product-popover">
       <p>{t("onboarding.tour.chat.rewritten")}</p>
@@ -410,7 +435,7 @@ function ProductPopover({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
       </div>
       <div className="tour-product-popover-footer">
         <strong className="capsule-key key-primary">
-          <kbd>⌘↵</kbd>
+          <kbd>{formatCapsuleShortcut(CAPSULE_SHORTCUTS.submit, platform)}</kbd>
           {t("capsule.reformulate")}
         </strong>
         <span>{t("popover.settings")}</span>
@@ -419,7 +444,10 @@ function ProductPopover({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
   );
 }
 
-function MailVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function MailVisual({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   return (
     <>
       <div className="tour-app-window tour-mail-window">
@@ -443,7 +471,7 @@ function MailVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
           <p>{t("onboarding.tour.mail.signoff")}</p>
         </div>
       </div>
-      <TourShortcut t={t} />
+      <TourShortcut t={t} platform={platform} />
       <ProductCapsule
         t={t}
         profile="writing"
@@ -451,12 +479,16 @@ function MailVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
         resultKey="onboarding.tour.mail.rewritten"
         sourceApp="Mail"
         className="tour-product-capsule-mail"
+        platform={platform}
       />
     </>
   );
 }
 
-function ChatVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function ChatVisual({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   const activeBrand = WELCOME_TOUR_AI_BRANDS[0];
 
   return (
@@ -532,12 +564,15 @@ function ChatVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
           </section>
         </div>
       </div>
-      <ProductPopover t={t} />
+      <ProductPopover t={t} platform={platform} />
     </>
   );
 }
 
-function CodeVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function CodeVisual({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   return (
     <>
       <div className="tour-app-window tour-code-window">
@@ -567,6 +602,7 @@ function CodeVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
         resultKey="onboarding.tour.code.rewritten"
         sourceApp="Code"
         className="tour-product-capsule-code"
+        platform={platform}
       />
     </>
   );
@@ -576,10 +612,12 @@ function ProductSettingsFrame({
   t,
   activeTab,
   children,
+  platform,
 }: Readonly<{
   t: Translate;
   activeTab: "profiles" | "providers";
   children: React.ReactNode;
+  platform: DesktopPlatform;
 }>): React.JSX.Element {
   const nav = [
     ["profiles", UserRound, "settings.nav.profiles"],
@@ -641,7 +679,7 @@ function ProductSettingsFrame({
           <div className="tour-product-settings-content">{children}</div>
           <footer>
             <span>{t("settings.footer")}</span>
-            <kbd>⌘,</kbd>
+            <kbd>{formatCapsuleShortcut(CAPSULE_SHORTCUTS.settings, platform)}</kbd>
           </footer>
         </section>
       </div>
@@ -649,10 +687,13 @@ function ProductSettingsFrame({
   );
 }
 
-function ProfilesVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function ProfilesVisual({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   const builtinLabel = t("profiles.builtin");
   return (
-    <ProductSettingsFrame t={t} activeTab="profiles">
+    <ProductSettingsFrame t={t} activeTab="profiles" platform={platform}>
       <div className="tour-product-profile-toolbar">
         <p>{t("profiles.intro")}</p>
         <span>
@@ -716,9 +757,12 @@ function ProductProfileCard({
   );
 }
 
-function ProvidersVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function ProvidersVisual({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   return (
-    <ProductSettingsFrame t={t} activeTab="providers">
+    <ProductSettingsFrame t={t} activeTab="providers" platform={platform}>
       <div className="tour-product-ai-ecosystem">
         <div className="tour-product-ai-stack">
           {WELCOME_TOUR_AI_BRANDS.map((brand, index) => (
@@ -798,7 +842,10 @@ function ProductProviderRow({
   );
 }
 
-function PrivacyVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+function PrivacyVisual({
+  t,
+  platform,
+}: Readonly<{ t: Translate; platform: DesktopPlatform }>): React.JSX.Element {
   return (
     <>
       <div className="tour-app-window tour-privacy-backdrop">
@@ -829,6 +876,7 @@ function PrivacyVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
         resultKey="onboarding.tour.privacy.example"
         sourceApp="TextEdit"
         className="tour-product-capsule-privacy"
+        platform={platform}
       />
     </>
   );

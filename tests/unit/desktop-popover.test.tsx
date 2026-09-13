@@ -178,6 +178,18 @@ describe("les raccourcis du popover", () => {
     });
   });
 
+  it.each(["win32", "linux"] as const)("relance sur Ctrl+Entrée sous %s", async (platform) => {
+    const harness = await monterPopover({ platform });
+    await harness.user.type(champPrompt(), PROMPT);
+
+    await harness.user.keyboard("{Control>}{Enter}{/Control}");
+
+    await waitFor(() => {
+      expect(harness.bridge.startReprompt).toHaveBeenCalledTimes(1);
+    });
+    expect(commande(EN["capsule.reformulate"]).querySelector("kbd")?.textContent).toBe("Ctrl+↵");
+  });
+
   it("laisse ⌘C au champ tant que le curseur y est", async () => {
     // Sinon on ne peut plus copier trois mots d'un résultat : la commande du
     // popover prendrait toute la place, y compris pendant l'écriture.

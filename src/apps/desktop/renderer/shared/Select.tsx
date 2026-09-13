@@ -18,6 +18,7 @@ export interface SelectOption {
 }
 
 export interface SelectProps {
+  id?: string;
   value: string;
   options: readonly SelectOption[];
   onChange(value: string): void;
@@ -70,6 +71,7 @@ function actionForKey(
 
 /** Cross-platform desktop select. The option popup is rendered by Reqraft, not the OS. */
 export function Select({
+  id,
   value,
   options,
   onChange,
@@ -230,6 +232,7 @@ export function Select({
   return (
     <div ref={rootRef} className={classes}>
       <button
+        id={id}
         ref={triggerRef}
         type="button"
         className="design-select-trigger"

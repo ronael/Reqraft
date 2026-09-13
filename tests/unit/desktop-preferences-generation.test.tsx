@@ -50,6 +50,17 @@ function field(label: string): HTMLInputElement {
 }
 
 describe("PreferencesTab — réglages de génération", () => {
+  it.each(["win32", "linux"] as const)("propose Ctrl+Alt sous %s", async (platform) => {
+    window.reqraft = { platform } as typeof window.reqraft;
+    renderTab();
+    const user = userEvent.setup();
+
+    await user.click(screen.getByRole("combobox", { name: "settings.captureShortcut" }));
+    const choices = screen.getAllByRole("option").map((option) => option.textContent);
+    expect(choices).toContain("shortcut.ctrl + shortcut.alt + R");
+    expect(choices).not.toContain("shortcut.cmd + shortcut.ctrl + R");
+  });
+
   it("affiche le délai en secondes et l'enregistre en millisecondes", async () => {
     const user = userEvent.setup();
     const { onPatchConfig } = renderTab({ timeoutMs: 30_000 });
@@ -121,7 +132,8 @@ describe("PreferencesTab — réglages de génération", () => {
     const user = userEvent.setup();
     const { onPatchConfig } = renderTab();
 
-    await user.selectOptions(screen.getByLabelText("settings.fidelity"), "strict");
+    await user.click(screen.getByRole("combobox", { name: "settings.fidelity" }));
+    await user.click(screen.getByRole("option", { name: "settings.fidelityStrict" }));
 
     expect(onPatchConfig).toHaveBeenCalledWith({ fidelityMode: "strict" });
   });
@@ -130,7 +142,8 @@ describe("PreferencesTab — réglages de génération", () => {
     const user = userEvent.setup();
     const { onPatchConfig } = renderTab({ outputLanguage: "auto" });
 
-    await user.selectOptions(screen.getByLabelText("settings.outputLanguage"), "custom");
+    await user.click(screen.getByRole("combobox", { name: "settings.outputLanguage" }));
+    await user.click(screen.getByRole("option", { name: "settings.outputLanguageCustom" }));
     expect(onPatchConfig).not.toHaveBeenCalled();
 
     const custom = field("settings.outputLanguageCustomLabel");
@@ -146,7 +159,8 @@ describe("PreferencesTab — réglages de génération", () => {
 
     expect(field("settings.outputLanguageCustomLabel").value).toBe("en-US");
 
-    await user.selectOptions(screen.getByLabelText("settings.outputLanguage"), "auto");
+    await user.click(screen.getByRole("combobox", { name: "settings.outputLanguage" }));
+    await user.click(screen.getByRole("option", { name: "settings.outputLanguageAuto" }));
 
     expect(onPatchConfig).toHaveBeenCalledWith({ outputLanguage: "auto" });
   });
@@ -155,7 +169,8 @@ describe("PreferencesTab — réglages de génération", () => {
     const user = userEvent.setup();
     const { onPatchConfig } = renderTab({ outputLanguage: "auto" });
 
-    await user.selectOptions(screen.getByLabelText("settings.outputLanguage"), "custom");
+    await user.click(screen.getByRole("combobox", { name: "settings.outputLanguage" }));
+    await user.click(screen.getByRole("option", { name: "settings.outputLanguageCustom" }));
     const custom = field("settings.outputLanguageCustomLabel");
     await user.click(custom);
     await user.tab();

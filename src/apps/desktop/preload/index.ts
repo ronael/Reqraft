@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
   CapsuleOpenedPayload,
+  DesktopPlatform,
   ReqraftBridge,
   RunCancelledPayload,
   RunDeltaPayload,
@@ -27,7 +28,11 @@ function subscribe(channel: string, listener: (payload: unknown) => void): Unsub
   };
 }
 
+const platform: DesktopPlatform =
+  process.platform === "darwin" || process.platform === "win32" ? process.platform : "linux";
+
 const bridge: ReqraftBridge = {
+  platform,
   startReprompt: (request) => ipcRenderer.invoke(IPC_CHANNELS.repromptStart, request),
   cancelReprompt: (runId) => ipcRenderer.invoke(IPC_CHANNELS.repromptCancel, { runId }),
   captureSelection: () => ipcRenderer.invoke(IPC_CHANNELS.captureSelection),

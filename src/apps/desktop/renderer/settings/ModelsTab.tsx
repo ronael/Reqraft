@@ -13,6 +13,7 @@ import {
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage, type MessageTone } from "../shared/InlineMessage.js";
+import { Select } from "../shared/Select.js";
 import { ProviderLogo } from "./ProviderLogo.js";
 
 interface ModelsTabProps {
@@ -140,18 +141,18 @@ export function ModelsTab({
         </div>
         <div className="settings-group">
           <div className="settings-group-rows">
-            <label className="settings-group-row">
+            <div className="settings-group-row">
               <ProviderLogo providerId={config.defaultProvider} label={config.defaultProvider} />
               <span className="settings-group-copy">
                 <span className="settings-row-title">{t("settings.defaultProvider")}</span>
                 <span className="settings-row-detail">{t("settings.defaultProviderDetail")}</span>
               </span>
               <span className="settings-row-control">
-                <select
-                  className="settings-select"
+                <Select
                   value={config.defaultProvider}
-                  onChange={(event) => {
-                    const providerId = event.target.value as SafeConfig["defaultProvider"];
+                  ariaLabel={t("settings.defaultProvider")}
+                  onChange={(value) => {
+                    const providerId = value as SafeConfig["defaultProvider"];
                     const next = providers.find((provider) => provider.id === providerId);
                     setCustom(false);
                     onPatchConfig({
@@ -159,17 +160,15 @@ export function ModelsTab({
                       defaultModel: modelForProvider(next, config.defaultModel),
                     });
                   }}
-                >
-                  {providers.map((provider) => (
-                    <option key={provider.id} value={provider.id}>
-                      {provider.label}
-                    </option>
-                  ))}
-                </select>
+                  options={providers.map((provider) => ({
+                    value: provider.id,
+                    label: provider.label,
+                  }))}
+                />
               </span>
-            </label>
+            </div>
 
-            <label className="settings-group-row">
+            <div className="settings-group-row">
               <span className="settings-row-icon">
                 <Sparkles size={18} strokeWidth={1.7} aria-hidden />
               </span>
@@ -178,28 +177,25 @@ export function ModelsTab({
                 <span className="settings-row-detail">{t("settings.defaultModelDetail")}</span>
               </span>
               <span className="settings-row-control">
-                <select
-                  className="settings-select"
+                <Select
                   value={typing ? CUSTOM_MODEL_OPTION : config.defaultModel}
                   disabled={!hasLiveCatalog}
-                  onChange={(event) => {
-                    if (event.target.value === CUSTOM_MODEL_OPTION) {
+                  ariaLabel={t("settings.defaultModel")}
+                  onChange={(value) => {
+                    if (value === CUSTOM_MODEL_OPTION) {
                       setCustom(true);
                       return;
                     }
                     setCustom(false);
-                    onPatchConfig({ defaultModel: event.target.value });
+                    onPatchConfig({ defaultModel: value });
                   }}
-                >
-                  {liveModels.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
-                  ))}
-                  <option value={CUSTOM_MODEL_OPTION}>{t("settings.otherModel")}</option>
-                </select>
+                  options={[
+                    ...liveModels.map((model) => ({ value: model.id, label: model.name })),
+                    { value: CUSTOM_MODEL_OPTION, label: t("settings.otherModel") },
+                  ]}
+                />
               </span>
-            </label>
+            </div>
 
             {typing && (
               <label className="settings-group-row settings-group-row-entering">
@@ -253,7 +249,7 @@ export function ModelsTab({
         </div>
         <div className="settings-group">
           <div className="settings-group-rows">
-            <label className="settings-group-row">
+            <div className="settings-group-row">
               <span className="settings-row-icon">
                 <Gauge size={18} strokeWidth={1.7} aria-hidden />
               </span>
@@ -262,23 +258,18 @@ export function ModelsTab({
                 <span className="settings-row-detail">{t("settings.defaultLevelDetail")}</span>
               </span>
               <span className="settings-row-control">
-                <select
-                  className="settings-select"
+                <Select
                   value={config.defaultLevel}
-                  onChange={(event) => {
+                  ariaLabel={t("settings.defaultLevel")}
+                  onChange={(value) => {
                     onPatchConfig({
-                      defaultLevel: event.target.value as SafeConfig["defaultLevel"],
+                      defaultLevel: value as SafeConfig["defaultLevel"],
                     });
                   }}
-                >
-                  {REPROMPT_LEVEL_IDS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
+                  options={REPROMPT_LEVEL_IDS.map((level) => ({ value: level, label: level }))}
+                />
               </span>
-            </label>
+            </div>
           </div>
         </div>
       </section>

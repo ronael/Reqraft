@@ -7,6 +7,11 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react
 import { useT } from "../shared/i18n.js";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
+import {
+  CAPSULE_SHORTCUTS,
+  formatCapsuleShortcut,
+  hasPrimaryModifier,
+} from "../shared/shortcut-labels.js";
 import { Toast, useToast } from "../shared/Toast.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
@@ -47,6 +52,7 @@ function selectionEnCours(): boolean {
  */
 export function PopoverApp(): React.JSX.Element {
   const t = useT();
+  const platform = window.reqraft.platform;
   const [input, setInput] = useState("");
   const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([]);
   const [profileId, setProfileId] = useState("auto");
@@ -193,7 +199,7 @@ export function PopoverApp(): React.JSX.Element {
         }
         return;
       }
-      if (!event.metaKey) return;
+      if (!hasPrimaryModifier(event, platform)) return;
       if (event.key === "Enter") {
         event.preventDefault();
         run();
@@ -208,7 +214,7 @@ export function PopoverApp(): React.JSX.Element {
     return () => {
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [copier, picking, run]);
+  }, [copier, picking, platform, run]);
 
   /**
    * Une génération est une nouvelle lecture : elle commence par son début.
@@ -334,14 +340,14 @@ export function PopoverApp(): React.JSX.Element {
       <footer className="popover-footer">
         {resultatVisible && (
           <button type="button" className="capsule-key key-primary" onClick={copier}>
-            <kbd>⌘C</kbd>
+            <kbd>{formatCapsuleShortcut(CAPSULE_SHORTCUTS.copy, platform)}</kbd>
             {t("popover.copy")}
           </button>
         )}
         {/* Le popover s'ouvre à la souris : son action principale doit s'y
             prendre aussi, pas seulement au clavier. */}
         <button type="button" className="capsule-key popover-reformulate" onClick={run}>
-          <kbd>⌘⏎</kbd>
+          <kbd>{formatCapsuleShortcut(CAPSULE_SHORTCUTS.submit, platform)}</kbd>
           {t("capsule.reformulate")}
         </button>
         <button

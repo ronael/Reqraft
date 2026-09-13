@@ -36,6 +36,10 @@ describe("formatAccelerator", () => {
     expect(formatAccelerator("Command+Alt+K", t)).toBe("Cmd + Option + K");
   });
 
+  it.each(["win32", "linux"] as const)("uses Control and Alt on %s", (platform) => {
+    expect(formatAccelerator("CommandOrControl+Alt+R", t, platform)).toBe("Ctrl + Alt + R");
+  });
+
   it("writes every offered preset without leaving a raw token", () => {
     for (const accelerator of [
       ...SHORTCUT_PRESETS.capture,
@@ -61,16 +65,19 @@ describe("les deux formateurs ne servent plus à comparer", () => {
   });
 });
 
-describe("plus de combinaisons à quatre touches", () => {
-  it("n'offre aucun raccourci avec Option", () => {
-    // Cmd+Ctrl+Option+N demande quatre doigts, et c'est celui qui gagnait
-    // systématiquement comme repli.
+describe("raccourcis globaux multiplateformes", () => {
+  it("n'offre aucun raccourci qui exige Command", () => {
+    // `Command` n'a aucun effet sous Windows et Linux : toutes les valeurs
+    // proposées doivent donc utiliser le modificateur Electron portable.
     for (const accelerator of [
       ...SHORTCUT_PRESETS.capture,
       ...SHORTCUT_PRESETS.input,
       ...SHORTCUT_PRESETS.popover,
     ]) {
-      expect(accelerator, `${accelerator} contient Option`).not.toContain("Alt");
+      expect(accelerator, `${accelerator} doit rester multiplateforme`).toContain(
+        "CommandOrControl",
+      );
+      expect(accelerator).not.toContain("Command+");
     }
   });
 

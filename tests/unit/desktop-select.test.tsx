@@ -21,6 +21,16 @@ describe("desktop Select", () => {
     expect(source.match(/<Select/g)).toHaveLength(5);
   });
 
+  it("keeps native selects out of desktop settings", async () => {
+    const settings = await Promise.all(
+      ["PreferencesTab.tsx", "ModelsTab.tsx", "ProfilesTab.tsx"].map((file) =>
+        readFile(`src/apps/desktop/renderer/settings/${file}`, "utf8"),
+      ),
+    );
+
+    for (const source of settings) expect(source).not.toMatch(/<select\b/);
+  });
+
   it("uses a Reqraft listbox instead of a native select", async () => {
     const user = userEvent.setup();
     render(<Select value="one" options={OPTIONS} onChange={() => undefined} ariaLabel="Model" />);

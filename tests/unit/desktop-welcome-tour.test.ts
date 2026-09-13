@@ -1,13 +1,17 @@
 import { describe, expect, it } from "vitest";
 import {
   shouldShowWelcomeTour,
+  welcomeTourCapsuleKeys,
   WELCOME_TOUR_AI_BRANDS,
   WELCOME_TOUR_CAPSULE_KEYS,
   WELCOME_TOUR_PROFILE_IDS,
   WELCOME_TOUR_PROVIDERS,
   WELCOME_TOUR_SLIDES,
 } from "@/apps/desktop/renderer/onboarding/WelcomeTour.js";
-import { CAPSULE_COMPARE_KEY } from "@/apps/desktop/renderer/shared/shortcut-labels.js";
+import {
+  CAPSULE_SHORTCUTS,
+  formatCapsuleShortcut,
+} from "@/apps/desktop/renderer/shared/shortcut-labels.js";
 import { createDesktopTranslator } from "@/i18n/desktop/index.js";
 import { AUTO_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
 import { PROVIDER_DEFINITIONS } from "@/providers/catalog.js";
@@ -64,12 +68,14 @@ describe("welcome tour desktop", () => {
   });
 
   it("rejoue le pied de la capsule avec les touches que la capsule annonce", () => {
-    // La maquette a déjà dérivé : elle montrait `⌥` alors que le pied réel
-    // était passé à `⌘D`. C'est la première, et parfois la seule, fois qu'on
-    // lit ces touches — la touche de comparaison vient donc de la même
-    // constante que le pied.
-    const compare = WELCOME_TOUR_CAPSULE_KEYS.find(({ label }) => label === "capsule.compare");
-    expect(compare?.touche).toBe(CAPSULE_COMPARE_KEY);
+    // La maquette doit reprendre le même raccourci que le vrai pied, sur les
+    // trois plateformes où l'application est livrée.
+    for (const platform of ["darwin", "win32", "linux"] as const) {
+      const compare = welcomeTourCapsuleKeys(platform).find(
+        ({ label }) => label === "capsule.compare",
+      );
+      expect(compare?.touche).toBe(formatCapsuleShortcut(CAPSULE_SHORTCUTS.compare, platform));
+    }
 
     for (const locale of ["fr", "en"] as const) {
       const t = createDesktopTranslator(locale);

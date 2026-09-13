@@ -354,6 +354,20 @@ describe("les raccourcis pendant l'édition", () => {
     expect(frappes.at(-1)?.defaultPrevented).toBe(false);
   });
 
+  it.each(["win32", "linux"] as const)("affichent et écoutent Ctrl sous %s", async (platform) => {
+    const harness = monterCapsule({ platform });
+    await arriveAuResultat(harness, MODEL_TEXT);
+
+    expect(commande(EN["capsule.copy"]).querySelector("kbd")?.textContent).toBe("Ctrl+C");
+
+    await sortirDeLEdition(harness);
+    await harness.user.keyboard("{Control>}c{/Control}");
+
+    await waitFor(() => {
+      expect(harness.bridge.acceptResult).toHaveBeenCalledWith("run-1", "copy", undefined);
+    });
+  });
+
   it("coupent ⌘R : ni relance Reqraft, ni rechargement de la fenêtre", async () => {
     const harness = monterCapsule();
     await arriveAuResultat(harness, MODEL_TEXT);

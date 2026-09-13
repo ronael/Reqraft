@@ -498,15 +498,47 @@ export interface ProfileMutationResponse {
  *
  * A fixed list rather than a key recorder: recording a keystroke reliably means
  * intercepting every key while the field has focus, and getting that wrong
- * leaves the user unable to leave the field. A short list of combinations that
- * are known to register — and known not to collide with macOS or the common
- * launchers — answers the same need without that risk.
+ * leaves the user unable to leave the field. macOS keeps its established
+ * Command+Control family; Windows and Linux use Electron's portable
+ * `CommandOrControl` modifier, which maps to Control outside macOS.
  */
-export const SHORTCUT_PRESETS = {
+export type DesktopPlatform = "darwin" | "win32" | "linux";
+
+export const MACOS_SHORTCUT_PRESETS = {
   capture: ["Command+Control+R", "Command+Control+J", "Command+Control+G", "Command+Control+B"],
   input: ["Command+Control+N", "Command+Control+K", "Command+Control+M", "Command+Control+P"],
   popover: ["Command+Control+O", "Command+Control+T", "Command+Control+U", "Command+Control+Y"],
 } as const;
+
+export const SHORTCUT_PRESETS = {
+  capture: [
+    "CommandOrControl+Alt+R",
+    "CommandOrControl+Alt+J",
+    "CommandOrControl+Alt+G",
+    "CommandOrControl+Alt+B",
+  ],
+  input: [
+    "CommandOrControl+Alt+N",
+    "CommandOrControl+Alt+K",
+    "CommandOrControl+Alt+M",
+    "CommandOrControl+Alt+P",
+  ],
+  popover: [
+    "CommandOrControl+Alt+O",
+    "CommandOrControl+Alt+T",
+    "CommandOrControl+Alt+U",
+    "CommandOrControl+Alt+Y",
+  ],
+} as const;
+
+export type ShortcutIntent = keyof typeof SHORTCUT_PRESETS;
+
+/** The preset family presented by the settings window on this platform. */
+export function shortcutPresets(
+  platform: DesktopPlatform,
+): Readonly<Record<ShortcutIntent, readonly string[]>> {
+  return platform === "darwin" ? MACOS_SHORTCUT_PRESETS : SHORTCUT_PRESETS;
+}
 
 /**
  * What a global shortcut opens.
@@ -517,8 +549,6 @@ export const SHORTCUT_PRESETS = {
  * construction — the settings must never offer the same combination for two
  * intents, because only one of them could answer.
  */
-export type ShortcutIntent = keyof typeof SHORTCUT_PRESETS;
-
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
 export interface ShortcutStateInfo {
   registered: { accelerator: string; label: string; intent: ShortcutIntent }[];
@@ -992,6 +1022,8 @@ export type Unsubscribe = () => void;
  * never cross the context bridge (DESKTOP.md §2.3).
  */
 export interface ReqraftBridge {
+  /** Platform resolved by the trusted preload, used for shortcut presentation. */
+  platform: DesktopPlatform;
   startReprompt(request: RepromptStartRequest): Promise<RepromptStartResponse>;
   cancelReprompt(runId: string): Promise<void>;
   captureSelection(): Promise<CaptureSelectionResponse>;

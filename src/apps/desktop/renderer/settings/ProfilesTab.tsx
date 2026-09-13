@@ -21,6 +21,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage } from "../shared/InlineMessage.js";
+import { Select } from "../shared/Select.js";
 
 /**
  * Settings → Profils.
@@ -602,40 +603,32 @@ function ProfileForm({
                 />
               </label>
 
-              <label className="profile-field">
+              <div className="profile-field">
                 <span>{t("profiles.base")}</span>
-                <select
-                  className="settings-select"
+                <Select
                   value={form.extends}
-                  onChange={(event) => {
-                    setField({ extends: event.target.value });
+                  ariaLabel={t("profiles.base")}
+                  onChange={(value) => {
+                    setField({ extends: value });
                   }}
-                >
-                  <option value="">{t("profiles.noneLevel")}</option>
-                  {bases.map((id) => (
-                    <option key={id} value={id}>
-                      {id}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  options={[
+                    { value: "", label: t("profiles.noneLevel") },
+                    ...bases.map((id) => ({ value: id, label: id })),
+                  ]}
+                />
+              </div>
 
-              <label className="profile-field">
+              <div className="profile-field">
                 <span>{t("profiles.defaultLevel")}</span>
-                <select
-                  className="settings-select"
+                <Select
                   value={form.defaultLevel}
-                  onChange={(event) => {
-                    setField({ defaultLevel: event.target.value as FormState["defaultLevel"] });
+                  ariaLabel={t("profiles.defaultLevel")}
+                  onChange={(value) => {
+                    setField({ defaultLevel: value as FormState["defaultLevel"] });
                   }}
-                >
-                  {REPROMPT_LEVEL_IDS.map((level) => (
-                    <option key={level} value={level}>
-                      {level}
-                    </option>
-                  ))}
-                </select>
-              </label>
+                  options={REPROMPT_LEVEL_IDS.map((level) => ({ value: level, label: level }))}
+                />
+              </div>
 
               <label className="profile-field profile-field-wide profile-instructions">
                 <span>{t("profiles.instructions")}</span>

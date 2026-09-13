@@ -525,6 +525,7 @@ export const DESKTOP_FR = {
     "La barre des menus garde Reqraft accessible sans Dock.",
   "shortcut.cmd": "Cmd",
   "shortcut.ctrl": "Ctrl",
+  "shortcut.alt": "Alt",
   "shortcut.option": "Option",
   "shortcut.shift": "Maj",
   "settings.providersConfigured": "{count} provider configuré · télémétrie désactivée",

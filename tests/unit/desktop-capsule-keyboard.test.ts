@@ -14,6 +14,7 @@ import {
   type CapsuleKeyStroke,
   type ComparisonIntent,
 } from "@/apps/desktop/renderer/capsule/keyboard.js";
+import type { DesktopPlatform } from "@/apps/desktop/shared/ipc-contract.js";
 import {
   CAPSULE_STATES,
   transition,
@@ -36,12 +37,20 @@ import {
  * justement sur l'édition. Le nommer une fois évite de le répéter à chaque
  * appel, et laisse voir d'un coup d'œil les cas qui s'en écartent.
  */
-function touche(stroke: CapsuleKeyStroke, state: CapsuleState): CapsuleIntent | null {
-  return resolveCapsuleKeyDown(stroke, { state, editing: false });
+function touche(
+  stroke: CapsuleKeyStroke,
+  state: CapsuleState,
+  platform: DesktopPlatform = "darwin",
+): CapsuleIntent | null {
+  return resolveCapsuleKeyDown(stroke, { state, editing: false }, platform);
 }
 
-function coupeLeDefaut(stroke: CapsuleKeyStroke, state: CapsuleState): boolean {
-  return preventsBrowserDefault(stroke, { state, editing: false });
+function coupeLeDefaut(
+  stroke: CapsuleKeyStroke,
+  state: CapsuleState,
+  platform: DesktopPlatform = "darwin",
+): boolean {
+  return preventsBrowserDefault(stroke, { state, editing: false }, platform);
 }
 
 /** Les seuls états où le pied de la capsule rend ses commandes. */
@@ -138,6 +147,15 @@ describe("les autres commandes du pied", () => {
     expect(touche({ key: "c", metaKey: true }, "ready")).toBe("copy");
     expect(touche({ key: "r", metaKey: true }, "ready")).toBe("rerun");
     expect(touche({ key: "Alt" }, "ready")).toBe("hold-comparison");
+  });
+
+  it.each(["win32", "linux"] as const)("utilise Ctrl, pas Command, sous %s", (platform) => {
+    expect(touche({ key: "c", ctrlKey: true }, "ready", platform)).toBe("copy");
+    expect(touche({ key: "d", ctrlKey: true }, "ready", platform)).toBe("pin-comparison");
+    expect(touche({ key: "r", ctrlKey: true }, "ready", platform)).toBe("rerun");
+    expect(touche({ key: ".", ctrlKey: true }, "ready", platform)).toBe("cancel");
+    expect(touche({ key: "c", metaKey: true }, "ready", platform)).toBeNull();
+    expect(coupeLeDefaut({ key: "r", ctrlKey: true }, "ready", platform)).toBe(true);
   });
 
   it("laisse ⌘⏎ au champ de saisie", () => {

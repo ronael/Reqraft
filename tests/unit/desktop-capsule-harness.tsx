@@ -7,6 +7,7 @@ import { DESKTOP_EN } from "@/i18n/desktop/en.js";
 import type {
   CapsuleOpenedPayload,
   CaptureSelectionResponse,
+  DesktopPlatform,
   ProfileCatalogEntry,
   ProfileCatalogResponse,
   RepromptResult,
@@ -86,6 +87,8 @@ export interface CapsuleHarnessOptions {
   pending?: CapsuleOpenedPayload | null;
   /** Ce que `result:accept` répond, remplacement compris. */
   accept?: ResultAcceptResponse;
+  /** Le système dont le renderer doit présenter et écouter les raccourcis. */
+  platform?: DesktopPlatform;
 }
 
 /** Un catalogue vide : le sélecteur de profils n'est pas le sujet ici. */
@@ -162,6 +165,7 @@ export function monterCapsule(options: CapsuleHarnessOptions = {}): CapsuleHarne
     options.pending === undefined ? { id: 1, mode: "capture" } : options.pending;
 
   const partial = {
+    platform: options.platform ?? "darwin",
     startReprompt,
     acceptResult,
     cancelReprompt,

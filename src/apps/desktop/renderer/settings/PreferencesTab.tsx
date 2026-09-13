@@ -17,7 +17,7 @@ import {
 import { useT } from "../shared/i18n.js";
 import {
   FIDELITY_MODE_IDS,
-  SHORTCUT_PRESETS,
+  shortcutPresets,
   type ConfigWriteRequest,
   type DesktopFidelityMode,
   type ShortcutIntent,
@@ -25,6 +25,7 @@ import {
 import { formatAccelerator } from "../shared/shortcut-labels.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage } from "../shared/InlineMessage.js";
+import { Select } from "../shared/Select.js";
 
 /** Le choix de langue tel qu'il est enregistré : « auto » en fait partie. */
 export type UiLocalePreference = "auto" | "en" | "fr";
@@ -57,6 +58,8 @@ export interface PreferencesTabProps {
 /** Onglet Réglages (R4) : raccourcis et conflits (§5.5), langue, permissions. */
 export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.Element {
   const t = useT();
+  const platform = window.reqraft.platform;
+  const presets = shortcutPresets(platform);
   return (
     <>
       <section className="settings-section">
@@ -70,7 +73,7 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
               title={t("settings.captureShortcut")}
               detail={t("settings.captureShortcutDetail")}
               active={props.captureShortcut}
-              presets={SHORTCUT_PRESETS.capture}
+              presets={presets.capture}
               chosen={props.chosen.capture ?? ""}
               onChoose={(accelerator) => {
                 props.onChoose("capture", accelerator);
@@ -81,7 +84,7 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
               title={t("settings.inputShortcut")}
               detail={t("settings.inputShortcutDetail")}
               active={props.inputShortcut}
-              presets={SHORTCUT_PRESETS.input}
+              presets={presets.input}
               chosen={props.chosen.input ?? ""}
               onChoose={(accelerator) => {
                 props.onChoose("input", accelerator);
@@ -92,7 +95,7 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
               title={t("settings.popoverShortcut")}
               detail={t("settings.popoverShortcutDetail")}
               active={props.popoverShortcut}
-              presets={SHORTCUT_PRESETS.popover}
+              presets={presets.popover}
               chosen={props.chosen.popover ?? ""}
               onChoose={(accelerator) => {
                 props.onChoose("popover", accelerator);
@@ -285,18 +288,18 @@ function LanguageRow(
         <span className="settings-row-detail">{t("settings.languageDetail")}</span>
       </span>
       <span className="settings-row-control">
-        <select
-          className="settings-select"
+        <Select
           value={props.chosen}
-          aria-label={t("settings.language")}
-          onChange={(event) => {
-            props.onChoose(event.target.value as UiLocalePreference);
+          ariaLabel={t("settings.language")}
+          onChange={(value) => {
+            props.onChoose(value as UiLocalePreference);
           }}
-        >
-          <option value="auto">{t("settings.languageAuto")}</option>
-          <option value="en">{t("settings.languageEn")}</option>
-          <option value="fr">{t("settings.languageFr")}</option>
-        </select>
+          options={[
+            { value: "auto", label: t("settings.languageAuto") },
+            { value: "en", label: t("settings.languageEn") },
+            { value: "fr", label: t("settings.languageFr") },
+          ]}
+        />
       </span>
     </div>
   );
@@ -360,20 +363,15 @@ function FidelityRow(
       errorId={`${controlId}-error`}
       error={null}
     >
-      <select
+      <Select
         id={controlId}
-        className="settings-select"
         value={props.chosen}
-        onChange={(event) => {
-          props.onChoose(event.target.value as DesktopFidelityMode);
+        ariaLabel={t("settings.fidelity")}
+        onChange={(value) => {
+          props.onChoose(value as DesktopFidelityMode);
         }}
-      >
-        {FIDELITY_MODE_IDS.map((mode) => (
-          <option key={mode} value={mode}>
-            {labels[mode]}
-          </option>
-        ))}
-      </select>
+        options={FIDELITY_MODE_IDS.map((mode) => ({ value: mode, label: labels[mode] }))}
+      />
     </EditableRow>
   );
 }
@@ -520,12 +518,12 @@ function OutputLanguageRow(
       error={error}
       controlClassName="settings-row-control-language"
     >
-      <select
+      <Select
         id={controlId}
-        className="settings-select"
         value={custom ? "custom" : "auto"}
-        onChange={(event) => {
-          if (event.target.value === "custom") {
+        ariaLabel={t("settings.outputLanguage")}
+        onChange={(value) => {
+          if (value === "custom") {
             setCustom(true);
             return;
           }
@@ -533,10 +531,11 @@ function OutputLanguageRow(
           setError(null);
           if (props.value !== "auto") props.onCommit("auto");
         }}
-      >
-        <option value="auto">{t("settings.outputLanguageAuto")}</option>
-        <option value="custom">{t("settings.outputLanguageCustom")}</option>
-      </select>
+        options={[
+          { value: "auto", label: t("settings.outputLanguageAuto") },
+          { value: "custom", label: t("settings.outputLanguageCustom") },
+        ]}
+      />
       {custom && (
         <input
           id={customId}
@@ -581,6 +580,7 @@ interface ShortcutRowProps {
  */
 function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
   const t = useT();
+  const platform = window.reqraft.platform;
   const Icon = props.icon;
   // Raw against raw. Comparing formatted labels made this fire whenever the two
   // formatters disagreed, which is a bug report about a shortcut that works.
@@ -603,27 +603,28 @@ function ShortcutRow(props: Readonly<ShortcutRowProps>): React.JSX.Element {
         <span className="settings-row-detail">{props.detail}</span>
         {overridden && (
           <span className="settings-row-detail shortcut-overridden">
-            {t("settings.shortcutUnavailable", { accelerator: formatAccelerator(props.active, t) })}
+            {t("settings.shortcutUnavailable", {
+              accelerator: formatAccelerator(props.active, t, platform),
+            })}
           </span>
         )}
       </span>
       <span className="settings-row-control shortcut-control">
-        <kbd>{formatAccelerator(props.active, t)}</kbd>
-        <select
-          className="settings-select"
+        <kbd>{formatAccelerator(props.active, t, platform)}</kbd>
+        <Select
           value={props.chosen}
-          aria-label={props.title}
-          onChange={(event) => {
-            props.onChoose(event.target.value);
+          ariaLabel={props.title}
+          onChange={(value) => {
+            props.onChoose(value);
           }}
-        >
-          <option value="">{t("settings.automatic")}</option>
-          {options.map((accelerator) => (
-            <option key={accelerator} value={accelerator}>
-              {formatAccelerator(accelerator, t)}
-            </option>
-          ))}
-        </select>
+          options={[
+            { value: "", label: t("settings.automatic") },
+            ...options.map((accelerator) => ({
+              value: accelerator,
+              label: formatAccelerator(accelerator, t, platform),
+            })),
+          ]}
+        />
       </span>
     </div>
   );
