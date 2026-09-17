@@ -92,6 +92,40 @@ jobs:
 
           echo "Code signing configured: ${signed}"
 
+      # A public macOS download must pass Gatekeeper without asking the user to
+      # weaken their security settings. Keep ad-hoc builds available, but stop
+      # a tag (or an on-demand run that attaches assets to a release) before it
+      # can publish an unsigned, non-notarized DMG.
+      - name: Require macOS signing for a public release
+        if: runner.os == 'macOS' && (github.ref_type == 'tag' || inputs.attach_to_release)
+        shell: bash
+        env:
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          MAC_CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID_SECRET: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD_SECRET: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID_SECRET: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          missing=()
+          for secret in \
+            MAC_CSC_LINK \
+            MAC_CSC_KEY_PASSWORD \
+            APPLE_ID_SECRET \
+            APPLE_APP_SPECIFIC_PASSWORD_SECRET \
+            APPLE_TEAM_ID_SECRET; do
+            if [ -z "${!secret}" ]; then
+              missing+=("${secret}")
+            fi
+          done
+
+          if [ ${#missing[@]} -gt 0 ]; then
+            printf -v missing_names '%s, ' "${missing[@]}"
+            printf '::error::A public macOS release requires signing and notarization secrets: %s\\n' \
+              "${missing_names%, }"
+            exit 1
+          fi
+
       - name: Build installer
         run: pnpm ${{ matrix.script }}
 
