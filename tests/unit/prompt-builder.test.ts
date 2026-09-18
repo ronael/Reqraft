@@ -21,7 +21,7 @@ describe("prompt builder", () => {
           expect(systemPrompt).toContain("Un fragment incomplet peut rester inchangé");
           expect(systemPrompt).not.toContain("uniquement le prompt final");
           expect(userPrompt).toContain("Texte à reformuler");
-          expect(systemPrompt).toContain("ne délègue pas sa correction");
+          expect(systemPrompt).toContain("Livre directement le texte reformulé");
           expect(systemPrompt).toContain("sans deviner leur sens");
           expect(userPrompt).toContain("ema conv :");
         }

@@ -1,3 +1,4 @@
+import { DESIGN_INPUT, DESIGN_WRAPPED } from "../fixtures/delegated-design-rewrite.js";
 import { expect, it } from "vitest";
 import { scoreFidelityCase } from "../../benchmark/fidelity-scoring.js";
 import { buildFidelityPlan } from "../../benchmark/fidelity-plan.js";
@@ -42,4 +43,10 @@ it("plans the same cases for auto and explicit profiles with numbered independen
 
 it.each([0, -1, 1.5, 11, Number.NaN])("refuses an invalid repetition count: %s", (repeat) => {
   expect(() => buildFidelityPlan([fragment], { profileMode: "auto", repeat })).toThrow();
+});
+
+it("fails delegation even when the quoted source was corrected", () => {
+  const result = scoreFidelityCase({ ...fragment, input: DESIGN_INPUT }, DESIGN_WRAPPED);
+  expect(result.rewriteInstruction).toBe(true);
+  expect(result.total).toBe(0);
 });

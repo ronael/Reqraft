@@ -1,3 +1,4 @@
+import { DESIGN_INPUT, DESIGN_WRAPPED } from "../fixtures/delegated-design-rewrite.js";
 import { describe, expect, it } from "vitest";
 import { assessFidelity } from "@/core/fidelity.js";
 import { rewrite } from "@/core/engine.js";
@@ -11,7 +12,7 @@ const INPUT = "ema conv :";
 const WRAPPED =
   'Clarifie et reformule la demande suivante, en corrigeant l’orthographe et la grammaire sans en modifier le sens :\n\n"ema conv :"';
 
-describe("a rewrite instruction wrapped around unchanged source text", () => {
+describe("a rewrite instruction wrapped around source text", () => {
   it("explains the finding in the CLI in both languages", () => {
     const signal = { code: "rewrite_instruction", severity: "warning" } as const;
     expect(describeQualitySignal(signal, createTranslator("fr"))).toContain(
@@ -30,6 +31,14 @@ describe("a rewrite instruction wrapped around unchanged source text", () => {
   );
 
   it.each([
+    [DESIGN_INPUT, DESIGN_WRAPPED],
+    ["change le style", "Reformule ma demande : « Change le style graphique. »"],
+    ["change le style", "Reformule ma demande : “Change le style graphique.”"],
+    ["change le style", "Reformule ma demande :\n```\nChange le style graphique.\n```"],
+    [
+      "change the style",
+      'Rewrite my request for a designer: "Change the visual style." Preserve intent.',
+    ],
     ["bonjour paul", "Corrige le texte suivant : « bonjour paul »"],
     ["hello sam", 'Please rewrite the following message: "hello sam".'],
     ["see you soon", "Rephrase the following text:\n```\nsee you soon\n```"],
@@ -42,6 +51,17 @@ describe("a rewrite instruction wrapped around unchanged source text", () => {
 
   it.each([
     [INPUT, "Ema conv :"],
+    [
+      DESIGN_INPUT,
+      "La section devis me plaît. Change le reste du design, je souhaite un style moins minimaliste.",
+    ],
+    ["Reformule ma demande pour un designer UI", DESIGN_WRAPPED],
+    ["Change le texte du bouton", 'Change le texte du bouton : "Envoyer".'],
+    ["bonjour", "Reformule ma demande :"],
+    ["bonjour", 'Reformule ma demande : ""'],
+    ["salut", 'Reformule ma demande : "Bonjour'],
+    ["salut", "Reformule ma demande : Bonjour"],
+    ["corrige les fautes de ce message", 'Corrige le message : "Bonjour Paul."'],
     ["bonjour paul", "Bonjour Paul."],
     ["corrige ce message : bonjour paul", 'Corrige le message suivant : "bonjour paul"'],
     ["reformule ceci", 'Reformule le texte suivant : "reformule ceci"'],

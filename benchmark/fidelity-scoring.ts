@@ -2,8 +2,8 @@ import { detectUnsupportedAdditions, isDisproportionateExpansion } from "@/core/
 import { hasRewriteInstructionWrapper } from "@/core/rewrite-instruction.js";
 import type { FidelityBenchmarkCase } from "./fidelity-cases.js";
 
-/** v2 rejects delegated rewrites and empty outputs; do not compare its scores to v1. */
-export const FIDELITY_SCORE_VERSION = 2;
+/** v3 also rejects delegation around corrected text; compare only same-version scores. */
+export const FIDELITY_SCORE_VERSION = 3;
 
 function normalize(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");

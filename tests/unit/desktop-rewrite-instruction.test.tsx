@@ -1,14 +1,16 @@
 /** @vitest-environment jsdom */
 import { cleanup, screen, waitFor } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
+import { DESIGN_INPUT, DESIGN_WRAPPED } from "../fixtures/delegated-design-rewrite.js";
 import { assessFidelity } from "@/core/fidelity.js";
 import { champResultat, EN, monterCapsule, repromptResult } from "./desktop-capsule-harness.js";
 
 afterEach(cleanup);
 
-it("shows the added instruction warning instead of a faithful verdict", async () => {
-  const input = "ema conv :";
-  const output = 'Clarifie et reformule la demande suivante : "ema conv :"';
+it.each([
+  ["ema conv :", 'Clarifie et reformule la demande suivante : "ema conv :"'],
+  [DESIGN_INPUT, DESIGN_WRAPPED],
+])("shows the added instruction warning for %s", async (input, output) => {
   const harness = monterCapsule({ capture: { text: input, sourceApp: "ChatGPT" } });
   await waitFor(() => {
     expect(harness.bridge.startReprompt).toHaveBeenCalledOnce();

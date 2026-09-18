@@ -102,8 +102,11 @@ the output format is valid JSON: a valid envelope can still contain the wrong ta
 
 The local `rewrite_instruction` finding detects a narrow failure: a French or
 English editing instruction followed by the unchanged source text, optionally
-quoted or fenced. Requests already mentioning editing are excluded. This check
-does not claim to detect all semantic drift or wrappers around changed text.
+quoted or fenced. It also detects an explicit delegation header such as
+“Reformule ma demande” or “Rewrite my request” followed by quoted or fenced text,
+even if that text was corrected and trailing editing instructions were added.
+Requests already mentioning editing are excluded. This check does not claim to
+detect all semantic drift or all wrappers around changed text.
 It requires review in balanced/strict modes and remains informational in
 permissive mode. The model output is retained; no silent replacement or extra
 generation is performed.

@@ -29,7 +29,7 @@ it("runs both real engine paths, records samples and distinguishes failures from
   });
   expect(generate).toHaveBeenCalledTimes(4);
   expect(run.aggregate).toMatchObject({ cases: 4, failures: 1, regressions: 1 });
-  expect(run.scoreVersion).toBe(2);
+  expect(run.scoreVersion).toBe(3);
   expect(run.corpusHash).toMatch(/^[a-f0-9]{64}$/);
   expect(run.results.map((entry) => [entry.requestedProfile, entry.sample])).toEqual([
     ["clean", 1],
