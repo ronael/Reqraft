@@ -1,4 +1,4 @@
-import type { MacosBridge } from "./macos.js";
+import type { DesktopNativeBridge } from "./native-bridge.js";
 import { t } from "./i18n.js";
 
 /**
@@ -52,8 +52,8 @@ export interface CaptureClipboard {
 
 export interface CaptureDependencies {
   clipboard: CaptureClipboard;
-  sendKeystroke: MacosBridge["sendKeystroke"];
-  activateApp: MacosBridge["activateApp"];
+  sendKeystroke: DesktopNativeBridge["sendKeystroke"];
+  activateApp: DesktopNativeBridge["activateApp"];
   wait?: (ms: number) => Promise<void>;
   copyTimeoutMs?: number;
   pollIntervalMs?: number;

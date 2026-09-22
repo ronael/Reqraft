@@ -1,5 +1,5 @@
 import type { SystemPermissionPane } from "@/apps/desktop/shared/ipc-contract.js";
-import type { MacosBridge } from "./macos.js";
+import type { DesktopNativeBridge } from "./native-bridge.js";
 import { t } from "./i18n.js";
 
 /**
@@ -157,7 +157,7 @@ export function requestAccessibility(systemPreferences: SystemPreferencesLike): 
 /** Builds the probe for the real runtime, or a non-macOS equivalent. */
 export function createSystemPermissionsProbe(
   systemPreferences: SystemPreferencesLike,
-  bridge: MacosBridge,
+  bridge: DesktopNativeBridge,
   env: NodeJS.ProcessEnv,
   platform: NodeJS.Platform,
 ): PermissionsProbe {

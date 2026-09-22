@@ -65,8 +65,10 @@ function services(): TuiServices {
     bootstrap: () => Promise.resolve({ config: { ...DEFAULT_CONFIG } }),
     profiles: {
       ...createProfileServices({ profilesDir, exportDir }),
-      // Everything else stays the production service; only the launch is
-      // intercepted, or the suite would put windows on the screen.
+      // Host-owned boundaries are intercepted: opening would put windows on
+      // the screen, and the real user config must not decide whether this
+      // isolated fixture profile is considered the default.
+      defaultProfile: () => Promise.resolve("auto"),
       openInEditor: (id) => {
         opened.push(id);
         return Promise.resolve(`${profilesDir}/${id}.reqraft-profile.json`);

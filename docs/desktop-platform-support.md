@@ -18,13 +18,13 @@ table in the release notes saying what they are worth.
 
 ## Why Windows and Linux say `-experimental`
 
-They build, and they are published so they can be tried. Windows manual testing
-has started, but the complete product path has not been validated; Linux has not
-been run yet. The app leans on macOS APIs for the parts that matter: selection
-capture and reinjection go through `osascript`, and permissions through the
-Accessibility and Automation prompts. Those paths have no implementation on
-the other two platforms yet, so an installer that launches may still be an app
-that cannot do its job.
+They build, and they are published so they can be tried. Windows now has a
+dedicated selection adapter: it records the foreground process through Win32,
+sends `Ctrl+C` / `Ctrl+V`, and reactivates that exact process before replacing
+text. Its controlled native test passes, but the complete installed product
+path has not yet been validated on a clean machine. Linux has not been run and
+still has no injection adapter. On macOS, capture and reinjection continue to
+go through `osascript`, with Accessibility and Automation permissions.
 
 Shipping them silently alongside the macOS build would imply parity that does
 not exist, so the marker is carried in two places that survive separately:

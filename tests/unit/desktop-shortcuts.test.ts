@@ -217,7 +217,7 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
   it("aucun candidat n'est une combinaison exclue", () => {
     for (const candidate of SHORTCUT_CANDIDATES) {
       expect(EXCLUDED_ACCELERATORS).not.toContain(candidate.accelerator);
-      expect(isUsableAccelerator(candidate.accelerator)).toBe(true);
+      expect(isUsableAccelerator(candidate.accelerator, "darwin")).toBe(true);
     }
   });
 

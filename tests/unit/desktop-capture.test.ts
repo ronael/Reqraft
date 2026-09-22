@@ -7,7 +7,7 @@ import {
   type CaptureDependencies,
 } from "@/apps/desktop/main/capture.js";
 import { CaptureService } from "@/apps/desktop/main/capture-service.js";
-import type { MacosBridge } from "@/apps/desktop/main/macos.js";
+import type { DesktopNativeBridge } from "@/apps/desktop/main/native-bridge.js";
 
 const SENTINEL = CAPTURE_SENTINEL_FOR_TESTS;
 
@@ -218,7 +218,7 @@ describe("replaceSelection (DESKTOP.md §5.2)", () => {
 });
 
 describe("CaptureService", () => {
-  function createBridge(clipboard: FakeClipboard): MacosBridge {
+  function createBridge(clipboard: FakeClipboard): DesktopNativeBridge {
     return {
       frontmostApp: () => Promise.resolve("TextEdit"),
       activateApp: () => Promise.resolve(true),

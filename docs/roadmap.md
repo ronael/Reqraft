@@ -175,10 +175,11 @@ plateforme supportée. L'artefact reste **Alpha** et conserve son suffixe
   [checklist desktop Windows](desktop-windows-manual-checklist.md), de
   l'installation propre à la désinstallation, avec relevé d'environnement,
   parcours Alpha et critères natifs restant à valider avant la Beta.
-- Implémenter des adaptateurs Windows pour capturer la sélection active et
-  remplacer le texte dans l'application source. Garder le même contrat
-  `CaptureService` que macOS et isoler les API Windows dans `desktop/main`, sans
-  condition de plateforme dans le domaine, le CLI ou les renderers.
+- ~~Implémenter des adaptateurs Windows pour capturer la sélection active et
+  remplacer le texte dans l'application source.~~ Fait avec un bridge Windows
+  isolé dans `desktop/main` : il mémorise le PID de la fenêtre au premier plan,
+  envoie `Ctrl+C` / `Ctrl+V` et réactive ce PID avant le remplacement, tout en
+  conservant le même contrat `CaptureService` que macOS.
 - ~~Ajouter un stockage sécurisé à l'application Windows.~~ Fait avec Electron
   `safeStorage`, qui chiffre les clés avec DPAPI pour le compte Windows courant.
   Les variables d'environnement restent un repli explicite quand DPAPI n'est

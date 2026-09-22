@@ -5,7 +5,7 @@ import {
   type ReplaceOutcome,
 } from "./capture.js";
 import { FocusTracker } from "./focus.js";
-import type { MacosBridge } from "./macos.js";
+import type { DesktopNativeBridge } from "./native-bridge.js";
 import type { CaptureSelectionResponse } from "@/apps/desktop/shared/ipc-contract.js";
 import { t } from "./i18n.js";
 
@@ -18,7 +18,7 @@ import { t } from "./i18n.js";
  * as the single definition of channels.
  */
 export interface CaptureServiceDependencies {
-  bridge: MacosBridge;
+  bridge: DesktopNativeBridge;
   clipboard: CaptureClipboard;
   focus?: FocusTracker;
 }
