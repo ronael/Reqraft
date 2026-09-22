@@ -214,12 +214,15 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
     expect(intents.has("popover")).toBe(true);
   });
 
-  it("aucun candidat n'est une combinaison exclue", () => {
-    for (const candidate of SHORTCUT_CANDIDATES) {
-      expect(EXCLUDED_ACCELERATORS).not.toContain(candidate.accelerator);
-      expect(isUsableAccelerator(candidate.accelerator)).toBe(true);
-    }
-  });
+  it.each(["darwin", "win32", "linux"] as const)(
+    "les candidats sont utilisables sous %s",
+    (platform) => {
+      for (const candidate of shortcutCandidates(platform)) {
+        expect(EXCLUDED_ACCELERATORS).not.toContain(candidate.accelerator);
+        expect(isUsableAccelerator(candidate.accelerator, platform)).toBe(true);
+      }
+    },
+  );
 
   it("refuse une combinaison sans modificateur ou exclue", () => {
     // Une touche seule serait avalée partout sur le système.
