@@ -41,6 +41,8 @@ import { applyCrashReportPolicy } from "./crash-report.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
 import { buildOnboardingState, registerIpcHandlers, type DesktopIpcDependencies } from "./ipc.js";
 import { createMacosBridge, createOsascriptRunner } from "./macos.js";
+import type { DesktopNativeBridge } from "./native-bridge.js";
+import { createPowershellRunner, createWindowsBridge } from "./windows-bridge.js";
 import { installDesktopMenu } from "./menu.js";
 import {
   createSystemPermissionsProbe,
@@ -632,6 +634,11 @@ function requestSystemAccessibility(): void {
   requestAccessibility(systemPreferences);
 }
 
+function createCaptureBridge(platform: NodeJS.Platform): DesktopNativeBridge {
+  if (platform === "win32") return createWindowsBridge(createPowershellRunner());
+  return createMacosBridge(createOsascriptRunner());
+}
+
 function requireSettingsWindow(window: Electron.BrowserWindow | null): Electron.BrowserWindow {
   if (window === null) throw new Error("settings window is not open");
   return window;
@@ -654,7 +661,7 @@ function bootstrap(): void {
     const { runtime: credentialRuntime, env: desktopEnv } = await initializeDesktopCredentials();
 
     const relaunchApp = createRelauncher();
-    const bridge = createMacosBridge(createOsascriptRunner());
+    const bridge = createCaptureBridge(process.platform);
     const captureService = new CaptureService({ bridge, clipboard });
     const permissionsProbe = createSystemPermissionsProbe(
       systemPreferences,
