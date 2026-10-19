@@ -1,0 +1,12 @@
+# Share installed dependencies across local projects; pnpm disables this in CI.
+enableGlobalVirtualStore: true
+
+# OpenTUI and Lucide import React types without declaring them as dependencies.
+# Make them resolvable when packages live outside the project's node_modules.
+packageExtensions:
+  '@opentui/react@0.4.5':
+    peerDependencies:
+      '@types/react': '^19.2.0'
+  'lucide-react@1.33.0':
+    peerDependencies:
+      '@types/react': '^19.2.0'
