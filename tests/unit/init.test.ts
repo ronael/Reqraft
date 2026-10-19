@@ -139,10 +139,13 @@ describe("init assistant helpers", () => {
   });
 
   it("recommends secure credential storage after init", () => {
-    const note = buildPostInitSecurityNote({
-      envName: "OPENAI_API_KEY",
-      detected: false,
-    });
+    const note = buildPostInitSecurityNote(
+      {
+        envName: "OPENAI_API_KEY",
+        detected: false,
+      },
+      "/bin/zsh",
+    );
 
     expect(note).toContain("rp auth login openai");
     expect(note).toContain("OPENAI_API_KEY");
@@ -151,10 +154,13 @@ describe("init assistant helpers", () => {
   });
 
   it("does not recommend secure auth for unknown custom API key variables", () => {
-    const note = buildPostInitSecurityNote({
-      envName: "OPENROUTER_API_KEY",
-      detected: false,
-    });
+    const note = buildPostInitSecurityNote(
+      {
+        envName: "OPENROUTER_API_KEY",
+        detected: false,
+      },
+      "/bin/zsh",
+    );
 
     expect(note).not.toContain("rp auth login openai");
     expect(note).not.toContain("rp auth login");

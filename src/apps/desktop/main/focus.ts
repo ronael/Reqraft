@@ -1,4 +1,4 @@
-import type { MacosBridge } from "./macos.js";
+import type { DesktopNativeBridge } from "./native-bridge.js";
 
 /**
  * Source-application memory (DESKTOP.md §5.2).
@@ -14,7 +14,7 @@ export class FocusTracker {
   private sourceApp: string | null = null;
 
   /** Records the currently frontmost application. Failure is not fatal. */
-  async remember(bridge: MacosBridge): Promise<string | null> {
+  async remember(bridge: DesktopNativeBridge): Promise<string | null> {
     try {
       this.sourceApp = await bridge.frontmostApp();
     } catch {

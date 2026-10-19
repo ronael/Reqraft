@@ -281,5 +281,6 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 
 ### Portage (chantier ultérieur, déjà documenté)
 
-10. Windows/Linux : module natif d'injection (nut.js), re-test Wayland,
-    cibles electron-builder correspondantes.
+10. Linux : adaptateur natif d'injection et re-test Wayland. Windows dispose
+    maintenant de son bridge PowerShell/.NET et reste à valider via
+    l'installateur sur une machine propre.

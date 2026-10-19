@@ -5,10 +5,11 @@ dans une VM ou une session Windows dédiée. Le lancement du bundle de développ
 ne valide ni l'installation, ni la désinstallation, ni SmartScreen.
 
 Windows reste **Alpha** : la capture, le remplacement et le stockage sécurisé
-Windows ne sont pas encore implémentés. Les contrôles correspondants ci-dessous
-sont des critères à atteindre avant la Beta, pas des fonctionnalités déclarées
-disponibles. Voir [le statut des plateformes](desktop-platform-support.md) et
-[la roadmap](roadmap.md).
+ont désormais des implémentations Windows, mais le parcours complet de
+l'installateur n'est pas encore validé sur une machine propre. Les contrôles
+ci-dessous restent les critères de passage en Beta, pas une déclaration de
+support. Voir [le statut des plateformes](desktop-platform-support.md) et la
+[roadmap](roadmap.md).
 
 ## Compte rendu reproductible
 
