@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.6.5 (2026-10-20)
+
+### Desktop application
+
+- Added native Windows selection capture and replacement through a dedicated
+  PowerShell/.NET bridge. Reqraft now records the exact foreground process,
+  sends `Ctrl+C` / `Ctrl+V` and restores focus to that process instead of
+  attempting to launch macOS-only `osascript`.
+- Added Windows regression coverage and a real native capture/replacement
+  check, while keeping Windows installers explicitly experimental pending the
+  complete clean-machine checklist.
+
+### Reliability and distribution
+
+- Expanded rewrite-instruction detection so model responses that delegate a
+  requested correction instead of performing it are reliably flagged for
+  review.
+- Made cross-platform tests independent from the host shell, shortcut family
+  and personal profile configuration.
+- Required signing and notarization credentials before a public macOS desktop
+  release can publish installers.
+- Refined the download page spacing and responsive hero typography.
+
 ## 0.6.4 (2026-09-13)
 
 ### Desktop application
