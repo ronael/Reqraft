@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { JSDOM } from "jsdom";
@@ -81,4 +82,24 @@ describe("website download platform", () => {
         ?.classList,
     ).not.toContain("primary");
   });
+});
+
+it.each([
+  ["MacIntel", "macOS", "Apple"],
+  ["Win32", "Windows", "SmartScreen"],
+  ["Linux x86_64", "Linux", "executable"],
+  ["", "Before you install", "unsigned"],
+])("shows the installation notice for %s on the real page", (platform, title, detail) => {
+  const dom = new JSDOM(readFileSync("index.html", "utf8"));
+  platformModule.applyPlatformDownloads(dom.window.document, { platform });
+  const notice = dom.window.document.querySelector("[data-install-notice]");
+  expect(notice?.querySelector("[data-install-title]")?.textContent).toContain(title);
+  expect(notice?.querySelector("[data-install-detail]")?.textContent).toContain(detail);
+});
+
+it("keeps a useful installation notice without JavaScript", () => {
+  const dom = new JSDOM(readFileSync("index.html", "utf8"));
+  expect(dom.window.document.querySelector("[data-install-detail]")?.textContent).toContain(
+    "unsigned",
+  );
 });
