@@ -18,15 +18,22 @@ pnpm typecheck        # run tsc --noEmit
 pnpm quality          # local gate: typecheck, format check, lint, build, coverage
 pnpm benchmark        # run benchmark
 pnpm release          # push main, create the package version tag, push the tag
+pnpm site:sync        # point the website downloads at a published release
 ```
 
 ## Releasing
 
 1. Update the version in `package.json`, then run `pnpm version:sync` to align
-   the application and website references.
+   the application reference (`src/version.ts`).
 2. Add the matching section to `CHANGELOG.md` and commit these changes on
    `main`.
 3. Run `pnpm release`.
+4. Once the desktop workflow has attached the installers to the GitHub Release,
+   run `pnpm site:sync`, then commit and push the change to `main` to publish
+   the website. The command first checks that the release contains every
+   installer the website offers, and writes nothing otherwise. Until then the
+   website keeps offering the previous release rather than missing files.
+   `pnpm site:sync <version>` points it at another published release.
 
 The release command requires a clean `main`, reads the version from
 `package.json`, pushes `main`, creates and pushes the annotated version tag, then
