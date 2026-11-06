@@ -456,6 +456,7 @@ export const DESKTOP_EN = {
   "onboarding.tour.next": "Continue",
   "onboarding.tour.configure": "Set up Reqraft",
   "onboarding.tour.replay": "Replay the demonstration",
+  "onboarding.tour.saveFailed": "The tour could not be marked as seen: {reason}",
   "onboarding.tour.mail.title": "Clear emails without leaving Mail",
   "onboarding.tour.mail.body":
     "Select a draft, run Reqraft and replace it with a version that is ready to send.",

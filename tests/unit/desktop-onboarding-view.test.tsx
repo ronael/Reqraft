@@ -747,9 +747,26 @@ describe("la visite de bienvenue avant le formulaire", () => {
     expect(pont.completeWelcomeTour).toHaveBeenCalledTimes(1);
   });
 
-  // Bogue connu, laissé en attente (OnboardingApp.tsx) : l'erreur de
-  // `completeWelcomeTour` est rangée dans l'état pendant que la visite, qui ne
-  // la montre pas, reste affichée ; elle n'est jamais effacée et réapparaît
-  // sur le formulaire après un nouvel essai réussi.
-  it.todo("dit pourquoi la visite n'a pas pu être enregistrée, sans erreur périmée ensuite");
+  it("dit pourquoi la visite n'a pas pu être enregistrée, sans erreur périmée ensuite", async () => {
+    const echec = "EACCES: permission denied, open 'config.json'";
+    const { pont, user } = monterOnboarding({ etatInitial: etat({ welcomeTourRequired: true }) });
+    pont.completeWelcomeTour.mockRejectedValueOnce(
+      rejetIpc(IPC_CHANNELS.onboardingTourComplete, echec),
+    );
+    await screen.findByRole("heading", { name: PREMIER_ECRAN });
+
+    await user.click(bouton(t("onboarding.tour.skip")));
+
+    // La visite reste à l'écran, et dit pourquoi « Passer » n'a pas abouti.
+    await waitFor(() => {
+      expect(texteDe("alert")).toBe(t("onboarding.tour.saveFailed", { reason: echec }));
+    });
+    expect(screen.getByRole("heading", { name: PREMIER_ECRAN })).toBeTruthy();
+
+    await user.click(bouton(t("onboarding.tour.skip")));
+
+    expect(await screen.findByRole("heading", { name: t("onboarding.title") })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(pont.completeWelcomeTour).toHaveBeenCalledTimes(2);
+  });
 });

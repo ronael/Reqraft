@@ -128,6 +128,9 @@ export function OnboardingApp(): React.JSX.Element {
   const { locale, previewLocale } = useLocale();
   const [chosenLocale, setChosenLocale] = useState<"en" | "fr" | null>(null);
   const [tourDismissed, setTourDismissed] = useState(false);
+  // The tour's own failure, kept apart from `error`: the tour is what shows
+  // it, and the form must never open on a failure it did not have.
+  const [tourError, setTourError] = useState<string | null>(null);
   const forceWelcomeTour = new URLSearchParams(window.location.search).get("tour") === "1";
 
   const refresh = useCallback(async (): Promise<OnboardingStateResponse> => {
@@ -206,7 +209,9 @@ export function OnboardingApp(): React.JSX.Element {
   if (shouldShowWelcomeTour(state.welcomeTourRequired, tourDismissed, forceWelcomeTour)) {
     return (
       <WelcomeTour
+        error={tourError}
         onContinue={() => {
+          setTourError(null);
           void window.reqraft
             .completeWelcomeTour()
             .then((next) => {
@@ -214,7 +219,7 @@ export function OnboardingApp(): React.JSX.Element {
               setTourDismissed(true);
             })
             .catch((cause: unknown) => {
-              setError(messageOf(cause));
+              setTourError(t("onboarding.tour.saveFailed", { reason: messageOf(cause) }));
             });
         }}
       />

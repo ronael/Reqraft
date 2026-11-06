@@ -3547,8 +3547,29 @@ kbd {
 }
 
 .onboarding-tour-footer {
+  position: relative;
   padding-top: 10px;
   padding-bottom: 10px;
+}
+
+/*
+ * Floats over the bottom of the scene, just above the buttons that failed,
+ * rather than pushing the scene up: the scenes are drawn for the window's own
+ * heights, and 60px less would crop them. Inset inside the scene's frame, and
+ * opaque — the same tint over the footer's colour — so the scene never shows
+ * through the sentence.
+ */
+.onboarding-tour-error {
+  position: absolute;
+  /* The tour's bottom padding, then 12px inside the frame, as on the sides. */
+  bottom: calc(100% + 26px);
+  left: 50%;
+  width: calc(100% - 80px);
+  max-width: 560px;
+  margin: 0;
+  transform: translateX(-50%);
+  background: linear-gradient(rgba(251, 191, 36, 0.05), rgba(251, 191, 36, 0.05)), #0b0b10;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.3);
 }
 
 .onboarding-tour-actions {
@@ -3650,6 +3671,10 @@ kbd {
   .onboarding-tour {
     padding-top: 10px;
     padding-bottom: 8px;
+  }
+
+  .onboarding-tour-error {
+    bottom: calc(100% + 20px);
   }
 
   .onboarding-tour-content {
