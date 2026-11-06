@@ -538,11 +538,20 @@ describe("rp <text>: what is printed around the prompt", () => {
     expect(stderr).toEqual(["", `${RULE}\nQualité à vérifier\n! ${WARNING}`]);
   });
 
-  // Not testable yet: with both flags, writePrimaryOutput returns after the
-  // diff (src/apps/cli/commands/reprompt.ts:241-243) so the explanation is
-  // never printed, and the warning block is skipped because --explain is set
-  // (:260-261). The warnings are shown nowhere.
-  it.todo("still shows quality warnings when --diff and --explain are combined");
+  it("still shows quality warnings when --diff and --explain are combined", async () => {
+    mockModelReply({
+      rewritten: REVIEWED_PROMPT,
+      changes: ["Page visée précisée"],
+      warnings: [WARNING],
+    });
+
+    const { stdout, stderr } = await run({ text: "corrige le titre", diff: true, explain: true });
+
+    expect(stdout).toEqual([`- corrige le titre\n+ ${REVIEWED_PROMPT}`]);
+    expect(stderr).toEqual([
+      `Modifications :\n> Page visée précisée\n\nAvertissements :\n! ${WARNING}`,
+    ]);
+  });
 
   it("--stats prints the usage of the run on stderr", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });

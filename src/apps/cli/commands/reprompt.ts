@@ -259,8 +259,10 @@ async function resolveInput(options: RepromptCliOptions): Promise<string> {
 /**
  * Writes the prompt itself.
  *
- * The rewritten prompt always goes to stdout so the command stays pipeable;
- * only explanations are pushed to stderr.
+ * The rewritten prompt, or its diff, always goes to stdout so the command
+ * stays pipeable; only explanations are pushed to stderr. --explain applies to
+ * both forms: it also carries the quality warnings, which nothing else prints
+ * once it is set.
  */
 function writePrimaryOutput(
   result: RepromptResult,
@@ -273,11 +275,9 @@ function writePrimaryOutput(
     output.log(serializeJsonSuccess(result));
     return;
   }
-  if (options.diff) {
-    output.log(formatDiff(result.original, result.rewritten, style));
-    return;
-  }
-  output.log(result.rewritten);
+  output.log(
+    options.diff ? formatDiff(result.original, result.rewritten, style) : result.rewritten,
+  );
   if (options.explain) {
     output.error(formatExplain(result, style, t));
   }
