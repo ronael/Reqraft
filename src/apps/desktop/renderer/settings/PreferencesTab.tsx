@@ -6,7 +6,9 @@ import {
   Hash,
   Languages,
   PanelTop,
+  Pin,
   RefreshCw,
+  Replace,
   RotateCcw,
   ShieldCheck,
   SquarePen,
@@ -38,6 +40,7 @@ export interface PreferencesTabProps {
   captureShortcut: string;
   inputShortcut: string;
   popoverShortcut: string;
+  replaceShortcut: string;
   rejectedShortcuts: string[];
   conflictingShortcuts: string[];
   shortcutsSuspended: boolean;
@@ -48,6 +51,8 @@ export interface PreferencesTabProps {
   uiLocale: UiLocalePreference;
   onChooseLanguage(preference: UiLocalePreference): void;
   onOpenWelcomeTour(): void;
+  /** Whether the capsule and the popover stay open when they lose the focus. */
+  keepOpenOnBlur: boolean;
   timeoutMs: number;
   maxOutputTokens?: number;
   fidelityMode: DesktopFidelityMode;
@@ -77,6 +82,17 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
               chosen={props.chosen.capture ?? ""}
               onChoose={(accelerator) => {
                 props.onChoose("capture", accelerator);
+              }}
+            />
+            <ShortcutRow
+              icon={Replace}
+              title={t("settings.replaceShortcut")}
+              detail={t("settings.replaceShortcutDetail")}
+              active={props.replaceShortcut}
+              presets={presets.replace}
+              chosen={props.chosen.replace ?? ""}
+              onChoose={(accelerator) => {
+                props.onChoose("replace", accelerator);
               }}
             />
             <ShortcutRow
@@ -130,6 +146,12 @@ export function PreferencesTab(props: Readonly<PreferencesTabProps>): React.JSX.
         <div className="settings-group">
           <div className="settings-group-rows">
             <LanguageRow chosen={props.uiLocale} onChoose={props.onChooseLanguage} />
+            <KeepOpenRow
+              keepOpen={props.keepOpenOnBlur}
+              onChoose={(desktopKeepOpenOnBlur) => {
+                props.onPatchConfig({ desktopKeepOpenOnBlur });
+              }}
+            />
             <div className="settings-group-row">
               <span className="settings-row-icon">
                 <Compass size={18} strokeWidth={1.7} aria-hidden />
@@ -338,6 +360,46 @@ function EditableRow(
         {props.children}
       </span>
     </div>
+  );
+}
+
+/**
+ * Whether the capsule and the popover stay on screen when they lose the focus.
+ *
+ * A two-way choice in the same selector as the other preferences, rather than
+ * a switch: the row reads the same as its neighbours, and each option says
+ * what happens instead of leaving an on/off state to interpret.
+ */
+function KeepOpenRow(
+  props: Readonly<{
+    keepOpen: boolean;
+    onChoose(keepOpen: boolean): void;
+  }>,
+): React.JSX.Element {
+  const t = useT();
+  const controlId = useId();
+  return (
+    <EditableRow
+      icon={Pin}
+      title={t("settings.keepOpenOnBlur")}
+      detail={t("settings.keepOpenOnBlurDetail")}
+      controlId={controlId}
+      errorId={`${controlId}-error`}
+      error={null}
+    >
+      <Select
+        id={controlId}
+        value={props.keepOpen ? "keep" : "hide"}
+        ariaLabel={t("settings.keepOpenOnBlur")}
+        onChange={(value) => {
+          props.onChoose(value === "keep");
+        }}
+        options={[
+          { value: "keep", label: t("settings.keepOpenOnBlurKeep") },
+          { value: "hide", label: t("settings.keepOpenOnBlurHide") },
+        ]}
+      />
+    </EditableRow>
   );
 }
 

@@ -25,6 +25,7 @@ function renderTab(overrides: Partial<PreferencesTabProps> = {}): {
     captureShortcut: "",
     inputShortcut: "",
     popoverShortcut: "",
+    replaceShortcut: "",
     rejectedShortcuts: [],
     conflictingShortcuts: [],
     shortcutsSuspended: false,
@@ -35,6 +36,7 @@ function renderTab(overrides: Partial<PreferencesTabProps> = {}): {
     uiLocale: "auto",
     onChooseLanguage: () => undefined,
     onOpenWelcomeTour: () => undefined,
+    keepOpenOnBlur: true,
     timeoutMs: 30_000,
     fidelityMode: "balanced",
     outputLanguage: "auto",
@@ -59,6 +61,28 @@ describe("PreferencesTab — réglages de génération", () => {
     const choices = screen.getAllByRole("option").map((option) => option.textContent);
     expect(choices).toContain("shortcut.ctrl + shortcut.alt + R");
     expect(choices).not.toContain("shortcut.cmd + shortcut.ctrl + R");
+  });
+
+  it("enregistre le choix de masquer les fenêtres qui perdent le focus", async () => {
+    window.reqraft = { platform: "darwin" } as typeof window.reqraft;
+    const user = userEvent.setup();
+    const { onPatchConfig } = renderTab({ keepOpenOnBlur: true });
+
+    await user.click(screen.getByRole("combobox", { name: "settings.keepOpenOnBlur" }));
+    await user.click(screen.getByRole("option", { name: "settings.keepOpenOnBlurHide" }));
+
+    expect(onPatchConfig).toHaveBeenCalledWith({ desktopKeepOpenOnBlur: false });
+  });
+
+  it("propose le raccourci de remplacement direct, Maj en plus de la capture", async () => {
+    window.reqraft = { platform: "darwin" } as typeof window.reqraft;
+    const user = userEvent.setup();
+    renderTab();
+
+    await user.click(screen.getByRole("combobox", { name: "settings.replaceShortcut" }));
+    const choices = screen.getAllByRole("option").map((option) => option.textContent);
+
+    expect(choices).toContain("shortcut.cmd + shortcut.ctrl + shortcut.shift + R");
   });
 
   it("affiche le délai en secondes et l'enregistre en millisecondes", async () => {

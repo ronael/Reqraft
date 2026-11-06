@@ -126,15 +126,16 @@ function createOuvertureTracker(): {
   annonce: (
     target: { notify: (channel: string, payload: unknown) => void },
     mode: "capture" | "input",
+    autoApply?: boolean,
   ) => void;
   pending: () => CapsuleOpenedPayload | null;
 } {
   let pending: CapsuleOpenedPayload | null = null;
   let compte = 0;
   return {
-    annonce(target, mode) {
+    annonce(target, mode, autoApply = false) {
       compte += 1;
-      pending = { id: compte, mode };
+      pending = autoApply ? { id: compte, mode, autoApply } : { id: compte, mode };
       target.notify(IPC_CHANNELS.capsuleOpened, pending);
     },
     pending: () => pending,
@@ -155,6 +156,59 @@ async function applyConfiguredLocale(): Promise<void> {
   } catch (error) {
     console.error("Reqraft: could not read the interface language:", error);
   }
+}
+
+/**
+ * Whether the capsule and the popover stay open when they lose the focus.
+ *
+ * Read once at start-up, then kept current by the settings: the windows read
+ * it again at every focus loss, so a change applies without a relaunch. Absent
+ * from the file means yes, and a failed read keeps that default rather than
+ * stopping the start-up, like the interface language above.
+ */
+async function createKeepOpenPreference(): Promise<{
+  read: () => boolean;
+  set: (keepOpen: boolean) => void;
+}> {
+  let keepOpen = true;
+  try {
+    keepOpen = (await loadConfig()).desktopKeepOpenOnBlur ?? true;
+  } catch (error) {
+    console.error("Reqraft: could not read the window preference:", error);
+  }
+  return {
+    read: () => keepOpen,
+    set: (next) => {
+      keepOpen = next;
+    },
+  };
+}
+
+/**
+ * The scenario targets that only depend on the two durable windows.
+ *
+ * `currentCapsule` reads the window as it is, without recreating it: a
+ * visibility check must not open a fresh capsule as a side effect.
+ */
+function windowScenarioTargets(windows: {
+  currentCapsule: () => CapsuleWindow;
+  liveCapsule: () => CapsuleWindow;
+  popover: PopoverWindow;
+}): Pick<
+  E2eScenarioTargets,
+  "capsuleVisible" | "capsuleWindow" | "loseFocus" | "popoverVisible" | "popoverWindow"
+> {
+  const visible = (window: Electron.BrowserWindow): boolean =>
+    !window.isDestroyed() && window.isVisible();
+  return {
+    capsuleVisible: () => visible(windows.currentCapsule().window),
+    popoverVisible: () => visible(windows.popover.window),
+    popoverWindow: () => windows.popover.window,
+    capsuleWindow: () => windows.liveCapsule().window,
+    loseFocus: (surface) => {
+      (surface === "capsule" ? windows.liveCapsule().window : windows.popover.window).emit("blur");
+    },
+  };
 }
 
 /**
@@ -567,7 +621,7 @@ async function openStartupWindow(options: {
 }
 
 /**
- * Ce que font les trois raccourcis globaux.
+ * Ce que font les raccourcis globaux.
  *
  * Extraits du démarrage parce qu'ils servent trois fois : à l'enregistrement
  * initial, à chaque ré-enregistrement quand un réglage change une combinaison,
@@ -581,31 +635,38 @@ function createShortcutHandlers(deps: {
   popover: PopoverWindow;
   trayBounds: () => Electron.Rectangle;
 }): ShortcutHandlers {
+  // Record the source app and capture BEFORE the capsule takes the focus
+  // (§5.2), then show anchored at the cursor (§3) and tell the renderer to
+  // start a fresh session — the window persists between triggers, it is
+  // hidden, never destroyed. The direct-replace shortcut takes the same path:
+  // only the end of the session differs, and the renderer owns that decision.
+  const captureThenOpen = (autoApply: boolean): void => {
+    const cursor = screen.getCursorScreenPoint();
+    // The capsule opens whatever the capture did. `trigger()` already
+    // degrades a failed capture to an empty one, and this catch is the belt
+    // to that braces: a rejection here would leave the user pressing a
+    // shortcut that does nothing but print to a console they never see.
+    const show = (): void => {
+      // `liveCapsule()` comme la branche saisie : la capture aussi doit
+      // survivre à une fenêtre détruite, et c'est le chemin le plus utilisé.
+      const target = deps.liveCapsule();
+      target.show({ kind: "cursor", point: cursor }, "capture");
+      deps.ouvertures.annonce(target, "capture", autoApply);
+    };
+    void deps.captureService
+      .trigger()
+      .then(show)
+      .catch((error: unknown) => {
+        console.error("Reqraft: capture failed:", error);
+        show();
+      });
+  };
   return {
     onCapture: () => {
-      // Record the source app and capture BEFORE the capsule takes the focus
-      // (§5.2), then show anchored at the cursor (§3) and tell the renderer to
-      // start a fresh session — the window persists between triggers, it is
-      // hidden, never destroyed.
-      const cursor = screen.getCursorScreenPoint();
-      // The capsule opens whatever the capture did. `trigger()` already
-      // degrades a failed capture to an empty one, and this catch is the belt
-      // to that braces: a rejection here would leave the user pressing a
-      // shortcut that does nothing but print to a console they never see.
-      const show = (): void => {
-        // `liveCapsule()` comme la branche saisie : la capture aussi doit
-        // survivre à une fenêtre détruite, et c'est le chemin le plus utilisé.
-        const target = deps.liveCapsule();
-        target.show({ kind: "cursor", point: cursor }, "capture");
-        deps.ouvertures.annonce(target, "capture");
-      };
-      void deps.captureService
-        .trigger()
-        .then(show)
-        .catch((error: unknown) => {
-          console.error("Reqraft: capture failed:", error);
-          show();
-        });
+      captureThenOpen(false);
+    },
+    onReplace: () => {
+      captureThenOpen(true);
     },
     onInput: () => {
       deps.captureService.clear();
@@ -639,6 +700,23 @@ function createCaptureBridge(platform: NodeJS.Platform): DesktopNativeBridge {
   return createMacosBridge(createOsascriptRunner());
 }
 
+/** Selection capture and the permissions probe, on the same native bridge. */
+function createCaptureRuntime(): {
+  captureService: CaptureService;
+  permissionsProbe: ReturnType<typeof createSystemPermissionsProbe>;
+} {
+  const bridge = createCaptureBridge(process.platform);
+  return {
+    captureService: new CaptureService({ bridge, clipboard }),
+    permissionsProbe: createSystemPermissionsProbe(
+      systemPreferences,
+      bridge,
+      process.env,
+      process.platform,
+    ),
+  };
+}
+
 function requireSettingsWindow(window: Electron.BrowserWindow | null): Electron.BrowserWindow {
   if (window === null) throw new Error("settings window is not open");
   return window;
@@ -661,21 +739,16 @@ function bootstrap(): void {
     const { runtime: credentialRuntime, env: desktopEnv } = await initializeDesktopCredentials();
 
     const relaunchApp = createRelauncher();
-    const bridge = createCaptureBridge(process.platform);
-    const captureService = new CaptureService({ bridge, clipboard });
-    const permissionsProbe = createSystemPermissionsProbe(
-      systemPreferences,
-      bridge,
-      process.env,
-      process.platform,
-    );
+    const { captureService, permissionsProbe } = createCaptureRuntime();
 
     const { withSurface, windowDefaults } = createWindowEnvironment();
+    const keepOpen = await createKeepOpenPreference();
 
     const capsuleOptions = {
       ...windowDefaults,
       rendererUrl: rqRendererUrl(),
       devServerUrl: withSurface(),
+      keepOpenOnBlur: keepOpen.read,
     };
     let capsule = createCapsuleWindow(capsuleOptions);
 
@@ -701,6 +774,7 @@ function bootstrap(): void {
       ...windowDefaults,
       rendererUrl: rqRendererUrl("popover"),
       devServerUrl: withSurface("popover"),
+      keepOpenOnBlur: keepOpen.read,
     });
 
     // Filled by registerShortcuts below; read through IPC by the settings
@@ -813,6 +887,7 @@ function bootstrap(): void {
           shortcuts,
         );
       },
+      onKeepOpenOnBlurChanged: keepOpen.set,
       relaunchApp,
       // Onboarding hands over to the settings window: the same choices, in the
       // place the user will come back to when they want to change one.
@@ -882,13 +957,10 @@ function bootstrap(): void {
         scenarioTargets: {
           repromptService,
           shortcutHandlers,
-          capsuleVisible: () => !capsule.window.isDestroyed() && capsule.window.isVisible(),
+          ...windowScenarioTargets({ currentCapsule: () => capsule, liveCapsule, popover }),
           capsulePending: () => ouvertures.pending(),
-          popoverVisible: () => !popover.window.isDestroyed() && popover.window.isVisible(),
-          popoverWindow: () => popover.window,
           settingsWindow: () => requireSettingsWindow(settingsWindow),
           openSettings,
-          capsuleWindow: () => liveCapsule().window,
           menuAccelerators: applicationMenuAccelerators,
           ...e2eSuspensionTargets(tray),
         },

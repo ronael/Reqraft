@@ -58,6 +58,11 @@ export interface E2eScenarioTargets {
    * la fenêtre à 560 px de large. Voir `e2e-capsule.ts`.
    */
   capsuleWindow: () => CapsuleUiWindow;
+  /**
+   * Émet sur la vraie fenêtre l'événement qu'Electron envoie quand une autre
+   * application prend le focus, sans toucher au bureau de la machine.
+   */
+  loseFocus: (surface: "capsule" | "popover") => void;
   /** Les libellés des accélérateurs du menu applicatif, tels qu'installés. */
   menuAccelerators: () => string[];
 }
@@ -99,6 +104,8 @@ export async function runE2eScenario(
         return await capsuleScenario(name, targets);
       case "popover":
         return await popoverScenario(name, targets);
+      case "blur":
+        return await blurScenario(name, targets);
       case "suspension":
         return suspensionScenario(name, targets);
       case "run":
@@ -140,20 +147,21 @@ async function preferencesScenario(targets: E2eScenarioTargets): Promise<Prefere
   const autoLanguageAligned = (await target.webContents.executeJavaScript(
     `(() => {
       const controls = [...document.querySelectorAll(".settings-input-compact")];
-      const language = document.querySelector(".settings-row-control-language > select");
+      const language = document.querySelector(".settings-row-control-language > .design-select");
       return Math.abs(language.getBoundingClientRect().right - controls.at(-1).getBoundingClientRect().right) <= 1;
     })()`,
     true,
   )) as boolean;
-  await target.webContents.executeJavaScript(
-    `(() => {
-      const select = [...document.querySelectorAll("select")].find((node) => node.querySelector('option[value="custom"]') !== null);
-      if (select === undefined) return;
-      select.value = "custom";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    })()`,
-    true,
-  );
+  // Depuis 0.6.4 les sélecteurs des réglages sont le composant maison, plus un
+  // `<select>` natif : le scénario cherchait encore ce dernier et échouait avant
+  // toute mesure. On ouvre donc le menu comme une personne, puis on choisit
+  // « personnalisée », deuxième option, par l'identifiant que le déclencheur
+  // annonce dans `aria-controls` — sans dépendre de la langue des libellés.
+  const trigger = `document.querySelector(".settings-row-control-language .design-select-trigger")`;
+  const customOption = `document.getElementById(${trigger}?.getAttribute("aria-controls") + "-option-1")`;
+  await target.webContents.executeJavaScript(`${trigger}?.click()`, true);
+  await waitForRenderer(target, `${customOption} !== null`, "output language options");
+  await target.webContents.executeJavaScript(`${customOption}.click()`, true);
   await waitForRenderer(
     target,
     `document.querySelector(".settings-row-control-language > .settings-input") !== null`,
@@ -323,6 +331,33 @@ async function popoverScenario(
   await waitUntil(() => !targets.popoverVisible());
 
   return { name, popoverVisible: opened, popoverHidden: !targets.popoverVisible() };
+}
+
+/**
+ * La capsule et le popover qui perdent le focus.
+ *
+ * Le `blur` est émis sur les vraies fenêtres de l'application lancée : ce que
+ * le scénario vérifie, c'est le câblage du démarrage — la préférence lue dans
+ * la configuration et confiée aux deux fenêtres. L'événement est celui
+ * qu'Electron émet quand une autre application prend le focus.
+ */
+async function blurScenario(name: string, targets: E2eScenarioTargets): Promise<E2eScenarioReport> {
+  targets.shortcutHandlers.onInput();
+  await waitUntil(() => capsuleOpened(targets));
+  targets.loseFocus("capsule");
+
+  targets.shortcutHandlers.onPopover();
+  await waitUntil(() => targets.popoverVisible());
+  targets.loseFocus("popover");
+
+  // Un masquage est synchrone ; ce délai laisse seulement passer un éventuel
+  // effet de bord asynchrone avant de relever l'état.
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  return {
+    name,
+    capsuleVisible: targets.capsuleVisible(),
+    popoverVisible: targets.popoverVisible(),
+  };
 }
 
 /** Un run complet, du démarrage au résultat, à travers le service réel. */

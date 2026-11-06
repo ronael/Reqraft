@@ -13,6 +13,8 @@ export interface PopoverWindowOptions {
   /** `rq://` URL of the renderer, surface already applied. */
   rendererUrl: string;
   devServerUrl?: string;
+  /** Same preference as the capsule's, read at every focus loss. */
+  keepOpenOnBlur?: () => boolean;
 }
 
 export interface PopoverWindow {
@@ -47,7 +49,7 @@ export function createPopoverWindow(options: PopoverWindowOptions): PopoverWindo
   window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   window.on("blur", () => {
-    if (!window.webContents.isDevToolsOpened()) {
+    if (!window.webContents.isDevToolsOpened() && options.keepOpenOnBlur?.() !== true) {
       window.hide();
     }
   });
