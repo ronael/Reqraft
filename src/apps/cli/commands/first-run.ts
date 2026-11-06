@@ -533,8 +533,7 @@ async function askCompatibleProvider(
     existing?.baseUrl ?? (local ? "http://localhost:11434/v1" : "https://example.com/v1"),
   );
   const apiKeyEnv = await askText(io, io.t("init.apiKeyEnv"), existing?.apiKeyEnv ?? "");
-  const headersInput = await askText(io, io.t("init.customHeaders"), "");
-  const customHeaders = parseHeaders(headersInput, io.t);
+  const customHeaders = await askCustomHeaders(io);
   return {
     id,
     name: name ? name : undefined,
@@ -766,13 +765,31 @@ function credentialProviderFromEnvName(envName: string): CredentialProvider | un
   return match?.id;
 }
 
-function parseHeaders(input: string, t: Translator): Record<string, string> | undefined {
-  if (!input.trim()) {
-    return undefined;
+/** Asks for the custom headers until the answer is empty or a JSON object. */
+async function askCustomHeaders(io: InitIo): Promise<Record<string, string> | undefined> {
+  for (;;) {
+    const answer = await askText(io, io.t("init.customHeaders"), "");
+    if (!answer) {
+      return undefined;
+    }
+    const headers = parseHeaders(answer);
+    if (headers) {
+      return headers;
+    }
+    io.write(`${formatInitStatus(io.t("init.headersInvalid"), "error", io.visual)}\n`);
   }
-  const parsed = JSON.parse(input) as unknown;
+}
+
+/** The headers typed as a JSON object, or null when the answer is not one. */
+function parseHeaders(input: string): Record<string, string> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(input);
+  } catch {
+    return null;
+  }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(t("init.headersInvalid"));
+    return null;
   }
   return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
 }

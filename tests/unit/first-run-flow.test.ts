@@ -729,10 +729,35 @@ describe("rp init, invalid answers", () => {
     expect(await readSavedConfig()).toMatchObject({ timeoutMs: 20000 });
   });
 
-  // Bug: parseHeaders throws out of the whole setup instead of asking again,
-  // and the CLI then only says "Une erreur inattendue est survenue."
-  // (first-run.ts:534-535 and :767-776).
-  it.todo("asks again for custom headers that are not a JSON object");
+  it("asks again for custom headers that are not a JSON object", async () => {
+    const session = await runSetup([
+      pick("Serveur local compatible OpenAI"),
+      ENTER, // internal id
+      "Ollama",
+      ENTER, // base URL
+      ENTER, // no key variable
+      '["X-Team", "core"]',
+      "null",
+      '{"X-Team": core}',
+      '{"X-Team": "core"}',
+      "llama3.2",
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect(
+      occurrences(session.transcript, "x Les headers personnalisés doivent être un objet JSON."),
+    ).toBe(3);
+    expect((await readSavedConfig()).providers).toEqual({
+      local: {
+        type: "openai-compatible",
+        name: "Ollama",
+        baseUrl: "http://localhost:11434/v1",
+        customHeaders: { "X-Team": "core" },
+      },
+    });
+  });
 });
 
 describe("rp init, connection test", () => {
