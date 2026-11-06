@@ -441,11 +441,36 @@ describe("rp <text>: --json", () => {
     expect(stderr).toEqual([]);
   });
 
-  // Not testable yet: the README promises the JSON envelope for every failure,
-  // but a missing request (src/apps/cli/commands/reprompt.ts:109-111) and a
-  // refused secret (:114-117) print human text on stderr and leave stdout
-  // empty, so a script parsing stdout gets nothing.
-  it.todo("reports a missing request and a refused secret as JSON error envelopes");
+  it("reports a missing request and a refused secret as JSON error envelopes", async () => {
+    const generate = vi.spyOn(MockProvider.prototype, "generate");
+    pipeStdin("  \n");
+
+    const missing = await run({ json: true });
+    const refused = await run({
+      text: `Le jeton ghp_${"x".repeat(36)} et API_KEY=abc123xyz ne marchent plus`,
+      json: true,
+    });
+
+    expect(missing.code).toBe(EXIT_CODES.INVALID_INPUT);
+    expect(JSON.parse(missing.stdout.join("\n")) as unknown).toEqual({
+      schemaVersion: 1,
+      ok: false,
+      error: { code: "input.missing", exitCode: EXIT_CODES.INVALID_INPUT },
+    });
+    expect(missing.stderr).toEqual([]);
+    expect(refused.code).toBe(EXIT_CODES.SECRET_DETECTED);
+    expect(JSON.parse(refused.stdout.join("\n")) as unknown).toEqual({
+      schemaVersion: 1,
+      ok: false,
+      error: {
+        code: "input.secret_detected",
+        params: { types: ["GitHub token", "generic secret"] },
+        exitCode: EXIT_CODES.SECRET_DETECTED,
+      },
+    });
+    expect(refused.stderr).toEqual([]);
+    expect(generate).not.toHaveBeenCalled();
+  });
 });
 
 describe("rp <text>: what is printed around the prompt", () => {

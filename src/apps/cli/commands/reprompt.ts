@@ -57,17 +57,25 @@ interface RepromptOutput {
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 /**
+ * A run stopped before anything is sent: the error a script reads under
+ * --json, and the explanation a person reads otherwise.
+ */
+interface Refusal {
+  error: ReqraftError;
+  explanation: string[];
+}
+
+/**
  * Applies the local secret policy before any text leaves the machine.
  *
  * Returns the text to send: redacted on --redact-secrets, unchanged on
- * --force. Otherwise the run stops with SECRET_DETECTED.
+ * --force. Otherwise the run is refused with SECRET_DETECTED.
  */
 function applySecretPolicy(
   input: string,
   options: RepromptCliOptions,
-  output: RepromptOutput,
   t: Translator,
-): { input?: string; exitCode?: number } {
+): { input: string } | { refusal: Refusal } {
   const secrets = detectSecrets(input);
   if (secrets.length === 0 || options.force) {
     return { input };
@@ -76,12 +84,33 @@ function applySecretPolicy(
     return { input: redactSecrets(input) };
   }
 
-  output.error(t("reprompt.secretDetected"));
-  for (const secret of secrets) {
-    output.error(`  - ${secret.type}`);
+  return {
+    refusal: {
+      error: new ReqraftError("input.secret_detected", EXIT_CODES.SECRET_DETECTED, {
+        params: { types: [...new Set(secrets.map((secret) => secret.type))] },
+      }),
+      explanation: [
+        t("reprompt.secretDetected"),
+        ...secrets.map((secret) => `  - ${secret.type}`),
+        t("reprompt.secretAdvice"),
+      ],
+    },
+  };
+}
+
+function reportRefusal(
+  refusal: Refusal,
+  options: RepromptCliOptions,
+  output: RepromptOutput,
+): number {
+  if (options.json) {
+    output.log(serializeJsonError(refusal.error));
+  } else {
+    for (const line of refusal.explanation) {
+      output.error(line);
+    }
   }
-  output.error(t("reprompt.secretAdvice"));
-  return { exitCode: EXIT_CODES.SECRET_DETECTED };
+  return refusal.error.exitCode;
 }
 
 function reportFatalError(
@@ -107,15 +136,21 @@ export async function runReprompt(
     const config = await loadConfig();
     const rawInput = await resolveInput(options);
     if (!rawInput) {
-      output.error(t("reprompt.inputMissing"));
-      return EXIT_CODES.INVALID_INPUT;
+      return reportRefusal(
+        {
+          error: new ReqraftError("input.missing", EXIT_CODES.INVALID_INPUT),
+          explanation: [t("reprompt.inputMissing")],
+        },
+        options,
+        output,
+      );
     }
 
-    const secretPolicy = applySecretPolicy(rawInput, options, output, t);
-    if (secretPolicy.exitCode !== undefined) {
-      return secretPolicy.exitCode;
+    const secretPolicy = applySecretPolicy(rawInput, options, t);
+    if ("refusal" in secretPolicy) {
+      return reportRefusal(secretPolicy.refusal, options, output);
     }
-    const input = secretPolicy.input ?? rawInput;
+    const { input } = secretPolicy;
     const { result, detectedProfile } = await executeReprompt(
       createCliRepromptInput(input, config, options, process.env),
     );
