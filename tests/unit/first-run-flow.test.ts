@@ -810,9 +810,13 @@ describe("rp init, unusable environment", () => {
     expect(existsSync(configPath())).toBe(false);
   });
 
-  // Bug: the readline interface is opened before the credentials check and
-  // outside the try/finally, so it is never closed (first-run.ts:362-363).
-  it.todo("releases the input when an environment key holds a placeholder");
+  it("releases the input when an environment key holds a placeholder", async () => {
+    const { session, finished } = startSetup([], { env: { OPENAI_API_KEY: "votre-clé" } });
+
+    await expect(finished).rejects.toMatchObject({ errorCode: "credential.placeholder" });
+    // Nothing keeps reading the terminal once the setup has given up.
+    expect(session.input.listenerCount("data")).toBe(0);
+  });
 
   it("stops without asking anything when the existing configuration is unreadable", async () => {
     await writeExistingConfig("{ not json");

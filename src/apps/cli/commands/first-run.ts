@@ -359,8 +359,10 @@ export async function runFirstRunSetup(
   t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<void> {
   const env = options.env ?? process.env;
-  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env, t);
+  // Checked before the terminal is opened: a refused key would otherwise leave
+  // an interface reading the input after the setup has given up.
   await hydrateCredentials(env);
+  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env, t);
   const shell = options.shell ?? process.env.SHELL ?? "";
 
   try {
