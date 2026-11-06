@@ -215,9 +215,13 @@ describe("OpenAI-compatible completions", () => {
     });
   });
 
-  // Bug, left unfixed: the base URL is concatenated as typed, so
-  // "http://localhost:11434/v1/" sends the completion to ".../v1//chat/completions".
-  it.todo("reaches /chat/completions when the base URL ends with a slash");
+  it("reaches /chat/completions when the base URL ends with a slash", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(ANSWER));
+
+    await localServer({ baseUrl: `${LOCAL_BASE_URL}/` }).generate(rewriteRequest());
+
+    expect(sentRequest().url).toBe("http://localhost:11434/v1/chat/completions");
+  });
 });
 
 describe("OpenAI-compatible HTTP errors", () => {
@@ -342,6 +346,14 @@ describe("OpenAI-compatible model listing", () => {
     expect(sent.url).toBe("http://localhost:11434/v1/models");
     expect(sent.headers).toEqual({});
     expect(sent.signal).toBe(controller.signal);
+  });
+
+  it("reaches /models when the base URL ends with a slash", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ object: "list", data: [] }));
+
+    await localServer({ baseUrl: `${LOCAL_BASE_URL}//` }).listModels();
+
+    expect(sentRequest().url).toBe("http://localhost:11434/v1/models");
   });
 
   it("authenticates the listing with the API key", async () => {

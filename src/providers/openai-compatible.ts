@@ -31,12 +31,15 @@ export interface OpenAICompatibleOptions {
 export class OpenAICompatibleProvider implements ProviderAdapter {
   readonly id = "openai-compatible";
   readonly name: string;
+  /** The base URL as configured, without trailing slashes: paths are joined to it. */
+  private readonly baseUrl: string;
 
   constructor(
     name: string,
     private readonly options: OpenAICompatibleOptions,
   ) {
     this.name = name;
+    this.baseUrl = withoutTrailingSlashes(options.baseUrl);
   }
 
   async generate(request: ProviderRequest): Promise<ProviderResponse> {
@@ -48,7 +51,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
       headers.Authorization = `Bearer ${this.options.apiKey}`;
     }
 
-    const response = await providerFetch(this.name, `${this.options.baseUrl}/chat/completions`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/chat/completions`, {
       method: "POST",
       signal: request.signal,
       headers,
@@ -99,7 +102,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
-    const response = await providerFetch(this.name, `${this.options.baseUrl}/models`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
       signal,
       headers: this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : undefined,
     });
@@ -116,7 +119,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    if (!this.options.baseUrl) {
+    if (!this.baseUrl) {
       return Promise.resolve({
         ok: false,
         code: "missing_configuration",
@@ -125,4 +128,13 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     }
     return Promise.resolve({ ok: true });
   }
+}
+
+/** "http://host/v1/" and "http://host/v1" name the same API root. */
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") {
+    end -= 1;
+  }
+  return url.slice(0, end);
 }
