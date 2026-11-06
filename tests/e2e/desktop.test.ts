@@ -243,9 +243,36 @@ describeElectron("desktop Electron smoke", () => {
         payload.shortcuts.registered
           .map((shortcut) => shortcut.intent)
           .sort((a, b) => a.localeCompare(b)),
-      ).toEqual(["capture", "input", "popover"]);
+      ).toEqual(["capture", "input", "popover", "replace"]);
       expect(payload.shortcuts.conflicts).toEqual([]);
       expect(payload.permissions.message.length).toBeGreaterThan(0);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "keeps the capsule and the popover on screen when they lose the focus",
+    async () => {
+      const payload = await runDesktopProbe({ REQRAFT_DESKTOP_E2E_SCENARIO: "blur" }, MOCK_CONFIG);
+
+      expect(payload.scenario?.error).toBeUndefined();
+      expect(payload.scenario?.capsuleVisible).toBe(true);
+      expect(payload.scenario?.popoverVisible).toBe(true);
+    },
+    ELECTRON_TEST_TIMEOUT_MS,
+  );
+
+  it(
+    "hides them on focus loss when the preference asks for it",
+    async () => {
+      const payload = await runDesktopProbe(
+        { REQRAFT_DESKTOP_E2E_SCENARIO: "blur" },
+        { ...MOCK_CONFIG, desktopKeepOpenOnBlur: false },
+      );
+
+      expect(payload.scenario?.error).toBeUndefined();
+      expect(payload.scenario?.capsuleVisible).toBe(false);
+      expect(payload.scenario?.popoverVisible).toBe(false);
     },
     ELECTRON_TEST_TIMEOUT_MS,
   );

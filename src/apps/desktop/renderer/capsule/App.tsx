@@ -29,6 +29,7 @@ import {
   wantsComparison,
   type CapsuleIntent,
 } from "./keyboard.js";
+import { autoApplyDecision, isUserIntervention } from "./auto-apply.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
 const GENERATING = "generating";
@@ -437,6 +438,13 @@ export function App(): React.JSX.Element {
    */
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const activeRunId = useRef<string | null>(null);
+  /**
+   * Ouverte par le raccourci de remplacement direct, sans intervention depuis.
+   *
+   * Une référence et non un état : la désarmer ne doit rien redessiner, et
+   * l'effet qui décide la lit au moment où le résultat arrive.
+   */
+  const autoApplyArmed = useRef(false);
   const bodyRef = useRef<HTMLElement | null>(null);
   /**
    * Ce qui demande la comparaison : `⌥` maintenu, `⌘D` épinglé, ou les deux.
@@ -568,12 +576,14 @@ export function App(): React.JSX.Element {
         return;
       }
       derniereOuverture.current = payload.id;
+      autoApplyArmed.current = payload.autoApply === true;
       if (payload.mode === "capture") {
         beginCapture();
       } else {
-        // Volontairement pas de `resetSession()` : la fenêtre se cache dès
-        // qu'on clique ailleurs, et repartir de zéro à la réouverture jette ce
-        // qui venait d'être écrit. Le brouillon est effacé après un envoi.
+        // Volontairement pas de `resetSession()` : la fenêtre peut se cacher
+        // quand on clique ailleurs (selon le réglage), et repartir de zéro à la
+        // réouverture jetterait ce qui venait d'être écrit. Le brouillon est
+        // effacé après un envoi.
         setNotice(null);
         setState("input");
       }
@@ -717,6 +727,39 @@ export function App(): React.JSX.Element {
         echecDuRemplacement(cause instanceof Error ? cause.message : undefined);
       });
   }, [annoncer, dispatch, echecDuRemplacement, t, texteAAppliquer]);
+
+  // Le raccourci de remplacement direct : le résultat part dès qu'il est prêt,
+  // sauf s'il demande une relecture ou si quelqu'un a repris la main entre-temps
+  // (voir `auto-apply.ts`). Une seule décision par ouverture.
+  useEffect(() => {
+    if (state !== "ready") return;
+    const decision = autoApplyDecision({ armed: autoApplyArmed.current, result });
+    if (decision === "wait") return;
+    autoApplyArmed.current = false;
+    if (decision === "apply") {
+      accept();
+    } else {
+      annoncer(t("capsule.autoApplyReview"), "warning");
+    }
+  }, [accept, annoncer, result, state, t]);
+
+  // Une vraie frappe ou un clic désarme le remplacement direct : la personne
+  // reprend la main, et ⏎ décidera comme dans une capsule ordinaire. En phase
+  // de capture, pour passer avant les gestionnaires qui consomment la touche.
+  useEffect(() => {
+    const disarmOnKey = (event: KeyboardEvent): void => {
+      if (isUserIntervention(event)) autoApplyArmed.current = false;
+    };
+    const disarm = (): void => {
+      autoApplyArmed.current = false;
+    };
+    window.addEventListener("keydown", disarmOnKey, true);
+    window.addEventListener("pointerdown", disarm, true);
+    return () => {
+      window.removeEventListener("keydown", disarmOnKey, true);
+      window.removeEventListener("pointerdown", disarm, true);
+    };
+  }, []);
 
   const cancelRun = useCallback(() => {
     const runId = activeRunId.current;

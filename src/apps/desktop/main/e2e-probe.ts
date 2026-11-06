@@ -58,6 +58,11 @@ export interface E2eScenarioTargets {
    * la fenêtre à 560 px de large. Voir `e2e-capsule.ts`.
    */
   capsuleWindow: () => CapsuleUiWindow;
+  /**
+   * Émet sur la vraie fenêtre l'événement qu'Electron envoie quand une autre
+   * application prend le focus, sans toucher au bureau de la machine.
+   */
+  loseFocus: (surface: "capsule" | "popover") => void;
   /** Les libellés des accélérateurs du menu applicatif, tels qu'installés. */
   menuAccelerators: () => string[];
 }
@@ -99,6 +104,8 @@ export async function runE2eScenario(
         return await capsuleScenario(name, targets);
       case "popover":
         return await popoverScenario(name, targets);
+      case "blur":
+        return await blurScenario(name, targets);
       case "suspension":
         return suspensionScenario(name, targets);
       case "run":
@@ -323,6 +330,33 @@ async function popoverScenario(
   await waitUntil(() => !targets.popoverVisible());
 
   return { name, popoverVisible: opened, popoverHidden: !targets.popoverVisible() };
+}
+
+/**
+ * La capsule et le popover qui perdent le focus.
+ *
+ * Le `blur` est émis sur les vraies fenêtres de l'application lancée : ce que
+ * le scénario vérifie, c'est le câblage du démarrage — la préférence lue dans
+ * la configuration et confiée aux deux fenêtres. L'événement est celui
+ * qu'Electron émet quand une autre application prend le focus.
+ */
+async function blurScenario(name: string, targets: E2eScenarioTargets): Promise<E2eScenarioReport> {
+  targets.shortcutHandlers.onInput();
+  await waitUntil(() => capsuleOpened(targets));
+  targets.loseFocus("capsule");
+
+  targets.shortcutHandlers.onPopover();
+  await waitUntil(() => targets.popoverVisible());
+  targets.loseFocus("popover");
+
+  // Un masquage est synchrone ; ce délai laisse seulement passer un éventuel
+  // effet de bord asynchrone avant de relever l'état.
+  await new Promise((resolve) => setTimeout(resolve, 150));
+  return {
+    name,
+    capsuleVisible: targets.capsuleVisible(),
+    popoverVisible: targets.popoverVisible(),
+  };
 }
 
 /** Un run complet, du démarrage au résultat, à travers le service réel. */

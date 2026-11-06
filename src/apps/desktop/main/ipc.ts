@@ -51,6 +51,7 @@ import { duplicateProfile, exportProfile } from "@/profiles/transfer.js";
 import {
   CapsuleResizeRequestSchema,
   ConfigWriteRequestSchema,
+  type ConfigWriteRequest,
   CURRENT_WELCOME_TOUR_VERSION,
   CredentialDeleteRequestSchema,
   CredentialSaveRequestSchema,
@@ -209,6 +210,12 @@ export interface DesktopIpcDependencies {
    */
   onShortcutsChanged?: (shortcuts: Config["desktopShortcuts"]) => void;
   /**
+   * Applique tout de suite le choix de garder les fenêtres ouvertes quand
+   * elles perdent le focus : les fenêtres lisent ce réglage à chaque perte de
+   * focus, et c'est le processus principal qui le leur tient à jour.
+   */
+  onKeepOpenOnBlurChanged?: (keepOpen: boolean) => void;
+  /**
    * Relance l'application quand une préférence ne peut être appliquée
    * proprement qu'au démarrage, comme la langue du menu et des titres.
    */
@@ -345,18 +352,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     // The desktop surface never enables telemetry, whatever the renderer asks.
     const merged: Config = ConfigSchema.parse({ ...current, ...patch, telemetry: false });
     await save(merged);
-    // Un raccourci choisi et jamais appliqué est un réglage qui ment. Les
-    // combinaisons étaient lues une seule fois au démarrage : changer le choix
-    // ne faisait rien, et l'écran continuait d'annoncer l'ancien comme actif.
-    if (patch.desktopShortcuts !== undefined) {
-      dependencies.onShortcutsChanged?.(merged.desktopShortcuts);
-    }
-    if (
-      patch.uiLocale !== undefined &&
-      resolveMainLocale(current.uiLocale, env) !== resolveMainLocale(merged.uiLocale, env)
-    ) {
-      dependencies.relaunchApp?.();
-    }
+    applySavedPreferences(dependencies, patch, { before: current, after: merged, env });
     return sanitizeConfigForRenderer(merged);
   });
 
@@ -695,6 +691,35 @@ function registerProfileIpcHandlers(
  * dropped because they may carry an Authorization token. API keys never
  * appear here at all — they live in the environment and the keychain.
  */
+/**
+ * Ce qu'un réglage enregistré doit changer tout de suite dans l'application.
+ *
+ * Un raccourci choisi et jamais appliqué est un réglage qui ment. Les
+ * combinaisons étaient lues une seule fois au démarrage : changer le choix ne
+ * faisait rien, et l'écran continuait d'annoncer l'ancien comme actif. Même
+ * règle pour les fenêtres gardées ouvertes ; la langue, elle, ne s'applique
+ * proprement qu'au redémarrage.
+ */
+function applySavedPreferences(
+  dependencies: DesktopIpcDependencies,
+  patch: ConfigWriteRequest,
+  config: { before: Config; after: Config; env: NodeJS.ProcessEnv },
+): void {
+  if (patch.desktopShortcuts !== undefined) {
+    dependencies.onShortcutsChanged?.(config.after.desktopShortcuts);
+  }
+  if (patch.desktopKeepOpenOnBlur !== undefined) {
+    dependencies.onKeepOpenOnBlurChanged?.(patch.desktopKeepOpenOnBlur);
+  }
+  if (
+    patch.uiLocale !== undefined &&
+    resolveMainLocale(config.before.uiLocale, config.env) !==
+      resolveMainLocale(config.after.uiLocale, config.env)
+  ) {
+    dependencies.relaunchApp?.();
+  }
+}
+
 export function sanitizeConfigForRenderer(config: Config): SafeConfig {
   const { providers, ...rest } = config;
   if (!providers) {

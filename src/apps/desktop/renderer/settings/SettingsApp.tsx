@@ -218,6 +218,8 @@ export function SettingsApp(): React.JSX.Element {
     shortcuts?.registered.find((entry) => entry.intent === "input")?.accelerator ?? "";
   const popoverShortcut =
     shortcuts?.registered.find((entry) => entry.intent === "popover")?.accelerator ?? "";
+  const replaceShortcut =
+    shortcuts?.registered.find((entry) => entry.intent === "replace")?.accelerator ?? "";
   const rejectedShortcuts = shortcuts?.rejected ?? [];
   const conflictingShortcuts = shortcuts?.conflicts ?? [];
   const hasNoShortcut = shortcuts !== null && shortcuts.registered.length === 0;
@@ -293,6 +295,7 @@ export function SettingsApp(): React.JSX.Element {
                 captureShortcut={captureShortcut}
                 inputShortcut={inputShortcut}
                 popoverShortcut={popoverShortcut}
+                replaceShortcut={replaceShortcut}
                 rejectedShortcuts={rejectedShortcuts}
                 conflictingShortcuts={conflictingShortcuts}
                 shortcutsSuspended={shortcuts?.suspended ?? false}
@@ -322,6 +325,7 @@ export function SettingsApp(): React.JSX.Element {
                 onOpenWelcomeTour={() => {
                   void window.reqraft.openWelcomeTour();
                 }}
+                keepOpenOnBlur={config.desktopKeepOpenOnBlur ?? true}
                 timeoutMs={config.timeoutMs}
                 maxOutputTokens={config.maxOutputTokens}
                 fidelityMode={config.fidelityMode}

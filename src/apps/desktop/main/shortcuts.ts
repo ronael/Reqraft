@@ -20,8 +20,8 @@ export interface ShortcutCandidate {
   /** Electron accelerator attempted for this intent. */
   accelerator: string;
   /**
-   * What the shortcut opens: capture-first capsule, free-input capsule, or the
-   * menu-bar popover.
+   * What the shortcut opens: capture-first capsule, free-input capsule, the
+   * menu-bar popover, or the capture-first capsule that replaces on its own.
    */
   intent: ShortcutIntent;
 }
@@ -68,18 +68,22 @@ export const SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
   { accelerator: "Command+Control+R", intent: "capture" },
   { accelerator: "Command+Control+N", intent: "input" },
   { accelerator: "Command+Control+O", intent: "popover" },
+  { accelerator: "Command+Control+Shift+R", intent: "replace" },
   { accelerator: "Command+Control+J", intent: "capture" },
   { accelerator: "Command+Control+K", intent: "input" },
   { accelerator: "Command+Control+T", intent: "popover" },
+  { accelerator: "Command+Control+Shift+J", intent: "replace" },
 ];
 
 export const PORTABLE_SHORTCUT_CANDIDATES: ShortcutCandidate[] = [
   { accelerator: "CommandOrControl+Alt+R", intent: "capture" },
   { accelerator: "CommandOrControl+Alt+N", intent: "input" },
   { accelerator: "CommandOrControl+Alt+O", intent: "popover" },
+  { accelerator: "CommandOrControl+Alt+Shift+R", intent: "replace" },
   { accelerator: "CommandOrControl+Alt+J", intent: "capture" },
   { accelerator: "CommandOrControl+Alt+K", intent: "input" },
   { accelerator: "CommandOrControl+Alt+T", intent: "popover" },
+  { accelerator: "CommandOrControl+Alt+Shift+J", intent: "replace" },
 ];
 
 function desktopPlatform(platform: NodeJS.Platform): DesktopPlatform {
@@ -150,14 +154,16 @@ export function prettyAccelerator(
     .join(macOS ? "" : "+");
 }
 
-/** The three intents, in the order they are served. */
-export const SHORTCUT_INTENTS = ["capture", "input", "popover"] as const;
+/** The intents, in the order they are served. */
+export const SHORTCUT_INTENTS = ["capture", "input", "popover", "replace"] as const;
 
 export interface ShortcutHandlers {
   onCapture: () => void;
   onInput: () => void;
   /** Opens or hides the menu-bar popover without touching the tray icon. */
   onPopover: () => void;
+  /** Captures like `onCapture`, then applies the result without waiting for ⏎. */
+  onReplace: () => void;
 }
 
 export type PreferredShortcuts = Partial<Record<ShortcutIntent, string>>;
@@ -169,13 +175,13 @@ export interface ShortcutRegistryController {
 }
 
 /**
- * Registers one shortcut per intent (capture, free input, popover), walking the
- * candidate list in order.
+ * Registers one shortcut per intent (capture, free input, popover, direct
+ * replace), walking the candidate list in order.
  *
  * `forced` (env `REQRAFT_SHORTCUT` in dev) pins a single accelerator for the
  * capture intent: an explicit choice that fails must be visible, not silently
- * worked around. It leaves the other two intents unregistered, which is the
- * point — it is a development override for one combination, not a keymap.
+ * worked around. It leaves the other intents unregistered, which is the point —
+ * it is a development override for one combination, not a keymap.
  */
 export function registerShortcuts(
   register: ShortcutRegistrar,
@@ -259,5 +265,6 @@ export function replaceShortcuts(
 function handlerFor(intent: ShortcutIntent, handlers: ShortcutHandlers): () => void {
   if (intent === "capture") return handlers.onCapture;
   if (intent === "input") return handlers.onInput;
+  if (intent === "replace") return handlers.onReplace;
   return handlers.onPopover;
 }

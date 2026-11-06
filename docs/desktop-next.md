@@ -14,6 +14,7 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 | Global | `⌘⌃R` (repli `⌘⌃J`) | capture la sélection → capsule |
 | Global | `⌘⌃N` (repli `⌘⌃K`) | capsule en saisie libre, centrée |
 | Global | `⌘⌃O` (repli `⌘⌃T`) | ouvrir ou fermer le popover |
+| Global | `⌘⌃⇧R` (repli `⌘⌃⇧J`) | capture, reformule et remplace sans `⏎` |
 | Capsule | `⏎` | remplacer (copie en mode plancher) |
 | Capsule | `⌥` maintenu | comparaison avant/après, le temps de l'appui |
 | Capsule | `⌘D` | comparaison avant/après épinglée (bascule) |
@@ -25,7 +26,7 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 | Capsule | `esc` | fermer |
 | Saisie libre | `⌘⏎` | valider |
 | Popover | `⌘⏎` | reformuler |
-| Réglages | menus déroulants | changer les trois raccourcis globaux, à chaud |
+| Réglages | menus déroulants | changer les quatre raccourcis globaux, à chaud |
 | Menu tray | case à cocher | suspendre/reprendre les raccourcis globaux |
 
 ### Manquants
@@ -33,6 +34,20 @@ Référence normative : `docs/internal/DESKTOP.md`. Journal : `docs/internal/WOR
 - Aucun manque identifié sur le socle de raccourcis actuel.
 
 ### Livrés depuis
+
+- **Remplacement direct (`⌘⌃⇧R`)** — la capture habituelle, dont le résultat
+  remplace la sélection dès qu'il est prêt, sans `⏎`. Il ne part tout seul que
+  s'il est complet, jugé bon par les contrôles de fidélité, et que personne n'a
+  repris la main pendant la génération (une frappe ou un clic suffit). Sinon la
+  capsule reste sur le résultat, dit pourquoi, et `⏎` remplace comme d'habitude.
+  La règle vit dans `renderer/capsule/auto-apply.ts`, un module pur.
+
+- **Fenêtres gardées ouvertes** — la capsule et le popover ne disparaissent
+  plus quand ils perdent le focus : cliquer ailleurs pour relire ou copier
+  quelque chose ne jette plus le résultat. Réglages › Préférences › « Quand une
+  fenêtre perd le focus » rétablit l'ancien comportement, appliqué sans
+  relancer. Le remplacement n'en dépendait pas : il cache lui-même la capsule
+  pour rendre le focus à l'application source.
 
 - **`⇧⇥` pour reculer dans les niveaux** — le cycle `⇥` tourne dans les deux
   sens ; l'infobulle de la commande `⇥` du pied annonce les deux.
