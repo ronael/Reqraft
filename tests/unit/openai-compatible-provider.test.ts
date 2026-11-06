@@ -4,6 +4,7 @@ import {
   OpenAICompatibleProvider,
   type OpenAICompatibleOptions,
 } from "@/providers/openai-compatible.js";
+import { formatUiError } from "@/shared/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 const LOCAL_BASE_URL = "http://localhost:11434/v1";
@@ -180,12 +181,14 @@ describe("OpenAI-compatible completions", () => {
     });
   });
 
-  it("rejects an answer without any choice", async () => {
+  it("rejects an answer without any choice as an empty result", async () => {
     fetchMock.mockResolvedValue(jsonResponse({ choices: [] }));
 
-    await expect(localServer().generate(rewriteRequest())).rejects.toThrow(
-      "OpenAI-compatible endpoint returned no choices",
-    );
+    await expect(localServer().generate(rewriteRequest())).rejects.toMatchObject({
+      message: "OpenAI-compatible endpoint returned no choices",
+      errorCode: "result.empty",
+      exitCode: EXIT_CODES.PARSING_ERROR,
+    });
   });
 
   it("passes the caller's abort signal to the request", async () => {
@@ -325,10 +328,27 @@ describe("OpenAI-compatible streaming", () => {
     expect(onDelta).not.toHaveBeenCalled();
   });
 
-  // Bug, left unfixed: that rejection is a ProviderError without HTTP status,
-  // which maps to provider.request_failed, so the user is told the server is
-  // unreachable instead of seeing the empty-result message.
-  it.todo("reports a stream without text as an empty result, not as a network failure");
+  it("reports a stream without text as an empty result, not as a network failure", async () => {
+    fetchMock.mockResolvedValue(
+      eventStream([
+        'data: {"choices":[{"delta":{"role":"assistant"},"finish_reason":"length"}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    );
+
+    const failure = await localServer()
+      .generate(rewriteRequest({ stream: true }))
+      .catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      errorCode: "result.empty",
+      exitCode: EXIT_CODES.PARSING_ERROR,
+      params: { provider: "Ollama" },
+    });
+    expect(formatUiError(failure, "Ollama")).toBe(
+      "Le modèle a consommé la limite de sortie sans produire de texte visible. Réessaie avec une limite supérieure ou un modèle plus rapide.",
+    );
+  });
 });
 
 describe("OpenAI-compatible model listing", () => {

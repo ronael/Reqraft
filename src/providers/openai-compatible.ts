@@ -6,7 +6,7 @@ import type {
   ModelInfo,
 } from "@/core/types.js";
 import { consumeChatCompletionStream } from "./openai-stream.js";
-import { raiseProviderError } from "./errors.js";
+import { emptyAnswerError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 interface OpenAICompatibleChoice {
@@ -91,7 +91,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     const data = JSON.parse(await response.text()) as OpenAICompatibleResponse;
     const choice = data.choices[0];
     if (!choice) {
-      throw new Error("OpenAI-compatible endpoint returned no choices");
+      throw emptyAnswerError(this.name, "OpenAI-compatible endpoint returned no choices");
     }
 
     return {
