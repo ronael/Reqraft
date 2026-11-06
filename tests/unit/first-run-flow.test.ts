@@ -222,7 +222,7 @@ const EXISTING_CONFIG = {
 const KEEP_EXISTING_ANSWERS: readonly Answer[] = [
   pick("Modifier la configuration existante"),
   ENTER, // provider, as saved
-  pickModel("claude-sonnet-5"),
+  ENTER, // model, as saved
   ENTER, // profile, as saved
   ENTER, // level, as saved
   ENTER, // auto copy, as saved
@@ -667,6 +667,41 @@ describe("rp init, existing configuration", () => {
     const session = await runSetup([pick("Afficher la configuration")]);
 
     expect(occurrences(session.transcript, '"defaultModel": "claude-sonnet-5"')).toBe(1);
+  });
+
+  it.each([
+    { kind: "a model of the list", model: "claude-sonnet-5", typed: [] },
+    // Typed by hand: the manual entry is proposed, then the identifier itself.
+    { kind: "a model typed by hand", model: "claude-sonnet-5-preview", typed: [ENTER] },
+  ])("keeps $kind when Enter is pressed while modifying", async ({ model, typed }) => {
+    await writeExistingConfig(JSON.stringify({ ...EXISTING_CONFIG, defaultModel: model }));
+
+    const session = await runSetup([...KEEP_EXISTING_ANSWERS, ...typed, SAVE, NO], {
+      env: ANTHROPIC_ENV,
+    });
+
+    expect(await readSavedConfig()).toEqual({ ...EXISTING_CONFIG, defaultModel: model });
+    expect(session.transcript).toMatch(new RegExp(String.raw`Modèle\s+${model}\n`, "u"));
+  });
+
+  it("proposes the recommended model of a provider the configuration did not use", async () => {
+    await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
+
+    await runSetup(
+      [
+        pick("Modifier la configuration existante"),
+        pick("OpenAI"),
+        ...Array<Answer>(9).fill(ENTER), // model, then the saved preferences
+        SAVE,
+        NO,
+      ],
+      { env: { OPENAI_API_KEY: "openai-test-key" } },
+    );
+
+    expect(await readSavedConfig()).toMatchObject({
+      defaultProvider: "openai",
+      defaultModel: getFallbackModelForProvider("openai"),
+    });
   });
 
   it("keeps a minimal level when Enter is pressed while modifying", async () => {

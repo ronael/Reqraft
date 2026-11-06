@@ -397,7 +397,7 @@ async function askModelIdentifier(
       return await askModelText(io, defaults.defaultModel);
     }
   }
-  return await askModel(io, provider, defaults.defaultModel);
+  return await askModel(io, provider, defaults);
 }
 
 async function collectConfig(
@@ -539,7 +539,8 @@ async function askCompatibleProvider(
   };
 }
 
-async function askModel(io: InitIo, provider: InitProvider, currentModel: string): Promise<string> {
+async function askModel(io: InitIo, provider: InitProvider, defaults: Config): Promise<string> {
+  const currentModel = defaults.defaultModel;
   const presets = getPresetModels().filter((preset) => preset.provider === provider);
   if (presets.length === 0) {
     return await askModelText(io, currentModel);
@@ -555,12 +556,38 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
       `${preset.name} (${preset.id}) - ${modelDescription(preset.id, preset.description, io.t)}`,
   );
   labels.push(io.t("init.manualModel"));
+  const manualIndex = labels.length - 1;
 
-  const index = await askMenu(io, io.t("init.modelQuestion"), labels);
-  if (index === labels.length - 1) {
+  const index = await askMenu(
+    io,
+    io.t("init.modelQuestion"),
+    labels,
+    proposedModelIndex(ordered, defaults, provider, manualIndex),
+  );
+  if (index === manualIndex) {
     return await askModelText(io, currentModel);
   }
   return ordered[index]?.id ?? currentModel;
+}
+
+/**
+ * The entry Enter keeps in the model list.
+ *
+ * The saved model when it was saved for this provider — through the manual
+ * entry for an identifier typed by hand — and the recommended one otherwise:
+ * the model of another provider means nothing here.
+ */
+function proposedModelIndex(
+  ordered: readonly { id: string }[],
+  defaults: Config,
+  provider: InitProvider,
+  manualIndex: number,
+): number {
+  if (defaults.defaultProvider !== provider) {
+    return 0;
+  }
+  const savedIndex = ordered.findIndex((preset) => preset.id === defaults.defaultModel);
+  return savedIndex >= 0 ? savedIndex : manualIndex;
 }
 
 async function askProfile(io: InitIo, currentProfile: string): Promise<string> {
