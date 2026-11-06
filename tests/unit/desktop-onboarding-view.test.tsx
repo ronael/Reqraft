@@ -581,7 +581,7 @@ describe("un point d'accès compatible OpenAI", () => {
   async function choisirPointCompatible(): Promise<UserEvent> {
     const { user } = await ouvrirFormulaire();
     await choisir(user, t("onboarding.provider"), "OpenAI Compatible");
-    await user.type(screen.getByPlaceholderText(t("onboarding.modelPlaceholder")), "llama3.1");
+    await user.type(champTexte(t("onboarding.model")), "llama3.1");
     expect(screen.getByText(t("onboarding.ready"))).toBeTruthy();
     return user;
   }
@@ -595,8 +595,9 @@ describe("un point d'accès compatible OpenAI", () => {
     expect(screen.queryByLabelText(LIBELLE_CLE, { exact: false })).toBeNull();
     expect(champTexte(t("onboarding.internalId")).value).toBe("local");
     expect(champTexte(t("onboarding.baseUrl")).value).toBe("http://localhost:11434/v1");
-    // Sans catalogue, le modèle se tape ; le champ n'a que son exemple pour nom.
-    const modele = screen.getByPlaceholderText(t("onboarding.modelPlaceholder"));
+    // Sans catalogue, le modèle se tape, dans un champ nommé comme le menu qu'il remplace.
+    const modele = champTexte(t("onboarding.model"));
+    expect(modele.placeholder).toBe(t("onboarding.modelPlaceholder"));
     expect(screen.getByText(t("onboarding.modelRequired"))).toBeTruthy();
     expect(bouton(t("onboarding.finish")).disabled).toBe(true);
 

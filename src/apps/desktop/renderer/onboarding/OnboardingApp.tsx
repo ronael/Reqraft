@@ -473,6 +473,9 @@ export function OnboardingApp(): React.JSX.Element {
             ) : (
               <input
                 className="settings-input mono"
+                // Named by the same label as the menu it stands in for: a
+                // placeholder is an example, not a name.
+                aria-labelledby="onboarding-model-label"
                 value={form.model}
                 placeholder={t("onboarding.modelPlaceholder")}
                 onChange={(event) => {
