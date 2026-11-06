@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import type { z } from "zod";
-import { ConfigSchema, type Config } from "./schema.js";
+import { ConfigFieldsSchema, ConfigSchema, type Config } from "./schema.js";
 import { ReqraftError } from "@/core/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 
@@ -52,12 +52,12 @@ export const PERSONAL_CONFIG_KEYS = [
 /**
  * Le sous-ensemble de la configuration qu'un projet peut fixer.
  *
- * `strict()` et non `passthrough()`, à l'inverse du schéma utilisateur : une clé
+ * `strict()` et non `loose()`, à l'inverse du schéma utilisateur : une clé
  * inconnue dans un fichier versionné est probablement une erreur — au pire une
  * clé d'API écrite à la main — et l'ignorer en silence serait le pire des deux
  * comportements possibles.
  */
-export const ProjectConfigSchema = ConfigSchema.pick({
+export const ProjectConfigSchema = ConfigFieldsSchema.pick({
   defaultProfile: true,
   defaultLevel: true,
   fidelityMode: true,

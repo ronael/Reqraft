@@ -49,7 +49,7 @@ export const CustomProfileSchema = z
   })
   .strict()
   .refine((profile) => isValidCustomProfileId(profile.id), {
-    message: CUSTOM_PROFILE_ID_ERROR,
+    error: CUSTOM_PROFILE_ID_ERROR,
     path: ["id"],
   });
 

@@ -151,6 +151,21 @@ describe("recouvrir, pas remplacer", () => {
     expect(merged.uiLocale).toBe("fr");
   });
 
+  it("ne complète pas un fichier projet avec les valeurs par défaut", () => {
+    // Zod 4 applique un défaut même sous `.optional()` : un fichier qui ne nomme
+    // que le niveau ne doit pas imposer pour autant le profil, la fidélité ni
+    // la langue de sortie par défaut à la place de ceux de la personne.
+    const user = ConfigSchema.parse({ ...USER, fidelityMode: "strict", outputLanguage: "de" });
+    const project = ProjectConfigSchema.parse({ defaultLevel: "complete" });
+
+    expect(project).toEqual({ defaultLevel: "complete" });
+    const merged = mergeProjectConfig(user, project);
+    expect(merged.defaultLevel).toBe("complete");
+    expect(merged.defaultProfile).toBe("writing");
+    expect(merged.fidelityMode).toBe("strict");
+    expect(merged.outputLanguage).toBe("de");
+  });
+
   it("rend la configuration utilisateur telle quelle hors d'un projet", () => {
     expect(mergeProjectConfig(USER, null)).toBe(USER);
   });
