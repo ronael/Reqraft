@@ -218,6 +218,21 @@ const EXISTING_CONFIG = {
   desktopShortcuts: { capture: "CommandOrControl+Shift+R" },
 };
 
+/** Modifying EXISTING_CONFIG and keeping every saved answer. */
+const KEEP_EXISTING_ANSWERS: readonly Answer[] = [
+  pick("Modifier la configuration existante"),
+  ENTER, // provider, as saved
+  pickModel("claude-sonnet-5"),
+  ENTER, // profile, as saved
+  ENTER, // level, as saved
+  ENTER, // auto copy, as saved
+  ENTER, // interface language, as saved
+  ENTER, // "another language", as saved
+  ENTER, // that language, as saved
+  ENTER, // streaming, as saved
+  ENTER, // timeout, as saved
+];
+
 let home = "";
 
 beforeEach(async () => {
@@ -529,24 +544,7 @@ describe("rp init, existing configuration", () => {
   it("modifies an existing configuration and keeps what the questions do not cover", async () => {
     await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
 
-    const session = await runSetup(
-      [
-        pick("Modifier la configuration existante"),
-        ENTER, // provider, as saved
-        pickModel("claude-sonnet-5"),
-        ENTER, // profile, as saved
-        ENTER, // level, as saved
-        ENTER, // auto copy, as saved
-        ENTER, // interface language, as saved
-        ENTER, // "another language", as saved
-        ENTER, // that language, as saved
-        ENTER, // streaming, as saved
-        ENTER, // timeout, as saved
-        SAVE,
-        NO,
-      ],
-      { env: ANTHROPIC_ENV },
-    );
+    const session = await runSetup([...KEEP_EXISTING_ANSWERS, SAVE, NO], { env: ANTHROPIC_ENV });
 
     expect(session.transcript).toContain("Une configuration Reqraft existe déjà.");
     expect(session.transcript).not.toContain("Configure ton provider");
@@ -671,9 +669,15 @@ describe("rp init, existing configuration", () => {
     expect(occurrences(session.transcript, '"defaultModel": "claude-sonnet-5"')).toBe(1);
   });
 
+  it("keeps a minimal level when Enter is pressed while modifying", async () => {
+    await writeExistingConfig(JSON.stringify({ ...EXISTING_CONFIG, defaultLevel: "minimal" }));
+
+    await runSetup([...KEEP_EXISTING_ANSWERS, SAVE, NO], { env: ANTHROPIC_ENV });
+
+    expect(await readSavedConfig()).toEqual({ ...EXISTING_CONFIG, defaultLevel: "minimal" });
+  });
+
   // Bugs found while writing these tests, left unfixed:
-  // Math.max(index, 1) turns "minimal" (index 0) into "standard" (first-run.ts:581);
-  it.todo("keeps a minimal level when Enter is pressed while modifying");
   // the headers question always defaults to "" (first-run.ts:534);
   it.todo("keeps the custom headers of a saved provider when Enter is pressed while modifying");
   // the summary and the connection test read the first saved entry

@@ -27,7 +27,7 @@ import {
   formatInitSection,
   formatInitStatus,
 } from "@/apps/cli/ui/init-format.js";
-import { REPROMPT_LEVELS } from "@/core/levels.js";
+import { DEFAULT_REPROMPT_LEVEL, REPROMPT_LEVELS } from "@/core/levels.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { listProfiles } from "@/profiles/registry.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
@@ -575,9 +575,12 @@ async function askLevel(
   currentLevel: Config["defaultLevel"],
 ): Promise<Config["defaultLevel"]> {
   const levels = [...REPROMPT_LEVELS];
-  const defaultIndex = Math.max(levels.indexOf(currentLevel), 1);
+  // The saved level is proposed, whichever it is; the default level only
+  // stands in for one the list does not know.
+  const savedIndex = levels.indexOf(currentLevel);
+  const defaultIndex = savedIndex >= 0 ? savedIndex : levels.indexOf(DEFAULT_REPROMPT_LEVEL);
   const index = await askMenu(io, io.t("init.level"), levels, defaultIndex);
-  return levels[index] ?? "standard";
+  return levels[index] ?? DEFAULT_REPROMPT_LEVEL;
 }
 
 async function askUiLocale(
