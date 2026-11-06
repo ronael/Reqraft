@@ -536,9 +536,41 @@ describe("rp init, OpenAI-compatible endpoints", () => {
     });
   });
 
-  // Bug: a fresh setup proposes the Anthropic default model for a local server,
-  // because the "local-model" fallback is never reached (first-run.ts:392).
-  it.todo("proposes a local model id rather than the Anthropic default for a new local server");
+  it("proposes a local model id rather than the Anthropic default for a new local server", async () => {
+    const session = await runSetup([
+      pick("Serveur local compatible OpenAI"),
+      ...Array<Answer>(5).fill(ENTER), // id, name, base URL, key variable, headers
+      ENTER, // model, as proposed
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect(session.prompts).toContain("Identifiant du modèle (local-model) : ");
+    expect((await readSavedConfig()).defaultModel).toBe("local-model");
+  });
+
+  it("asks a hosted endpoint for its model rather than proposing one of another provider", async () => {
+    const session = await runSetup([
+      pick("OpenAI Compatible"),
+      "gateway",
+      ENTER, // name
+      "https://gateway.example.test/v1",
+      ENTER, // no key variable
+      ENTER, // no custom headers
+      ENTER, // no model proposed
+      "vendor/model-x",
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect(session.prompts).toContain("Identifiant du modèle : ");
+    expect(occurrences(session.transcript, "x Indique l'identifiant du modèle à utiliser.")).toBe(
+      1,
+    );
+    expect((await readSavedConfig()).defaultModel).toBe("vendor/model-x");
+  });
 });
 
 describe("rp init, existing configuration", () => {
@@ -755,6 +787,29 @@ describe("rp init, Enter while modifying", () => {
     expect(await readSavedConfig()).toMatchObject({
       defaultProvider: "openai",
       defaultModel: getFallbackModelForProvider("openai"),
+    });
+  });
+
+  it("types the model of a provider the configuration did not use without proposing the saved one", async () => {
+    await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
+
+    const session = await runSetup(
+      [
+        pick("Modifier la configuration existante"),
+        pick("OpenAI"),
+        pick("Saisir un identifiant manuellement"),
+        "gpt-5.1-preview",
+        ...Array<Answer>(8).fill(ENTER), // the saved preferences
+        SAVE,
+        NO,
+      ],
+      { env: { OPENAI_API_KEY: "openai-test-key" } },
+    );
+
+    expect(session.prompts).toContain("Identifiant du modèle : ");
+    expect(await readSavedConfig()).toMatchObject({
+      defaultProvider: "openai",
+      defaultModel: "gpt-5.1-preview",
     });
   });
 

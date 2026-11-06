@@ -65,6 +65,8 @@ export { buildApiKeyStatus, createInitConfig };
 export type { ApiKeyStatus, CompatibleProviderInput, InitConfigInput };
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
+/** What a new local server is offered: no identifier can be known for it in advance. */
+const LOCAL_MODEL_ID = "local-model";
 
 export function getInitProfileChoices(): string[] {
   return [AUTO_PROFILE_ID, ...listProfiles().map((profile) => profile.id)];
@@ -271,8 +273,22 @@ function writeCancellation(io: InitIo): void {
   io.write(`${formatInitStatus(io.t("init.cancelled"), "warning", io.visual)}\n`);
 }
 
-async function askModelText(io: InitIo, currentModel: string): Promise<string> {
-  return await askText(io, io.t("init.modelId"), currentModel);
+/** Asks for a model identifier until one is given; Enter keeps `proposed` when there is one. */
+async function askModelText(io: InitIo, proposed: string): Promise<string> {
+  for (;;) {
+    const model = await askText(io, io.t("init.modelId"), proposed);
+    if (model) {
+      return model;
+    }
+    io.write(`${formatInitStatus(io.t("init.modelRequired"), "error", io.visual)}\n`);
+  }
+}
+
+/** The saved model, when it was saved for this provider: another's means nothing here. */
+function savedModelFor(defaults: Config, provider: InitProvider): string | undefined {
+  return defaults.defaultProvider === provider && defaults.defaultModel
+    ? defaults.defaultModel
+    : undefined;
 }
 
 /**
@@ -381,25 +397,23 @@ export async function runFirstRunSetup(
 /**
  * Asks for the model to use.
  *
- * A self-hosted or custom OpenAI-compatible endpoint publishes no preset
- * catalogue, so the identifier is typed in. Every other case, including a
- * compatible provider matching a known gateway, goes through the preset list.
+ * An OpenAI-compatible endpoint publishes no preset catalogue, so its model is
+ * typed in. The saved model is proposed only when it was saved for such an
+ * endpoint: a fresh setup holds the Anthropic default, which no local server
+ * serves. Otherwise a local server is offered the generic `local-model`, and a
+ * hosted endpoint nothing, since no identifier can be guessed for it.
  */
 async function askModelIdentifier(
   io: InitIo,
-  provider: InitProvider,
+  providerChoice: InitProviderChoice,
   defaults: Config,
   compatibleProvider: CompatibleProviderInput | undefined,
 ): Promise<string> {
-  if (compatibleProvider?.baseUrl) {
-    if (compatibleProvider.id === "local") {
-      return await askModelText(io, defaults.defaultModel || "local-model");
-    }
-    if (compatibleProvider.id === "custom") {
-      return await askModelText(io, defaults.defaultModel);
-    }
+  if (!compatibleProvider) {
+    return await askModel(io, providerChoice.provider, defaults);
   }
-  return await askModel(io, provider, defaults);
+  const savedModel = savedModelFor(defaults, OPENAI_COMPATIBLE_PROVIDER_ID);
+  return await askModelText(io, savedModel ?? (providerChoice.local ? LOCAL_MODEL_ID : ""));
 }
 
 async function collectConfig(
@@ -441,12 +455,7 @@ async function collectConfig(
       }
     }
 
-    const model = await askModelIdentifier(
-      io,
-      providerChoice.provider,
-      defaults,
-      compatibleProvider,
-    );
+    const model = await askModelIdentifier(io, providerChoice, defaults, compatibleProvider);
 
     return {
       provider: providerChoice.provider,
@@ -542,10 +551,10 @@ async function askCompatibleProvider(
 }
 
 async function askModel(io: InitIo, provider: InitProvider, defaults: Config): Promise<string> {
-  const currentModel = defaults.defaultModel;
+  const savedModel = savedModelFor(defaults, provider);
   const presets = getPresetModels().filter((preset) => preset.provider === provider);
   if (presets.length === 0) {
-    return await askModelText(io, currentModel);
+    return await askModelText(io, savedModel ?? "");
   }
 
   const recommended = presets.find((preset) => preset.recommended);
@@ -564,31 +573,25 @@ async function askModel(io: InitIo, provider: InitProvider, defaults: Config): P
     io,
     io.t("init.modelQuestion"),
     labels,
-    proposedModelIndex(ordered, defaults, provider, manualIndex),
+    proposedModelIndex(ordered, savedModel, manualIndex),
   );
-  if (index === manualIndex) {
-    return await askModelText(io, currentModel);
-  }
-  return ordered[index]?.id ?? currentModel;
+  const chosen = ordered[index];
+  return chosen ? chosen.id : await askModelText(io, savedModel ?? "");
 }
 
 /**
- * The entry Enter keeps in the model list.
- *
- * The saved model when it was saved for this provider — through the manual
- * entry for an identifier typed by hand — and the recommended one otherwise:
- * the model of another provider means nothing here.
+ * The entry Enter keeps in the model list: the saved model — through the
+ * manual entry for an identifier typed by hand — or else the recommended one.
  */
 function proposedModelIndex(
   ordered: readonly { id: string }[],
-  defaults: Config,
-  provider: InitProvider,
+  savedModel: string | undefined,
   manualIndex: number,
 ): number {
-  if (defaults.defaultProvider !== provider) {
+  if (savedModel === undefined) {
     return 0;
   }
-  const savedIndex = ordered.findIndex((preset) => preset.id === defaults.defaultModel);
+  const savedIndex = ordered.findIndex((preset) => preset.id === savedModel);
   return savedIndex >= 0 ? savedIndex : manualIndex;
 }
 
