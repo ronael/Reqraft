@@ -42,19 +42,23 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     this.baseUrl = withoutTrailingSlashes(options.baseUrl);
   }
 
-  async generate(request: ProviderRequest): Promise<ProviderResponse> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...this.options.customHeaders,
-    };
+  /**
+   * The headers every request to the endpoint carries: the custom ones, then
+   * the configured key, which wins over a stale Authorization header.
+   */
+  private authHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { ...this.options.customHeaders };
     if (this.options.apiKey) {
       headers.Authorization = `Bearer ${this.options.apiKey}`;
     }
+    return headers;
+  }
 
+  async generate(request: ProviderRequest): Promise<ProviderResponse> {
     const response = await providerFetch(this.name, `${this.baseUrl}/chat/completions`, {
       method: "POST",
       signal: request.signal,
-      headers,
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
       body: JSON.stringify({
         model: request.model,
         messages: [
@@ -104,7 +108,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
     const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
       signal,
-      headers: this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : undefined,
+      headers: this.authHeaders(),
     });
     const text = await response.text();
     if (!response.ok) {

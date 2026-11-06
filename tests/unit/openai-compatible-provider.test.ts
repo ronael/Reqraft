@@ -373,10 +373,19 @@ describe("OpenAI-compatible model listing", () => {
     });
   });
 
-  // Bug, left unfixed: listModels sends only the Authorization header, so a
-  // gateway that authenticates through customHeaders rejects the listing
-  // while completions to the same gateway succeed.
-  it.todo("sends the custom headers when listing models, as completions do");
+  it("sends the custom headers when listing models, as completions do", async () => {
+    fetchMock.mockResolvedValue(jsonResponse({ object: "list", data: [] }));
+
+    await localServer({
+      apiKey: "current-test-key",
+      customHeaders: { "api-key": "azure-test-key", Authorization: "Bearer stale-test-key" },
+    }).listModels();
+
+    expect(sentRequest().headers).toEqual({
+      "api-key": "azure-test-key",
+      authorization: "Bearer current-test-key",
+    });
+  });
 });
 
 describe("OpenAI-compatible configuration check", () => {
