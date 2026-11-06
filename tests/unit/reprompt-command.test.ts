@@ -339,12 +339,29 @@ describe("rp <text>: secrets", () => {
     expect(stderr).toEqual([]);
   });
 
-  // Not testable yet: redactSecrets (src/utils/redaction.ts:7-15) replaces
-  // overlapping matches with offsets taken before the first replacement. An
-  // Anthropic key is also matched by the "AWS secret key" pattern, so
-  // "Use sk-ant-<40 chars> in the deploy script and keep the rest" is sent as
-  // "Use [REDACTED] the rest": 30 characters after the key are lost.
-  it.todo("keeps the words that follow an Anthropic or OpenAI key when --redact-secrets masks it");
+  it("masks each of several secrets and keeps the text between them", async () => {
+    const { stdout } = await run({
+      text: `Le jeton ${githubLikeValue} et API_KEY=abc123xyz ne marchent plus`,
+      redactSecrets: true,
+    });
+
+    expect(stdout).toEqual(["[mock] Le jeton [REDACTED] et [REDACTED] ne marchent plus"]);
+  });
+
+  // An Anthropic or OpenAI key also matches the 40-character "AWS secret key"
+  // pattern, so the two matches overlap.
+  it.each([
+    { kind: "Anthropic", key: `sk-ant-${"x".repeat(40)}` },
+    { kind: "OpenAI", key: `sk-${"x".repeat(48)}` },
+  ])("keeps the words that follow an $kind key when --redact-secrets masks it", async ({ key }) => {
+    const { code, stdout } = await run({
+      text: `Use ${key} in the deploy script and keep the rest`,
+      redactSecrets: true,
+    });
+
+    expect(code).toBe(EXIT_CODES.SUCCESS);
+    expect(stdout).toEqual(["[mock] Use [REDACTED] in the deploy script and keep the rest"]);
+  });
 
   it("speaks the UI locale it is given", async () => {
     const { code, stderr } = await run({ text: request }, createTranslator("en"));
