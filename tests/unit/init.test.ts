@@ -79,6 +79,40 @@ describe("init assistant helpers", () => {
     expect(JSON.stringify(config)).not.toContain("secret-value");
   });
 
+  it("puts the endpoint it configures first, where the registry looks for it", () => {
+    const local = {
+      type: "openai-compatible" as const,
+      name: "Ollama",
+      baseUrl: "http://localhost:11434/v1",
+    };
+    const choices = {
+      provider: "openai-compatible" as const,
+      model: "vendor/model-x",
+      profile: "auto",
+      level: "standard" as const,
+      copyAfterGeneration: false,
+      stream: true,
+      timeoutMs: 30000,
+    };
+    const existing = ConfigSchema.parse({
+      defaultProvider: "openai-compatible",
+      providers: { local, gateway: { ...local, name: "Old gateway" } },
+    });
+
+    const config = createInitConfig({
+      ...choices,
+      compatibleProvider: { id: "gateway", baseUrl: "https://gateway.example.test/v1" },
+      existing,
+    });
+
+    expect(Object.keys(config.providers ?? {})).toEqual(["gateway", "local"]);
+    expect(config.providers?.gateway).toEqual({
+      type: "openai-compatible",
+      baseUrl: "https://gateway.example.test/v1",
+    });
+    expect(config.providers?.local).toEqual(local);
+  });
+
   it("summarizes key state without exposing values", () => {
     const summary = buildSummary(
       createInitConfig({

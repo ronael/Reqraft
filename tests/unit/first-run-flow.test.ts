@@ -5,10 +5,11 @@ import path from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runFirstRunSetup } from "@/apps/cli/commands/first-run.js";
-import { configPath } from "@/config/loader.js";
+import { configPath, loadUserConfig } from "@/config/loader.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { getFallbackModelForProvider } from "@/models/presets.js";
+import { createProvider } from "@/providers/registry.js";
 
 vi.mock("node:child_process", () => ({
   // `rp init` looks a key missing from the environment up in the system
@@ -669,10 +670,56 @@ describe("rp init, existing configuration", () => {
     expect(occurrences(session.transcript, '"defaultModel": "claude-sonnet-5"')).toBe(1);
   });
 
-  // Bugs found while writing these tests, left unfixed:
-  // the summary and the connection test read the first saved entry
-  // (first-run.ts:202 and :719, providers/registry.ts:94).
-  it.todo("summarises and tests the compatible provider just added, not the first one saved");
+  it("summarises and tests the compatible provider just added, not the first one saved", async () => {
+    await writeExistingConfig(
+      JSON.stringify({
+        defaultProvider: "openai-compatible",
+        defaultModel: "llama3.2",
+        providers: {
+          local: {
+            type: "openai-compatible",
+            name: "Ollama",
+            baseUrl: "http://localhost:11434/v1",
+          },
+        },
+      }),
+    );
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(chatCompletion("OK")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const session = await runSetup([
+      ENTER, // modify
+      pick("OpenAI Compatible"),
+      "gateway",
+      "Gateway",
+      "https://gateway.example.test/v1",
+      ENTER, // no key variable
+      ENTER, // no custom headers
+      "vendor/model-x",
+      ...KEEP_PREFERENCES,
+      SAVE,
+      YES, // connection test
+    ]);
+
+    expect(session.transcript).toMatch(/Base URL\s+https:\/\/gateway\.example\.test\/v1\n/u);
+    expect(session.transcript).toMatch(/Nom provider\s+Gateway\n/u);
+    // A run builds its provider from the saved file: it calls the same endpoint.
+    const saved = await loadUserConfig();
+    await createProvider(saved.defaultProvider, {}, saved).generate({
+      systemPrompt: "Rewrite the request.",
+      userPrompt: "fix login bug",
+      model: saved.defaultModel,
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+    });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "https://gateway.example.test/v1/chat/completions",
+      "https://gateway.example.test/v1/chat/completions",
+    ]);
+    // The endpoint saved earlier stays declared.
+    expect(saved.providers?.local).toMatchObject({ baseUrl: "http://localhost:11434/v1" });
+  });
 });
 
 describe("rp init, Enter while modifying", () => {
