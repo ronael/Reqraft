@@ -2,18 +2,26 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent, type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
+import { registerIpcHandlers, type IpcEventLike } from "@/apps/desktop/main/ipc.js";
 import { OnboardingApp } from "@/apps/desktop/renderer/onboarding/OnboardingApp.js";
 import { WELCOME_TOUR_SLIDES } from "@/apps/desktop/renderer/onboarding/WelcomeTour.js";
 import { TranslationProvider } from "@/apps/desktop/renderer/shared/i18n.js";
+import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
+  CredentialSaveRequest,
+  CredentialSaveResponse,
   OnboardingCompleteRequest,
   OnboardingProviderOption,
   OnboardingStateResponse,
   ProfileCatalogEntry,
   ReqraftBridge,
 } from "@/apps/desktop/shared/ipc-contract.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
 import { ConfigSchema } from "@/config/schema.js";
 import { createDesktopTranslator, DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
+import { createTranslator } from "@/i18n/translate.js";
+import { ProviderError } from "@/providers/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 /**
  * L'onboarding monté pour de vrai, avec le seul contact qu'il a avec le
@@ -28,6 +36,8 @@ import { createDesktopTranslator, DESKTOP_MESSAGES } from "@/i18n/desktop/index.
 
 const t = createDesktopTranslator("en");
 const fr = createDesktopTranslator("fr");
+/** Le catalogue partagé, où le processus principal prend les erreurs des fournisseurs. */
+const tPartage = createTranslator("en");
 
 const CLE = "sk-ant-not-a-real-key-1234567890";
 const LIBELLE_CLE = t("onboarding.apiKey", { provider: "Anthropic" });
@@ -168,6 +178,49 @@ function jamais(): Promise<never> {
  */
 function rejetIpc(canal: string, phrase: string): Error {
   return new Error(`Error invoking remote method '${canal}': Error: ${phrase}`);
+}
+
+/**
+ * `credential:save` tel que le vrai processus principal y répond quand la
+ * vérification de la clé échoue sur `refus`.
+ *
+ * Le handler est celui de `main/ipc.ts` ; seuls le trousseau et le réseau sont
+ * remplacés, par l'erreur que la vérification lève. Son rejet revient comme
+ * Electron le rend : `toString()` de l'erreur, précédé du cadre IPC.
+ */
+async function enregistrerCleRefusee(
+  requete: CredentialSaveRequest,
+  refus: Error,
+): Promise<CredentialSaveResponse> {
+  const handlers = new Map<string, (event: IpcEventLike, payload: unknown) => unknown>();
+  registerIpcHandlers({
+    ipcMain: {
+      handle: (canal, handler) => {
+        handlers.set(canal, handler);
+      },
+    },
+    clipboard: { writeText: () => undefined },
+    env: {},
+    secureCredentialStorageAvailable: true,
+    loadConfig: () => Promise.resolve(DEFAULT_CONFIG),
+    saveConfig: () => Promise.resolve(),
+    hydrateCredentials: () => Promise.resolve(),
+    configFileExists: () => false,
+    storeCredential: () => Promise.reject(refus),
+  });
+  const handler = handlers.get(IPC_CHANNELS.credentialSave);
+  if (handler === undefined) throw new Error("credential:save n'est pas enregistré");
+  try {
+    return (await handler(
+      { sender: { send: () => undefined, isDestroyed: () => false } },
+      requete,
+    )) as CredentialSaveResponse;
+  } catch (erreur) {
+    throw new Error(
+      `Error invoking remote method '${IPC_CHANNELS.credentialSave}': ${String(erreur)}`,
+      { cause: erreur },
+    );
+  }
 }
 
 function installerPont(options: OptionsPont): FauxPont {
@@ -448,13 +501,47 @@ describe("la clé API", () => {
     expect(pont.saveCredential).toHaveBeenCalledTimes(2);
   });
 
-  // Bogue connu, laissé en attente. `credential:save` laisse passer la
-  // `ProviderError` de la vérification, qu'Electron sérialise par
-  // `toString()` : la fenêtre reçoit « …: ProviderError: Provider error 401:
-  // {corps brut} » ou « …: ProviderError: provider.request_failed », et
-  // `messageOf` (OnboardingApp.tsx) ne retire qu'un « Error: » littéral.
-  it.todo(
-    "explique en clair une clé refusée ou un fournisseur injoignable, sans « ProviderError: » ni réponse brute",
+  // Electron sérialise un rejet par `toString()` : une `ProviderError` laissée
+  // telle quelle arriverait en « ProviderError: Provider error 401: {corps
+  // brut} » ou « ProviderError: provider.request_failed ».
+  it.each([
+    {
+      cas: "une clé refusée",
+      refus: new ProviderError(
+        'Provider error 401: {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}',
+        EXIT_CODES.AUTHENTICATION,
+        undefined,
+        { httpStatus: 401, provider: "Anthropic" },
+      ),
+      phrase: tPartage("error.apiKeyRejected.message", { provider: "Anthropic" }),
+    },
+    {
+      cas: "un fournisseur injoignable",
+      refus: new ProviderError(
+        "provider.request_failed",
+        EXIT_CODES.PROVIDER_NETWORK,
+        new TypeError("fetch failed"),
+        { provider: "Anthropic" },
+      ),
+      phrase: tPartage("error.provider.network", { provider: "Anthropic" }),
+    },
+  ])(
+    "explique en clair $cas, sans « ProviderError: » ni réponse brute",
+    async ({ refus, phrase }) => {
+      const { pont, user } = await ouvrirFormulaire();
+      pont.saveCredential.mockImplementationOnce((requete) =>
+        enregistrerCleRefusee(requete, refus),
+      );
+
+      await user.type(champCle(), CLE);
+      await user.click(bouton(t("onboarding.verifyAndSave")));
+
+      await waitFor(() => {
+        expect(texteDe("alert")).toBe(phrase);
+      });
+      expect(document.body.textContent).not.toContain("ProviderError");
+      expect(champCle().value).toBe(CLE);
+    },
   );
 });
 
