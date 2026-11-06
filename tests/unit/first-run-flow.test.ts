@@ -663,9 +663,15 @@ describe("rp init, existing configuration", () => {
     expect(await readFile(configPath(), "utf8")).toBe(original);
   });
 
+  it("prints the existing configuration once when asked to show it", async () => {
+    await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
+
+    const session = await runSetup([pick("Afficher la configuration")]);
+
+    expect(occurrences(session.transcript, '"defaultModel": "claude-sonnet-5"')).toBe(1);
+  });
+
   // Bugs found while writing these tests, left unfixed:
-  // the JSON is written twice (first-run.ts:486 and :306);
-  it.todo("prints the existing configuration once when asked to show it");
   // Math.max(index, 1) turns "minimal" (index 0) into "standard" (first-run.ts:581);
   it.todo("keeps a minimal level when Enter is pressed while modifying");
   // the headers question always defaults to "" (first-run.ts:534);

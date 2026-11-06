@@ -297,7 +297,7 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
     return await confirmOverwrite(io, io.t("init.overwriteDefaults"));
   }
 
-  const action = await askExistingConfigAction(io, existingConfig);
+  const action = await askExistingConfigAction(io);
   if (action === "cancel") {
     writeCancellation(io);
     return null;
@@ -473,7 +473,6 @@ function writeIntro(io: InitIo): void {
 
 async function askExistingConfigAction(
   io: InitIo,
-  existingConfig: Config,
 ): Promise<"modify" | "reset" | "show" | "cancel"> {
   io.write(`${formatInitSection(io.t("init.existingTitle"), io.visual)}\n`);
   io.write(`${io.t("init.existing")}\n\n`);
@@ -484,10 +483,7 @@ async function askExistingConfigAction(
     io.t("init.cancel"),
   ]);
   if (choice === 1) return "reset";
-  if (choice === 2) {
-    io.write(`${JSON.stringify(existingConfig, null, 2)}\n`);
-    return "show";
-  }
+  if (choice === 2) return "show";
   if (choice === 3) return "cancel";
   return "modify";
 }
