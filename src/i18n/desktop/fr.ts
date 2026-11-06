@@ -462,6 +462,7 @@ export const DESKTOP_FR = {
   "onboarding.tour.next": "Continuer",
   "onboarding.tour.configure": "Configurer Reqraft",
   "onboarding.tour.replay": "Rejouer la démonstration",
+  "onboarding.tour.saveFailed": "La présentation n'a pas pu être marquée comme vue : {reason}",
   "onboarding.tour.mail.title": "Des e-mails clairs sans quitter Mail",
   "onboarding.tour.mail.body":
     "Sélectionnez un brouillon, lancez Reqraft et remplacez-le par une version prête à envoyer.",
