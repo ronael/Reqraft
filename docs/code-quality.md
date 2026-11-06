@@ -13,8 +13,8 @@ SonarQube Community Build, which brings back what went with it: coverage gating
 on new code, cross-file duplication detection and historical trends. The server
 runs the same Sonar rules, plus a few the local linter cannot load: the
 accessibility rules SonarJS builds on `eslint-plugin-jsx-a11y`, and the HTML
-analyzer. Its settings live outside the repository; the exceptions they declare
-are listed at the end of this page.
+analyzer. Its settings live outside the repository; what they change from the
+defaults is listed at the end of this page.
 
 ## Local quality suite
 
@@ -24,6 +24,12 @@ pnpm quality
 
 Runs type checking, the Prettier check, ESLint, the production build, then all
 tests with V8 coverage. Coverage is written to `coverage/lcov.info`.
+
+Coverage leaves out what Vitest cannot run: the CLI entry point, the generated
+version file, the Electron main entry point and the preload bridge, and the e2e
+probes the main process runs only when `tests/e2e/desktop.test.ts` starts it.
+That suite drives the Electron code in the real app, where no coverage is
+collected. `vitest.config.ts` lists these files.
 
 The build runs before the tests on purpose: the end-to-end suite spawns
 `dist/cli.js`, so a stale or missing bundle would fail it.
@@ -76,9 +82,20 @@ without a reason:
 
 Any new suppression belongs in this list, with its reasoning.
 
-## Exceptions on the SonarQube server
+## SonarQube server settings
 
-The server analysis ignores these rules, on these files only:
+The server reads two coverage reports: Vitest's, and Bun's for `tests/tui`,
+which only runs under Bun. The two runners count lines differently, so Bun's
+hits are counted on the lines Vitest counts. Merged as they were, Bun's extra
+lines showed the core about 21 % covered where Vitest measures 94 %.
+
+Duplication detection skips the translation catalogues (`src/i18n/*/en.ts`,
+`src/i18n/*/fr.ts`) and the benchmark corpora (`benchmark/cases/dataset.ts`,
+`benchmark/fidelity-cases.ts`). Every language repeats the same keys and every
+benchmark case the same record shape: the repetition is the data. These files
+held 2,003 of the 2,344 duplicated lines the first analysis reported.
+
+The analysis ignores these rules, on these files only:
 
 - `typescript:S9379` (autoFocus) in `src/apps/desktop/renderer/capsule/App.tsx`
   and `src/apps/desktop/renderer/popover/PopoverApp.tsx`. These windows open on
