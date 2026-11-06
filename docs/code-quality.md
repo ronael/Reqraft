@@ -1,15 +1,20 @@
 # Code quality
 
-Reqraft enforces quality locally, with no external service.
+Reqraft enforces quality locally: every check on this page runs without an
+external service.
 
 `eslint-plugin-sonarjs` runs the Sonar rule set inside ESLint, so a
 maintainability or reliability issue fails on the developer's machine during
 `pnpm lint`. The same rules light up in the editor through SonarLint.
 
 The hosted SonarQube analysis was removed: its cost was not justified for a
-project this size, and the rule findings it added over the local linter were
-marginal. What was lost with it — coverage gating on new code, cross-file
-duplication detection, and historical trends — is not currently replaced.
+project this size. The maintainer now analyses `main` with a self-hosted
+SonarQube Community Build, which brings back what went with it: coverage gating
+on new code, cross-file duplication detection and historical trends. The server
+runs the same Sonar rules, plus a few the local linter cannot load: the
+accessibility rules SonarJS builds on `eslint-plugin-jsx-a11y`, and the HTML
+analyzer. Its settings live outside the repository; the exceptions they declare
+are listed at the end of this page.
 
 ## Local quality suite
 
@@ -70,3 +75,18 @@ without a reason:
   resolved from the same `PATH`. The command name is a fixed literal.
 
 Any new suppression belongs in this list, with its reasoning.
+
+## Exceptions on the SonarQube server
+
+The server analysis ignores these rules, on these files only:
+
+- `typescript:S9379` (autoFocus) in `src/apps/desktop/renderer/capsule/App.tsx`
+  and `src/apps/desktop/renderer/popover/PopoverApp.tsx`. These windows open on
+  the user's global shortcut to take text at once: focusing their only field is
+  their purpose. Focusing it through a ref would hide the same behaviour from
+  the rule.
+- `typescript:S6853` (label text) in
+  `src/apps/desktop/renderer/onboarding/OnboardingApp.tsx`. The labels carry
+  visible text three levels down (label, `.onboarding-label`,
+  `.onboarding-label-title`), past the two levels the rule inspects. The inputs
+  take their accessible names from these labels.
