@@ -669,6 +669,13 @@ describe("rp init, existing configuration", () => {
     expect(occurrences(session.transcript, '"defaultModel": "claude-sonnet-5"')).toBe(1);
   });
 
+  // Bugs found while writing these tests, left unfixed:
+  // the summary and the connection test read the first saved entry
+  // (first-run.ts:202 and :719, providers/registry.ts:94).
+  it.todo("summarises and tests the compatible provider just added, not the first one saved");
+});
+
+describe("rp init, Enter while modifying", () => {
   it.each([
     { kind: "a model of the list", model: "claude-sonnet-5", typed: [] },
     // Typed by hand: the manual entry is proposed, then the identifier itself.
@@ -712,12 +719,75 @@ describe("rp init, existing configuration", () => {
     expect(await readSavedConfig()).toEqual({ ...EXISTING_CONFIG, defaultLevel: "minimal" });
   });
 
-  // Bugs found while writing these tests, left unfixed:
-  // the headers question always defaults to "" (first-run.ts:534);
-  it.todo("keeps the custom headers of a saved provider when Enter is pressed while modifying");
-  // the summary and the connection test read the first saved entry
-  // (first-run.ts:202 and :719, providers/registry.ts:94).
-  it.todo("summarises and tests the compatible provider just added, not the first one saved");
+  it("keeps the custom headers of a saved provider when Enter is pressed while modifying", async () => {
+    const gateway = {
+      type: "openai-compatible",
+      name: "Gateway",
+      baseUrl: "https://gateway.example.test/v1",
+      customHeaders: { "X-Team": "core", Authorization: "Bearer gateway-test-token" },
+    };
+    await writeExistingConfig(
+      JSON.stringify({
+        defaultProvider: "openai-compatible",
+        defaultModel: "vendor/model-x",
+        providers: { gateway },
+      }),
+    );
+
+    const session = await runSetup([
+      ENTER, // modify
+      ENTER, // provider, as saved
+      ENTER, // internal id, as saved
+      ENTER, // name, as saved
+      ENTER, // base URL, as saved
+      ENTER, // no key variable
+      ENTER, // custom headers, as saved
+      ENTER, // model, as saved
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect((await readSavedConfig()).providers).toEqual({ gateway });
+    // A header may carry a token: the question names the saved headers only.
+    expect(session.prompts).toContain(
+      "Headers personnalisés JSON (optionnel) (X-Team, Authorization) : ",
+    );
+    expect(session.transcript).not.toContain("gateway-test-token");
+  });
+
+  it("removes the saved custom headers when an empty object is typed", async () => {
+    await writeExistingConfig(
+      JSON.stringify({
+        defaultProvider: "openai-compatible",
+        defaultModel: "llama3.2",
+        providers: {
+          local: {
+            type: "openai-compatible",
+            baseUrl: "http://localhost:11434/v1",
+            customHeaders: { "X-Team": "core" },
+          },
+        },
+      }),
+    );
+
+    await runSetup([
+      ...Array<Answer>(6).fill(ENTER), // modify, provider, id, name, base URL, key variable
+      "{}",
+      ENTER, // model, as saved
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect((await readSavedConfig()).providers).toEqual({
+      local: {
+        type: "openai-compatible",
+        name: "OpenAI Compatible",
+        baseUrl: "http://localhost:11434/v1",
+      },
+    });
+  });
 });
 
 describe("rp init, invalid answers", () => {

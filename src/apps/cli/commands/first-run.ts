@@ -529,7 +529,7 @@ async function askCompatibleProvider(
     existing?.baseUrl ?? (local ? "http://localhost:11434/v1" : "https://example.com/v1"),
   );
   const apiKeyEnv = await askText(io, io.t("init.apiKeyEnv"), existing?.apiKeyEnv ?? "");
-  const customHeaders = await askCustomHeaders(io);
+  const customHeaders = await askCustomHeaders(io, existing?.customHeaders);
   return {
     id,
     name: name ? name : undefined,
@@ -791,16 +791,27 @@ function credentialProviderFromEnvName(envName: string): CredentialProvider | un
   return match?.id;
 }
 
-/** Asks for the custom headers until the answer is empty or a JSON object. */
-async function askCustomHeaders(io: InitIo): Promise<Record<string, string> | undefined> {
+/**
+ * Asks for the custom headers until the answer is empty or a JSON object.
+ *
+ * Enter keeps the saved headers and an empty object removes them. The question
+ * names the saved headers without their values: one may carry a token.
+ */
+async function askCustomHeaders(
+  io: InitIo,
+  saved: Record<string, string> | undefined,
+): Promise<Record<string, string> | undefined> {
+  const savedNames = Object.keys(saved ?? {}).join(", ");
   for (;;) {
-    const answer = await askText(io, io.t("init.customHeaders"), "");
+    const answer = await io.question(
+      formatInitPrompt(io.t("init.customHeaders"), savedNames, io.visual),
+    );
     if (!answer) {
-      return undefined;
+      return saved;
     }
     const headers = parseHeaders(answer);
     if (headers) {
-      return headers;
+      return Object.keys(headers).length > 0 ? headers : undefined;
     }
     io.write(`${formatInitStatus(io.t("init.headersInvalid"), "error", io.visual)}\n`);
   }
