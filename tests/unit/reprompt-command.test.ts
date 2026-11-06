@@ -818,9 +818,15 @@ describe("rp <text>: provider failures", () => {
     expect(stderr).toEqual(["Erreur : Une erreur inattendue est survenue."]);
   });
 
-  // Not testable yet: reportFatalError receives `options.provider ?? "provider"`
-  // (src/apps/cli/commands/reprompt.ts:138). When the provider comes from the
-  // configuration, a rejected key reads "La clé API provider a été refusée.
-  // Lance « rp auth login provider »…", a command that does not exist.
-  it.todo("names the configured provider when a key is rejected and --provider was not given");
+  it("names the configured provider when a key is rejected and --provider was not given", async () => {
+    await writeUserConfig(JSON.stringify({ defaultProvider: "mock" }));
+    mockProviderFailure(httpFailure(401, '{"error":"unknown x-api-key"}'));
+
+    const { code, stderr } = await run({ text: "corrige le titre", provider: undefined });
+
+    expect(code).toBe(EXIT_CODES.AUTHENTICATION);
+    expect(stderr).toEqual([
+      "Erreur : La clé API mock a été refusée. Lance « rp auth login mock » ou vérifie la variable d’environnement correspondante.",
+    ]);
+  });
 });

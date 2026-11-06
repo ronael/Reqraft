@@ -132,8 +132,12 @@ export async function runReprompt(
   output: RepromptOutput = console,
   t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<number> {
+  // Named in the error messages: --provider when given, the configured one
+  // otherwise, so the advice names a command that exists.
+  let providerId = options.provider;
   try {
     const config = await loadConfig();
+    providerId ??= config.defaultProvider;
     const rawInput = await resolveInput(options);
     if (!rawInput) {
       return reportRefusal(
@@ -166,13 +170,7 @@ export async function runReprompt(
       output.log(serializeJsonError(normalized));
       return normalized.exitCode;
     }
-    return reportFatalError(
-      error,
-      options.verbose ?? false,
-      output,
-      options.provider ?? "provider",
-      t,
-    );
+    return reportFatalError(error, options.verbose ?? false, output, providerId ?? "provider", t);
   }
 }
 
