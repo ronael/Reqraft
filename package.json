@@ -46,6 +46,7 @@
     "pack:dry-run": "tsx scripts/pack-dry-run.ts",
     "version:check": "tsx scripts/version-sync.ts",
     "version:sync": "tsx scripts/version-sync.ts --write",
+    "site:sync": "tsx scripts/version-sync.ts --site",
     "release:check": "pnpm quality && pnpm version:check && pnpm pack:dry-run",
     "release": "tsx scripts/release.ts",
     "publish:public": "pnpm publish --access public",
