@@ -10,7 +10,7 @@ import {
 import { EmptyProviderResponseError } from "@/core/validation.js";
 import { createTranslator } from "@/i18n/translate.js";
 import { ProviderError, raiseProviderError } from "@/providers/errors.js";
-import { describeUiError, formatUiError, type UiError } from "@/shared/errors.js";
+import { describeUiError, formatUiError, providerNamedBy, type UiError } from "@/shared/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 const en = createTranslator("en");
@@ -404,5 +404,23 @@ describe("single-line errors", () => {
     expect(formatUiError(new RequestTimeoutError(30_000), "openai", en)).toBe(
       "The provider did not respond within 30000 ms.",
     );
+  });
+});
+
+describe("errors that reach the top of the CLI", () => {
+  // `rp auth login openai` with a rejected key ends there, with no run around
+  // it to say which provider was called.
+  it("name the provider the failure came from", () => {
+    const rejected = httpFailure(401);
+
+    expect(providerNamedBy(rejected)).toBe("openai");
+    expect(formatUiError(rejected, providerNamedBy(rejected) ?? "provider", fr)).toBe(
+      "La clé API openai a été refusée. Lance « rp auth login openai » ou vérifie la variable d’environnement correspondante.",
+    );
+  });
+
+  it("name no provider for a failure that carries none", () => {
+    expect(providerNamedBy(new RequestTimeoutError(30_000))).toBeUndefined();
+    expect(providerNamedBy(new Error("socket hang up"))).toBeUndefined();
   });
 });
