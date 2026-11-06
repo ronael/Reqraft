@@ -287,15 +287,17 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
     return DEFAULT_CONFIG;
   }
 
-  // Les valeurs de départ de l'assistant sont celles de la personne : elles
-  // finissent enregistrées, et un réglage venu du projet courant deviendrait
-  // permanent en passant par là.
-  const existingConfig = await loadUserConfig();
-
+  // A reset starts from the defaults and never reads the file it replaces:
+  // reading it first would refuse the very file a reset exists to recover.
   if (reset) {
     writeIntro(io);
     return await confirmOverwrite(io, io.t("init.overwriteDefaults"));
   }
+
+  // Les valeurs de départ de l'assistant sont celles de la personne : elles
+  // finissent enregistrées, et un réglage venu du projet courant deviendrait
+  // permanent en passant par là.
+  const existingConfig = await loadUserConfig();
 
   const action = await askExistingConfigAction(io);
   if (action === "cancel") {

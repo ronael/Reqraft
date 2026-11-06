@@ -968,7 +968,17 @@ describe("rp init, unusable environment", () => {
     expect(await readFile(configPath(), "utf8")).toBe("{ not json");
   });
 
-  // Bug: the existing file is parsed before the reset branch, so the reset
-  // meant to recover from it fails the same way (first-run.ts:293).
-  it.todo("lets rp init --reset replace an unreadable configuration");
+  it("lets rp init --reset replace an unreadable configuration", async () => {
+    await writeExistingConfig("{ not json");
+
+    const session = await runSetup([YES, ENTER, ENTER, ...KEEP_PREFERENCES, SAVE, NO], {
+      env: ANTHROPIC_ENV,
+      reset: true,
+    });
+
+    expect(session.prompts[0]).toBe(
+      "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ? (o/N) : ",
+    );
+    expect(await readSavedConfig()).toEqual(DEFAULT_CHOICES);
+  });
 });
