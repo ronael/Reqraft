@@ -22,13 +22,23 @@ const BooleanConfigSchema = z.preprocess((value) => {
   return value;
 }, z.boolean());
 
+/**
+ * Any integer, whatever its size.
+ *
+ * Zod 4's `.int()` also refuses integers beyond `Number.MAX_SAFE_INTEGER`,
+ * which zod 3 accepted. `--timeout`, `--max-output-tokens` and the desktop
+ * fields accept any `Number.isInteger` value, and a configuration file that
+ * loaded before the upgrade must still load.
+ */
+const IntegerSchema = z.number().refine((value) => Number.isInteger(value));
+
 export const OpenAICompatibleProviderConfigSchema = z
   .object({
     type: z.literal(OPENAI_COMPATIBLE_PROVIDER_ID),
     name: z.string().optional(),
     baseUrl: z.string().min(1),
     apiKeyEnv: z.string().min(1).optional(),
-    customHeaders: z.record(z.string()).optional(),
+    customHeaders: z.record(z.string(), z.string()).optional(),
   })
   .strict();
 
@@ -53,15 +63,15 @@ export const ConfigSchema = z
     defaultLevel: RepromptLevelSchema.default(DEFAULT_REPROMPT_LEVEL),
     copyAfterGeneration: z.boolean().default(false),
     stream: z.boolean().default(true),
-    timeoutMs: z.number().int().positive().default(REPROMPT_POLICY.runtime.defaultTimeoutMs),
-    maxOutputTokens: z.number().int().positive().optional(),
+    timeoutMs: IntegerSchema.positive().default(REPROMPT_POLICY.runtime.defaultTimeoutMs),
+    maxOutputTokens: IntegerSchema.positive().optional(),
     showChanges: z.boolean().default(false),
     showStats: BooleanConfigSchema.default(false),
     fidelityMode: z.enum(FIDELITY_MODES).default(DEFAULT_FIDELITY_MODE),
     telemetry: z.boolean().default(false),
     uiLocale: z.enum(["auto", ...UI_LOCALES]).default("auto"),
     outputLanguage: z.string().trim().min(1).default("auto"),
-    providers: z.record(OpenAICompatibleProviderConfigSchema).optional(),
+    providers: z.record(z.string(), OpenAICompatibleProviderConfigSchema).optional(),
     /**
      * Desktop global shortcuts, when the user set them.
      *
@@ -71,13 +81,33 @@ export const ConfigSchema = z
      */
     desktopShortcuts: DesktopShortcutsConfigSchema.optional(),
     /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */
-    desktopWelcomeTourVersion: z.number().int().nonnegative().optional(),
+    desktopWelcomeTourVersion: IntegerSchema.nonnegative().optional(),
     /** Dernière version Desktop déjà annoncée par une notification native. */
     desktopNotifiedUpdateVersion: z.string().optional(),
     /** Fournisseurs pour lesquels le Desktop préfère explicitement le trousseau. */
     desktopKeychainProviders: z.array(z.enum(CREDENTIAL_PROVIDER_IDS)).optional(),
   })
-  .passthrough();
+  .loose();
+
+type ConfigShape = typeof ConfigSchema.shape;
+type WithoutDefault<Field> = Field extends z.ZodDefault<infer Inner> ? Inner : Field;
+
+/**
+ * Every field of `ConfigSchema`, without its default.
+ *
+ * The base of the schemas that read part of a configuration: a project file, a
+ * desktop settings patch. Zod 4 applies a default even under `.optional()`, so
+ * `ConfigSchema.pick(…).partial()` would fill every key the input leaves out
+ * with its default — a patch naming one field would reset all the others.
+ */
+export const ConfigFieldsSchema = z.object(
+  Object.fromEntries(
+    Object.entries(ConfigSchema.shape).map(([key, field]) => [
+      key,
+      field instanceof z.ZodDefault ? field.unwrap() : field,
+    ]),
+  ) as { [Key in keyof ConfigShape]: WithoutDefault<ConfigShape[Key]> },
+);
 
 export type Config = z.infer<typeof ConfigSchema>;
 export type ConfigKey = (typeof CONFIG_KEYS)[number];
