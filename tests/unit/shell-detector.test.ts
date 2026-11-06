@@ -36,6 +36,9 @@ describe("detectShell", () => {
     { shellPath: "/bin/zsh", expected: "zsh" },
     { shellPath: "/usr/local/bin/bash", expected: "bash" },
     { shellPath: "/opt/homebrew/bin/fish", expected: "fish" },
+    // PowerShell as the login shell, outside Windows.
+    { shellPath: "/usr/local/bin/pwsh", expected: "powershell" },
+    { shellPath: "/usr/bin/powershell", expected: "powershell" },
   ] as const)("recognises $expected from SHELL=$shellPath", ({ shellPath, expected }) => {
     useProcess("linux", { ...NO_SHELL_HINT, SHELL: shellPath });
 

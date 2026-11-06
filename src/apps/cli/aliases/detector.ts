@@ -10,6 +10,8 @@ export function detectShell(): ShellType {
   if (lower.includes("zsh")) return "zsh";
   if (lower.includes("bash")) return "bash";
   if (lower.includes("fish")) return "fish";
+  // PowerShell as the login shell, which SHELL names outside Windows too.
+  if (lower.includes("pwsh") || lower.includes("powershell")) return "powershell";
 
   if (process.platform === "win32") {
     const pwsh = process.env.PSModulePath;
