@@ -398,9 +398,11 @@ describeElectron("desktop Electron smoke", () => {
         "Command+Control+R",
         "Command+Control+N",
         "Command+Control+O",
+        "Command+Control+Shift+R",
         "Command+Control+J",
         "Command+Control+K",
         "Command+Control+T",
+        "Command+Control+Shift+J",
       ]);
       expect(payload.shortcuts.conflicts).toEqual([]);
       expect(payload.windowCount).toBeGreaterThanOrEqual(2);

@@ -147,20 +147,21 @@ async function preferencesScenario(targets: E2eScenarioTargets): Promise<Prefere
   const autoLanguageAligned = (await target.webContents.executeJavaScript(
     `(() => {
       const controls = [...document.querySelectorAll(".settings-input-compact")];
-      const language = document.querySelector(".settings-row-control-language > select");
+      const language = document.querySelector(".settings-row-control-language > .design-select");
       return Math.abs(language.getBoundingClientRect().right - controls.at(-1).getBoundingClientRect().right) <= 1;
     })()`,
     true,
   )) as boolean;
-  await target.webContents.executeJavaScript(
-    `(() => {
-      const select = [...document.querySelectorAll("select")].find((node) => node.querySelector('option[value="custom"]') !== null);
-      if (select === undefined) return;
-      select.value = "custom";
-      select.dispatchEvent(new Event("change", { bubbles: true }));
-    })()`,
-    true,
-  );
+  // Depuis 0.6.4 les sélecteurs des réglages sont le composant maison, plus un
+  // `<select>` natif : le scénario cherchait encore ce dernier et échouait avant
+  // toute mesure. On ouvre donc le menu comme une personne, puis on choisit
+  // « personnalisée », deuxième option, par l'identifiant que le déclencheur
+  // annonce dans `aria-controls` — sans dépendre de la langue des libellés.
+  const trigger = `document.querySelector(".settings-row-control-language .design-select-trigger")`;
+  const customOption = `document.getElementById(${trigger}?.getAttribute("aria-controls") + "-option-1")`;
+  await target.webContents.executeJavaScript(`${trigger}?.click()`, true);
+  await waitForRenderer(target, `${customOption} !== null`, "output language options");
+  await target.webContents.executeJavaScript(`${customOption}.click()`, true);
   await waitForRenderer(
     target,
     `document.querySelector(".settings-row-control-language > .settings-input") !== null`,
