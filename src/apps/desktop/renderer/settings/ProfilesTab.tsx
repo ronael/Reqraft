@@ -222,7 +222,13 @@ export function ProfilesTab({
         problem={problem}
         error={error}
         busy={busy}
-        onChange={setForm}
+        onChange={(next) => {
+          setForm(next);
+          // A problem on screen keeps Save disabled, so it follows the form:
+          // fixing the field re-enables Save, and the next field still wrong
+          // takes its place.
+          if (problem !== undefined) setProblem(findFormProblem(next, takenIds, t));
+        }}
         onCancel={() => {
           setForm(null);
           setProblem(undefined);
