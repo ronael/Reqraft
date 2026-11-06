@@ -6,7 +6,7 @@ import sonarjs from "eslint-plugin-sonarjs";
 
 /**
  * SonarJS rules deliberately left off. Each one is justified in
- * docs/sonarqube.md; do not add an entry without adding the reasoning there.
+ * docs/code-quality.md; do not add an entry without adding the reasoning there.
  */
 const TOLERATED_SONAR_RULES = new Set([
   "sonarjs/file-header",
@@ -25,7 +25,7 @@ export default tseslint.config(
   sonarjs.configs.recommended,
   {
     // `recommended` leaves 62 SonarJS rules off. Every one of them is enabled
-    // here except the exceptions listed in docs/sonarqube.md, so a smell the
+    // here except the exceptions listed in docs/code-quality.md, so a smell the
     // preset would tolerate still fails the build.
     rules: Object.fromEntries(
       Object.entries(sonarjs.configs.recommended.rules)
@@ -37,8 +37,8 @@ export default tseslint.config(
     ),
   },
   {
-    // Fixtures legitimately repeat literals; Sonar itself scopes this rule to
-    // production code through sonar.tests in sonar-project.properties.
+    // Fixtures legitimately repeat literals; the SonarQube server scopes this
+    // rule to production code through sonar.tests in its analysis settings.
     files: ["tests/**", "benchmark/**"],
     rules: { "sonarjs/no-duplicate-string": "off" },
   },

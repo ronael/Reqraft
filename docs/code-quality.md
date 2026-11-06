@@ -1,15 +1,20 @@
 # Code quality
 
-Reqraft enforces quality locally, with no external service.
+Reqraft enforces quality locally: every check on this page runs without an
+external service.
 
 `eslint-plugin-sonarjs` runs the Sonar rule set inside ESLint, so a
 maintainability or reliability issue fails on the developer's machine during
 `pnpm lint`. The same rules light up in the editor through SonarLint.
 
 The hosted SonarQube analysis was removed: its cost was not justified for a
-project this size, and the rule findings it added over the local linter were
-marginal. What was lost with it — coverage gating on new code, cross-file
-duplication detection, and historical trends — is not currently replaced.
+project this size. The maintainer now analyses `main` with a self-hosted
+SonarQube Community Build, which brings back what went with it: coverage gating
+on new code, cross-file duplication detection and historical trends. The server
+runs the same Sonar rules, plus a few the local linter cannot load: the
+accessibility rules SonarJS builds on `eslint-plugin-jsx-a11y`, and the HTML
+analyzer. Its settings live outside the repository; what they change from the
+defaults is listed at the end of this page.
 
 ## Local quality suite
 
@@ -19,6 +24,12 @@ pnpm quality
 
 Runs type checking, the Prettier check, ESLint, the production build, then all
 tests with V8 coverage. Coverage is written to `coverage/lcov.info`.
+
+Coverage leaves out what Vitest cannot run: the CLI entry point, the generated
+version file, the Electron main entry point and the preload bridge, and the e2e
+probes the main process runs only when `tests/e2e/desktop.test.ts` starts it.
+That suite drives the Electron code in the real app, where no coverage is
+collected. `vitest.config.ts` lists these files.
 
 The build runs before the tests on purpose: the end-to-end suite spawns
 `dist/cli.js`, so a stale or missing bundle would fail it.
@@ -70,3 +81,29 @@ without a reason:
   resolved from the same `PATH`. The command name is a fixed literal.
 
 Any new suppression belongs in this list, with its reasoning.
+
+## SonarQube server settings
+
+The server reads two coverage reports: Vitest's, and Bun's for `tests/tui`,
+which only runs under Bun. The two runners count lines differently, so Bun's
+hits are counted on the lines Vitest counts. Merged as they were, Bun's extra
+lines showed the core about 21 % covered where Vitest measures 94 %.
+
+Duplication detection skips the translation catalogues (`src/i18n/*/en.ts`,
+`src/i18n/*/fr.ts`) and the benchmark corpora (`benchmark/cases/dataset.ts`,
+`benchmark/fidelity-cases.ts`). Every language repeats the same keys and every
+benchmark case the same record shape: the repetition is the data. These files
+held 2,003 of the 2,344 duplicated lines the first analysis reported.
+
+The analysis ignores these rules, on these files only:
+
+- `typescript:S9379` (autoFocus) in `src/apps/desktop/renderer/capsule/App.tsx`
+  and `src/apps/desktop/renderer/popover/PopoverApp.tsx`. These windows open on
+  the user's global shortcut to take text at once: focusing their only field is
+  their purpose. Focusing it through a ref would hide the same behaviour from
+  the rule.
+- `typescript:S6853` (label text) in
+  `src/apps/desktop/renderer/onboarding/OnboardingApp.tsx`. The labels carry
+  visible text three levels down (label, `.onboarding-label`,
+  `.onboarding-label-title`), past the two levels the rule inspects. The inputs
+  take their accessible names from these labels.
