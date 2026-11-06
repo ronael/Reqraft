@@ -1,3 +1,4 @@
+import os from "node:os";
 import process from "node:process";
 
 export type ShellType = "bash" | "zsh" | "fish" | "powershell" | "unknown";
@@ -20,8 +21,30 @@ export function detectShell(): ShellType {
   return "unknown";
 }
 
+/**
+ * The account's home: HOME, or what the system knows of the account when HOME
+ * is unset. Undefined when neither names one, rather than the root of the disk.
+ */
+function homeDirectory(): string | undefined {
+  const fromEnvironment = process.env.HOME;
+  if (fromEnvironment) {
+    return fromEnvironment;
+  }
+  const fromSystem = os.homedir();
+  return fromSystem === "" ? undefined : fromSystem;
+}
+
 export function getShellConfigPath(shell: ShellType): string | null {
-  const home = process.env.HOME ?? "";
+  if (shell === "powershell" && process.platform === "win32") {
+    const documents = process.env.USERPROFILE ?? homeDirectory();
+    return documents === undefined
+      ? null
+      : `${documents}/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`;
+  }
+  const home = homeDirectory();
+  if (home === undefined) {
+    return null;
+  }
   switch (shell) {
     case "bash":
       return `${home}/.bashrc`;
@@ -30,10 +53,6 @@ export function getShellConfigPath(shell: ShellType): string | null {
     case "fish":
       return `${home}/.config/fish/config.fish`;
     case "powershell":
-      if (process.platform === "win32") {
-        const documents = process.env.USERPROFILE ?? home;
-        return `${documents}/Documents/PowerShell/Microsoft.PowerShell_profile.ps1`;
-      }
       return `${home}/.config/powershell/Microsoft.PowerShell_profile.ps1`;
     default:
       return null;

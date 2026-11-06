@@ -135,6 +135,23 @@ describe("getShellConfigPath", () => {
     );
   });
 
+  it("asks the system for the account's home when HOME is unset", () => {
+    useProcess("linux", { HOME: undefined });
+    vi.spyOn(os, "homedir").mockReturnValue(home);
+
+    expect(normalized(getShellConfigPath("bash"))).toBe(path.join(home, ".bashrc"));
+  });
+
+  it.each(["bash", "zsh", "fish", "powershell"] as const)(
+    "names no %s configuration file when no home is known, rather than one at the root",
+    (shell) => {
+      useProcess("linux", { HOME: "" });
+      vi.spyOn(os, "homedir").mockReturnValue("");
+
+      expect(getShellConfigPath(shell)).toBeNull();
+    },
+  );
+
   it("has no configuration file for an unknown shell", () => {
     expect(getShellConfigPath("unknown")).toBeNull();
   });
