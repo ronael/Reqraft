@@ -435,6 +435,7 @@ export interface MessageParameters {
   "error.apiKeyRejected.title": undefined;
   "error.apiKeyRejected.message": { provider: string };
   "error.apiKeyRejected.action": { provider: string };
+  "error.apiKeyRejected.endpointAction": undefined;
   "error.credit.title": undefined;
   "error.credit.message": { provider: string };
   "error.credit.action": undefined;
