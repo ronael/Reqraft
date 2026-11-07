@@ -11,9 +11,13 @@ const DEFAULT_TRANSLATOR = createTranslator("fr");
 function ask(question: string): Promise<string> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
   return new Promise((resolve) => {
+    // Input that ends without an answer, such as a closed pipe, declines.
+    rl.once("close", () => {
+      resolve("");
+    });
     rl.question(question, (answer) => {
-      rl.close();
       resolve(answer.trim().toLowerCase());
+      rl.close();
     });
   });
 }
@@ -86,7 +90,8 @@ async function runSet(
   t: Translator,
 ): Promise<number> {
   try {
-    const operation = await setAlias(configPath, shell, name, dryRun);
+    // Planned without writing: the file changes only once the person accepts.
+    const operation = await setAlias(configPath, shell, name, true);
     output.log(t("alias.add", { name }));
     output.log(t("alias.shell", { shell: operation.shell }));
     output.log(t("alias.file", { path: operation.path }));
@@ -122,7 +127,8 @@ async function runRemove(
   t: Translator,
 ): Promise<number> {
   try {
-    const operation = await removeAlias(configPath, shell, name, dryRun);
+    // Planned without writing: the file changes only once the person accepts.
+    const operation = await removeAlias(configPath, shell, name, true);
     output.log(t("alias.remove", { name }));
     output.log(t("alias.shell", { shell: operation.shell }));
     output.log(t("alias.file", { path: operation.path }));

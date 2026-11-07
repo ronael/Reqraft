@@ -9,10 +9,10 @@ export class ProviderError extends ReqraftError {
     message: string,
     readonly code: number,
     readonly cause?: unknown,
-    options: { httpStatus?: number; provider?: string } = {},
+    options: { httpStatus?: number; provider?: string; errorCode?: ReqraftErrorCode } = {},
   ) {
     const httpStatus = options.httpStatus;
-    super(providerErrorCode(httpStatus), code, {
+    super(options.errorCode ?? providerErrorCode(httpStatus), code, {
       params: {
         ...(options.provider ? { provider: options.provider } : {}),
         ...(httpStatus === undefined ? {} : { httpStatus }),
@@ -31,6 +31,19 @@ function providerErrorCode(status: number | undefined): ReqraftErrorCode {
   if (status === 429) return "provider.rate_limited";
   if (status !== undefined && status >= 500) return "provider.unavailable";
   return "provider.request_failed";
+}
+
+/**
+ * A provider that answered, but with no text to show.
+ *
+ * It was reached and it replied, so this is no transport failure: the person
+ * is told the result came back empty rather than to check their network.
+ */
+export function emptyAnswerError(provider: string, message: string): ProviderError {
+  return new ProviderError(message, EXIT_CODES.PARSING_ERROR, undefined, {
+    provider,
+    errorCode: "result.empty",
+  });
 }
 
 /**

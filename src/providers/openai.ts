@@ -6,7 +6,7 @@ import type {
   ModelInfo,
 } from "@/core/types.js";
 import { consumeChatCompletionStream } from "./openai-stream.js";
-import { ProviderError, raiseProviderError } from "./errors.js";
+import { emptyAnswerError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 import { resolveModelCapabilities } from "@/models/capabilities.js";
 
@@ -100,7 +100,7 @@ export class OpenAIProvider implements ProviderAdapter {
     const data = JSON.parse(await response.text()) as OpenAIResponse;
     const choice = data.choices[0];
     if (!choice) {
-      throw new ProviderError("OpenAI returned no choices", 5);
+      throw emptyAnswerError(this.name, "OpenAI returned no choices");
     }
 
     return {

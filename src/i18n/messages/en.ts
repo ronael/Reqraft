@@ -334,6 +334,7 @@ export const en = {
   "init.apiKeyEnv": () => "Environment variable containing the key (optional)",
   "init.customHeaders": () => "Custom JSON headers (optional)",
   "init.modelId": () => "Model id",
+  "init.modelRequired": () => "Enter the id of the model to use.",
   "init.manualModel": () => "Enter a model id manually",
   "init.modelQuestion": () => "Which model would you like to use?",
   "init.defaultProfile": () => "Default profile",
