@@ -109,7 +109,7 @@ async function runSet(
     }
 
     await setAlias(configPath, shell, name, false);
-    output.log(t("alias.added", { name, path: configPath }));
+    output.log(t("alias.added", { name, command: operation.reloadCommand }));
     return EXIT_CODES.SUCCESS;
   } catch (error) {
     reportAliasError(error, output, t);
@@ -146,7 +146,7 @@ async function runRemove(
     }
 
     await removeAlias(configPath, shell, name, false);
-    output.log(t("alias.removed", { name, path: configPath }));
+    output.log(t("alias.removed", { name, command: operation.reloadCommand }));
     return EXIT_CODES.SUCCESS;
   } catch (error) {
     reportAliasError(error, output, t);

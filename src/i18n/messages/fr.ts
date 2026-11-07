@@ -264,10 +264,10 @@ export const fr = {
   "alias.confirmRemove": () => "Confirmer la suppression ? (y/N) ",
   "alias.cancelled": () => "Modification annulée.",
   "alias.removalCancelled": () => "Suppression annulée.",
-  "alias.added": ({ name, path }) =>
-    `Alias '${name}' ajouté. Rechargez votre shell ou exécutez : source ${path}`,
-  "alias.removed": ({ name, path }) =>
-    `Alias '${name}' supprimé. Rechargez votre shell ou exécutez : source ${path}`,
+  "alias.added": ({ name, command }) =>
+    `Alias '${name}' ajouté. Rechargez votre shell ou exécutez : ${command}`,
+  "alias.removed": ({ name, command }) =>
+    `Alias '${name}' supprimé. Rechargez votre shell ou exécutez : ${command}`,
   "alias.none": () => "Aucun alias rp configuré.",
   "init.localProvider": () => "Serveur local compatible OpenAI",
   "init.keyNotRequired": () => "Aucune variable de clé API nécessaire.",
@@ -410,6 +410,8 @@ export const fr = {
   "error.apiKeyRejected.message": ({ provider }) => `La clé API ${provider} a été refusée.`,
   "error.apiKeyRejected.action": ({ provider }) =>
     `Lance « rp auth login ${provider} » ou vérifie la variable d’environnement correspondante.`,
+  "error.apiKeyRejected.endpointAction": () =>
+    "Vérifie la variable qui contient la clé de cet endpoint : celle que nomme apiKeyEnv dans config.json, ou RP_OPENAI_COMPATIBLE_API_KEY.",
   "error.credit.title": () => "Crédit insuffisant",
   "error.credit.message": ({ provider }) => `Le compte ${provider} n’a plus de crédit.`,
   "error.credit.action": () => "Recharge le compte provider avant de réessayer.",

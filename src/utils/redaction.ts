@@ -10,8 +10,8 @@ interface Span {
 /**
  * Masks every detected secret.
  *
- * Patterns overlap — an Anthropic or OpenAI key is also a 40-character run the
- * AWS pattern matches — so the matches are merged into disjoint spans first.
+ * Matches overlap — `API_KEY=sk-ant-…` is a generic secret holding an
+ * Anthropic key — so they are merged into disjoint spans first.
  * Replacing them one by one would use offsets the previous replacement
  * already shifted, and drop the text that follows the key.
  */

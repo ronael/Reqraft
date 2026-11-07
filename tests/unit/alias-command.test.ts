@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { PassThrough, Writable } from "node:stream";
@@ -163,6 +163,40 @@ describe("rp alias set|remove with confirmation", () => {
       `Alias 'gpt' supprimé. Rechargez votre shell ou exécutez : source ${rcFile}`,
     );
     expect(removed.errors).toEqual([]);
+  });
+
+  it("tells PowerShell to dot-source the profile it changed, quoted", async () => {
+    // PowerShell has no `source`. A Windows profile path often holds a space,
+    // and a user name may hold a quote, which doubles inside single quotes.
+    const profileDir = path.join(workDir, "O'Neil Documents");
+    await mkdir(profileDir);
+    const profile = path.join(profileDir, "Microsoft.PowerShell_profile.ps1");
+    const reload = `. '${path.join(workDir, "O''Neil Documents", "Microsoft.PowerShell_profile.ps1")}'`;
+    confirm.mockResolvedValue("y");
+
+    const added = captureOutput();
+    const setCode = await runAlias("set", "gpt", {
+      shell: "powershell",
+      configPath: profile,
+      output: added.output,
+      confirm,
+    });
+    const removed = captureOutput();
+    const removeCode = await runAlias("remove", "gpt", {
+      shell: "powershell",
+      configPath: profile,
+      output: removed.output,
+      confirm,
+    });
+
+    expect([setCode, removeCode]).toEqual([EXIT_CODES.SUCCESS, EXIT_CODES.SUCCESS]);
+    expect(added.logs.at(-1)).toBe(
+      `Alias 'gpt' ajouté. Rechargez votre shell ou exécutez : ${reload}`,
+    );
+    expect(removed.logs.at(-1)).toBe(
+      `Alias 'gpt' supprimé. Rechargez votre shell ou exécutez : ${reload}`,
+    );
+    expect([...added.errors, ...removed.errors]).toEqual([]);
   });
 
   it.each([

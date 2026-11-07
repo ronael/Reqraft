@@ -9,6 +9,7 @@ import {
 } from "@/core/errors.js";
 import { EmptyProviderResponseError } from "@/core/validation.js";
 import { createTranslator } from "@/i18n/translate.js";
+import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@/providers/catalog.js";
 import { ProviderError, raiseProviderError } from "@/providers/errors.js";
 import { describeUiError, formatUiError, providerNamedBy, type UiError } from "@/shared/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
@@ -19,10 +20,10 @@ const fr = createTranslator("fr");
 /** What a provider may send back with an HTTP error; none of it may reach the user. */
 const PROVIDER_BODY = '{"error":{"message":"Incorrect API key provided: sk-proj-leaked"}}';
 
-/** The error an adapter raises for an HTTP failure from the openai provider. */
-function httpFailure(status: number): unknown {
+/** The error an adapter raises for an HTTP failure from `provider`. */
+function httpFailure(status: number, provider = "openai"): unknown {
   try {
-    raiseProviderError("openai", new Response(PROVIDER_BODY, { status }), PROVIDER_BODY);
+    raiseProviderError(provider, new Response(PROVIDER_BODY, { status }), PROVIDER_BODY);
   } catch (error) {
     return error;
   }
@@ -391,6 +392,28 @@ describe("user-facing errors", () => {
     });
     expect(formatUiError(new RequestCancelledError(), "openai")).toBe("Génération interrompue.");
   });
+
+  // `rp auth login` does not take a compatible endpoint: its key comes from a
+  // variable the user sets for that endpoint.
+  it.each([401, 403])(
+    "points a key rejected by a compatible endpoint (HTTP %i) to its key variable",
+    (status) => {
+      const rejected = httpFailure(status, OPENAI_COMPATIBLE_PROVIDER_ID);
+
+      expect(describeUiError(rejected, OPENAI_COMPATIBLE_PROVIDER_ID, en)).toEqual({
+        title: "API key rejected",
+        message: "The openai-compatible API key was rejected.",
+        nextAction:
+          "Check the variable that holds the key for this endpoint: the one named by apiKeyEnv in config.json, or RP_OPENAI_COMPATIBLE_API_KEY.",
+      });
+      expect(describeUiError(rejected, OPENAI_COMPATIBLE_PROVIDER_ID, fr)).toEqual({
+        title: "Clé API refusée",
+        message: "La clé API openai-compatible a été refusée.",
+        nextAction:
+          "Vérifie la variable qui contient la clé de cet endpoint : celle que nomme apiKeyEnv dans config.json, ou RP_OPENAI_COMPATIBLE_API_KEY.",
+      });
+    },
+  );
 });
 
 describe("single-line errors", () => {
