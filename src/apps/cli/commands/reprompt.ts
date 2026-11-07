@@ -84,14 +84,16 @@ function applySecretPolicy(
     return { input: redactSecrets(input) };
   }
 
+  // Each kind once, with or without --json, however many secrets share it.
+  const types = [...new Set(secrets.map((secret) => secret.type))];
   return {
     refusal: {
       error: new ReqraftError("input.secret_detected", EXIT_CODES.SECRET_DETECTED, {
-        params: { types: [...new Set(secrets.map((secret) => secret.type))] },
+        params: { types },
       }),
       explanation: [
         t("reprompt.secretDetected"),
-        ...secrets.map((secret) => `  - ${secret.type}`),
+        ...types.map((type) => `  - ${type}`),
         t("reprompt.secretAdvice"),
       ],
     },

@@ -323,6 +323,19 @@ describe("rp <text>: secrets", () => {
     expect(generate).not.toHaveBeenCalled();
   });
 
+  it("names a kind once, however many secrets of that kind the text holds", async () => {
+    const { code, stderr } = await run({
+      text: `Le jeton ${githubLikeValue} remplace ghp_${"y".repeat(36)}`,
+    });
+
+    expect(code).toBe(EXIT_CODES.SECRET_DETECTED);
+    expect(stderr).toEqual([
+      "Un secret potentiel a été détecté dans le texte.",
+      "  - GitHub token",
+      "Utilisez --redact-secrets pour masquer automatiquement ou --force pour continuer.",
+    ]);
+  });
+
   it("sends the text unchanged with --force", async () => {
     const { code, stdout, stderr } = await run({ text: request, force: true });
 
