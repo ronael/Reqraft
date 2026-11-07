@@ -51,7 +51,6 @@ import { duplicateProfile, exportProfile } from "@/profiles/transfer.js";
 import {
   CapsuleResizeRequestSchema,
   ConfigWriteRequestSchema,
-  type ConfigWriteRequest,
   CURRENT_WELCOME_TOUR_VERSION,
   CredentialDeleteRequestSchema,
   CredentialSaveRequestSchema,
@@ -94,7 +93,8 @@ import { buildDoctorReport, formatDoctorReport } from "./doctor.js";
 import { failuresAsSentences, rendererFailure } from "./ipc-failures.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
-import { mainLocale, resolveMainLocale, t } from "./i18n.js";
+import { mainLocale, t } from "./i18n.js";
+import { applySavedPreferences } from "./saved-preferences.js";
 import { version } from "@/version.js";
 
 /**
@@ -698,35 +698,6 @@ function registerProfileIpcHandlers(
  * dropped because they may carry an Authorization token. API keys never
  * appear here at all — they live in the environment and the keychain.
  */
-/**
- * Ce qu'un réglage enregistré doit changer tout de suite dans l'application.
- *
- * Un raccourci choisi et jamais appliqué est un réglage qui ment. Les
- * combinaisons étaient lues une seule fois au démarrage : changer le choix ne
- * faisait rien, et l'écran continuait d'annoncer l'ancien comme actif. Même
- * règle pour les fenêtres gardées ouvertes ; la langue, elle, ne s'applique
- * proprement qu'au redémarrage.
- */
-function applySavedPreferences(
-  dependencies: DesktopIpcDependencies,
-  patch: ConfigWriteRequest,
-  config: { before: Config; after: Config; env: NodeJS.ProcessEnv },
-): void {
-  if (patch.desktopShortcuts !== undefined) {
-    dependencies.onShortcutsChanged?.(config.after.desktopShortcuts);
-  }
-  if (patch.desktopKeepOpenOnBlur !== undefined) {
-    dependencies.onKeepOpenOnBlurChanged?.(patch.desktopKeepOpenOnBlur);
-  }
-  if (
-    patch.uiLocale !== undefined &&
-    resolveMainLocale(config.before.uiLocale, config.env) !==
-      resolveMainLocale(config.after.uiLocale, config.env)
-  ) {
-    dependencies.relaunchApp?.();
-  }
-}
-
 export function sanitizeConfigForRenderer(config: Config): SafeConfig {
   const { providers, ...rest } = config;
   if (!providers) {
