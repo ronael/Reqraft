@@ -19,7 +19,18 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html", "lcov"],
       include: ["src/**/*.{ts,tsx}"],
-      exclude: ["src/apps/cli/cli.tsx", "src/version.ts"],
+      exclude: [
+        "src/apps/cli/cli.tsx",
+        "src/version.ts",
+        // The Electron main entry point and the preload bridge only run inside
+        // Electron, which Vitest does not start. tests/e2e/desktop.test.ts
+        // drives them in the real app, where no V8 coverage is collected.
+        "src/apps/desktop/main/index.ts",
+        "src/apps/desktop/preload/index.ts",
+        // What the main process runs only when the e2e suite starts it
+        // (DESKTOP_E2E_* variables): test instrumentation, not product code.
+        "src/apps/desktop/main/e2e-*.ts",
+      ],
     },
   },
 });
