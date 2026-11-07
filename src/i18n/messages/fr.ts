@@ -264,10 +264,10 @@ export const fr = {
   "alias.confirmRemove": () => "Confirmer la suppression ? (y/N) ",
   "alias.cancelled": () => "Modification annulée.",
   "alias.removalCancelled": () => "Suppression annulée.",
-  "alias.added": ({ name, path }) =>
-    `Alias '${name}' ajouté. Rechargez votre shell ou exécutez : source ${path}`,
-  "alias.removed": ({ name, path }) =>
-    `Alias '${name}' supprimé. Rechargez votre shell ou exécutez : source ${path}`,
+  "alias.added": ({ name, command }) =>
+    `Alias '${name}' ajouté. Rechargez votre shell ou exécutez : ${command}`,
+  "alias.removed": ({ name, command }) =>
+    `Alias '${name}' supprimé. Rechargez votre shell ou exécutez : ${command}`,
   "alias.none": () => "Aucun alias rp configuré.",
   "init.localProvider": () => "Serveur local compatible OpenAI",
   "init.keyNotRequired": () => "Aucune variable de clé API nécessaire.",

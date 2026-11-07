@@ -296,8 +296,8 @@ export interface MessageParameters {
   "alias.confirmRemove": undefined;
   "alias.cancelled": undefined;
   "alias.removalCancelled": undefined;
-  "alias.added": { name: string; path: string };
-  "alias.removed": { name: string; path: string };
+  "alias.added": { name: string; command: string };
+  "alias.removed": { name: string; command: string };
   "alias.none": undefined;
   "init.localProvider": undefined;
   "init.keyNotRequired": undefined;

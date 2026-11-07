@@ -262,10 +262,10 @@ export const en = {
   "alias.confirmRemove": () => "Confirm removal? (y/N) ",
   "alias.cancelled": () => "Change cancelled.",
   "alias.removalCancelled": () => "Removal cancelled.",
-  "alias.added": ({ name, path }) =>
-    `Alias '${name}' added. Reload your shell or run: source ${path}`,
-  "alias.removed": ({ name, path }) =>
-    `Alias '${name}' removed. Reload your shell or run: source ${path}`,
+  "alias.added": ({ name, command }) =>
+    `Alias '${name}' added. Reload your shell or run: ${command}`,
+  "alias.removed": ({ name, command }) =>
+    `Alias '${name}' removed. Reload your shell or run: ${command}`,
   "alias.none": () => "No rp alias configured.",
   "init.localProvider": () => "Local OpenAI-compatible server",
   "init.keyNotRequired": () => "No API key environment variable is required.",
