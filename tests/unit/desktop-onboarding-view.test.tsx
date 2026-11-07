@@ -2,18 +2,26 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent, type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
+import { registerIpcHandlers, type IpcEventLike } from "@/apps/desktop/main/ipc.js";
 import { OnboardingApp } from "@/apps/desktop/renderer/onboarding/OnboardingApp.js";
 import { WELCOME_TOUR_SLIDES } from "@/apps/desktop/renderer/onboarding/WelcomeTour.js";
 import { TranslationProvider } from "@/apps/desktop/renderer/shared/i18n.js";
+import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
+  CredentialSaveRequest,
+  CredentialSaveResponse,
   OnboardingCompleteRequest,
   OnboardingProviderOption,
   OnboardingStateResponse,
   ProfileCatalogEntry,
   ReqraftBridge,
 } from "@/apps/desktop/shared/ipc-contract.js";
+import { DEFAULT_CONFIG } from "@/config/loader.js";
 import { ConfigSchema } from "@/config/schema.js";
 import { createDesktopTranslator, DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
+import { createTranslator } from "@/i18n/translate.js";
+import { ProviderError } from "@/providers/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 /**
  * L'onboarding monté pour de vrai, avec le seul contact qu'il a avec le
@@ -28,6 +36,8 @@ import { createDesktopTranslator, DESKTOP_MESSAGES } from "@/i18n/desktop/index.
 
 const t = createDesktopTranslator("en");
 const fr = createDesktopTranslator("fr");
+/** Le catalogue partagé, où le processus principal prend les erreurs des fournisseurs. */
+const tPartage = createTranslator("en");
 
 const CLE = "sk-ant-not-a-real-key-1234567890";
 const LIBELLE_CLE = t("onboarding.apiKey", { provider: "Anthropic" });
@@ -168,6 +178,49 @@ function jamais(): Promise<never> {
  */
 function rejetIpc(canal: string, phrase: string): Error {
   return new Error(`Error invoking remote method '${canal}': Error: ${phrase}`);
+}
+
+/**
+ * `credential:save` tel que le vrai processus principal y répond quand la
+ * vérification de la clé échoue sur `refus`.
+ *
+ * Le handler est celui de `main/ipc.ts` ; seuls le trousseau et le réseau sont
+ * remplacés, par l'erreur que la vérification lève. Son rejet revient comme
+ * Electron le rend : `toString()` de l'erreur, précédé du cadre IPC.
+ */
+async function enregistrerCleRefusee(
+  requete: CredentialSaveRequest,
+  refus: Error,
+): Promise<CredentialSaveResponse> {
+  const handlers = new Map<string, (event: IpcEventLike, payload: unknown) => unknown>();
+  registerIpcHandlers({
+    ipcMain: {
+      handle: (canal, handler) => {
+        handlers.set(canal, handler);
+      },
+    },
+    clipboard: { writeText: () => undefined },
+    env: {},
+    secureCredentialStorageAvailable: true,
+    loadConfig: () => Promise.resolve(DEFAULT_CONFIG),
+    saveConfig: () => Promise.resolve(),
+    hydrateCredentials: () => Promise.resolve(),
+    configFileExists: () => false,
+    storeCredential: () => Promise.reject(refus),
+  });
+  const handler = handlers.get(IPC_CHANNELS.credentialSave);
+  if (handler === undefined) throw new Error("credential:save n'est pas enregistré");
+  try {
+    return (await handler(
+      { sender: { send: () => undefined, isDestroyed: () => false } },
+      requete,
+    )) as CredentialSaveResponse;
+  } catch (erreur) {
+    throw new Error(
+      `Error invoking remote method '${IPC_CHANNELS.credentialSave}': ${String(erreur)}`,
+      { cause: erreur },
+    );
+  }
 }
 
 function installerPont(options: OptionsPont): FauxPont {
@@ -448,13 +501,47 @@ describe("la clé API", () => {
     expect(pont.saveCredential).toHaveBeenCalledTimes(2);
   });
 
-  // Bogue connu, laissé en attente. `credential:save` laisse passer la
-  // `ProviderError` de la vérification, qu'Electron sérialise par
-  // `toString()` : la fenêtre reçoit « …: ProviderError: Provider error 401:
-  // {corps brut} » ou « …: ProviderError: provider.request_failed », et
-  // `messageOf` (OnboardingApp.tsx) ne retire qu'un « Error: » littéral.
-  it.todo(
-    "explique en clair une clé refusée ou un fournisseur injoignable, sans « ProviderError: » ni réponse brute",
+  // Electron sérialise un rejet par `toString()` : une `ProviderError` laissée
+  // telle quelle arriverait en « ProviderError: Provider error 401: {corps
+  // brut} » ou « ProviderError: provider.request_failed ».
+  it.each([
+    {
+      cas: "une clé refusée",
+      refus: new ProviderError(
+        'Provider error 401: {"type":"error","error":{"type":"authentication_error","message":"invalid x-api-key"}}',
+        EXIT_CODES.AUTHENTICATION,
+        undefined,
+        { httpStatus: 401, provider: "Anthropic" },
+      ),
+      phrase: tPartage("error.apiKeyRejected.message", { provider: "Anthropic" }),
+    },
+    {
+      cas: "un fournisseur injoignable",
+      refus: new ProviderError(
+        "provider.request_failed",
+        EXIT_CODES.PROVIDER_NETWORK,
+        new TypeError("fetch failed"),
+        { provider: "Anthropic" },
+      ),
+      phrase: tPartage("error.provider.network", { provider: "Anthropic" }),
+    },
+  ])(
+    "explique en clair $cas, sans « ProviderError: » ni réponse brute",
+    async ({ refus, phrase }) => {
+      const { pont, user } = await ouvrirFormulaire();
+      pont.saveCredential.mockImplementationOnce((requete) =>
+        enregistrerCleRefusee(requete, refus),
+      );
+
+      await user.type(champCle(), CLE);
+      await user.click(bouton(t("onboarding.verifyAndSave")));
+
+      await waitFor(() => {
+        expect(texteDe("alert")).toBe(phrase);
+      });
+      expect(document.body.textContent).not.toContain("ProviderError");
+      expect(champCle().value).toBe(CLE);
+    },
   );
 });
 
@@ -494,7 +581,7 @@ describe("un point d'accès compatible OpenAI", () => {
   async function choisirPointCompatible(): Promise<UserEvent> {
     const { user } = await ouvrirFormulaire();
     await choisir(user, t("onboarding.provider"), "OpenAI Compatible");
-    await user.type(screen.getByPlaceholderText(t("onboarding.modelPlaceholder")), "llama3.1");
+    await user.type(champTexte(t("onboarding.model")), "llama3.1");
     expect(screen.getByText(t("onboarding.ready"))).toBeTruthy();
     return user;
   }
@@ -508,8 +595,9 @@ describe("un point d'accès compatible OpenAI", () => {
     expect(screen.queryByLabelText(LIBELLE_CLE, { exact: false })).toBeNull();
     expect(champTexte(t("onboarding.internalId")).value).toBe("local");
     expect(champTexte(t("onboarding.baseUrl")).value).toBe("http://localhost:11434/v1");
-    // Sans catalogue, le modèle se tape ; le champ n'a que son exemple pour nom.
-    const modele = screen.getByPlaceholderText(t("onboarding.modelPlaceholder"));
+    // Sans catalogue, le modèle se tape, dans un champ nommé comme le menu qu'il remplace.
+    const modele = champTexte(t("onboarding.model"));
+    expect(modele.placeholder).toBe(t("onboarding.modelPlaceholder"));
     expect(screen.getByText(t("onboarding.modelRequired"))).toBeTruthy();
     expect(bouton(t("onboarding.finish")).disabled).toBe(true);
 
@@ -660,9 +748,26 @@ describe("la visite de bienvenue avant le formulaire", () => {
     expect(pont.completeWelcomeTour).toHaveBeenCalledTimes(1);
   });
 
-  // Bogue connu, laissé en attente (OnboardingApp.tsx) : l'erreur de
-  // `completeWelcomeTour` est rangée dans l'état pendant que la visite, qui ne
-  // la montre pas, reste affichée ; elle n'est jamais effacée et réapparaît
-  // sur le formulaire après un nouvel essai réussi.
-  it.todo("dit pourquoi la visite n'a pas pu être enregistrée, sans erreur périmée ensuite");
+  it("dit pourquoi la visite n'a pas pu être enregistrée, sans erreur périmée ensuite", async () => {
+    const echec = "EACCES: permission denied, open 'config.json'";
+    const { pont, user } = monterOnboarding({ etatInitial: etat({ welcomeTourRequired: true }) });
+    pont.completeWelcomeTour.mockRejectedValueOnce(
+      rejetIpc(IPC_CHANNELS.onboardingTourComplete, echec),
+    );
+    await screen.findByRole("heading", { name: PREMIER_ECRAN });
+
+    await user.click(bouton(t("onboarding.tour.skip")));
+
+    // La visite reste à l'écran, et dit pourquoi « Passer » n'a pas abouti.
+    await waitFor(() => {
+      expect(texteDe("alert")).toBe(t("onboarding.tour.saveFailed", { reason: echec }));
+    });
+    expect(screen.getByRole("heading", { name: PREMIER_ECRAN })).toBeTruthy();
+
+    await user.click(bouton(t("onboarding.tour.skip")));
+
+    expect(await screen.findByRole("heading", { name: t("onboarding.title") })).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(pont.completeWelcomeTour).toHaveBeenCalledTimes(2);
+  });
 });

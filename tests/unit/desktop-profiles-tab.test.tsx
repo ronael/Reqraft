@@ -447,11 +447,42 @@ describe("ProfilesTab — créer un profil local", () => {
     expect(bridge.saveProfile).not.toHaveBeenCalled();
   });
 
-  // En attente d'un correctif : `problem` n'est effacé qu'à l'envoi, à l'annulation
-  // ou à l'ouverture d'un profil, et « Save » reste désactivé tant qu'il existe.
-  // Après un premier refus, compléter les champs ne réactive donc rien ; seul
-  // « Cancel » sort du formulaire, en perdant la saisie.
-  it.todo("laisse enregistrer une fois le problème corrigé");
+  it("laisse enregistrer une fois le problème corrigé", async () => {
+    const { bridge, user } = await renderTab();
+    await openNewForm(user);
+
+    await fill(user, { name: "Notes" });
+    await user.click(saveButton());
+    expect((await screen.findByRole("alert")).textContent).toBe(EN["profiles.descriptionRequired"]);
+    expect(saveButton().disabled).toBe(true);
+
+    // Le message suit la saisie : le champ corrigé cède la place au suivant.
+    await fill(user, { description: COMPLETE.description });
+    expect(screen.getByRole("alert").textContent).toBe(EN["profiles.instructionsRequired"]);
+    expect(saveButton().disabled).toBe(true);
+
+    await fill(user, { instructions: COMPLETE.instructions });
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(saveButton().disabled).toBe(false);
+
+    await user.click(saveButton());
+
+    expect(await row(SUPPORT.name)).toBeTruthy();
+    expect(bridge.saveProfile.mock.calls).toStrictEqual([
+      [
+        {
+          mode: "create",
+          profile: {
+            id: "notes",
+            name: "Notes",
+            description: "Meeting notes.",
+            defaultLevel: "standard",
+            instructions: "Bullet points, one decision per line.",
+          },
+        },
+      ],
+    ]);
+  });
 
   it("garde le formulaire ouvert sur un refus du processus principal, puis réessaie", async () => {
     const refusal =

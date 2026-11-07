@@ -19,6 +19,8 @@ import {
 import { createInitConfig, evaluateSetupState } from "@/config/setup.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
 import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
+import { createTranslator } from "@/i18n/translate.js";
+import { describeUiError } from "@/shared/errors.js";
 import { ConfigSchema, type Config } from "@/config/schema.js";
 import {
   getProviderDefinition,
@@ -34,6 +36,7 @@ import {
 } from "@/providers/catalog.js";
 import { createProvider } from "@/providers/registry.js";
 import type { ProviderAdapter, ProviderHealth } from "@/core/types.js";
+import { ReqraftError } from "@/core/errors.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
@@ -1363,7 +1366,11 @@ function registerCredentialSaveHandler(options: {
     // Desktop source. An existing launch variable keeps its documented
     // priority unless the renderer explicitly asks to replace it.
     const selectStoredCredential = request.preferKeychain === true || !options.env[envName];
-    await options.storeCredential(request.provider, request.secret, options.env);
+    try {
+      await options.storeCredential(request.provider, request.secret, options.env);
+    } catch (error) {
+      throw credentialFailure(error, request.provider);
+    }
     if (selectStoredCredential) {
       const current = await options.loadUser();
       const preferred = new Set(current.desktopKeychainProviders ?? []);
@@ -1389,4 +1396,23 @@ function registerCredentialSaveHandler(options: {
       ),
     };
   });
+}
+
+/**
+ * A key that could not be checked or stored, as the sentence the window shows.
+ *
+ * Electron hands the renderer `error.toString()`: a provider's refusal would
+ * read "ProviderError: Provider error 401: {raw body}", and that body can echo
+ * the key. Reqraft's own errors carry a code, so they become the shared
+ * catalogue's sentence, in the language of the capsule's errors. Any other
+ * error is already a sentence and goes through unchanged.
+ */
+function credentialFailure(error: unknown, provider: CredentialProvider): unknown {
+  if (!(error instanceof ReqraftError)) return error;
+  const { message } = describeUiError(
+    error,
+    getProviderDefinition(provider).label,
+    createTranslator(mainLocale()),
+  );
+  return new Error(message, { cause: error });
 }
