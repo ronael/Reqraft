@@ -39,6 +39,7 @@ import {
 import { useT, type Translate } from "../shared/i18n.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage } from "../shared/InlineMessage.js";
+import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { ProviderLogo } from "./ProviderLogo.js";
 import { PreferencesTab } from "./PreferencesTab.js";
 import { UpdatesTab } from "./UpdatesTab.js";
@@ -113,6 +114,11 @@ export function SettingsApp(): React.JSX.Element {
   const [tab, setTab] = useState<Tab>(() => initialSettingsTab());
   const [tabSwitched, setTabSwitched] = useState(false);
   const [config, setConfig] = useState<SafeConfig | null>(null);
+  // La lecture peut échouer : un fichier de configuration modifié à la main qui
+  // ne se lit plus. Sans cet état, les onglets qui en dépendent restaient vides,
+  // la barre d'état annonçait une lecture sans fin, et le rejet n'était
+  // rattrapé nulle part.
+  const [configError, setConfigError] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderStatus[]>([]);
   const [shortcuts, setShortcuts] = useState<ShortcutStateInfo | null>(null);
   const [permissions, setPermissions] = useState<PermissionsState | null>(null);
@@ -138,7 +144,12 @@ export function SettingsApp(): React.JSX.Element {
     const refreshShortcuts = (): void => {
       void window.reqraft.shortcutsState().then(setShortcuts);
     };
-    void window.reqraft.readConfig().then(setConfig);
+    void window.reqraft
+      .readConfig()
+      .then(setConfig)
+      .catch((cause: unknown) => {
+        setConfigError(ipcFailureMessage(cause));
+      });
     void window.reqraft.providersStatus().then(setProviders);
     refreshShortcuts();
     void window.reqraft.permissionsState().then(setPermissions);
@@ -236,6 +247,13 @@ export function SettingsApp(): React.JSX.Element {
     return t("settings.permissionsNeeded");
   }
 
+  function configStatus(): string {
+    if (config !== null) {
+      return `${config.defaultProvider} · ${config.defaultModel}`;
+    }
+    return t(configError === null ? "settings.loadingConfig" : "settings.configUnreadableStatus");
+  }
+
   return (
     <main className="settings">
       <div className="settings-titlebar">
@@ -290,6 +308,12 @@ export function SettingsApp(): React.JSX.Element {
           </header>
 
           <div key={tab} className={settingsTabClass("settings-panel", tabSwitched)}>
+            {configError !== null && (
+              <InlineMessage tone="error" role="alert" className="settings-config-notice">
+                {t("settings.configUnreadable", { reason: configError })}
+              </InlineMessage>
+            )}
+
             {tab === "preferences" && config !== null && (
               <PreferencesTab
                 captureShortcut={captureShortcut}
@@ -383,11 +407,7 @@ export function SettingsApp(): React.JSX.Element {
       </div>
 
       <footer className="settings-statusbar">
-        <span>
-          {config === null
-            ? t("settings.loadingConfig")
-            : `${config.defaultProvider} · ${config.defaultModel}`}
-        </span>
+        <span>{configStatus()}</span>
         <span>{t("settings.footer")}</span>
       </footer>
     </main>
@@ -547,7 +567,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
     setResults({});
     void action()
       .catch((cause: unknown) => {
-        setError(messageOfIpc(cause));
+        setError(ipcFailureMessage(cause));
       })
       .finally(() => {
         setBusy(false);
@@ -600,7 +620,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
         setResults((current) => ({ ...current, [key]: result }));
       })
       .catch((cause: unknown) => {
-        setError(messageOfIpc(cause));
+        setError(ipcFailureMessage(cause));
       })
       .finally(() => {
         setTesting(null);
@@ -925,10 +945,4 @@ function EndpointForm(props: Readonly<EndpointFormProps>): React.JSX.Element {
       </div>
     </div>
   );
-}
-
-/** Strips the Electron frame from a rejected `invoke`, keeping the sentence. */
-function messageOfIpc(cause: unknown): string {
-  const raw = cause instanceof Error ? cause.message : String(cause);
-  return raw.replace(/^Error invoking remote method '[^']+':\s*/, "").replace(/^Error:\s*/, "");
 }

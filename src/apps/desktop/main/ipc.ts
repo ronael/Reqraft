@@ -19,8 +19,6 @@ import {
 import { createInitConfig, evaluateSetupState } from "@/config/setup.js";
 import { getFallbackModelForProvider, getPresetModels } from "@/models/presets.js";
 import { DESKTOP_MESSAGES } from "@/i18n/desktop/index.js";
-import { createTranslator } from "@/i18n/translate.js";
-import { describeUiError } from "@/shared/errors.js";
 import { ConfigSchema, type Config } from "@/config/schema.js";
 import {
   getProviderDefinition,
@@ -36,7 +34,6 @@ import {
 } from "@/providers/catalog.js";
 import { createProvider } from "@/providers/registry.js";
 import type { ProviderAdapter, ProviderHealth } from "@/core/types.js";
-import { ReqraftError } from "@/core/errors.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
@@ -93,6 +90,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport, formatDoctorReport } from "./doctor.js";
+import { failuresAsSentences, rendererFailure } from "./ipc-failures.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
 import { mainLocale, t } from "./i18n.js";
@@ -277,7 +275,13 @@ const EMPTY_SHORTCUT_STATE: ShortcutStateInfo = {
   suspended: false,
 };
 
-export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
+export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
+  const dependencies: DesktopIpcDependencies = {
+    ...injected,
+    // Every channel below is registered through this one, so none of them can
+    // hand a window a code instead of a sentence: see `failuresAsSentences`.
+    ipcMain: failuresAsSentences(injected.ipcMain),
+  };
   const env = dependencies.env ?? process.env;
   const secureCredentialStorage =
     dependencies.secureCredentialStorageAvailable ??
@@ -1365,7 +1369,9 @@ function registerCredentialSaveHandler(options: {
     try {
       await options.storeCredential(request.provider, request.secret, options.env);
     } catch (error) {
-      throw credentialFailure(error, request.provider);
+      // Worded here rather than by `failuresAsSentences`: a refused key names
+      // the provider it was entered for, by its label rather than its id.
+      throw rendererFailure(error, getProviderDefinition(request.provider).label);
     }
     if (selectStoredCredential) {
       const current = await options.loadUser();
@@ -1392,23 +1398,4 @@ function registerCredentialSaveHandler(options: {
       ),
     };
   });
-}
-
-/**
- * A key that could not be checked or stored, as the sentence the window shows.
- *
- * Electron hands the renderer `error.toString()`: a provider's refusal would
- * read "ProviderError: Provider error 401: {raw body}", and that body can echo
- * the key. Reqraft's own errors carry a code, so they become the shared
- * catalogue's sentence, in the language of the capsule's errors. Any other
- * error is already a sentence and goes through unchanged.
- */
-function credentialFailure(error: unknown, provider: CredentialProvider): unknown {
-  if (!(error instanceof ReqraftError)) return error;
-  const { message } = describeUiError(
-    error,
-    getProviderDefinition(provider).label,
-    createTranslator(mainLocale()),
-  );
-  return new Error(message, { cause: error });
 }

@@ -21,6 +21,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { Button } from "../shared/Button.js";
 import { InlineMessage } from "../shared/InlineMessage.js";
+import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { Select } from "../shared/Select.js";
 
 /**
@@ -128,7 +129,7 @@ export function ProfilesTab({
       .profileCatalog()
       .then(setCatalog)
       .catch((cause: unknown) => {
-        setError(describe(cause));
+        setError(ipcFailureMessage(cause));
       });
   }, []);
 
@@ -144,7 +145,7 @@ export function ProfilesTab({
         setCatalog(next);
         return true;
       } catch (cause) {
-        setError(describe(cause));
+        setError(ipcFailureMessage(cause));
         return false;
       } finally {
         setBusy(false);
@@ -175,7 +176,7 @@ export function ProfilesTab({
         });
       })
       .catch((cause: unknown) => {
-        setError(describe(cause));
+        setError(ipcFailureMessage(cause));
       });
   }, []);
 
@@ -308,7 +309,7 @@ export function ProfilesTab({
             onExport={() => {
               setError(null);
               void window.reqraft.exportProfile(entry.id).catch((cause: unknown) => {
-                setError(describe(cause));
+                setError(ipcFailureMessage(cause));
               });
             }}
             onSelectDefault={() => {
@@ -664,18 +665,6 @@ function ProfileForm({
       </div>
     </section>
   );
-}
-
-/**
- * An IPC rejection as a sentence.
- *
- * Electron prefixes a handler's error with "Error invoking remote method …";
- * that prefix names the plumbing, not the problem, so it is trimmed away.
- */
-function describe(cause: unknown): string {
-  const message = cause instanceof Error ? cause.message : String(cause);
-  const separator = message.indexOf("Error: ");
-  return separator === -1 ? message : message.slice(separator + "Error: ".length);
 }
 
 interface IconButtonProps {
