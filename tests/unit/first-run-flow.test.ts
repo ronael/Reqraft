@@ -5,10 +5,11 @@ import path from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { runFirstRunSetup } from "@/apps/cli/commands/first-run.js";
-import { configPath } from "@/config/loader.js";
+import { configPath, loadUserConfig } from "@/config/loader.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { getFallbackModelForProvider } from "@/models/presets.js";
+import { createProvider } from "@/providers/registry.js";
 
 vi.mock("node:child_process", () => ({
   // `rp init` looks a key missing from the environment up in the system
@@ -217,6 +218,21 @@ const EXISTING_CONFIG = {
   outputLanguage: "de",
   desktopShortcuts: { capture: "CommandOrControl+Shift+R" },
 };
+
+/** Modifying EXISTING_CONFIG and keeping every saved answer. */
+const KEEP_EXISTING_ANSWERS: readonly Answer[] = [
+  pick("Modifier la configuration existante"),
+  ENTER, // provider, as saved
+  ENTER, // model, as saved
+  ENTER, // profile, as saved
+  ENTER, // level, as saved
+  ENTER, // auto copy, as saved
+  ENTER, // interface language, as saved
+  ENTER, // "another language", as saved
+  ENTER, // that language, as saved
+  ENTER, // streaming, as saved
+  ENTER, // timeout, as saved
+];
 
 let home = "";
 
@@ -520,33 +536,48 @@ describe("rp init, OpenAI-compatible endpoints", () => {
     });
   });
 
-  // Bug: a fresh setup proposes the Anthropic default model for a local server,
-  // because the "local-model" fallback is never reached (first-run.ts:392).
-  it.todo("proposes a local model id rather than the Anthropic default for a new local server");
+  it("proposes a local model id rather than the Anthropic default for a new local server", async () => {
+    const session = await runSetup([
+      pick("Serveur local compatible OpenAI"),
+      ...Array<Answer>(5).fill(ENTER), // id, name, base URL, key variable, headers
+      ENTER, // model, as proposed
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect(session.prompts).toContain("Identifiant du modèle (local-model) : ");
+    expect((await readSavedConfig()).defaultModel).toBe("local-model");
+  });
+
+  it("asks a hosted endpoint for its model rather than proposing one of another provider", async () => {
+    const session = await runSetup([
+      pick("OpenAI Compatible"),
+      "gateway",
+      ENTER, // name
+      "https://gateway.example.test/v1",
+      ENTER, // no key variable
+      ENTER, // no custom headers
+      ENTER, // no model proposed
+      "vendor/model-x",
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect(session.prompts).toContain("Identifiant du modèle : ");
+    expect(occurrences(session.transcript, "x Indique l'identifiant du modèle à utiliser.")).toBe(
+      1,
+    );
+    expect((await readSavedConfig()).defaultModel).toBe("vendor/model-x");
+  });
 });
 
 describe("rp init, existing configuration", () => {
   it("modifies an existing configuration and keeps what the questions do not cover", async () => {
     await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
 
-    const session = await runSetup(
-      [
-        pick("Modifier la configuration existante"),
-        ENTER, // provider, as saved
-        pickModel("claude-sonnet-5"),
-        ENTER, // profile, as saved
-        ENTER, // level, as saved
-        ENTER, // auto copy, as saved
-        ENTER, // interface language, as saved
-        ENTER, // "another language", as saved
-        ENTER, // that language, as saved
-        ENTER, // streaming, as saved
-        ENTER, // timeout, as saved
-        SAVE,
-        NO,
-      ],
-      { env: ANTHROPIC_ENV },
-    );
+    const session = await runSetup([...KEEP_EXISTING_ANSWERS, SAVE, NO], { env: ANTHROPIC_ENV });
 
     expect(session.transcript).toContain("Une configuration Reqraft existe déjà.");
     expect(session.transcript).not.toContain("Configure ton provider");
@@ -663,16 +694,202 @@ describe("rp init, existing configuration", () => {
     expect(await readFile(configPath(), "utf8")).toBe(original);
   });
 
-  // Bugs found while writing these tests, left unfixed:
-  // the JSON is written twice (first-run.ts:486 and :306);
-  it.todo("prints the existing configuration once when asked to show it");
-  // Math.max(index, 1) turns "minimal" (index 0) into "standard" (first-run.ts:581);
-  it.todo("keeps a minimal level when Enter is pressed while modifying");
-  // the headers question always defaults to "" (first-run.ts:534);
-  it.todo("keeps the custom headers of a saved provider when Enter is pressed while modifying");
-  // the summary and the connection test read the first saved entry
-  // (first-run.ts:202 and :719, providers/registry.ts:94).
-  it.todo("summarises and tests the compatible provider just added, not the first one saved");
+  it("prints the existing configuration once when asked to show it", async () => {
+    await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
+
+    const session = await runSetup([pick("Afficher la configuration")]);
+
+    expect(occurrences(session.transcript, '"defaultModel": "claude-sonnet-5"')).toBe(1);
+  });
+
+  it("summarises and tests the compatible provider just added, not the first one saved", async () => {
+    await writeExistingConfig(
+      JSON.stringify({
+        defaultProvider: "openai-compatible",
+        defaultModel: "llama3.2",
+        providers: {
+          local: {
+            type: "openai-compatible",
+            name: "Ollama",
+            baseUrl: "http://localhost:11434/v1",
+          },
+        },
+      }),
+    );
+    const fetchMock = vi.fn<typeof fetch>(() => Promise.resolve(chatCompletion("OK")));
+    vi.stubGlobal("fetch", fetchMock);
+
+    const session = await runSetup([
+      ENTER, // modify
+      pick("OpenAI Compatible"),
+      "gateway",
+      "Gateway",
+      "https://gateway.example.test/v1",
+      ENTER, // no key variable
+      ENTER, // no custom headers
+      "vendor/model-x",
+      ...KEEP_PREFERENCES,
+      SAVE,
+      YES, // connection test
+    ]);
+
+    expect(session.transcript).toMatch(/Base URL\s+https:\/\/gateway\.example\.test\/v1\n/u);
+    expect(session.transcript).toMatch(/Nom provider\s+Gateway\n/u);
+    // A run builds its provider from the saved file: it calls the same endpoint.
+    const saved = await loadUserConfig();
+    await createProvider(saved.defaultProvider, {}, saved).generate({
+      systemPrompt: "Rewrite the request.",
+      userPrompt: "fix login bug",
+      model: saved.defaultModel,
+      temperature: 0.2,
+      maxOutputTokens: 100,
+      stream: false,
+    });
+    expect(fetchMock.mock.calls.map(([url]) => url)).toEqual([
+      "https://gateway.example.test/v1/chat/completions",
+      "https://gateway.example.test/v1/chat/completions",
+    ]);
+    // The endpoint saved earlier stays declared.
+    expect(saved.providers?.local).toMatchObject({ baseUrl: "http://localhost:11434/v1" });
+  });
+});
+
+describe("rp init, Enter while modifying", () => {
+  it.each([
+    { kind: "a model of the list", model: "claude-sonnet-5", typed: [] },
+    // Typed by hand: the manual entry is proposed, then the identifier itself.
+    { kind: "a model typed by hand", model: "claude-sonnet-5-preview", typed: [ENTER] },
+  ])("keeps $kind when Enter is pressed while modifying", async ({ model, typed }) => {
+    await writeExistingConfig(JSON.stringify({ ...EXISTING_CONFIG, defaultModel: model }));
+
+    const session = await runSetup([...KEEP_EXISTING_ANSWERS, ...typed, SAVE, NO], {
+      env: ANTHROPIC_ENV,
+    });
+
+    expect(await readSavedConfig()).toEqual({ ...EXISTING_CONFIG, defaultModel: model });
+    expect(session.transcript).toMatch(new RegExp(String.raw`Modèle\s+${model}\n`, "u"));
+  });
+
+  it("proposes the recommended model of a provider the configuration did not use", async () => {
+    await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
+
+    await runSetup(
+      [
+        pick("Modifier la configuration existante"),
+        pick("OpenAI"),
+        ...Array<Answer>(9).fill(ENTER), // model, then the saved preferences
+        SAVE,
+        NO,
+      ],
+      { env: { OPENAI_API_KEY: "openai-test-key" } },
+    );
+
+    expect(await readSavedConfig()).toMatchObject({
+      defaultProvider: "openai",
+      defaultModel: getFallbackModelForProvider("openai"),
+    });
+  });
+
+  it("types the model of a provider the configuration did not use without proposing the saved one", async () => {
+    await writeExistingConfig(JSON.stringify(EXISTING_CONFIG));
+
+    const session = await runSetup(
+      [
+        pick("Modifier la configuration existante"),
+        pick("OpenAI"),
+        pick("Saisir un identifiant manuellement"),
+        "gpt-5.1-preview",
+        ...Array<Answer>(8).fill(ENTER), // the saved preferences
+        SAVE,
+        NO,
+      ],
+      { env: { OPENAI_API_KEY: "openai-test-key" } },
+    );
+
+    expect(session.prompts).toContain("Identifiant du modèle : ");
+    expect(await readSavedConfig()).toMatchObject({
+      defaultProvider: "openai",
+      defaultModel: "gpt-5.1-preview",
+    });
+  });
+
+  it("keeps a minimal level when Enter is pressed while modifying", async () => {
+    await writeExistingConfig(JSON.stringify({ ...EXISTING_CONFIG, defaultLevel: "minimal" }));
+
+    await runSetup([...KEEP_EXISTING_ANSWERS, SAVE, NO], { env: ANTHROPIC_ENV });
+
+    expect(await readSavedConfig()).toEqual({ ...EXISTING_CONFIG, defaultLevel: "minimal" });
+  });
+
+  it("keeps the custom headers of a saved provider when Enter is pressed while modifying", async () => {
+    const gateway = {
+      type: "openai-compatible",
+      name: "Gateway",
+      baseUrl: "https://gateway.example.test/v1",
+      customHeaders: { "X-Team": "core", Authorization: "Bearer gateway-test-token" },
+    };
+    await writeExistingConfig(
+      JSON.stringify({
+        defaultProvider: "openai-compatible",
+        defaultModel: "vendor/model-x",
+        providers: { gateway },
+      }),
+    );
+
+    const session = await runSetup([
+      ENTER, // modify
+      ENTER, // provider, as saved
+      ENTER, // internal id, as saved
+      ENTER, // name, as saved
+      ENTER, // base URL, as saved
+      ENTER, // no key variable
+      ENTER, // custom headers, as saved
+      ENTER, // model, as saved
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect((await readSavedConfig()).providers).toEqual({ gateway });
+    // A header may carry a token: the question names the saved headers only.
+    expect(session.prompts).toContain(
+      "Headers personnalisés JSON (optionnel) (X-Team, Authorization) : ",
+    );
+    expect(session.transcript).not.toContain("gateway-test-token");
+  });
+
+  it("removes the saved custom headers when an empty object is typed", async () => {
+    await writeExistingConfig(
+      JSON.stringify({
+        defaultProvider: "openai-compatible",
+        defaultModel: "llama3.2",
+        providers: {
+          local: {
+            type: "openai-compatible",
+            baseUrl: "http://localhost:11434/v1",
+            customHeaders: { "X-Team": "core" },
+          },
+        },
+      }),
+    );
+
+    await runSetup([
+      ...Array<Answer>(6).fill(ENTER), // modify, provider, id, name, base URL, key variable
+      "{}",
+      ENTER, // model, as saved
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect((await readSavedConfig()).providers).toEqual({
+      local: {
+        type: "openai-compatible",
+        name: "OpenAI Compatible",
+        baseUrl: "http://localhost:11434/v1",
+      },
+    });
+  });
 });
 
 describe("rp init, invalid answers", () => {
@@ -729,10 +946,35 @@ describe("rp init, invalid answers", () => {
     expect(await readSavedConfig()).toMatchObject({ timeoutMs: 20000 });
   });
 
-  // Bug: parseHeaders throws out of the whole setup instead of asking again,
-  // and the CLI then only says "Une erreur inattendue est survenue."
-  // (first-run.ts:534-535 and :767-776).
-  it.todo("asks again for custom headers that are not a JSON object");
+  it("asks again for custom headers that are not a JSON object", async () => {
+    const session = await runSetup([
+      pick("Serveur local compatible OpenAI"),
+      ENTER, // internal id
+      "Ollama",
+      ENTER, // base URL
+      ENTER, // no key variable
+      '["X-Team", "core"]',
+      "null",
+      '{"X-Team": core}',
+      '{"X-Team": "core"}',
+      "llama3.2",
+      ...KEEP_PREFERENCES,
+      SAVE,
+      NO,
+    ]);
+
+    expect(
+      occurrences(session.transcript, "x Les headers personnalisés doivent être un objet JSON."),
+    ).toBe(3);
+    expect((await readSavedConfig()).providers).toEqual({
+      local: {
+        type: "openai-compatible",
+        name: "Ollama",
+        baseUrl: "http://localhost:11434/v1",
+        customHeaders: { "X-Team": "core" },
+      },
+    });
+  });
 });
 
 describe("rp init, connection test", () => {
@@ -810,9 +1052,13 @@ describe("rp init, unusable environment", () => {
     expect(existsSync(configPath())).toBe(false);
   });
 
-  // Bug: the readline interface is opened before the credentials check and
-  // outside the try/finally, so it is never closed (first-run.ts:362-363).
-  it.todo("releases the input when an environment key holds a placeholder");
+  it("releases the input when an environment key holds a placeholder", async () => {
+    const { session, finished } = startSetup([], { env: { OPENAI_API_KEY: "votre-clé" } });
+
+    await expect(finished).rejects.toMatchObject({ errorCode: "credential.placeholder" });
+    // Nothing keeps reading the terminal once the setup has given up.
+    expect(session.input.listenerCount("data")).toBe(0);
+  });
 
   it("stops without asking anything when the existing configuration is unreadable", async () => {
     await writeExistingConfig("{ not json");
@@ -824,7 +1070,17 @@ describe("rp init, unusable environment", () => {
     expect(await readFile(configPath(), "utf8")).toBe("{ not json");
   });
 
-  // Bug: the existing file is parsed before the reset branch, so the reset
-  // meant to recover from it fails the same way (first-run.ts:293).
-  it.todo("lets rp init --reset replace an unreadable configuration");
+  it("lets rp init --reset replace an unreadable configuration", async () => {
+    await writeExistingConfig("{ not json");
+
+    const session = await runSetup([YES, ENTER, ENTER, ...KEEP_PREFERENCES, SAVE, NO], {
+      env: ANTHROPIC_ENV,
+      reset: true,
+    });
+
+    expect(session.prompts[0]).toBe(
+      "Une configuration Reqraft existe déjà. Confirmer l'écrasement avec les valeurs par défaut ? (o/N) : ",
+    );
+    expect(await readSavedConfig()).toEqual(DEFAULT_CHOICES);
+  });
 });
