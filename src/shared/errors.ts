@@ -152,6 +152,17 @@ export function describeUiError(
   return createBasicError(t("error.internal.unexpected"), t);
 }
 
+/**
+ * The provider a failure names, if it carries one.
+ *
+ * For the surfaces that do not know which provider they were talking to — an
+ * error that reaches the top of the CLI — so the advice names a real one.
+ */
+export function providerNamedBy(error: unknown): string | undefined {
+  const provider = error instanceof ReqraftError ? error.params?.provider : undefined;
+  return typeof provider === "string" ? provider : undefined;
+}
+
 /** Flattens a UiError for surfaces that only accept a single line. */
 export function formatUiError(
   error: unknown,
