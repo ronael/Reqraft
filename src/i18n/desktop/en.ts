@@ -55,6 +55,8 @@ export const DESKTOP_EN = {
   "capsule.editPromptLabel": "Starting prompt — editable before running again",
   "capsule.promptEmpty": "The starting prompt is empty: write something before running again.",
   "capsule.replaceUnavailable": "Replacement unavailable — result copied, ⌘V to paste.",
+  "capsule.autoApplyReview":
+    "Not replaced automatically: this result needs a second look. ⏎ replaces it.",
   "capsule.replaceFailed": "Replacement failed — the result is still shown.",
   "capsule.qualityGood": "✓ no alerts",
   "capsule.qualityReview": "worth a read",
@@ -222,6 +224,7 @@ export const DESKTOP_EN = {
   "settings.reportCopyFailed": "The report could not be copied.",
   "settings.captureShortcut": "Reformulate the selection",
   "settings.inputShortcut": "Open without a selection",
+  "settings.replaceShortcut": "Reformulate and replace directly",
   "settings.popoverShortcut": "Open the popover",
   "settings.identifier": "Identifier",
   "settings.providerFormCreate": "Add an OpenAI-compatible provider.",
@@ -404,6 +407,8 @@ export const DESKTOP_EN = {
   "settings.endpointKeyEnvDetail": "Optional: the name of the environment variable to read.",
   "settings.captureShortcutDetail": "Capsule anchored to the cursor",
   "settings.inputShortcutDetail": "Capsule centred, free input",
+  "settings.replaceShortcutDetail":
+    "Replaces the selection as soon as the result is ready, without ⏎",
   "settings.popoverShortcutDetail": "Menu-bar panel, without going through the icon",
   "settings.shortcutsTaken":
     "Shortcuts already taken by another application: {list}. A fallback was registered — change the competing shortcut to use your preferred one.",
@@ -416,6 +421,10 @@ export const DESKTOP_EN = {
     "Global shortcuts are suspended. Resume them from the Reqraft menu-bar icon.",
   "settings.language": "Interface language",
   "settings.languageDetail": "Reqraft restarts automatically when this changes.",
+  "settings.keepOpenOnBlur": "When a window loses the focus",
+  "settings.keepOpenOnBlurDetail": "Capsule and popover, when you click elsewhere",
+  "settings.keepOpenOnBlurKeep": "Keep it open",
+  "settings.keepOpenOnBlurHide": "Hide it",
   "settings.welcomeTour": "Reqraft introduction",
   "settings.welcomeTourDetail": "Review the main workflows and available features.",
   "settings.welcomeTourReplay": "Replay",

@@ -143,8 +143,8 @@ export type LocaleReadRequest = z.infer<typeof LocaleReadRequestSchema>;
  * La liste ci-dessous est celle des champs que les écrans Desktop passent
  * réellement à `window.reqraft.writeConfig` : `ModelsTab` (fournisseur, modèle,
  * niveau), `ProfilesTab` (profil par défaut), `PreferencesTab` (fidélité,
- * langue de sortie, délai, tokens maximum) et `SettingsApp` (langue de
- * l'interface, raccourcis). Les autres réglages du fichier restent au CLI, et
+ * langue de sortie, délai, tokens maximum, fenêtres gardées ouvertes) et
+ * `SettingsApp` (langue de l'interface, raccourcis). Les autres réglages du fichier restent au CLI, et
  * les fournisseurs gardent leurs canaux dédiés (`providers:save`,
  * `providers:delete`), qui savent, eux, préserver les en-têtes.
  *
@@ -162,6 +162,7 @@ export const ConfigWriteRequestSchema = ConfigSchema.pick({
   timeoutMs: true,
   maxOutputTokens: true,
   uiLocale: true,
+  desktopKeepOpenOnBlur: true,
 })
   // La version stricte de la même forme : un intent inconnu sous
   // `desktopShortcuts` serait enregistré sans jamais être enregistrable.
@@ -230,7 +231,9 @@ export type SafeConfig = Pick<Config, ConfigKey> & {
    * `rp config set desktopShortcuts` would mean nothing. Named here instead,
    * the way `providers` is.
    */
-  desktopShortcuts?: { capture?: string; input?: string; popover?: string };
+  desktopShortcuts?: { capture?: string; input?: string; popover?: string; replace?: string };
+  /** Same reason: a desktop preference, not something `rp config` edits. */
+  desktopKeepOpenOnBlur?: boolean;
 };
 
 export type ProviderCredentialSource =
@@ -508,6 +511,13 @@ export const MACOS_SHORTCUT_PRESETS = {
   capture: ["Command+Control+R", "Command+Control+J", "Command+Control+G", "Command+Control+B"],
   input: ["Command+Control+N", "Command+Control+K", "Command+Control+M", "Command+Control+P"],
   popover: ["Command+Control+O", "Command+Control+T", "Command+Control+U", "Command+Control+Y"],
+  // The capture letters plus Shift: the same gesture, taken one step further.
+  replace: [
+    "Command+Control+Shift+R",
+    "Command+Control+Shift+J",
+    "Command+Control+Shift+G",
+    "Command+Control+Shift+B",
+  ],
 } as const;
 
 export const SHORTCUT_PRESETS = {
@@ -529,6 +539,12 @@ export const SHORTCUT_PRESETS = {
     "CommandOrControl+Alt+U",
     "CommandOrControl+Alt+Y",
   ],
+  replace: [
+    "CommandOrControl+Alt+Shift+R",
+    "CommandOrControl+Alt+Shift+J",
+    "CommandOrControl+Alt+Shift+G",
+    "CommandOrControl+Alt+Shift+B",
+  ],
 } as const;
 
 export type ShortcutIntent = keyof typeof SHORTCUT_PRESETS;
@@ -545,9 +561,10 @@ export function shortcutPresets(
  *
  * `popover` is the third one: the menu-bar panel used to be reachable by
  * clicking the tray icon alone, which leaves someone working entirely from the
- * keyboard without any way in. The three lists above are disjoint by
- * construction — the settings must never offer the same combination for two
- * intents, because only one of them could answer.
+ * keyboard without any way in. `replace` is the fourth: the capture flow, which
+ * applies the result as soon as it is ready instead of waiting for ⏎. The lists
+ * above are disjoint by construction — the settings must never offer the same
+ * combination for two intents, because only one of them could answer.
  */
 /** Registered/rejected global shortcuts, for the settings Shortcuts tab. */
 export interface ShortcutStateInfo {
@@ -956,6 +973,12 @@ export interface CapsuleOpenedPayload {
    */
   id: number;
   mode: "capture" | "input";
+  /**
+   * Opened by the direct-replace shortcut: the capture flow, whose result is
+   * applied as soon as it is ready and judged safe — see
+   * `renderer/capsule/auto-apply.ts` for when it is not.
+   */
+  autoApply?: boolean;
 }
 
 /**

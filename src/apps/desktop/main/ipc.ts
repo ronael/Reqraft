@@ -95,7 +95,8 @@ import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport, formatDoctorReport } from "./doctor.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
-import { mainLocale, resolveMainLocale, t } from "./i18n.js";
+import { mainLocale, t } from "./i18n.js";
+import { applySavedPreferences } from "./saved-preferences.js";
 import { version } from "@/version.js";
 
 /**
@@ -211,6 +212,12 @@ export interface DesktopIpcDependencies {
    * contrat doit rester testable sans Electron.
    */
   onShortcutsChanged?: (shortcuts: Config["desktopShortcuts"]) => void;
+  /**
+   * Applique tout de suite le choix de garder les fenêtres ouvertes quand
+   * elles perdent le focus : les fenêtres lisent ce réglage à chaque perte de
+   * focus, et c'est le processus principal qui le leur tient à jour.
+   */
+  onKeepOpenOnBlurChanged?: (keepOpen: boolean) => void;
   /**
    * Relance l'application quand une préférence ne peut être appliquée
    * proprement qu'au démarrage, comme la langue du menu et des titres.
@@ -348,18 +355,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     // The desktop surface never enables telemetry, whatever the renderer asks.
     const merged: Config = ConfigSchema.parse({ ...current, ...patch, telemetry: false });
     await save(merged);
-    // Un raccourci choisi et jamais appliqué est un réglage qui ment. Les
-    // combinaisons étaient lues une seule fois au démarrage : changer le choix
-    // ne faisait rien, et l'écran continuait d'annoncer l'ancien comme actif.
-    if (patch.desktopShortcuts !== undefined) {
-      dependencies.onShortcutsChanged?.(merged.desktopShortcuts);
-    }
-    if (
-      patch.uiLocale !== undefined &&
-      resolveMainLocale(current.uiLocale, env) !== resolveMainLocale(merged.uiLocale, env)
-    ) {
-      dependencies.relaunchApp?.();
-    }
+    applySavedPreferences(dependencies, patch, { before: current, after: merged, env });
     return sanitizeConfigForRenderer(merged);
   });
 
