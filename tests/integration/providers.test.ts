@@ -5,6 +5,7 @@ import { MistralProvider } from "@/providers/mistral.js";
 import { DeepSeekProvider } from "@/providers/deepseek.js";
 import { createProvider } from "@/providers/registry.js";
 import type { ProviderError } from "@/providers/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 function mockFetch(response: Response): void {
   globalThis.fetch = vi.fn().mockResolvedValue(response);
@@ -13,6 +14,16 @@ function mockFetch(response: Response): void {
 function restoreFetch(): void {
   vi.restoreAllMocks();
 }
+
+/** A request whose answer the tests replace with an empty one. */
+const EMPTY_CHECK_REQUEST = {
+  model: "test-model",
+  systemPrompt: "sys",
+  userPrompt: "user",
+  temperature: 0.2,
+  maxOutputTokens: 100,
+  stream: false,
+};
 
 describe("OpenAI provider", () => {
   beforeEach(() => {
@@ -140,6 +151,19 @@ describe("OpenAI provider", () => {
     expect(body.temperature).toBeCloseTo(0.2, 10);
   });
 
+  it("reports an answer without choices as an empty result", async () => {
+    mockFetch(
+      new Response(JSON.stringify({ choices: [] }), {
+        status: 200,
+        headers: { "Content-Type": "application/json" },
+      }),
+    );
+
+    await expect(
+      new OpenAIProvider("test-key").generate(EMPTY_CHECK_REQUEST),
+    ).rejects.toMatchObject({ errorCode: "result.empty", exitCode: EXIT_CODES.PARSING_ERROR });
+  });
+
   it("normalizes network failures before any HTTP response", async () => {
     globalThis.fetch = vi.fn().mockRejectedValue(new TypeError("fetch failed"));
 
@@ -234,6 +258,33 @@ describe("Anthropic provider", () => {
       finishReason: "end_turn",
       usage: { inputTokens: 8, outputTokens: 4, visibleOutputTokens: 4 },
     });
+  });
+
+  it.each([
+    {
+      answer: "a message without content",
+      body: JSON.stringify({ content: [] }),
+      stream: false,
+    },
+    {
+      answer: "an empty text block",
+      body: JSON.stringify({ content: [{ type: "text", text: "" }] }),
+      stream: false,
+    },
+    {
+      answer: "a stream without text",
+      body: [
+        'event: message_start\ndata: {"type":"message_start","message":{"usage":{"input_tokens":8}}}\n\n',
+        'event: message_delta\ndata: {"type":"message_delta","usage":{"output_tokens":100},"delta":{"stop_reason":"max_tokens"}}\n\n',
+      ].join(""),
+      stream: true,
+    },
+  ])("reports $answer as an empty result, not as a network failure", async ({ body, stream }) => {
+    mockFetch(new Response(body, { status: 200 }));
+
+    await expect(
+      new AnthropicProvider("test-key").generate({ ...EMPTY_CHECK_REQUEST, stream }),
+    ).rejects.toMatchObject({ errorCode: "result.empty", exitCode: EXIT_CODES.PARSING_ERROR });
   });
 
   it("raises a provider error emitted by a streaming response", async () => {

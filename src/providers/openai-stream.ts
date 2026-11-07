@@ -1,5 +1,5 @@
 import type { ProviderResponse } from "@/core/types.js";
-import { ProviderError } from "./errors.js";
+import { emptyAnswerError } from "./errors.js";
 import { parseDataLine, streamLines } from "./sse.js";
 
 /** Sentinel closing an OpenAI-compatible stream. */
@@ -61,7 +61,10 @@ export function createChatCompletionAccumulator(providerName: string): ChatCompl
     },
     finish(requestedModel) {
       if (!text) {
-        throw new ProviderError(`${providerName} streaming response contained no text`, 5);
+        throw emptyAnswerError(
+          providerName,
+          `${providerName} streaming response contained no text`,
+        );
       }
       return {
         text,

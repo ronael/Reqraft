@@ -364,6 +364,7 @@ export interface MessageParameters {
   "init.apiKeyEnv": undefined;
   "init.customHeaders": undefined;
   "init.modelId": undefined;
+  "init.modelRequired": undefined;
   "init.manualModel": undefined;
   "init.modelQuestion": undefined;
   "init.defaultProfile": undefined;

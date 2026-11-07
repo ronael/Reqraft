@@ -337,6 +337,7 @@ export const fr = {
   "init.apiKeyEnv": () => "Variable d'environnement contenant la clé (optionnelle)",
   "init.customHeaders": () => "Headers personnalisés JSON (optionnel)",
   "init.modelId": () => "Identifiant du modèle",
+  "init.modelRequired": () => "Indique l'identifiant du modèle à utiliser.",
   "init.manualModel": () => "Saisir un identifiant manuellement",
   "init.modelQuestion": () => "Quel modèle souhaites-tu utiliser ?",
   "init.defaultProfile": () => "Profil par défaut",

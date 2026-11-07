@@ -1,6 +1,7 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { PassThrough, Writable } from "node:stream";
 import { afterEach, beforeEach, describe, expect, it, vi, type Mock } from "vitest";
 import { runAlias } from "@/apps/cli/commands/aliases.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
@@ -50,6 +51,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.restoreAllMocks();
   vi.unstubAllEnvs();
   await rm(workDir, { recursive: true, force: true });
 });
@@ -111,14 +113,118 @@ describe("rp alias --dry-run", () => {
 });
 
 describe("rp alias set|remove with confirmation", () => {
-  // Not testable yet: runSet and runRemove write the rc file before asking
-  // (src/apps/cli/commands/aliases.ts:89 and :125 pass the dry-run flag, which
-  // is false here, to the first setAlias/removeAlias call). Declining therefore
-  // leaves the change applied, and accepting fails with "existe déjà" or
-  // "n'existe pas" on the second call, exit code 1.
-  it.todo("adds or removes the alias only once the user accepts, then says how to reload");
-  it.todo("leaves the rc file untouched when the user declines");
-  it.todo("reads the answer from stdin when no confirmation prompt is injected");
+  /** Answers the confirmation, after noting what the rc file held while it was asked. */
+  function answerWith(answer: string): () => string {
+    let atQuestion = "";
+    confirm.mockImplementation(async () => {
+      atQuestion = await readFile(rcFile, "utf8");
+      return answer;
+    });
+    return () => atQuestion;
+  }
+
+  it("adds or removes the alias only once the user accepts, then says how to reload", async () => {
+    const original = `${USER_LINES}\n`;
+    await writeFile(rcFile, original, "utf8");
+    const withAlias = `${USER_LINES}\n\n${managedBlock('alias gpt="rp"')}\n`;
+
+    const added = captureOutput();
+    let contentAsked = answerWith("y");
+    const setCode = await runAlias("set", "gpt", {
+      shell: "bash",
+      configPath: rcFile,
+      output: added.output,
+      confirm,
+    });
+
+    expect(setCode).toBe(EXIT_CODES.SUCCESS);
+    expect(confirm).toHaveBeenLastCalledWith("Appliquer la modification ? (y/N) ");
+    expect(contentAsked()).toBe(original);
+    await expect(readFile(rcFile, "utf8")).resolves.toBe(withAlias);
+    expect(added.logs.at(-1)).toBe(
+      `Alias 'gpt' ajouté. Rechargez votre shell ou exécutez : source ${rcFile}`,
+    );
+    expect(added.errors).toEqual([]);
+
+    const removed = captureOutput();
+    contentAsked = answerWith("yes");
+    const removeCode = await runAlias("remove", "gpt", {
+      shell: "bash",
+      configPath: rcFile,
+      output: removed.output,
+      confirm,
+    });
+
+    expect(removeCode).toBe(EXIT_CODES.SUCCESS);
+    expect(confirm).toHaveBeenLastCalledWith("Confirmer la suppression ? (y/N) ");
+    expect(contentAsked()).toBe(withAlias);
+    await expect(readFile(rcFile, "utf8")).resolves.toBe(original);
+    expect(removed.logs.at(-1)).toBe(
+      `Alias 'gpt' supprimé. Rechargez votre shell ou exécutez : source ${rcFile}`,
+    );
+    expect(removed.errors).toEqual([]);
+  });
+
+  it.each([
+    { action: "set", name: "ask", answer: "n", message: "Modification annulée." },
+    { action: "remove", name: "p", answer: "", message: "Suppression annulée." },
+  ])(
+    "leaves the rc file untouched when the user declines to $action an alias",
+    async ({ action, name, answer, message }) => {
+      const original = `${USER_LINES}\n\n${managedBlock('alias p="rp"')}\n`;
+      await writeFile(rcFile, original, "utf8");
+      confirm.mockResolvedValue(answer);
+      const { output, logs, errors } = captureOutput();
+
+      const code = await runAlias(action, name, {
+        shell: "bash",
+        configPath: rcFile,
+        output,
+        confirm,
+      });
+
+      expect(code).toBe(EXIT_CODES.SUCCESS);
+      expect(confirm).toHaveBeenCalledOnce();
+      expect(logs.at(-1)).toBe(message);
+      expect(errors).toEqual([]);
+      await expect(readFile(rcFile, "utf8")).resolves.toBe(original);
+    },
+  );
+
+  it.each([
+    { stdin: "y\n", expected: `${managedBlock('alias gpt="rp"')}\n` },
+    // Input that ends without an answer, such as a closed pipe, declines.
+    { stdin: "", expected: undefined },
+  ])(
+    "reads the answer from stdin when no confirmation prompt is injected ($stdin)",
+    async ({ stdin, expected }) => {
+      const input = new PassThrough();
+      input.end(stdin);
+      vi.spyOn(process, "stdin", "get").mockReturnValue(input as unknown as typeof process.stdin);
+      let shown = "";
+      const terminal = new Writable({
+        write(chunk: Buffer, _encoding, done: () => void): void {
+          shown += chunk.toString("utf8");
+          done();
+        },
+      });
+      vi.spyOn(process, "stdout", "get").mockReturnValue(
+        terminal as unknown as typeof process.stdout,
+      );
+      const { output, errors } = captureOutput();
+
+      const code = await runAlias("set", "gpt", { shell: "bash", configPath: rcFile, output });
+
+      expect(code).toBe(EXIT_CODES.SUCCESS);
+      expect(shown).toContain("Appliquer la modification ? (y/N) ");
+      expect(errors).toEqual([]);
+      if (expected === undefined) {
+        await expect(readFile(rcFile, "utf8")).rejects.toMatchObject({ code: "ENOENT" });
+      } else {
+        await expect(readFile(rcFile, "utf8")).resolves.toBe(expected);
+      }
+    },
+  );
 });
 
 describe("rp alias list", () => {

@@ -339,12 +339,29 @@ describe("rp <text>: secrets", () => {
     expect(stderr).toEqual([]);
   });
 
-  // Not testable yet: redactSecrets (src/utils/redaction.ts:7-15) replaces
-  // overlapping matches with offsets taken before the first replacement. An
-  // Anthropic key is also matched by the "AWS secret key" pattern, so
-  // "Use sk-ant-<40 chars> in the deploy script and keep the rest" is sent as
-  // "Use [REDACTED] the rest": 30 characters after the key are lost.
-  it.todo("keeps the words that follow an Anthropic or OpenAI key when --redact-secrets masks it");
+  it("masks each of several secrets and keeps the text between them", async () => {
+    const { stdout } = await run({
+      text: `Le jeton ${githubLikeValue} et API_KEY=abc123xyz ne marchent plus`,
+      redactSecrets: true,
+    });
+
+    expect(stdout).toEqual(["[mock] Le jeton [REDACTED] et [REDACTED] ne marchent plus"]);
+  });
+
+  // An Anthropic or OpenAI key also matches the 40-character "AWS secret key"
+  // pattern, so the two matches overlap.
+  it.each([
+    { kind: "Anthropic", key: `sk-ant-${"x".repeat(40)}` },
+    { kind: "OpenAI", key: `sk-${"x".repeat(48)}` },
+  ])("keeps the words that follow an $kind key when --redact-secrets masks it", async ({ key }) => {
+    const { code, stdout } = await run({
+      text: `Use ${key} in the deploy script and keep the rest`,
+      redactSecrets: true,
+    });
+
+    expect(code).toBe(EXIT_CODES.SUCCESS);
+    expect(stdout).toEqual(["[mock] Use [REDACTED] in the deploy script and keep the rest"]);
+  });
 
   it("speaks the UI locale it is given", async () => {
     const { code, stderr } = await run({ text: request }, createTranslator("en"));
@@ -424,11 +441,36 @@ describe("rp <text>: --json", () => {
     expect(stderr).toEqual([]);
   });
 
-  // Not testable yet: the README promises the JSON envelope for every failure,
-  // but a missing request (src/apps/cli/commands/reprompt.ts:109-111) and a
-  // refused secret (:114-117) print human text on stderr and leave stdout
-  // empty, so a script parsing stdout gets nothing.
-  it.todo("reports a missing request and a refused secret as JSON error envelopes");
+  it("reports a missing request and a refused secret as JSON error envelopes", async () => {
+    const generate = vi.spyOn(MockProvider.prototype, "generate");
+    pipeStdin("  \n");
+
+    const missing = await run({ json: true });
+    const refused = await run({
+      text: `Le jeton ghp_${"x".repeat(36)} et API_KEY=abc123xyz ne marchent plus`,
+      json: true,
+    });
+
+    expect(missing.code).toBe(EXIT_CODES.INVALID_INPUT);
+    expect(JSON.parse(missing.stdout.join("\n")) as unknown).toEqual({
+      schemaVersion: 1,
+      ok: false,
+      error: { code: "input.missing", exitCode: EXIT_CODES.INVALID_INPUT },
+    });
+    expect(missing.stderr).toEqual([]);
+    expect(refused.code).toBe(EXIT_CODES.SECRET_DETECTED);
+    expect(JSON.parse(refused.stdout.join("\n")) as unknown).toEqual({
+      schemaVersion: 1,
+      ok: false,
+      error: {
+        code: "input.secret_detected",
+        params: { types: ["GitHub token", "generic secret"] },
+        exitCode: EXIT_CODES.SECRET_DETECTED,
+      },
+    });
+    expect(refused.stderr).toEqual([]);
+    expect(generate).not.toHaveBeenCalled();
+  });
 });
 
 describe("rp <text>: what is printed around the prompt", () => {
@@ -496,11 +538,20 @@ describe("rp <text>: what is printed around the prompt", () => {
     expect(stderr).toEqual(["", `${RULE}\nQualité à vérifier\n! ${WARNING}`]);
   });
 
-  // Not testable yet: with both flags, writePrimaryOutput returns after the
-  // diff (src/apps/cli/commands/reprompt.ts:241-243) so the explanation is
-  // never printed, and the warning block is skipped because --explain is set
-  // (:260-261). The warnings are shown nowhere.
-  it.todo("still shows quality warnings when --diff and --explain are combined");
+  it("still shows quality warnings when --diff and --explain are combined", async () => {
+    mockModelReply({
+      rewritten: REVIEWED_PROMPT,
+      changes: ["Page visée précisée"],
+      warnings: [WARNING],
+    });
+
+    const { stdout, stderr } = await run({ text: "corrige le titre", diff: true, explain: true });
+
+    expect(stdout).toEqual([`- corrige le titre\n+ ${REVIEWED_PROMPT}`]);
+    expect(stderr).toEqual([
+      `Modifications :\n> Page visée précisée\n\nAvertissements :\n! ${WARNING}`,
+    ]);
+  });
 
   it("--stats prints the usage of the run on stderr", async () => {
     vi.useFakeTimers({ toFake: ["Date"] });
@@ -767,9 +818,15 @@ describe("rp <text>: provider failures", () => {
     expect(stderr).toEqual(["Erreur : Une erreur inattendue est survenue."]);
   });
 
-  // Not testable yet: reportFatalError receives `options.provider ?? "provider"`
-  // (src/apps/cli/commands/reprompt.ts:138). When the provider comes from the
-  // configuration, a rejected key reads "La clé API provider a été refusée.
-  // Lance « rp auth login provider »…", a command that does not exist.
-  it.todo("names the configured provider when a key is rejected and --provider was not given");
+  it("names the configured provider when a key is rejected and --provider was not given", async () => {
+    await writeUserConfig(JSON.stringify({ defaultProvider: "mock" }));
+    mockProviderFailure(httpFailure(401, '{"error":"unknown x-api-key"}'));
+
+    const { code, stderr } = await run({ text: "corrige le titre", provider: undefined });
+
+    expect(code).toBe(EXIT_CODES.AUTHENTICATION);
+    expect(stderr).toEqual([
+      "Erreur : La clé API mock a été refusée. Lance « rp auth login mock » ou vérifie la variable d’environnement correspondante.",
+    ]);
+  });
 });
