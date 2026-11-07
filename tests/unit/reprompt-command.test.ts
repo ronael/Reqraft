@@ -348,11 +348,13 @@ describe("rp <text>: secrets", () => {
     expect(stdout).toEqual(["[mock] Le jeton [REDACTED] et [REDACTED] ne marchent plus"]);
   });
 
-  // An Anthropic or OpenAI key also matches the 40-character "AWS secret key"
-  // pattern, so the two matches overlap.
+  // An Anthropic or OpenAI key holds a 40-character run the "AWS secret key"
+  // pattern matches, and a generic API_KEY= secret holds the key it assigns:
+  // the matches overlap.
   it.each([
     { kind: "Anthropic", key: `sk-ant-${"x".repeat(40)}` },
     { kind: "OpenAI", key: `sk-${"x".repeat(48)}` },
+    { kind: "assigned Anthropic", key: `API_KEY=sk-ant-${"x".repeat(40)}` },
   ])("keeps the words that follow an $kind key when --redact-secrets masks it", async ({ key }) => {
     const { code, stdout } = await run({
       text: `Use ${key} in the deploy script and keep the rest`,
