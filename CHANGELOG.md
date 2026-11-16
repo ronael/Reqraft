@@ -1,37 +1,101 @@
 # Changelog
 
-## Unreleased
+## 0.6.5 (2026-11-16)
 
 ### Desktop application
 
+- The shortcut capture first reads the selection through the accessibility API
+  (Accessibility on macOS, UI Automation on Windows), without touching the
+  clipboard. It only simulates `⌘C` / `Ctrl+C` when the application does not
+  expose the selection, as Chromium and Electron apps often do.
+- That copy now waits for the shortcut's keys to be released: macOS used to
+  receive `⌘⌃C`, which most apps ignore, and Windows `Ctrl+Alt+C`, which typed
+  `©` over the selection in Word. It waits up to 600 ms for slow apps, and puts
+  back the whole clipboard (text, HTML, rich text, image), not only its text.
+- When nothing can be captured but the clipboard holds text, the capsule offers
+  that text instead of an empty field. Nothing is sent before the rewrite is
+  requested, and the result is pasted back into the source application.
+- A failed replacement brings the capsule back with the result instead of
+  leaving it hidden. Two quick presses run a single capture, and the shortcut
+  is ignored while the capsule has the keyboard.
 - Added a direct-replace global shortcut (`⌘⌃⇧R` on macOS, `Ctrl+Alt+Shift+R`
   elsewhere): it captures the selection, reformulates it and replaces it as
   soon as the result is ready, without pressing ⏎. A result flagged for review,
   or a session the user took over during generation, stays in the capsule.
 - The capsule and the popover now stay open when they lose the focus. A
   preference restores the previous behaviour and applies immediately.
-
-## 0.6.5 (2026-10-20)
-
-### Desktop application
-
+- Errors are shown as sentences in every desktop window, never as raw
+  technical text such as `ProviderError: Provider error 401`.
+- A detected secret no longer stops the capsule or the popover with the
+  command line's advice: they explain it in their own words and offer to
+  redact the secret and continue.
+- The capsule's "lower the level" key goes one level down (`⇧⇥`) and is not
+  offered at minimal; it used to rerun at a higher level.
+- The desktop keeps only the latest result of each window in memory, and the
+  question asked before removing an endpoint follows the window's language.
 - Added native Windows selection capture and replacement through a dedicated
-  PowerShell/.NET bridge. Reqraft now records the exact foreground process,
-  sends `Ctrl+C` / `Ctrl+V` and restores focus to that process instead of
-  attempting to launch macOS-only `osascript`.
-- Added Windows regression coverage and a real native capture/replacement
-  check, while keeping Windows installers explicitly experimental pending the
-  complete clean-machine checklist.
+  PowerShell/.NET bridge. Reqraft records the exact foreground window and
+  brings it back before pasting, instead of attempting to launch macOS-only
+  `osascript`.
+- Fixed the Profiles tab, where Save stayed disabled after a validation message,
+  and a failed save at the end of the welcome tour, which was silent.
+- The renderer's Content-Security-Policy no longer allows inline styles.
+
+### Command line
+
+- Prompts holding a git SHA, a deep path or a GitHub URL are no longer refused
+  as secrets: a bare AWS secret key must now stand alone, be exactly 40
+  characters long and mix upper case, lower case and digits.
+- The interactive TUI checks for secrets before sending, keeps a model when
+  switching to an OpenAI-compatible endpoint, and no longer offers the test
+  provider.
+- `rp init`: a placeholder key in the environment no longer leaves the terminal
+  in raw mode, invalid custom headers are asked again instead of aborting, the
+  configuration is shown once, pressing Enter keeps the saved level and
+  headers, `--reset` replaces an unreadable configuration, and a new local
+  server is no longer offered a Claude model id.
+- `rp init` puts the endpoint it configures first, so a new OpenAI-compatible
+  endpoint is the one used; it used to be saved after the existing one and
+  ignored.
+- `rp alias set` and `rp alias remove` ask for confirmation before writing the
+  shell configuration, give PowerShell its own reload command, recognise
+  PowerShell on every platform, and no longer write `/.bashrc` when `HOME` is
+  unset.
+- `--redact-secrets` no longer loses text when two secret patterns overlap, and
+  each secret is named once.
+- `--json` reports a missing request or a refused secret in its JSON envelope,
+  and `--diff --explain` keeps the explanation and the quality warnings.
+- `rp auth login` exits with code 3 when a key is rejected, and a rejected
+  OpenAI-compatible key no longer suggests a command that refuses that
+  provider.
+
+### Providers
+
+- A base URL ending with `/` no longer produces `//chat/completions`.
+- Listing models sends the same custom headers as generation.
+- An empty streamed answer is reported as an empty result, not as a network
+  failure.
 
 ### Reliability and distribution
 
+- The website, the desktop profile picker and the French README no longer say
+  that the `auto` profile is picked on the machine: the model picks it in the
+  same request.
+- Patched `shell-quote` and moved to zod 4.
+- On Windows, the script that brings the source window back gets time to start
+  on a slow machine, instead of being stopped before it can paste.
+- `pnpm release` waits for green CI before tagging: the npm publications of
+  0.6.2 and 0.6.4 had failed after their tag was pushed.
+- The website links to the last release whose installers are online, and
+  `pnpm site:sync` moves it once the installers are attached.
+- Required signing and notarization credentials before a public macOS desktop
+  release can publish installers.
 - Expanded rewrite-instruction detection so model responses that delegate a
   requested correction instead of performing it are reliably flagged for
   review.
 - Made cross-platform tests independent from the host shell, shortcut family
-  and personal profile configuration.
-- Required signing and notarization credentials before a public macOS desktop
-  release can publish installers.
+  and personal profile configuration, and covered the CLI and desktop flows
+  that had no tests.
 - Refined the download page spacing and responsive hero typography.
 
 ## 0.6.4 (2026-09-13)
