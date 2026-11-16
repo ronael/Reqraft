@@ -404,6 +404,13 @@ export const DESKTOP_FR = {
     "« {id} » est un profil intégré : il n'est ni modifiable ni supprimable. Dupliquez-le pour en obtenir une copie.",
   "main.errorProfileIsDefault":
     "« {id} » est le profil par défaut : choisissez-en un autre avant de le supprimer.",
+  // Espaces insécables : un chemin des Réglages ne se coupe pas, même dans le popover.
+  "main.keyRejectedAction": "Ajoutez ou remplacez la clé dans Réglages\u00a0›\u00a0Providers.",
+  "main.endpointKeyRejectedAction":
+    "Vérifiez la variable de clé de cet endpoint dans Réglages\u00a0›\u00a0Providers.",
+  "main.keyMissingAction": "Ajoutez la clé dans Réglages\u00a0›\u00a0Providers.",
+  "main.requestRejectedAction":
+    "Vérifiez le modèle et la configuration dans Réglages\u00a0›\u00a0Diagnostic, puis réessayez.",
   "common.recommendedSuffix": " — recommandé",
   "settings.endpointNoKey": "Sans clé.",
   "settings.endpointIdDetail": "Minuscules, chiffres et tirets.",

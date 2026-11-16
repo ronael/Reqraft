@@ -398,3 +398,25 @@ describe("la mise en page du popover", () => {
     expect(toast.closest(".toast-layer")).not.toBeNull();
   });
 });
+
+describe("l'erreur du popover", () => {
+  it("montre la prochaine action sous le message, dans la zone qui défile", async () => {
+    const harness = await monterPopover();
+    await harness.user.type(champPrompt(), PROMPT);
+    await harness.user.click(commande(EN["capsule.reformulate"]));
+    const error = {
+      title: "API key rejected",
+      message: "The openai API key was rejected.",
+      nextAction: EN["main.keyRejectedAction"],
+    };
+
+    // Retentée comme un résultat : le renderer n'apprend son `runId` qu'à la
+    // réponse de `reprompt:start`, et ignore ce qui arrive avant.
+    await waitFor(() => {
+      harness.push.error({ runId: harness.dernierRunId(), error });
+      expect(screen.getByRole("alert").textContent).toBe(error.message + error.nextAction);
+    });
+    // Sous le message, l'action défile avec le contenu : le pied ne bouge pas.
+    expect(screen.getByRole("alert").closest(".popover-content")).not.toBeNull();
+  });
+});
