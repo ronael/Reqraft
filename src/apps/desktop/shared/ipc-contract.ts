@@ -194,9 +194,18 @@ export interface RepromptStartResponse {
  * Sans ce champ l'échec était muet par construction : la capsule s'ouvrait en
  * saisie libre, indiscernable d'un déclenchement volontaire sans sélection, et
  * une permission macOS refusée ressemblait à une application cassée.
+ *
+ * `clipboardText` est le texte que l'utilisateur avait copié quand rien n'a pu
+ * être capturé : la capsule le propose au lieu d'un champ vide. Il ne part vers
+ * le modèle que si l'utilisateur lance la reformulation.
+ *
+ * `sourceApp` vaut `null` quand l'application source n'a pas pu être
+ * identifiée : le texte capturé est gardé, et le résultat sera copié au lieu
+ * d'être recollé.
  */
 export type CaptureSelectionResponse =
-  { text: string; sourceApp: string } | { empty: true; reason?: string };
+  | { text: string; sourceApp: string | null }
+  | { empty: true; reason?: string; clipboardText?: string };
 
 export interface ResultAcceptResponse {
   applied: boolean;

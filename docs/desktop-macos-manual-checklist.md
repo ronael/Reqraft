@@ -69,6 +69,19 @@ Tester dans **trois applications différentes** (ex. Safari, Notes, VS Code).
 - [ ] **Presse-papiers intact après capture** : contenu et format identiques
       avant/après, y compris après une capture annulée ou en erreur
       (`try/finally`, DESKTOP.md §5.1).
+- [ ] Notes ou TextEdit : la sélection est lue sans passer par le presse-papiers
+      (un gestionnaire d'historique ne voit passer aucune copie).
+- [ ] VS Code, Slack ou Chrome : la capture passe par `⌘C` et donne le bon texte.
+- [ ] Garder les touches du raccourci enfoncées une demi-seconde avant de les
+      lâcher : la capture fonctionne toujours, sans « aucune sélection ».
+- [ ] Texte mis en forme dans le presse-papiers (copié depuis une page web),
+      capture dans VS Code : il se colle toujours mis en forme dans Mail.
+- [ ] Aucune sélection, mais du texte copié : la capsule le propose dans le
+      champ, rien ne part avant `⌘⏎`, et `⏎` colle le résultat à l'endroit du
+      curseur dans l'application source.
+- [ ] Deux appuis rapides sur le raccourci : une seule capture, presse-papiers
+      intact.
+- [ ] Raccourci pressé pendant que la capsule a le clavier : rien ne se passe.
 
 ## 4. Remplacement
 
