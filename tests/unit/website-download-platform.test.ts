@@ -3,7 +3,10 @@ import { pathToFileURL } from "node:url";
 import path from "node:path";
 import { JSDOM } from "jsdom";
 import { beforeAll, describe, expect, it } from "vitest";
-import { version } from "@/version.js";
+import { readSiteVersion } from "../../scripts/version-sync.js";
+
+/** La release que le site propose, qui peut avoir une version de retard sur le paquet. */
+const releaseVersion = readSiteVersion();
 
 interface NavigatorFixture {
   userAgent?: string;
@@ -68,7 +71,7 @@ describe("website download platform", () => {
     for (const link of dom.window.document.querySelectorAll<HTMLAnchorElement>(
       "[data-platform-download]",
     )) {
-      expect(link.href).toContain(`Reqraft-${version}-win-x64-experimental.exe`);
+      expect(link.href).toContain(`Reqraft-${releaseVersion}-win-x64-experimental.exe`);
       expect(link.querySelector("strong")?.textContent).toBe("Download for Windows");
       expect(link.querySelector("small")?.textContent).toBe("Windows x64 · Alpha");
       expect(link.classList).toContain("platform-ready");
