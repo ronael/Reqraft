@@ -390,7 +390,7 @@ export const DESKTOP_EN = {
   "main.doctorShortcutsSuspended": "global shortcuts suspended from the menu bar",
   "main.doctorNoShortcut": "no active shortcut",
   "main.autoProfileName": "Auto",
-  "main.autoProfileSummary": "Local profile detection",
+  "main.autoProfileSummary": "Picked by the model",
   "main.autoProfileDescription": "Reqraft lets the model pick the profile that fits the text.",
   "main.secretDetectedTitle": "Possible secret in the text",
   "main.secretDetected":
@@ -536,7 +536,8 @@ export const DESKTOP_EN = {
     "Clarify this request without adding features or losing any constraint.",
   "onboarding.tour.privacy.telemetry": "Telemetry off · content not retained",
   "onboarding.tour.privacy.ephemeral": "No prompt stored",
-  "onboarding.tour.privacy.ephemeralDetail": "Text exists only for the duration of the rewrite.",
+  "onboarding.tour.privacy.ephemeralDetail":
+    "Only the latest result stays in memory, never on disk.",
   "onboarding.tour.privacy.keychain": "Keys protected by your system",
   "onboarding.tour.privacy.keychainDetail": "They are never sent back to the interface.",
   "onboarding.tour.privacy.available": "Always one shortcut away",

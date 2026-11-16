@@ -52,6 +52,15 @@ export interface RepromptServiceDependencies {
 export class RepromptService {
   private readonly controllers = new Map<string, AbortController>();
   private readonly results = new Map<string, RepromptResult>();
+  /**
+   * The run each window started last, keyed by its event sender.
+   *
+   * A window only ever accepts the result of its latest run: the capsule and
+   * the popover let go of the previous one when they start another. The main
+   * process lets go of it too, so it holds one result per window instead of
+   * every run until the app quits.
+   */
+  private readonly latestRuns = new WeakMap<RunEventSender, string>();
   private readonly translator: Translator;
   private readonly schedule: (callback: () => void) => void;
 
@@ -82,6 +91,7 @@ export class RepromptService {
     const runId = this.dependencies.createRunId?.() ?? randomUUID();
     const controller = new AbortController();
     this.controllers.set(runId, controller);
+    this.forgetPreviousRun(sender, runId);
 
     const config = await this.dependencies.loadConfig();
     const profileId = request.profileId ?? config.defaultProfile;
@@ -101,9 +111,18 @@ export class RepromptService {
     this.controllers.get(runId)?.abort();
   }
 
-  /** Result of a finished run, kept for `result:accept`. */
+  /** Result of a window's latest run, kept for `result:accept`. */
   storedResult(runId: string): RepromptResult | undefined {
     return this.results.get(runId);
+  }
+
+  /** The window moves on: the result of its previous run can no longer be accepted. */
+  private forgetPreviousRun(sender: RunEventSender, runId: string): void {
+    const previous = this.latestRuns.get(sender);
+    if (previous !== undefined) {
+      this.results.delete(previous);
+    }
+    this.latestRuns.set(sender, runId);
   }
 
   private async execute(
@@ -176,7 +195,11 @@ export class RepromptService {
         },
       });
 
-      this.results.set(runId, result);
+      // Not kept once its window has started another run: that window can no
+      // longer accept it, and nothing else ever will.
+      if (this.latestRuns.get(sender) === runId) {
+        this.results.set(runId, result);
+      }
       this.emit(sender, IPC_CHANNELS.runDone, { runId, result });
       this.dependencies.onRunEvent?.("done");
     } catch (error) {

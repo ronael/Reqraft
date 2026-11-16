@@ -386,7 +386,7 @@ export const DESKTOP_FR = {
   "main.doctorShortcutsSuspended": "raccourcis globaux suspendus depuis la barre de menus",
   "main.doctorNoShortcut": "aucun raccourci actif",
   "main.autoProfileName": "Auto",
-  "main.autoProfileSummary": "Détection locale du profil",
+  "main.autoProfileSummary": "Choisi par le modèle",
   "main.autoProfileDescription": "Reqraft laisse le modèle choisir le profil adapté au texte.",
   "main.secretDetectedTitle": "Secret possible dans le texte",
   "main.secretDetected":
@@ -536,7 +536,7 @@ export const DESKTOP_FR = {
   "onboarding.tour.privacy.telemetry": "Télémétrie désactivée · contenu non conservé",
   "onboarding.tour.privacy.ephemeral": "Aucun prompt enregistré",
   "onboarding.tour.privacy.ephemeralDetail":
-    "Le texte existe seulement le temps de la reformulation.",
+    "Seul le dernier résultat reste en mémoire, jamais sur le disque.",
   "onboarding.tour.privacy.keychain": "Clés protégées par votre système",
   "onboarding.tour.privacy.keychainDetail": "Elles ne sont jamais renvoyées à l'interface.",
   "onboarding.tour.privacy.available": "Toujours à portée de raccourci",
