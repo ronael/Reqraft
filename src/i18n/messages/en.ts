@@ -262,10 +262,10 @@ export const en = {
   "alias.confirmRemove": () => "Confirm removal? (y/N) ",
   "alias.cancelled": () => "Change cancelled.",
   "alias.removalCancelled": () => "Removal cancelled.",
-  "alias.added": ({ name, path }) =>
-    `Alias '${name}' added. Reload your shell or run: source ${path}`,
-  "alias.removed": ({ name, path }) =>
-    `Alias '${name}' removed. Reload your shell or run: source ${path}`,
+  "alias.added": ({ name, command }) =>
+    `Alias '${name}' added. Reload your shell or run: ${command}`,
+  "alias.removed": ({ name, command }) =>
+    `Alias '${name}' removed. Reload your shell or run: ${command}`,
   "alias.none": () => "No rp alias configured.",
   "init.localProvider": () => "Local OpenAI-compatible server",
   "init.keyNotRequired": () => "No API key environment variable is required.",
@@ -408,6 +408,8 @@ export const en = {
   "error.apiKeyRejected.message": ({ provider }) => `The ${provider} API key was rejected.`,
   "error.apiKeyRejected.action": ({ provider }) =>
     `Run “rp auth login ${provider}” or check the corresponding environment variable.`,
+  "error.apiKeyRejected.endpointAction": () =>
+    "Check the variable that holds the key for this endpoint: the one named by apiKeyEnv in config.json, or RP_OPENAI_COMPATIBLE_API_KEY.",
   "error.credit.title": () => "Insufficient credit",
   "error.credit.message": ({ provider }) => `The ${provider} account has no credit left.`,
   "error.credit.action": () => "Add provider credit before trying again.",

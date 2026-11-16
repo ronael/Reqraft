@@ -1,3 +1,4 @@
+import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@/providers/catalog.js";
 import { ProviderError } from "@/providers/errors.js";
 import { ReqraftError, type ReqraftErrorCode } from "@/core/errors.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
@@ -93,7 +94,12 @@ function describeHttpStatus(status: number, provider: string, t: Translator): Ui
     return {
       title: t("error.apiKeyRejected.title"),
       message: t("error.apiKeyRejected.message", { provider }),
-      nextAction: t("error.apiKeyRejected.action", { provider }),
+      // `rp auth login` does not take a compatible endpoint: its key comes
+      // from the variable configured for that endpoint.
+      nextAction:
+        provider === OPENAI_COMPATIBLE_PROVIDER_ID
+          ? t("error.apiKeyRejected.endpointAction")
+          : t("error.apiKeyRejected.action", { provider }),
     };
   }
   if (status === 402) {

@@ -21,6 +21,8 @@ export interface AliasOperation {
   added: string[];
   removed: string[];
   content: string;
+  /** What to run so the current shell picks up the change. */
+  reloadCommand: string;
 }
 
 export function validateAlias(name: string): void {
@@ -83,6 +85,7 @@ export async function setAlias(
     added: [alias],
     removed: [],
     content: newContent,
+    reloadCommand: handler.reloadCommand(configPath),
   };
 
   if (!dryRun) {
@@ -130,6 +133,7 @@ export async function removeAlias(
     added: [],
     removed: [alias],
     content: newContent,
+    reloadCommand: handler.reloadCommand(configPath),
   };
 
   if (!dryRun) {
