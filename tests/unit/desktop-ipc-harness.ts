@@ -95,6 +95,7 @@ export interface Harness {
   saveConfig: ReturnType<typeof vi.fn>;
   relaunchApp: ReturnType<typeof vi.fn>;
   onShortcutsChanged: ReturnType<typeof vi.fn<(shortcuts: Config["desktopShortcuts"]) => void>>;
+  onKeepOpenOnBlurChanged: ReturnType<typeof vi.fn<(keepOpen: boolean) => void>>;
   sender: RunEventSender;
   sent: { channel: string; payload: unknown }[];
   state: { destroyed: boolean };
@@ -112,6 +113,7 @@ export function setup(options: {
   const saveConfig = vi.fn((_config: Config) => Promise.resolve());
   const relaunchApp = vi.fn<() => void>();
   const onShortcutsChanged = vi.fn<(shortcuts: Config["desktopShortcuts"]) => void>();
+  const onKeepOpenOnBlurChanged = vi.fn<(keepOpen: boolean) => void>();
   const { sender, sent, state } = createFakeSender();
 
   const service = new RepromptService({
@@ -131,6 +133,7 @@ export function setup(options: {
     saveConfig,
     relaunchApp,
     onShortcutsChanged,
+    onKeepOpenOnBlurChanged,
     hydrateCredentials: options.hydrateCredentials ?? (() => Promise.resolve()),
     env,
   });
@@ -141,6 +144,7 @@ export function setup(options: {
     saveConfig,
     relaunchApp,
     onShortcutsChanged,
+    onKeepOpenOnBlurChanged,
     sender,
     sent,
     state,

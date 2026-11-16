@@ -33,6 +33,7 @@ const WRITABLE_FIELDS = [
   "outputLanguage",
   "timeoutMs",
   "maxOutputTokens",
+  "desktopKeepOpenOnBlur",
   // SettingsApp
   "uiLocale",
   "desktopShortcuts",
@@ -79,6 +80,7 @@ describe("contrat config:write", () => {
       maxOutputTokens: 2048,
       uiLocale: "fr",
       desktopShortcuts: { capture: "Command+Control+R" },
+      desktopKeepOpenOnBlur: false,
     };
 
     for (const field of WRITABLE_FIELDS) {

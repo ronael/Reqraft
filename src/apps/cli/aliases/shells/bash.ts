@@ -7,6 +7,9 @@ export const bashHandler: ShellHandler = {
   formatAlias(alias: string): string {
     return `alias ${alias}="rp"`;
   },
+  reloadCommand(configPath: string): string {
+    return `source ${configPath}`;
+  },
   parseExisting(content: string): { before: string; inside: string; after: string } {
     const beginIndex = content.indexOf(this.beginMarker);
     const endIndex = content.indexOf(this.endMarker);

@@ -296,8 +296,8 @@ export interface MessageParameters {
   "alias.confirmRemove": undefined;
   "alias.cancelled": undefined;
   "alias.removalCancelled": undefined;
-  "alias.added": { name: string; path: string };
-  "alias.removed": { name: string; path: string };
+  "alias.added": { name: string; command: string };
+  "alias.removed": { name: string; command: string };
   "alias.none": undefined;
   "init.localProvider": undefined;
   "init.keyNotRequired": undefined;
@@ -364,6 +364,7 @@ export interface MessageParameters {
   "init.apiKeyEnv": undefined;
   "init.customHeaders": undefined;
   "init.modelId": undefined;
+  "init.modelRequired": undefined;
   "init.manualModel": undefined;
   "init.modelQuestion": undefined;
   "init.defaultProfile": undefined;
@@ -434,6 +435,7 @@ export interface MessageParameters {
   "error.apiKeyRejected.title": undefined;
   "error.apiKeyRejected.message": { provider: string };
   "error.apiKeyRejected.action": { provider: string };
+  "error.apiKeyRejected.endpointAction": undefined;
   "error.credit.title": undefined;
   "error.credit.message": { provider: string };
   "error.credit.action": undefined;

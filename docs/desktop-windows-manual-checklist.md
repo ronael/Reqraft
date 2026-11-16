@@ -105,6 +105,16 @@ VS Code ; relever leurs versions. Les actions système réelles restent manuelle
 - [ ] Capture (critère Beta) : sélection active correctement récupérée ; aucune
       sélection ouvre la saisie libre. Une sélection identique au presse-papiers
       est bien distinguée de l'absence de sélection.
+- [ ] Bloc-notes ou Word : la sélection est lue par UI Automation, sans entrée
+      dans l'historique du presse-papiers (`Win+V`).
+- [ ] Navigateur ou VS Code : la capture passe par `Ctrl+C` et donne le bon texte.
+- [ ] Dans Word, garder `Ctrl+Alt` enfoncés un instant après le raccourci :
+      aucun `©` n'apparaît à la place de la sélection.
+- [ ] Application à plusieurs fenêtres (deux fenêtres VS Code) : le résultat se
+      colle dans la fenêtre d'où vient la sélection, pas dans l'autre.
+- [ ] Aucune sélection, mais du texte copié : la capsule le propose dans le
+      champ, rien ne part avant `Ctrl+⏎`, et `⏎` colle le résultat dans
+      l'application source.
 - [ ] Remplacement (critère Beta) : le résultat édité remplace uniquement la
       sélection d'origine, après restitution du focus à la bonne application.
       Annuler dans cette application restaure le texte initial.

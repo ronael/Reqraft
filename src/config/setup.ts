@@ -67,18 +67,45 @@ export function buildApiKeyStatus(
   return { envName, detected: Boolean(env[envName]), optional };
 }
 
+type CompatibleProviders = NonNullable<Config["providers"]>;
+
+/**
+ * The declared endpoints, with the one just configured first.
+ *
+ * Only the first entry is ever called (`providers/registry.ts`): appended
+ * after an older one, the endpoint just configured would be saved and never
+ * used. An identifier made only of digits still sorts first whatever its
+ * place, since JavaScript lists integer keys before the others.
+ */
+function withCompatibleProviderFirst(
+  existing: CompatibleProviders,
+  compatible: CompatibleProviderInput | undefined,
+): CompatibleProviders {
+  if (!compatible) {
+    return { ...existing };
+  }
+  const others = Object.entries(existing).filter(([id]) => id !== compatible.id);
+  return Object.fromEntries([
+    [
+      compatible.id,
+      {
+        type: OPENAI_COMPATIBLE_PROVIDER_ID,
+        name: compatible.name,
+        baseUrl: compatible.baseUrl,
+        apiKeyEnv: compatible.apiKeyEnv,
+        customHeaders: compatible.customHeaders,
+      },
+    ],
+    ...others,
+  ]);
+}
+
 /** Builds the configuration to persist, validated by the shared schema. */
 export function createInitConfig(input: InitConfigInput): Config {
-  const providers = { ...(input.existing?.providers ?? {}) };
-  if (input.compatibleProvider) {
-    providers[input.compatibleProvider.id] = {
-      type: OPENAI_COMPATIBLE_PROVIDER_ID,
-      name: input.compatibleProvider.name,
-      baseUrl: input.compatibleProvider.baseUrl,
-      apiKeyEnv: input.compatibleProvider.apiKeyEnv,
-      customHeaders: input.compatibleProvider.customHeaders,
-    };
-  }
+  const providers = withCompatibleProviderFirst(
+    input.existing?.providers ?? {},
+    input.compatibleProvider,
+  );
 
   return ConfigSchema.parse({
     ...(input.existing ?? {}),

@@ -32,6 +32,11 @@ export interface CapsuleWindowOptions {
   rendererUrl: string;
   /** Vite dev server URL; when absent the built renderer is loaded. */
   devServerUrl?: string;
+  /**
+   * Read at every focus loss, so a change in the settings applies at once.
+   * Absent: the capsule hides when it loses the focus.
+   */
+  keepOpenOnBlur?: () => boolean;
 }
 
 export interface CapsuleWindow {
@@ -74,6 +79,12 @@ export interface CapsuleWindow {
    */
   reveal(): void;
   hide(): void;
+  /**
+   * Vrai quand la capsule, visible, a le clavier. Le raccourci de capture est
+   * alors ignoré : ⌘C partirait dans la capsule, qui copierait son propre
+   * texte, pris ensuite pour la sélection.
+   */
+  isFocused(): boolean;
 }
 
 /** Ce que l'ouverture a fixé pour toute la session, et rien d'autre. */
@@ -110,10 +121,13 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
   // Visible on every macOS space, like a HUD panel.
   window.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  // The capsule is transient: losing the focus dissolves it. The replacement
-  // flow relies on this — the source app gets the focus back (§5.2).
+  // Losing the focus dissolved the capsule, which threw away a result as soon
+  // as someone clicked elsewhere to read or copy something. It now stays unless
+  // the user chose the transient behaviour. Replacement does not depend on
+  // either: it hides the capsule itself to hand the focus back (§5.2, see
+  // `hideCapsule` in `ipc.ts`).
   window.on("blur", () => {
-    if (!window.webContents.isDevToolsOpened()) {
+    if (!window.webContents.isDevToolsOpened() && options.keepOpenOnBlur?.() !== true) {
       window.hide();
     }
   });
@@ -209,6 +223,9 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
       if (!window.isDestroyed()) {
         window.hide();
       }
+    },
+    isFocused() {
+      return !window.isDestroyed() && window.isVisible() && window.isFocused();
     },
   };
 }

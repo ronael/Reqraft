@@ -90,9 +90,11 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { RepromptService, type RunEventSender } from "./reprompt-service.js";
 import { buildDoctorReport, formatDoctorReport } from "./doctor.js";
+import { failuresAsSentences, rendererFailure } from "./ipc-failures.js";
 import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
-import { mainLocale, resolveMainLocale, t } from "./i18n.js";
+import { mainLocale, t } from "./i18n.js";
+import { applySavedPreferences } from "./saved-preferences.js";
 import { version } from "@/version.js";
 
 /**
@@ -209,6 +211,12 @@ export interface DesktopIpcDependencies {
    */
   onShortcutsChanged?: (shortcuts: Config["desktopShortcuts"]) => void;
   /**
+   * Applique tout de suite le choix de garder les fenêtres ouvertes quand
+   * elles perdent le focus : les fenêtres lisent ce réglage à chaque perte de
+   * focus, et c'est le processus principal qui le leur tient à jour.
+   */
+  onKeepOpenOnBlurChanged?: (keepOpen: boolean) => void;
+  /**
    * Relance l'application quand une préférence ne peut être appliquée
    * proprement qu'au démarrage, comme la langue du menu et des titres.
    */
@@ -267,7 +275,13 @@ const EMPTY_SHORTCUT_STATE: ShortcutStateInfo = {
   suspended: false,
 };
 
-export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void {
+export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
+  const dependencies: DesktopIpcDependencies = {
+    ...injected,
+    // Every channel below is registered through this one, so none of them can
+    // hand a window a code instead of a sentence: see `failuresAsSentences`.
+    ipcMain: failuresAsSentences(injected.ipcMain),
+  };
   const env = dependencies.env ?? process.env;
   const secureCredentialStorage =
     dependencies.secureCredentialStorageAvailable ??
@@ -345,18 +359,7 @@ export function registerIpcHandlers(dependencies: DesktopIpcDependencies): void 
     // The desktop surface never enables telemetry, whatever the renderer asks.
     const merged: Config = ConfigSchema.parse({ ...current, ...patch, telemetry: false });
     await save(merged);
-    // Un raccourci choisi et jamais appliqué est un réglage qui ment. Les
-    // combinaisons étaient lues une seule fois au démarrage : changer le choix
-    // ne faisait rien, et l'écran continuait d'annoncer l'ancien comme actif.
-    if (patch.desktopShortcuts !== undefined) {
-      dependencies.onShortcutsChanged?.(merged.desktopShortcuts);
-    }
-    if (
-      patch.uiLocale !== undefined &&
-      resolveMainLocale(current.uiLocale, env) !== resolveMainLocale(merged.uiLocale, env)
-    ) {
-      dependencies.relaunchApp?.();
-    }
+    applySavedPreferences(dependencies, patch, { before: current, after: merged, env });
     return sanitizeConfigForRenderer(merged);
   });
 
@@ -1363,7 +1366,13 @@ function registerCredentialSaveHandler(options: {
     // Desktop source. An existing launch variable keeps its documented
     // priority unless the renderer explicitly asks to replace it.
     const selectStoredCredential = request.preferKeychain === true || !options.env[envName];
-    await options.storeCredential(request.provider, request.secret, options.env);
+    try {
+      await options.storeCredential(request.provider, request.secret, options.env);
+    } catch (error) {
+      // Worded here rather than by `failuresAsSentences`: a refused key names
+      // the provider it was entered for, by its label rather than its id.
+      throw rendererFailure(error, getProviderDefinition(request.provider).label);
+    }
     if (selectStoredCredential) {
       const current = await options.loadUser();
       const preferred = new Set(current.desktopKeychainProviders ?? []);

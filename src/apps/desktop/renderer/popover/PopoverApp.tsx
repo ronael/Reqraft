@@ -5,6 +5,7 @@ import {
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../shared/i18n.js";
+import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
 import {
@@ -145,7 +146,7 @@ export function PopoverApp(): React.JSX.Element {
       })
       .catch((reason: unknown) => {
         setRunning(false);
-        setFailed(reason instanceof Error ? reason.message : String(reason));
+        setFailed(ipcFailureMessage(reason));
       });
   }, [annoncer, input, profileId, level, running, t]);
 

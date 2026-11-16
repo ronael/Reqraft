@@ -91,6 +91,8 @@ function createOpenAICompatibleProvider(
   env: NodeJS.ProcessEnv,
   config?: Config,
 ): OpenAICompatibleProvider {
+  // The first declared endpoint is the one called: `rp init` and the desktop
+  // onboarding put the endpoint they configure first (`config/setup.ts`).
   const providerConfig = config?.providers ? Object.values(config.providers)[0] : undefined;
   if (providerConfig) {
     return new OpenAICompatibleProvider(

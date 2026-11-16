@@ -160,6 +160,7 @@ function checkShortcuts(state: ShortcutStateInfo): DoctorCheck[] {
     checkShortcutIntent(state, "capture"),
     checkShortcutIntent(state, "input"),
     checkShortcutIntent(state, "popover"),
+    checkShortcutIntent(state, "replace"),
   ];
 
   checks.push({

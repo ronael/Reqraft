@@ -27,7 +27,7 @@ import {
   formatInitSection,
   formatInitStatus,
 } from "@/apps/cli/ui/init-format.js";
-import { REPROMPT_LEVELS } from "@/core/levels.js";
+import { DEFAULT_REPROMPT_LEVEL, REPROMPT_LEVELS } from "@/core/levels.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
 import { listProfiles } from "@/profiles/registry.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
@@ -65,6 +65,8 @@ export { buildApiKeyStatus, createInitConfig };
 export type { ApiKeyStatus, CompatibleProviderInput, InitConfigInput };
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
+/** What a new local server is offered: no identifier can be known for it in advance. */
+const LOCAL_MODEL_ID = "local-model";
 
 export function getInitProfileChoices(): string[] {
   return [AUTO_PROFILE_ID, ...listProfiles().map((profile) => profile.id)];
@@ -271,8 +273,22 @@ function writeCancellation(io: InitIo): void {
   io.write(`${formatInitStatus(io.t("init.cancelled"), "warning", io.visual)}\n`);
 }
 
-async function askModelText(io: InitIo, currentModel: string): Promise<string> {
-  return await askText(io, io.t("init.modelId"), currentModel);
+/** Asks for a model identifier until one is given; Enter keeps `proposed` when there is one. */
+async function askModelText(io: InitIo, proposed: string): Promise<string> {
+  for (;;) {
+    const model = await askText(io, io.t("init.modelId"), proposed);
+    if (model) {
+      return model;
+    }
+    io.write(`${formatInitStatus(io.t("init.modelRequired"), "error", io.visual)}\n`);
+  }
+}
+
+/** The saved model, when it was saved for this provider: another's means nothing here. */
+function savedModelFor(defaults: Config, provider: InitProvider): string | undefined {
+  return defaults.defaultProvider === provider && defaults.defaultModel
+    ? defaults.defaultModel
+    : undefined;
 }
 
 /**
@@ -287,17 +303,19 @@ async function resolveBaseConfig(io: InitIo, reset: boolean): Promise<Config | n
     return DEFAULT_CONFIG;
   }
 
-  // Les valeurs de départ de l'assistant sont celles de la personne : elles
-  // finissent enregistrées, et un réglage venu du projet courant deviendrait
-  // permanent en passant par là.
-  const existingConfig = await loadUserConfig();
-
+  // A reset starts from the defaults and never reads the file it replaces:
+  // reading it first would refuse the very file a reset exists to recover.
   if (reset) {
     writeIntro(io);
     return await confirmOverwrite(io, io.t("init.overwriteDefaults"));
   }
 
-  const action = await askExistingConfigAction(io, existingConfig);
+  // Les valeurs de départ de l'assistant sont celles de la personne : elles
+  // finissent enregistrées, et un réglage venu du projet courant deviendrait
+  // permanent en passant par là.
+  const existingConfig = await loadUserConfig();
+
+  const action = await askExistingConfigAction(io);
   if (action === "cancel") {
     writeCancellation(io);
     return null;
@@ -359,8 +377,10 @@ export async function runFirstRunSetup(
   t: Translator = DEFAULT_TRANSLATOR,
 ): Promise<void> {
   const env = options.env ?? process.env;
-  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env, t);
+  // Checked before the terminal is opened: a refused key would otherwise leave
+  // an interface reading the input after the setup has given up.
   await hydrateCredentials(env);
+  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env, t);
   const shell = options.shell ?? process.env.SHELL ?? "";
 
   try {
@@ -377,25 +397,23 @@ export async function runFirstRunSetup(
 /**
  * Asks for the model to use.
  *
- * A self-hosted or custom OpenAI-compatible endpoint publishes no preset
- * catalogue, so the identifier is typed in. Every other case, including a
- * compatible provider matching a known gateway, goes through the preset list.
+ * An OpenAI-compatible endpoint publishes no preset catalogue, so its model is
+ * typed in. The saved model is proposed only when it was saved for such an
+ * endpoint: a fresh setup holds the Anthropic default, which no local server
+ * serves. Otherwise a local server is offered the generic `local-model`, and a
+ * hosted endpoint nothing, since no identifier can be guessed for it.
  */
 async function askModelIdentifier(
   io: InitIo,
-  provider: InitProvider,
+  providerChoice: InitProviderChoice,
   defaults: Config,
   compatibleProvider: CompatibleProviderInput | undefined,
 ): Promise<string> {
-  if (compatibleProvider?.baseUrl) {
-    if (compatibleProvider.id === "local") {
-      return await askModelText(io, defaults.defaultModel || "local-model");
-    }
-    if (compatibleProvider.id === "custom") {
-      return await askModelText(io, defaults.defaultModel);
-    }
+  if (!compatibleProvider) {
+    return await askModel(io, providerChoice.provider, defaults);
   }
-  return await askModel(io, provider, defaults.defaultModel);
+  const savedModel = savedModelFor(defaults, OPENAI_COMPATIBLE_PROVIDER_ID);
+  return await askModelText(io, savedModel ?? (providerChoice.local ? LOCAL_MODEL_ID : ""));
 }
 
 async function collectConfig(
@@ -437,12 +455,7 @@ async function collectConfig(
       }
     }
 
-    const model = await askModelIdentifier(
-      io,
-      providerChoice.provider,
-      defaults,
-      compatibleProvider,
-    );
+    const model = await askModelIdentifier(io, providerChoice, defaults, compatibleProvider);
 
     return {
       provider: providerChoice.provider,
@@ -471,7 +484,6 @@ function writeIntro(io: InitIo): void {
 
 async function askExistingConfigAction(
   io: InitIo,
-  existingConfig: Config,
 ): Promise<"modify" | "reset" | "show" | "cancel"> {
   io.write(`${formatInitSection(io.t("init.existingTitle"), io.visual)}\n`);
   io.write(`${io.t("init.existing")}\n\n`);
@@ -482,10 +494,7 @@ async function askExistingConfigAction(
     io.t("init.cancel"),
   ]);
   if (choice === 1) return "reset";
-  if (choice === 2) {
-    io.write(`${JSON.stringify(existingConfig, null, 2)}\n`);
-    return "show";
-  }
+  if (choice === 2) return "show";
   if (choice === 3) return "cancel";
   return "modify";
 }
@@ -531,8 +540,7 @@ async function askCompatibleProvider(
     existing?.baseUrl ?? (local ? "http://localhost:11434/v1" : "https://example.com/v1"),
   );
   const apiKeyEnv = await askText(io, io.t("init.apiKeyEnv"), existing?.apiKeyEnv ?? "");
-  const headersInput = await askText(io, io.t("init.customHeaders"), "");
-  const customHeaders = parseHeaders(headersInput, io.t);
+  const customHeaders = await askCustomHeaders(io, existing?.customHeaders);
   return {
     id,
     name: name ? name : undefined,
@@ -542,10 +550,11 @@ async function askCompatibleProvider(
   };
 }
 
-async function askModel(io: InitIo, provider: InitProvider, currentModel: string): Promise<string> {
+async function askModel(io: InitIo, provider: InitProvider, defaults: Config): Promise<string> {
+  const savedModel = savedModelFor(defaults, provider);
   const presets = getPresetModels().filter((preset) => preset.provider === provider);
   if (presets.length === 0) {
-    return await askModelText(io, currentModel);
+    return await askModelText(io, savedModel ?? "");
   }
 
   const recommended = presets.find((preset) => preset.recommended);
@@ -558,12 +567,32 @@ async function askModel(io: InitIo, provider: InitProvider, currentModel: string
       `${preset.name} (${preset.id}) - ${modelDescription(preset.id, preset.description, io.t)}`,
   );
   labels.push(io.t("init.manualModel"));
+  const manualIndex = labels.length - 1;
 
-  const index = await askMenu(io, io.t("init.modelQuestion"), labels);
-  if (index === labels.length - 1) {
-    return await askModelText(io, currentModel);
+  const index = await askMenu(
+    io,
+    io.t("init.modelQuestion"),
+    labels,
+    proposedModelIndex(ordered, savedModel, manualIndex),
+  );
+  const chosen = ordered[index];
+  return chosen ? chosen.id : await askModelText(io, savedModel ?? "");
+}
+
+/**
+ * The entry Enter keeps in the model list: the saved model — through the
+ * manual entry for an identifier typed by hand — or else the recommended one.
+ */
+function proposedModelIndex(
+  ordered: readonly { id: string }[],
+  savedModel: string | undefined,
+  manualIndex: number,
+): number {
+  if (savedModel === undefined) {
+    return 0;
   }
-  return ordered[index]?.id ?? currentModel;
+  const savedIndex = ordered.findIndex((preset) => preset.id === savedModel);
+  return savedIndex >= 0 ? savedIndex : manualIndex;
 }
 
 async function askProfile(io: InitIo, currentProfile: string): Promise<string> {
@@ -578,9 +607,12 @@ async function askLevel(
   currentLevel: Config["defaultLevel"],
 ): Promise<Config["defaultLevel"]> {
   const levels = [...REPROMPT_LEVELS];
-  const defaultIndex = Math.max(levels.indexOf(currentLevel), 1);
+  // The saved level is proposed, whichever it is; the default level only
+  // stands in for one the list does not know.
+  const savedIndex = levels.indexOf(currentLevel);
+  const defaultIndex = savedIndex >= 0 ? savedIndex : levels.indexOf(DEFAULT_REPROMPT_LEVEL);
   const index = await askMenu(io, io.t("init.level"), levels, defaultIndex);
-  return levels[index] ?? "standard";
+  return levels[index] ?? DEFAULT_REPROMPT_LEVEL;
 }
 
 async function askUiLocale(
@@ -764,13 +796,42 @@ function credentialProviderFromEnvName(envName: string): CredentialProvider | un
   return match?.id;
 }
 
-function parseHeaders(input: string, t: Translator): Record<string, string> | undefined {
-  if (!input.trim()) {
-    return undefined;
+/**
+ * Asks for the custom headers until the answer is empty or a JSON object.
+ *
+ * Enter keeps the saved headers and an empty object removes them. The question
+ * names the saved headers without their values: one may carry a token.
+ */
+async function askCustomHeaders(
+  io: InitIo,
+  saved: Record<string, string> | undefined,
+): Promise<Record<string, string> | undefined> {
+  const savedNames = Object.keys(saved ?? {}).join(", ");
+  for (;;) {
+    const answer = await io.question(
+      formatInitPrompt(io.t("init.customHeaders"), savedNames, io.visual),
+    );
+    if (!answer) {
+      return saved;
+    }
+    const headers = parseHeaders(answer);
+    if (headers) {
+      return Object.keys(headers).length > 0 ? headers : undefined;
+    }
+    io.write(`${formatInitStatus(io.t("init.headersInvalid"), "error", io.visual)}\n`);
   }
-  const parsed = JSON.parse(input) as unknown;
+}
+
+/** The headers typed as a JSON object, or null when the answer is not one. */
+function parseHeaders(input: string): Record<string, string> | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(input);
+  } catch {
+    return null;
+  }
   if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-    throw new Error(t("init.headersInvalid"));
+    return null;
   }
   return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, String(value)]));
 }

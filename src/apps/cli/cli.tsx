@@ -2,9 +2,10 @@ import process from "node:process";
 import { CommanderError } from "commander";
 import { createCliProgram } from "./cli-program.js";
 import { loadConfig } from "@/config/loader.js";
+import { normalizeReqraftError } from "@/core/errors.js";
 import { findUiLocalePreference, resolveUiLocale, systemLocaleCandidates } from "@/i18n/locale.js";
 import { createTranslator } from "@/i18n/translate.js";
-import { formatUiError } from "@/shared/errors.js";
+import { formatUiError, providerNamedBy } from "@/shared/errors.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
 import { reportProfileCatalogProblems } from "./commands/profiles.js";
 import { notifyCliUpdate, shouldRunCliUpdateNotifier } from "./update-notifier.js";
@@ -53,7 +54,10 @@ async function parseProgram(): Promise<void> {
       else process.exitCode = error.exitCode;
       return;
     }
-    reportTopLevelError(formatUiError(error, "provider", t), 1);
+    reportTopLevelError(
+      formatUiError(error, providerNamedBy(error) ?? "provider", t),
+      normalizeReqraftError(error).exitCode,
+    );
   }
 }
 

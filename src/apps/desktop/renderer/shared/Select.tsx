@@ -287,6 +287,9 @@ export function Select({
                         : "design-select-option"
                     }
                     role="option"
+                    // Le focus reste sur le déclencheur (aria-activedescendant) : -1 rend
+                    // l'option focusable sans l'ajouter à l'ordre de tabulation.
+                    tabIndex={-1}
                     aria-selected={option.value === value}
                     aria-disabled={option.disabled ?? undefined}
                     onMouseEnter={() => {

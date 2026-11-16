@@ -4,6 +4,7 @@ import { Button } from "../shared/Button.js";
 import { Select, type SelectOption } from "../shared/Select.js";
 import { CheckCircle2, KeyRound, Loader2, TriangleAlert } from "lucide-react";
 import { groupProfiles } from "../shared/profiles.js";
+import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { shouldShowWelcomeTour, WelcomeTour } from "./WelcomeTour.js";
 import {
   REPROMPT_LEVEL_IDS,
@@ -128,6 +129,9 @@ export function OnboardingApp(): React.JSX.Element {
   const { locale, previewLocale } = useLocale();
   const [chosenLocale, setChosenLocale] = useState<"en" | "fr" | null>(null);
   const [tourDismissed, setTourDismissed] = useState(false);
+  // The tour's own failure, kept apart from `error`: the tour is what shows
+  // it, and the form must never open on a failure it did not have.
+  const [tourError, setTourError] = useState<string | null>(null);
   const forceWelcomeTour = new URLSearchParams(window.location.search).get("tour") === "1";
 
   const refresh = useCallback(async (): Promise<OnboardingStateResponse> => {
@@ -164,7 +168,7 @@ export function OnboardingApp(): React.JSX.Element {
             },
         );
       } catch (cause) {
-        setError(messageOf(cause));
+        setError(ipcFailureMessage(cause));
       }
     })();
   }, [refresh]);
@@ -206,7 +210,9 @@ export function OnboardingApp(): React.JSX.Element {
   if (shouldShowWelcomeTour(state.welcomeTourRequired, tourDismissed, forceWelcomeTour)) {
     return (
       <WelcomeTour
+        error={tourError}
         onContinue={() => {
+          setTourError(null);
           void window.reqraft
             .completeWelcomeTour()
             .then((next) => {
@@ -214,7 +220,7 @@ export function OnboardingApp(): React.JSX.Element {
               setTourDismissed(true);
             })
             .catch((cause: unknown) => {
-              setError(messageOf(cause));
+              setTourError(t("onboarding.tour.saveFailed", { reason: ipcFailureMessage(cause) }));
             });
         }}
       />
@@ -259,7 +265,7 @@ export function OnboardingApp(): React.JSX.Element {
       await refresh();
       setNotice(t("onboarding.keySaved", { provider: provider.label }));
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(ipcFailureMessage(cause));
     } finally {
       setBusy(null);
     }
@@ -294,7 +300,7 @@ export function OnboardingApp(): React.JSX.Element {
         setError(t("onboarding.savedIncomplete"));
       }
     } catch (cause) {
-      setError(messageOf(cause));
+      setError(ipcFailureMessage(cause));
     } finally {
       setBusy(null);
     }
@@ -468,6 +474,9 @@ export function OnboardingApp(): React.JSX.Element {
             ) : (
               <input
                 className="settings-input mono"
+                // Named by the same label as the menu it stands in for: a
+                // placeholder is an example, not a name.
+                aria-labelledby="onboarding-model-label"
                 value={form.model}
                 placeholder={t("onboarding.modelPlaceholder")}
                 onChange={(event) => {
@@ -552,11 +561,4 @@ export function OnboardingApp(): React.JSX.Element {
       </footer>
     </main>
   );
-}
-
-function messageOf(cause: unknown): string {
-  // Electron prefixes a rejected `invoke` with its own frame; the sentence the
-  // main process wrote is what the user needs, not the transport around it.
-  const raw = cause instanceof Error ? cause.message : String(cause);
-  return raw.replace(/^Error invoking remote method '[^']+':\s*/, "").replace(/^Error:\s*/, "");
 }

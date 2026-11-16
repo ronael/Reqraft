@@ -1,3 +1,4 @@
+import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@/providers/catalog.js";
 import { ProviderError } from "@/providers/errors.js";
 import { ReqraftError, type ReqraftErrorCode } from "@/core/errors.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
@@ -93,7 +94,12 @@ function describeHttpStatus(status: number, provider: string, t: Translator): Ui
     return {
       title: t("error.apiKeyRejected.title"),
       message: t("error.apiKeyRejected.message", { provider }),
-      nextAction: t("error.apiKeyRejected.action", { provider }),
+      // `rp auth login` does not take a compatible endpoint: its key comes
+      // from the variable configured for that endpoint.
+      nextAction:
+        provider === OPENAI_COMPATIBLE_PROVIDER_ID
+          ? t("error.apiKeyRejected.endpointAction")
+          : t("error.apiKeyRejected.action", { provider }),
     };
   }
   if (status === 402) {
@@ -150,6 +156,17 @@ export function describeUiError(
   }
 
   return createBasicError(t("error.internal.unexpected"), t);
+}
+
+/**
+ * The provider a failure names, if it carries one.
+ *
+ * For the surfaces that do not know which provider they were talking to — an
+ * error that reaches the top of the CLI — so the advice names a real one.
+ */
+export function providerNamedBy(error: unknown): string | undefined {
+  const provider = error instanceof ReqraftError ? error.params?.provider : undefined;
+  return typeof provider === "string" ? provider : undefined;
 }
 
 /** Flattens a UiError for surfaces that only accept a single line. */

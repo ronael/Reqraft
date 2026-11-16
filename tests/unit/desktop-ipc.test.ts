@@ -359,6 +359,27 @@ describe("config via IPC", () => {
     expect(harness.onShortcutsChanged).toHaveBeenCalledWith(shortcuts);
   });
 
+  it("config:write applique tout de suite le choix de garder les fenêtres ouvertes", async () => {
+    const harness = setup({});
+
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.configWrite,
+      { desktopKeepOpenOnBlur: false },
+      harness.sender,
+    );
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.configWrite,
+      { outputLanguage: "fr" },
+      harness.sender,
+    );
+
+    expect(harness.onKeepOpenOnBlurChanged).toHaveBeenCalledOnce();
+    expect(harness.onKeepOpenOnBlurChanged).toHaveBeenCalledWith(false);
+    expect(harness.saveConfig).toHaveBeenCalledWith(
+      expect.objectContaining({ desktopKeepOpenOnBlur: false }),
+    );
+  });
+
   it("sanitizeConfigForRenderer conserve une config sans providers custom", () => {
     expect(sanitizeConfigForRenderer(MOCK_CONFIG)).toEqual(MOCK_CONFIG);
   });

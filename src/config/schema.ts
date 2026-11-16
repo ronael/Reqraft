@@ -36,13 +36,15 @@ export const OpenAICompatibleProviderConfigSchema = z
  * Desktop global shortcuts, as the configuration file records them.
  *
  * Named on its own so the desktop IPC contract can reuse the exact same shape
- * — in its strict flavour — rather than restating the three intents. A second
- * copy would be one more place to forget when a fourth one appears.
+ * — in its strict flavour — rather than restating the intents. A second copy
+ * would be one more place to forget when another one appears.
  */
 export const DesktopShortcutsConfigSchema = z.object({
   capture: z.string().trim().min(1).optional(),
   input: z.string().trim().min(1).optional(),
   popover: z.string().trim().min(1).optional(),
+  /** Capture, reformulate and replace in one go, without confirming with ⏎. */
+  replace: z.string().trim().min(1).optional(),
 });
 
 export const ConfigSchema = z
@@ -70,6 +72,12 @@ export const ConfigSchema = z
      * a fallback into a decision the user never made.
      */
     desktopShortcuts: DesktopShortcutsConfigSchema.optional(),
+    /**
+     * Whether the capsule and the popover stay on screen when they lose the
+     * focus. Absent means yes: clicking elsewhere to read or copy something no
+     * longer throws the window away. `false` restores the transient behaviour.
+     */
+    desktopKeepOpenOnBlur: z.boolean().optional(),
     /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */
     desktopWelcomeTourVersion: z.number().int().nonnegative().optional(),
     /** Dernière version Desktop déjà annoncée par une notification native. */
