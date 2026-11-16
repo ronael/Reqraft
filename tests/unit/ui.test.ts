@@ -16,7 +16,12 @@ import {
   toggleView,
   updatePromptInput,
 } from "@/apps/cli/ui/app-state.js";
-import { createUiRepromptInput, resolveUiStreamPreference } from "@/apps/cli/ui/app-actions.js";
+import {
+  createUiRepromptInput,
+  refuseSecrets,
+  resolveUiStreamPreference,
+} from "@/apps/cli/ui/app-actions.js";
+import { createTranslator } from "@/i18n/translate.js";
 import { resolveCommandIntent } from "@/apps/cli/ui/command-intents.js";
 import {
   getCommandOptions,
@@ -122,6 +127,37 @@ describe("modal options", () => {
     expect(getProviderOptions()).toContainEqual({
       label: "anthropic — Anthropic",
       value: "anthropic",
+    });
+    expect(getProviderOptions()).toContainEqual({
+      label: "openai-compatible — OpenAI Compatible",
+      value: "openai-compatible",
+    });
+  });
+
+  it("does not offer the test provider", () => {
+    expect(getProviderOptions().map((option) => option.value)).not.toContain("mock");
+  });
+
+  describe("the model a provider switch lands on, as rp --provider picks it", () => {
+    const configured = { defaultProvider: "anthropic" as const, defaultModel: "claude-opus-4-5" };
+
+    it("keeps the configured model for a provider without presets", () => {
+      // openai-compatible has none: the switch used to leave the model empty.
+      expect(getFallbackModelForProvider("openai-compatible", configured)).toBe("claude-opus-4-5");
+      expect(
+        getFallbackModelForProvider("openai-compatible", {
+          defaultProvider: "openai-compatible",
+          defaultModel: "llama3.1:8b",
+        }),
+      ).toBe("llama3.1:8b");
+    });
+
+    it("takes another provider's recommended preset", () => {
+      expect(getFallbackModelForProvider("openai", configured)).toBe("gpt-5.1");
+    });
+
+    it("comes back to the configured model on the configured provider", () => {
+      expect(getFallbackModelForProvider("anthropic", configured)).toBe("claude-opus-4-5");
     });
   });
 
@@ -408,5 +444,26 @@ describe("secondary views", () => {
     const state = { ...onResult, input: "inchangé" };
     expect(toggleView(state, "diff").input).toBe("inchangé");
     expect(toggleView(state, "diff", "remplacé").input).toBe("remplacé");
+  });
+});
+
+describe("the editor's secret check", () => {
+  const t = createTranslator("en");
+
+  it("lets a prompt without a secret through", () => {
+    expect(refuseSecrets("fix the form on mobile", t)).toBeNull();
+  });
+
+  it("stops a prompt holding a secret and names each kind once", () => {
+    const refusal = refuseSecrets(
+      `use AKIAIOSFODNN7EXAMPLE, then AKIAIOSFODNN7EXAMPL2 and ghp_${"a1B2".repeat(9)}`,
+      t,
+    );
+
+    expect(refusal).toEqual({
+      title: t("tui.secret.title"),
+      message: t("tui.secret.message", { kinds: "GitHub token, AWS access key" }),
+      nextAction: t("tui.secret.action"),
+    });
   });
 });

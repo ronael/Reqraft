@@ -20,7 +20,11 @@ Avant chaque envoi à un provider, Reqraft analyse localement le texte pour dét
 - les clés privées ;
 - les variables nommées `SECRET`, `TOKEN`, `PASSWORD` ou `API_KEY`.
 
-En mode interactif, une confirmation est demandée. En mode non interactif, utilisez `--redact-secrets` ou `--force`.
+Si un secret est détecté, rien n'est envoyé :
+
+- `rp "…"` s'arrête et propose `--redact-secrets` (chaque secret devient `[REDACTED]`) ou `--force` ;
+- l'éditeur interactif (`rp` seul) refuse l'envoi tant que le secret reste dans le prompt ;
+- l'application de bureau propose « Masquer et continuer », qui envoie le texte avec `[REDACTED]` à la place de chaque secret.
 
 ## Providers
 

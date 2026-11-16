@@ -80,3 +80,8 @@ function contains(outer: SecretMatch, inner: SecretMatch): boolean {
 export function hasSecrets(input: string): boolean {
   return detectSecrets(input).length > 0;
 }
+
+/** Each kind of secret the input holds, once, however many share it. */
+export function detectSecretKinds(input: string): string[] {
+  return [...new Set(detectSecrets(input).map((secret) => secret.type))];
+}

@@ -28,6 +28,9 @@ export interface MessageParameters {
   "tui.toast.copied": undefined;
   "tui.toast.reset": undefined;
   "tui.toast.cancelled": undefined;
+  "tui.secret.title": undefined;
+  "tui.secret.message": { kinds: string };
+  "tui.secret.action": undefined;
   "tui.tooSmall.title": undefined;
   "tui.tooSmall.body": undefined;
   "tui.picker.current": undefined;

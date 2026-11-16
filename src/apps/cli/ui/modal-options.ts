@@ -1,3 +1,5 @@
+import { DEFAULT_CONFIG } from "@/config/loader.js";
+import type { Config } from "@/config/schema.js";
 import type { RepromptLevel } from "@/core/types.js";
 import { REPROMPT_LEVELS } from "@/core/levels.js";
 import { CAPABILITIES } from "@/capabilities/registry.js";
@@ -130,11 +132,14 @@ export function filterSelectOptions<T extends string>(
   );
 }
 
+/** The providers to choose from: `mock` answers tests, not people. */
 export function getProviderOptions(): SelectOption<string>[] {
-  return listProviderDefinitions().map((provider) => ({
-    label: `${provider.id} — ${provider.label}`,
-    value: provider.id,
-  }));
+  return listProviderDefinitions()
+    .filter((provider) => !provider.isTest)
+    .map((provider) => ({
+      label: `${provider.id} — ${provider.label}`,
+      value: provider.id,
+    }));
 }
 
 export function getModelOptions(provider: string): SelectOption<string>[] {
@@ -143,8 +148,19 @@ export function getModelOptions(provider: string): SelectOption<string>[] {
     .map((model) => ({ label: `${model.id} — ${model.name}`, value: model.id }));
 }
 
-export function getFallbackModelForProvider(provider: string): string {
-  return getPresetFallbackModelForProvider(provider) ?? "";
+/**
+ * The model a provider switch lands on, as `rp --provider` picks it
+ * (commands/reprompt.ts): the configured model for the configured provider,
+ * otherwise the provider's recommended preset, otherwise the configured model.
+ * `openai-compatible` has no preset, and an empty model is one no endpoint
+ * accepts.
+ */
+export function getFallbackModelForProvider(
+  provider: string,
+  configured: Pick<Config, "defaultProvider" | "defaultModel"> = DEFAULT_CONFIG,
+): string {
+  if (provider === configured.defaultProvider) return configured.defaultModel;
+  return getPresetFallbackModelForProvider(provider) ?? configured.defaultModel;
 }
 
 /** Les quatre sélecteurs qui présentent une liste de valeurs. */
