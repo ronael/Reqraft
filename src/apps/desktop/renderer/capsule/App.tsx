@@ -20,7 +20,6 @@ import { describeQualityVerdict } from "../shared/quality.js";
 import {
   AUTO_PROFILE_ID,
   type ProfileCatalogEntry,
-  REPROMPT_LEVEL_IDS,
   type CapsuleOpenedPayload,
   type DesktopPlatform,
   type RepromptResult,
@@ -39,11 +38,10 @@ import {
   type CapsuleIntent,
 } from "./keyboard.js";
 import { autoApplyDecision, isUserIntervention } from "./auto-apply.js";
+import { cycleRepromptLevel, offersLowerLevel, type Level } from "./levels.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
 const GENERATING = "generating";
-
-type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
 const PROMPT_EMPTY_MESSAGE = "capsule.promptEmpty";
 const CORRECTION_PROFILE = "clean";
@@ -56,13 +54,6 @@ function offersCorrectionOnly(
   const ready = state === "ready" || state === "comparison";
   if (!ready || picking || result === null) return false;
   return result.profile !== CORRECTION_PROFILE || result.level !== "minimal";
-}
-
-export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
-  const currentIndex = REPROMPT_LEVEL_IDS.indexOf(current);
-  const safeIndex = currentIndex === -1 ? REPROMPT_LEVEL_IDS.indexOf("standard") : currentIndex;
-  const nextIndex = (safeIndex + direction + REPROMPT_LEVEL_IDS.length) % REPROMPT_LEVEL_IDS.length;
-  return REPROMPT_LEVEL_IDS[nextIndex] ?? "standard";
 }
 
 /**
@@ -257,7 +248,8 @@ function CapsuleSource(
 interface CapsuleFooterProps {
   platform: DesktopPlatform;
   state: CapsuleState;
-  expansion: boolean;
+  /** Le résultat est trop long et un niveau plus bas existe : « minimal » n'en a pas. */
+  canLowerLevel: boolean;
   /** La comparaison est-elle épinglée (⌘D), plutôt que maintenue (⌥) ? */
   comparisonPinned: boolean;
   running: boolean;
@@ -283,6 +275,7 @@ interface CapsuleFooterProps {
   onRerun(): void;
   onCorrectOnly(): void;
   onLevel(): void;
+  onLowerLevel(): void;
   onCancel(): void;
   onClose(): void;
 }
@@ -404,8 +397,9 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                 >
                   {props.profileLabel}
                 </button>
-                {props.expansion && (
-                  <CapsuleKey touche="⇥" className="key-primary" onClick={props.onLevel}>
+                {/* Vers le bas, donc ⇧⇥ : ⇥ monte. */}
+                {props.canLowerLevel && (
+                  <CapsuleKey touche="⇧⇥" className="key-primary" onClick={props.onLowerLevel}>
                     {t("capsule.lowerLevel")}
                   </CapsuleKey>
                 )}
@@ -1058,9 +1052,6 @@ export function App(): React.JSX.Element {
     };
   }, [running, startedAt]);
 
-  const expansion = result?.quality.signals.some(
-    (signal) => signal.code === "disproportionate_expansion",
-  );
   const showResult =
     (state === "ready" || state === "comparison" || state === "applying") && result !== null;
   const finalResult = showResult ? result : null;
@@ -1232,7 +1223,7 @@ export function App(): React.JSX.Element {
         <CapsuleFooter
           platform={platform}
           state={state}
-          expansion={expansion === true}
+          canLowerLevel={offersLowerLevel(result, level)}
           comparisonPinned={comparison.pinned}
           running={running}
           elapsedMs={elapsedMs}
@@ -1268,6 +1259,9 @@ export function App(): React.JSX.Element {
           onCorrectOnly={corrigerSeulement}
           onLevel={() => {
             changerNiveau(1);
+          }}
+          onLowerLevel={() => {
+            changerNiveau(-1);
           }}
           onCancel={cancelRun}
           onClose={fermer}
