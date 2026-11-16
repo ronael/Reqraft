@@ -154,6 +154,8 @@ export const DESKTOP_EN = {
   "settings.context.level": "level",
   "settings.footer": "Local-first · no prompt stored",
   "settings.loadingConfig": "Reading settings",
+  "settings.configUnreadable": "Unreadable configuration: {reason}",
+  "settings.configUnreadableStatus": "Unreadable configuration",
   "settings.builtinProviders": "Built-in providers",
   "settings.compatibleProviders": "OpenAI-compatible providers",
   "settings.addProvider": "Add a provider",
