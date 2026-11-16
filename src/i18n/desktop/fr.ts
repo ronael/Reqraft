@@ -148,6 +148,8 @@ export const DESKTOP_FR = {
   "settings.context.level": "niveau",
   "settings.footer": "Local-first · aucun prompt stocké",
   "settings.loadingConfig": "Lecture des réglages",
+  "settings.configUnreadable": "Configuration illisible : {reason}",
+  "settings.configUnreadableStatus": "Configuration illisible",
   "settings.builtinProviders": "Fournisseurs intégrés",
   "settings.compatibleProviders": "Fournisseurs compatibles OpenAI",
   "settings.addProvider": "Ajouter un fournisseur",

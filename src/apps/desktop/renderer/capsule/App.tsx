@@ -6,6 +6,7 @@ import { PromptEditor } from "./PromptEditor.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
 import { useCapsuleHeight } from "./useCapsuleHeight.js";
 import { useT } from "../shared/i18n.js";
+import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { CAPSULE_SHORTCUTS, formatCapsuleShortcut } from "../shared/shortcut-labels.js";
 import { describeQualityVerdict } from "../shared/quality.js";
 import {
@@ -509,7 +510,7 @@ export function App(): React.JSX.Element {
         .catch((reason: unknown) => {
           setError({
             title: t("capsule.error"),
-            message: reason instanceof Error ? reason.message : String(reason),
+            message: ipcFailureMessage(reason),
           });
           dispatch("failed");
         });
@@ -724,7 +725,7 @@ export function App(): React.JSX.Element {
         }, toastDurationMs(message));
       })
       .catch((cause: unknown) => {
-        echecDuRemplacement(cause instanceof Error ? cause.message : undefined);
+        echecDuRemplacement(cause instanceof Error ? ipcFailureMessage(cause) : undefined);
       });
   }, [annoncer, dispatch, echecDuRemplacement, t, texteAAppliquer]);
 

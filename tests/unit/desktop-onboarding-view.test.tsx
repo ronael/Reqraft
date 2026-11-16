@@ -2,7 +2,6 @@
 import { cleanup, render, screen, waitFor } from "@testing-library/react";
 import { userEvent, type UserEvent } from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi, type Mock } from "vitest";
-import { registerIpcHandlers, type IpcEventLike } from "@/apps/desktop/main/ipc.js";
 import { OnboardingApp } from "@/apps/desktop/renderer/onboarding/OnboardingApp.js";
 import { WELCOME_TOUR_SLIDES } from "@/apps/desktop/renderer/onboarding/WelcomeTour.js";
 import { TranslationProvider } from "@/apps/desktop/renderer/shared/i18n.js";
@@ -22,6 +21,11 @@ import { createDesktopTranslator, DESKTOP_MESSAGES } from "@/i18n/desktop/index.
 import { createTranslator } from "@/i18n/translate.js";
 import { ProviderError } from "@/providers/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
+import {
+  corrompreLaConfiguration,
+  dependancesSansTrousseau,
+  joindreProcessusPrincipal,
+} from "./desktop-main-process.js";
 
 /**
  * L'onboarding monté pour de vrai, avec le seul contact qu'il a avec le
@@ -36,7 +40,7 @@ import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 const t = createDesktopTranslator("en");
 const fr = createDesktopTranslator("fr");
-/** Le catalogue partagé, où le processus principal prend les erreurs des fournisseurs. */
+/** Le catalogue partagé, où le processus principal prend la phrase des erreurs. */
 const tPartage = createTranslator("en");
 
 const CLE = "sk-ant-not-a-real-key-1234567890";
@@ -192,14 +196,7 @@ async function enregistrerCleRefusee(
   requete: CredentialSaveRequest,
   refus: Error,
 ): Promise<CredentialSaveResponse> {
-  const handlers = new Map<string, (event: IpcEventLike, payload: unknown) => unknown>();
-  registerIpcHandlers({
-    ipcMain: {
-      handle: (canal, handler) => {
-        handlers.set(canal, handler);
-      },
-    },
-    clipboard: { writeText: () => undefined },
+  const principal = joindreProcessusPrincipal({
     env: {},
     secureCredentialStorageAvailable: true,
     loadConfig: () => Promise.resolve(DEFAULT_CONFIG),
@@ -208,19 +205,7 @@ async function enregistrerCleRefusee(
     configFileExists: () => false,
     storeCredential: () => Promise.reject(refus),
   });
-  const handler = handlers.get(IPC_CHANNELS.credentialSave);
-  if (handler === undefined) throw new Error("credential:save n'est pas enregistré");
-  try {
-    return (await handler(
-      { sender: { send: () => undefined, isDestroyed: () => false } },
-      requete,
-    )) as CredentialSaveResponse;
-  } catch (erreur) {
-    throw new Error(
-      `Error invoking remote method '${IPC_CHANNELS.credentialSave}': ${String(erreur)}`,
-      { cause: erreur },
-    );
-  }
+  return (await principal(IPC_CHANNELS.credentialSave, requete)) as CredentialSaveResponse;
 }
 
 function installerPont(options: OptionsPont): FauxPont {
@@ -339,6 +324,23 @@ describe("l'ouverture de l'onboarding", () => {
       expect(texteDe("alert")).toBe(t("onboarding.unreadable", { reason: raison }));
     });
     expect(screen.queryByRole("button")).toBeNull();
+  });
+
+  it("dit en clair pourquoi une configuration corrompue est illisible, pas son code", async () => {
+    const fichier = await corrompreLaConfiguration();
+    const principal = joindreProcessusPrincipal(dependancesSansTrousseau());
+    monterOnboarding({
+      etatInitial: () =>
+        principal(IPC_CHANNELS.onboardingState) as Promise<OnboardingStateResponse>,
+    });
+
+    await waitFor(() => {
+      expect(texteDe("alert")).toBe(
+        t("onboarding.unreadable", {
+          reason: tPartage("error.config.invalid", { path: fichier }),
+        }),
+      );
+    });
   });
 
   it("s'ouvre quand même si le catalogue de profils est illisible", async () => {

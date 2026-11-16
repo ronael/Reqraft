@@ -4065,6 +4065,15 @@ kbd {
   margin-top: 10px;
 }
 
+/*
+ * A configuration that cannot be read, said above whichever tab is open: the
+ * tabs that need it stay empty, and the Diagnostic fails without saying why.
+ * The space below keeps it apart from the tab's own first row.
+ */
+.settings-config-notice {
+  margin: 10px 0 16px;
+}
+
 .settings-state {
   display: inline-flex;
   align-items: center;
