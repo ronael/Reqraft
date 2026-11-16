@@ -387,10 +387,12 @@ describe("ModelsTab — fournisseur et niveau par défaut", () => {
   it.each([
     { cas: "son modèle recommandé", label: "OpenAI", id: "openai", model: GPT.id },
     {
-      cas: "l'identifiant en place, faute de catalogue",
+      // Claude Sonnet est un modèle d'Anthropic : l'envoyer à Ollama, c'est
+      // un 404 au premier essai. Le catalogue du point d'accès proposera le sien.
+      cas: "aucun modèle d'un autre fournisseur, faute de catalogue",
       label: "OpenAI Compatible",
       id: "openai-compatible",
-      model: SONNET.id,
+      model: "",
     },
   ])("change de fournisseur et prend $cas", async ({ label, id, model }) => {
     const { onPatchConfig, user } = renderTab();
@@ -400,6 +402,49 @@ describe("ModelsTab — fournisseur et niveau par défaut", () => {
     await user.click(screen.getByRole("option", { name: label }));
 
     expect(onPatchConfig).toHaveBeenCalledWith({ defaultProvider: id, defaultModel: model });
+  });
+
+  it("propose le premier modèle du point d'accès une fois son catalogue arrivé", async () => {
+    const localModels = deferred<ModelsListResponse>();
+    const listModels = vi.fn<ListModels>((request) =>
+      request.kind === "endpoint"
+        ? localModels.promise
+        : Promise.resolve(catalogue([SONNET, HAIKU])),
+    );
+    const { onPatchConfig, showConfig, user } = renderTab({ listModels });
+    await screen.findByText(ready(2));
+
+    await user.click(combobox(EN["settings.defaultProvider"]));
+    await user.click(screen.getByRole("option", { name: "OpenAI Compatible" }));
+    // Ce que le processus principal relit : le modèle d'Anthropic retiré, le
+    // catalogue d'Anthropic encore en mémoire le temps d'un rendu.
+    showConfig(
+      config({
+        defaultProvider: "openai-compatible",
+        defaultModel: "",
+        providers: {
+          local: {
+            type: "openai-compatible",
+            name: "Ollama",
+            baseUrl: "http://localhost:11434/v1",
+          },
+        },
+      }),
+    );
+    await act(() =>
+      localModels.resolve(
+        catalogue(
+          [
+            { id: "qwen3.5:4b", name: "qwen3.5:4b" },
+            { id: "gemma4:e4b", name: "gemma4:e4b" },
+          ],
+          { id: "local" },
+        ),
+      ),
+    );
+
+    expect(onPatchConfig).toHaveBeenLastCalledWith({ defaultModel: "qwen3.5:4b" });
+    expect(onPatchConfig).not.toHaveBeenCalledWith({ defaultModel: SONNET.id });
   });
 
   it("enregistre le niveau de réécriture par défaut", async () => {

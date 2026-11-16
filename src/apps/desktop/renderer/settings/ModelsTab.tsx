@@ -36,10 +36,40 @@ function isCatalogBuiltinId(id: string): id is ModelCatalogBuiltinId {
   return CATALOG_BUILTIN_IDS.includes(id);
 }
 
-export function modelForProvider(next: ProviderStatus | undefined, currentModel: string): string {
+/**
+ * The model to keep when the default provider changes.
+ *
+ * A provider with presets gets its recommended one unless it already publishes
+ * the current model. One without — a compatible endpoint — keeps an
+ * identifier typed for it, but not the model of another provider:
+ * `claude-haiku-4-5` sent to Ollama is a 404 on the first run. That model is
+ * dropped, and `firstLiveModel` proposes one the endpoint actually lists.
+ */
+export function modelForProvider(
+  next: ProviderStatus | undefined,
+  currentModel: string,
+  providers: readonly ProviderStatus[] = [],
+): string {
   if (!next) return currentModel;
   if (next.models.some((model) => model.id === currentModel)) return currentModel;
-  return (next.models.find((model) => model.recommended) ?? next.models[0])?.id ?? currentModel;
+  const preset = next.models.find((model) => model.recommended) ?? next.models[0];
+  if (preset) return preset.id;
+  const foreign = providers.some(
+    (provider) =>
+      provider.id !== next.id && provider.models.some((model) => model.id === currentModel),
+  );
+  return foreign ? "" : currentModel;
+}
+
+/**
+ * The model to fill in once a catalogue arrives for a provider whose model was
+ * cleared by `modelForProvider`, or undefined when there is nothing to fill.
+ */
+export function firstLiveModel(
+  currentModel: string,
+  liveModels: readonly { id: string }[],
+): string | undefined {
+  return currentModel === "" ? liveModels[0]?.id : undefined;
 }
 
 export function modelCatalogRequest(
@@ -126,9 +156,23 @@ export function ModelsTab({
     };
   }, [loadCatalog]);
 
+  // Only the catalogue of the provider now selected: for one render after a
+  // switch, the previous provider's answer is still in state, and proposing
+  // one of its models to the new provider is the very mix-up this tab fixes.
   const liveModels =
-    catalog.status === "ready" && catalog.response.outcome === "ok" ? catalog.response.models : [];
+    catalog.status === "ready" &&
+    catalog.response.outcome === "ok" &&
+    catalog.response.id === request?.id
+      ? catalog.response.models
+      : [];
   const hasLiveCatalog = liveModels.length > 0;
+  const proposedModel = firstLiveModel(config.defaultModel, liveModels);
+
+  // The second half of a provider switch that cleared a foreign model: the
+  // endpoint's own list is what proposes the next one.
+  useEffect(() => {
+    if (proposedModel !== undefined) onPatchConfig({ defaultModel: proposedModel });
+  }, [proposedModel, onPatchConfig]);
   const known = liveModels.some((model) => model.id === config.defaultModel);
   const typing = custom || !hasLiveCatalog || !known;
   const loading = catalog.status === "loading";
@@ -157,7 +201,7 @@ export function ModelsTab({
                     setCustom(false);
                     onPatchConfig({
                       defaultProvider: providerId,
-                      defaultModel: modelForProvider(next, config.defaultModel),
+                      defaultModel: modelForProvider(next, config.defaultModel, providers),
                     });
                   }}
                   options={providers.map((provider) => ({

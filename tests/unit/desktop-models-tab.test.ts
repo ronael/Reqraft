@@ -6,6 +6,7 @@ import {
 } from "@/apps/desktop/renderer/settings/SettingsApp.js";
 import {
   describeModelCatalog,
+  firstLiveModel,
   modelCatalogRequest,
   modelCatalogTone,
   modelForProvider,
@@ -80,6 +81,24 @@ describe("modelForProvider", () => {
     const custom = provider("openai-compatible", []);
     expect(modelForProvider(custom, "mon-modele-local")).toBe("mon-modele-local");
     expect(modelForProvider(undefined, "mon-modele-local")).toBe("mon-modele-local");
+  });
+
+  it("ne garde pas pour un point d'accès le modèle d'un autre fournisseur", () => {
+    const anthropic = provider("anthropic", [["claude-haiku-4-5", true]]);
+    const custom = provider("openai-compatible", []);
+
+    expect(modelForProvider(custom, "claude-haiku-4-5", [anthropic, openai, custom])).toBe("");
+    expect(modelForProvider(custom, "qwen3.5:4b", [anthropic, openai, custom])).toBe("qwen3.5:4b");
+  });
+});
+
+describe("firstLiveModel", () => {
+  it("ne propose un modèle du catalogue qu'à la place d'un modèle retiré", () => {
+    const models = [{ id: "qwen3.5:4b" }, { id: "gemma4:e4b" }];
+
+    expect(firstLiveModel("", models)).toBe("qwen3.5:4b");
+    expect(firstLiveModel("gemma4:e4b", models)).toBeUndefined();
+    expect(firstLiveModel("", [])).toBeUndefined();
   });
 });
 
