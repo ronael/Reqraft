@@ -38,7 +38,8 @@ describe("Windows desktop bridge", () => {
     // Le processus seulement si la fenêtre a disparu.
     expect(activation).toContain("AppActivate([int]4242)");
     expect(activation).toContain("-eq 4242");
-    expect(calls[1]?.timeoutMs).toBe(1750);
+    // L'attente demandée, plus le démarrage de PowerShell et la compilation.
+    expect(calls[1]?.timeoutMs).toBe(3750);
   });
 
   it("lit la fenêtre, la sélection et attend les touches en un seul PowerShell", async () => {
@@ -212,6 +213,9 @@ describe.runIf(process.platform === "win32")("scripts PowerShell réels", () => 
     );
 
     await bridge.frontmostApp();
-    await expect(bridge.activateApp("absent", 300)).resolves.toBe(false);
+    // Le script répond « false » dès qu'AppActivate échoue : ce délai ne sert
+    // qu'à laisser démarrer PowerShell et compiler, plus d'une seconde sur un
+    // poste de CI froid.
+    await expect(bridge.activateApp("absent", 2000)).resolves.toBe(false);
   }, 20_000);
 });
