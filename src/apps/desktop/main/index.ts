@@ -36,6 +36,7 @@ import { ConfigSchema } from "@/config/schema.js";
  */
 const loadConfig = (): ReturnType<typeof loadLayeredConfig> => loadLayeredConfig(null);
 import { hydrateCredentials, login } from "@/auth/credentials.js";
+import { createCaptureClipboard } from "./capture-clipboard.js";
 import { CaptureService } from "./capture-service.js";
 import { applyCrashReportPolicy } from "./crash-report.js";
 import { loadProfileCatalog } from "@/profiles/catalog.js";
@@ -641,6 +642,9 @@ function createShortcutHandlers(deps: {
   // hidden, never destroyed. The direct-replace shortcut takes the same path:
   // only the end of the session differs, and the renderer owns that decision.
   const captureThenOpen = (autoApply: boolean): void => {
+    if (deps.liveCapsule().isFocused()) {
+      return;
+    }
     const cursor = screen.getCursorScreenPoint();
     // The capsule opens whatever the capture did. `trigger()` already
     // degrades a failed capture to an empty one, and this catch is the belt
@@ -707,7 +711,7 @@ function createCaptureRuntime(): {
 } {
   const bridge = createCaptureBridge(process.platform);
   return {
-    captureService: new CaptureService({ bridge, clipboard }),
+    captureService: new CaptureService({ bridge, clipboard: createCaptureClipboard(clipboard) }),
     permissionsProbe: createSystemPermissionsProbe(
       systemPreferences,
       bridge,

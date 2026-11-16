@@ -79,6 +79,12 @@ export interface CapsuleWindow {
    */
   reveal(): void;
   hide(): void;
+  /**
+   * Vrai quand la capsule, visible, a le clavier. Le raccourci de capture est
+   * alors ignoré : ⌘C partirait dans la capsule, qui copierait son propre
+   * texte, pris ensuite pour la sélection.
+   */
+  isFocused(): boolean;
 }
 
 /** Ce que l'ouverture a fixé pour toute la session, et rien d'autre. */
@@ -217,6 +223,9 @@ export function createCapsuleWindow(options: CapsuleWindowOptions): CapsuleWindo
       if (!window.isDestroyed()) {
         window.hide();
       }
+    },
+    isFocused() {
+      return !window.isDestroyed() && window.isVisible() && window.isFocused();
     },
   };
 }
