@@ -552,6 +552,7 @@ export const DESKTOP_EN = {
   "settings.providersConfiguredPlural": "{count} providers configured · telemetry off",
   "profiles.levelMeta": "level {level}",
   "profiles.confirmDeleteQuestion": "Delete “{id}”? This cannot be undone.",
+  "settings.confirmRemoveEndpoint": "Remove “{id}” from your configuration?",
   "settings.confirmDeleteKey":
     "Delete the securely stored {provider} key? It will be lost for good, and an API key is never shown again by the provider. You would have to generate a new one.",
   "picker.availableOne": "{count} available",

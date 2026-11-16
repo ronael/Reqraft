@@ -551,6 +551,7 @@ export const DESKTOP_FR = {
   "settings.providersConfiguredPlural": "{count} providers configurés · télémétrie désactivée",
   "profiles.levelMeta": "niveau {level}",
   "profiles.confirmDeleteQuestion": "Supprimer « {id} » ? Cette action est définitive.",
+  "settings.confirmRemoveEndpoint": "Retirer « {id} » de votre configuration ?",
   "settings.confirmDeleteKey":
     "Supprimer la clé {provider} du stockage sécurisé ? Elle sera définitivement perdue, et une clé API ne se réaffiche pas chez le fournisseur. Il faudra en générer une nouvelle.",
   "picker.availableOne": "{count} disponible",
