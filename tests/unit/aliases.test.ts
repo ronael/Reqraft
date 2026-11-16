@@ -1,5 +1,5 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import { mkdtempSync, writeFileSync, readFileSync } from "node:fs";
+import { afterEach, describe, expect, it, beforeEach } from "vitest";
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { listAliases, removeAlias, setAlias } from "@/apps/cli/aliases/manager.js";
@@ -34,6 +34,10 @@ describe("alias manager on temporary files", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(path.join(os.tmpdir(), "rp-alias-"));
     configPath = path.join(tempDir, ".bashrc");
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("sets a new alias", async () => {
@@ -114,6 +118,10 @@ describe("alias command", () => {
   beforeEach(() => {
     tempDir = mkdtempSync(path.join(os.tmpdir(), "rp-alias-command-"));
     configPath = path.join(tempDir, ".bashrc");
+  });
+
+  afterEach(() => {
+    rmSync(tempDir, { recursive: true, force: true });
   });
 
   it("returns invalid input without exiting when the alias name is missing", async () => {

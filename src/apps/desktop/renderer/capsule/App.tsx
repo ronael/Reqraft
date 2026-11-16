@@ -1,11 +1,20 @@
 import { BrandMark } from "../shared/BrandMark.js";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
 import { PromptEditor } from "./PromptEditor.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
 import { useCapsuleHeight } from "./useCapsuleHeight.js";
-import { useT } from "../shared/i18n.js";
+import { useT, type Translate } from "../shared/i18n.js";
+import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { CAPSULE_SHORTCUTS, formatCapsuleShortcut } from "../shared/shortcut-labels.js";
 import { describeQualityVerdict } from "../shared/quality.js";
 import {
@@ -29,6 +38,7 @@ import {
   wantsComparison,
   type CapsuleIntent,
 } from "./keyboard.js";
+import { autoApplyDecision, isUserIntervention } from "./auto-apply.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
 const GENERATING = "generating";
@@ -86,6 +96,57 @@ function useOuvertureDeCapsule(traiter: (payload: CapsuleOpenedPayload) => void)
   useEffect(() => {
     return window.reqraft.onCapsuleOpened(traiter);
   }, [traiter]);
+}
+
+/**
+ * Ce que dit la notice d'une capture vide.
+ *
+ * La suggestion du texte copié est traduite au rendu, pas au retour de la
+ * capture : à la première ouverture, la capture revient avant le catalogue, et
+ * la suggestion restait affichée sous sa clé brute. Elle a sa propre ligne,
+ * sous la raison : collées en une phrase, les deux se lisaient mal, surtout
+ * quand la raison nomme un chemin dans les réglages.
+ */
+interface CapsuleNotice {
+  /** Déjà traduite : elle vient du processus principal. */
+  reason: string | null;
+  /** Le champ a été rempli avec le texte copié. */
+  clipboardSuggested: boolean;
+}
+
+/**
+ * La notice d'une capture vide. Le texte copié, quand il y en a, remplit le
+ * champ : c'est le secours quand le raccourci ne capte rien. Il n'est envoyé
+ * qu'au ⌘⏎ de l'utilisateur, et le résultat se recolle dans l'application
+ * source comme une sélection.
+ */
+function emptyCaptureNotice(capture: { reason?: string; clipboardText?: string }): CapsuleNotice {
+  return {
+    reason: capture.reason ?? null,
+    clipboardSuggested: capture.clipboardText !== undefined,
+  };
+}
+
+function noticeLines(notice: CapsuleNotice | null, t: Translate): string[] {
+  if (notice === null) return [];
+  const lines = notice.reason === null ? [] : [notice.reason];
+  return notice.clipboardSuggested ? [...lines, t("capsule.clipboardSuggested")] : lines;
+}
+
+function CapsuleNoticeLines(
+  props: Readonly<{ lines: readonly string[] }>,
+): React.JSX.Element | null {
+  if (props.lines.length === 0) return null;
+  return (
+    <p className="capsule-notice">
+      {props.lines.map((line, index) => (
+        <Fragment key={line}>
+          {index > 0 && <br />}
+          {line}
+        </Fragment>
+      ))}
+    </p>
+  );
 }
 
 /**
@@ -401,7 +462,7 @@ export function App(): React.JSX.Element {
   const [streamed, setStreamed] = useState("");
   const [result, setResult] = useState<RepromptResult | null>(null);
   const [error, setError] = useState<UiError | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  const [notice, setNotice] = useState<CapsuleNotice | null>(null);
   const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([]);
   /** Profil choisi à la main ; `null` laisse le défaut de la configuration. */
   const [chosenProfile, setChosenProfile] = useState<string | null>(null);
@@ -437,6 +498,13 @@ export function App(): React.JSX.Element {
    */
   const [startedAt, setStartedAt] = useState<number | null>(null);
   const activeRunId = useRef<string | null>(null);
+  /**
+   * Ouverte par le raccourci de remplacement direct, sans intervention depuis.
+   *
+   * Une référence et non un état : la désarmer ne doit rien redessiner, et
+   * l'effet qui décide la lit au moment où le résultat arrive.
+   */
+  const autoApplyArmed = useRef(false);
   const bodyRef = useRef<HTMLElement | null>(null);
   /**
    * Ce qui demande la comparaison : `⌥` maintenu, `⌘D` épinglé, ou les deux.
@@ -501,7 +569,7 @@ export function App(): React.JSX.Element {
         .catch((reason: unknown) => {
           setError({
             title: t("capsule.error"),
-            message: reason instanceof Error ? reason.message : String(reason),
+            message: ipcFailureMessage(reason),
           });
           dispatch("failed");
         });
@@ -543,8 +611,10 @@ export function App(): React.JSX.Element {
         } else {
           // Une capture vide a deux causes très différentes : rien n'était
           // sélectionné, ou macOS a refusé. Seule la seconde demande une
-          // action, et elle est invisible si on ne la dit pas.
-          if (capture.reason !== undefined) setNotice(capture.reason);
+          // action, et elle est invisible si on ne la dit pas. Le texte copié,
+          // s'il y en a, est proposé (voir `emptyCaptureNotice`).
+          setInput(capture.clipboardText ?? "");
+          setNotice(emptyCaptureNotice(capture));
           dispatch("nothing-to-capture");
         }
       })
@@ -568,12 +638,14 @@ export function App(): React.JSX.Element {
         return;
       }
       derniereOuverture.current = payload.id;
+      autoApplyArmed.current = payload.autoApply === true;
       if (payload.mode === "capture") {
         beginCapture();
       } else {
-        // Volontairement pas de `resetSession()` : la fenêtre se cache dès
-        // qu'on clique ailleurs, et repartir de zéro à la réouverture jette ce
-        // qui venait d'être écrit. Le brouillon est effacé après un envoi.
+        // Volontairement pas de `resetSession()` : la fenêtre peut se cacher
+        // quand on clique ailleurs (selon le réglage), et repartir de zéro à la
+        // réouverture jetterait ce qui venait d'être écrit. Le brouillon est
+        // effacé après un envoi.
         setNotice(null);
         setState("input");
       }
@@ -714,9 +786,42 @@ export function App(): React.JSX.Element {
         }, toastDurationMs(message));
       })
       .catch((cause: unknown) => {
-        echecDuRemplacement(cause instanceof Error ? cause.message : undefined);
+        echecDuRemplacement(cause instanceof Error ? ipcFailureMessage(cause) : undefined);
       });
   }, [annoncer, dispatch, echecDuRemplacement, t, texteAAppliquer]);
+
+  // Le raccourci de remplacement direct : le résultat part dès qu'il est prêt,
+  // sauf s'il demande une relecture ou si quelqu'un a repris la main entre-temps
+  // (voir `auto-apply.ts`). Une seule décision par ouverture.
+  useEffect(() => {
+    if (state !== "ready") return;
+    const decision = autoApplyDecision({ armed: autoApplyArmed.current, result });
+    if (decision === "wait") return;
+    autoApplyArmed.current = false;
+    if (decision === "apply") {
+      accept();
+    } else {
+      annoncer(t("capsule.autoApplyReview"), "warning");
+    }
+  }, [accept, annoncer, result, state, t]);
+
+  // Une vraie frappe ou un clic désarme le remplacement direct : la personne
+  // reprend la main, et ⏎ décidera comme dans une capsule ordinaire. En phase
+  // de capture, pour passer avant les gestionnaires qui consomment la touche.
+  useEffect(() => {
+    const disarmOnKey = (event: KeyboardEvent): void => {
+      if (isUserIntervention(event)) autoApplyArmed.current = false;
+    };
+    const disarm = (): void => {
+      autoApplyArmed.current = false;
+    };
+    window.addEventListener("keydown", disarmOnKey, true);
+    window.addEventListener("pointerdown", disarm, true);
+    return () => {
+      window.removeEventListener("keydown", disarmOnKey, true);
+      window.removeEventListener("pointerdown", disarm, true);
+    };
+  }, []);
 
   const cancelRun = useCallback(() => {
     const runId = activeRunId.current;
@@ -910,7 +1015,8 @@ export function App(): React.JSX.Element {
 
   // La fenêtre suit le contenu, mais seulement quand le contenu s'est posé :
   // ni pendant le streaming, ni pendant la frappe. Voir `useCapsuleHeight`.
-  useCapsuleHeight({ state, picking, editing, result, notice, error });
+  const shownNotice = noticeLines(notice, t);
+  useCapsuleHeight({ state, picking, editing, result, notice: shownNotice.join("\n"), error });
 
   // Un résultat long peut laisser le corps défilé très bas. La comparaison
   // est une nouvelle lecture : elle doit toujours commencer par l'« avant »,
@@ -1100,7 +1206,7 @@ export function App(): React.JSX.Element {
               </div>
             )}
 
-            {notice !== null && <p className="capsule-notice">{notice}</p>}
+            <CapsuleNoticeLines lines={shownNotice} />
           </div>
         </section>
       )}

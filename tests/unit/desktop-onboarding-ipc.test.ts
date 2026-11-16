@@ -1,12 +1,17 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
+import { setMainLocale } from "@/apps/desktop/main/i18n.js";
 import {
   registerIpcHandlers,
+  type DesktopIpcDependencies,
   type IpcEventLike,
   type IpcMainLike,
 } from "@/apps/desktop/main/ipc.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
+import { createTranslator } from "@/i18n/translate.js";
+import { ProviderError } from "@/providers/errors.js";
+import { EXIT_CODES } from "@/utils/exit-codes.js";
 import {
   CURRENT_WELCOME_TOUR_VERSION,
   type OnboardingStateResponse,
@@ -56,6 +61,8 @@ interface HarnessOptions {
   env?: NodeJS.ProcessEnv;
   configFileExists?: boolean;
   config?: Config;
+  /** Replaces the credential service, to make the key check fail. */
+  storeCredential?: NonNullable<DesktopIpcDependencies["storeCredential"]>;
 }
 
 function harness(options: HarnessOptions = {}): void {
@@ -84,10 +91,12 @@ function harness(options: HarnessOptions = {}): void {
     // and that nothing else is.
     hydrateCredentials: () => Promise.resolve(),
     configFileExists: () => fileExists,
-    storeCredential: (provider, secret) => {
-      stored.push({ provider, secret });
-      return Promise.resolve();
-    },
+    storeCredential:
+      options.storeCredential ??
+      ((provider, secret) => {
+        stored.push({ provider, secret });
+        return Promise.resolve();
+      }),
     onOnboardingComplete: () => {
       completed += 1;
     },
@@ -214,6 +223,33 @@ describe("credential:save", () => {
     expect(stored).toEqual([{ provider: "anthropic", secret: SECRET }]);
     expect(JSON.stringify(response)).not.toContain(SECRET);
     expect(response.providers.some((provider) => provider.id === "anthropic")).toBe(true);
+  });
+
+  it("words a refused key in the main process's language, without the provider's reply", async () => {
+    harness({
+      storeCredential: () =>
+        Promise.reject(
+          new ProviderError(
+            'Provider error 401: {"error":{"message":"invalid x-api-key"}}',
+            EXIT_CODES.AUTHENTICATION,
+            undefined,
+            { httpStatus: 401, provider: "Anthropic" },
+          ),
+        ),
+    });
+    setMainLocale("fr");
+    try {
+      const refusal = await ipcMain
+        .invoke(IPC_CHANNELS.credentialSave, { provider: "anthropic", secret: SECRET })
+        .catch((error: unknown) => error);
+
+      // What Electron sends the renderer, which keeps the sentence after "Error: ".
+      expect(String(refusal)).toBe(
+        `Error: ${createTranslator("fr")("error.apiKeyRejected.message", { provider: "Anthropic" })}`,
+      );
+    } finally {
+      setMainLocale("en");
+    }
   });
 
   it("refuses a provider that has no storable key", async () => {

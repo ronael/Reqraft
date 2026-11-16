@@ -30,6 +30,7 @@ const handlers = {
   onCapture: () => undefined,
   onInput: () => undefined,
   onPopover: () => undefined,
+  onReplace: () => undefined,
 };
 
 describe("registerShortcuts (DESKTOP.md §5.5)", () => {
@@ -38,6 +39,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "Command+Control+R",
       "Command+Control+N",
       "Command+Control+O",
+      "Command+Control+Shift+R",
     );
 
     const resolution = registerShortcuts(register, handlers, undefined, undefined, "darwin");
@@ -46,6 +48,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       { accelerator: "Command+Control+R", label: "⌘⌃R", intent: "capture" },
       { accelerator: "Command+Control+N", label: "⌘⌃N", intent: "input" },
       { accelerator: "Command+Control+O", label: "⌘⌃O", intent: "popover" },
+      { accelerator: "Command+Control+Shift+R", label: "⌘⌃⇧R", intent: "replace" },
     ]);
     expect(resolution.rejected).toEqual([]);
     expect(resolution.conflicts).toEqual([]);
@@ -58,6 +61,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "Command+Control+J",
       "Command+Control+K",
       "Command+Control+T",
+      "Command+Control+Shift+J",
     );
 
     const resolution = registerShortcuts(register, handlers, undefined, undefined, "darwin");
@@ -66,11 +70,13 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "Command+Control+R",
       "Command+Control+N",
       "Command+Control+O",
+      "Command+Control+Shift+R",
     ]);
     expect(resolution.registered.map((entry) => entry.accelerator)).toEqual([
       "Command+Control+J",
       "Command+Control+K",
       "Command+Control+T",
+      "Command+Control+Shift+J",
     ]);
   });
 
@@ -79,6 +85,7 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       "CommandOrControl+Alt+R",
       "CommandOrControl+Alt+N",
       "CommandOrControl+Alt+O",
+      "CommandOrControl+Alt+Shift+R",
     );
 
     const resolution = registerShortcuts(register, handlers, undefined, undefined, platform);
@@ -87,6 +94,11 @@ describe("registerShortcuts (DESKTOP.md §5.5)", () => {
       { accelerator: "CommandOrControl+Alt+R", label: "Ctrl+Alt+R", intent: "capture" },
       { accelerator: "CommandOrControl+Alt+N", label: "Ctrl+Alt+N", intent: "input" },
       { accelerator: "CommandOrControl+Alt+O", label: "Ctrl+Alt+O", intent: "popover" },
+      {
+        accelerator: "CommandOrControl+Alt+Shift+R",
+        label: "Ctrl+Alt+Shift+R",
+        intent: "replace",
+      },
     ]);
   });
 
@@ -144,7 +156,7 @@ describe("replaceShortcuts", () => {
     expect(events.slice(0, 3)).toEqual(["resume", "unregister", "register:Command+Control+R"]);
     expect(events.at(-1)).toBe("suspend");
     expect(suspended).toBe(true);
-    expect(resolution.registered).toHaveLength(3);
+    expect(resolution.registered).toHaveLength(4);
   });
 });
 
@@ -201,17 +213,14 @@ describe("raccourcis contestés et choix de l'utilisateur", () => {
 
   it("garde un défaut par intention", () => {
     const registrar = (): boolean => true;
-    const resolution = registerShortcuts(registrar, {
-      onCapture: () => undefined,
-      onInput: () => undefined,
-      onPopover: () => undefined,
-    });
+    const resolution = registerShortcuts(registrar, handlers);
     // Set rather than sorted list: what matters is that all intents are
     // covered, not the order the candidate list happened to produce.
     const intents = new Set(resolution.registered.map((entry) => entry.intent));
     expect(intents.has("capture")).toBe(true);
     expect(intents.has("input")).toBe(true);
     expect(intents.has("popover")).toBe(true);
+    expect(intents.has("replace")).toBe(true);
   });
 
   it.each(["darwin", "win32", "linux"] as const)(

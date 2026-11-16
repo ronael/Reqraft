@@ -391,6 +391,7 @@ export function diagnosticCheckLabel(id: string, t: Translate): string {
     "shortcuts:capture": "settings.captureShortcut",
     "shortcuts:input": "settings.inputShortcut",
     "shortcuts:popover": "settings.popoverShortcut",
+    "shortcuts:replace": "settings.replaceShortcut",
     "shortcuts:rejected": "settings.diagnosticRejectedShortcuts",
     "shortcuts:conflicts": "settings.diagnosticShortcutConflicts",
     "shortcuts:suspended": "settings.diagnosticShortcutState",

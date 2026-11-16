@@ -6,7 +6,7 @@ import type {
   ModelInfo,
 } from "@/core/types.js";
 import { consumeChatCompletionStream } from "./openai-stream.js";
-import { raiseProviderError } from "./errors.js";
+import { emptyAnswerError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 interface OpenAICompatibleChoice {
@@ -31,27 +31,34 @@ export interface OpenAICompatibleOptions {
 export class OpenAICompatibleProvider implements ProviderAdapter {
   readonly id = "openai-compatible";
   readonly name: string;
+  /** The base URL as configured, without trailing slashes: paths are joined to it. */
+  private readonly baseUrl: string;
 
   constructor(
     name: string,
     private readonly options: OpenAICompatibleOptions,
   ) {
     this.name = name;
+    this.baseUrl = withoutTrailingSlashes(options.baseUrl);
   }
 
-  async generate(request: ProviderRequest): Promise<ProviderResponse> {
-    const headers: Record<string, string> = {
-      "Content-Type": "application/json",
-      ...this.options.customHeaders,
-    };
+  /**
+   * The headers every request to the endpoint carries: the custom ones, then
+   * the configured key, which wins over a stale Authorization header.
+   */
+  private authHeaders(): Record<string, string> {
+    const headers: Record<string, string> = { ...this.options.customHeaders };
     if (this.options.apiKey) {
       headers.Authorization = `Bearer ${this.options.apiKey}`;
     }
+    return headers;
+  }
 
-    const response = await providerFetch(this.name, `${this.options.baseUrl}/chat/completions`, {
+  async generate(request: ProviderRequest): Promise<ProviderResponse> {
+    const response = await providerFetch(this.name, `${this.baseUrl}/chat/completions`, {
       method: "POST",
       signal: request.signal,
-      headers,
+      headers: { "Content-Type": "application/json", ...this.authHeaders() },
       body: JSON.stringify({
         model: request.model,
         messages: [
@@ -84,7 +91,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     const data = JSON.parse(await response.text()) as OpenAICompatibleResponse;
     const choice = data.choices[0];
     if (!choice) {
-      throw new Error("OpenAI-compatible endpoint returned no choices");
+      throw emptyAnswerError(this.name, "OpenAI-compatible endpoint returned no choices");
     }
 
     return {
@@ -99,9 +106,9 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
   }
 
   async listModels(signal?: AbortSignal): Promise<ModelInfo[]> {
-    const response = await providerFetch(this.name, `${this.options.baseUrl}/models`, {
+    const response = await providerFetch(this.name, `${this.baseUrl}/models`, {
       signal,
-      headers: this.options.apiKey ? { Authorization: `Bearer ${this.options.apiKey}` } : undefined,
+      headers: this.authHeaders(),
     });
     const text = await response.text();
     if (!response.ok) {
@@ -116,7 +123,7 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
   }
 
   validateConfiguration(): Promise<ProviderHealth> {
-    if (!this.options.baseUrl) {
+    if (!this.baseUrl) {
       return Promise.resolve({
         ok: false,
         code: "missing_configuration",
@@ -125,4 +132,13 @@ export class OpenAICompatibleProvider implements ProviderAdapter {
     }
     return Promise.resolve({ ok: true });
   }
+}
+
+/** "http://host/v1/" and "http://host/v1" name the same API root. */
+function withoutTrailingSlashes(url: string): string {
+  let end = url.length;
+  while (end > 0 && url[end - 1] === "/") {
+    end -= 1;
+  }
+  return url.slice(0, end);
 }

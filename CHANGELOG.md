@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+### Desktop application
+
+- Added a direct-replace global shortcut (`⌘⌃⇧R` on macOS, `Ctrl+Alt+Shift+R`
+  elsewhere): it captures the selection, reformulates it and replaces it as
+  soon as the result is ready, without pressing ⏎. A result flagged for review,
+  or a session the user took over during generation, stays in the capsule.
+- The capsule and the popover now stay open when they lose the focus. A
+  preference restores the previous behaviour and applies immediately.
+
 ## 0.6.5 (2026-10-20)
 
 ### Desktop application

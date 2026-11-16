@@ -17,6 +17,7 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Stethoscope,
+  TriangleAlert,
   UserPlus,
   UserRound,
   Waypoints,
@@ -171,6 +172,11 @@ type TourDirection = "forward" | "backward";
 
 interface WelcomeTourProps {
   onContinue(): void;
+  /**
+   * Why leaving the tour failed. Shown above the buttons that tried: without
+   * it, "Skip" and "Set up Reqraft" would seem to do nothing.
+   */
+  error?: string | null;
 }
 
 export function shouldShowWelcomeTour(
@@ -181,7 +187,10 @@ export function shouldShowWelcomeTour(
   return (required || forced) && !dismissed;
 }
 
-export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.JSX.Element {
+export function WelcomeTour({
+  onContinue,
+  error = null,
+}: Readonly<WelcomeTourProps>): React.JSX.Element {
   const t = useT();
   const platform = window.reqraft.platform;
   const [index, setIndex] = useState(0);
@@ -261,6 +270,14 @@ export function WelcomeTour({ onContinue }: Readonly<WelcomeTourProps>): React.J
       </section>
 
       <footer className="onboarding-footer onboarding-tour-footer">
+        {error !== null && (
+          <div
+            className="onboarding-banner onboarding-banner-warn onboarding-tour-error"
+            role="alert"
+          >
+            <TriangleAlert size={13} aria-hidden /> {error}
+          </div>
+        )}
         <div className="onboarding-tour-actions">
           <Button variant="neutral" onClick={onContinue}>
             {t("onboarding.tour.skip")}

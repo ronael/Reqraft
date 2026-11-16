@@ -19,12 +19,20 @@ table in the release notes saying what they are worth.
 ## Why Windows and Linux say `-experimental`
 
 They build, and they are published so they can be tried. Windows now has a
-dedicated selection adapter: it records the foreground process through Win32,
-sends `Ctrl+C` / `Ctrl+V`, and reactivates that exact process before replacing
-text. Its controlled native test passes, but the complete installed product
-path has not yet been validated on a clean machine. Linux has not been run and
-still has no injection adapter. On macOS, capture and reinjection continue to
-go through `osascript`, with Accessibility and Automation permissions.
+dedicated selection adapter: it records the foreground window through Win32,
+reads the selection through UI Automation when the application exposes it,
+otherwise sends `Ctrl+C` once the shortcut's keys are released, and brings back
+that exact window before pasting with `Ctrl+V`. Its controlled native test
+passes, but the complete installed product path has not yet been validated on a
+clean machine. Linux has not been run and still has no injection adapter. On
+macOS, capture first reads the selection through the Accessibility API and only
+falls back to `⌘C` when the application does not expose it; reinjection goes
+through `osascript`. Both need the Accessibility and Automation permissions.
+
+On every platform, when nothing could be captured but the clipboard holds text,
+the capsule offers that text instead of an empty field. Nothing is sent before
+the user asks for the rewrite, and the result is pasted back into the
+application the shortcut was pressed in.
 
 Shipping them silently alongside the macOS build would imply parity that does
 not exist, so the marker is carried in two places that survive separately:

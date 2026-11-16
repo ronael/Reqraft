@@ -6,7 +6,7 @@ import type {
   ModelInfo,
 } from "@/core/types.js";
 import { parseDataLine, streamLines } from "./sse.js";
-import { ProviderError, raiseProviderError } from "./errors.js";
+import { emptyAnswerError, ProviderError, raiseProviderError } from "./errors.js";
 import { providerFetch } from "./http.js";
 
 interface AnthropicContent {
@@ -70,11 +70,11 @@ export class AnthropicProvider implements ProviderAdapter {
     const data = JSON.parse(text) as AnthropicResponse;
     const firstContent = data.content.find((content) => content.type === "text");
     if (!firstContent) {
-      throw new ProviderError("Anthropic returned no content", 5);
+      throw emptyAnswerError(this.name, "Anthropic returned no content");
     }
     const firstText = firstContent.text;
     if (!firstText) {
-      throw new ProviderError("Anthropic returned an empty text block", 5);
+      throw emptyAnswerError(this.name, "Anthropic returned an empty text block");
     }
 
     return {
@@ -184,7 +184,7 @@ export function createStreamAccumulator(): StreamAccumulator {
     },
     finish(requestedModel) {
       if (!text) {
-        throw new ProviderError("Anthropic streaming response contained no text", 5);
+        throw emptyAnswerError("Anthropic", "Anthropic streaming response contained no text");
       }
       return {
         text,

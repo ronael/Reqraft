@@ -17,22 +17,33 @@ pnpm format           # run Prettier
 pnpm typecheck        # run tsc --noEmit
 pnpm quality          # local gate: typecheck, format check, lint, build, coverage
 pnpm benchmark        # run benchmark
-pnpm release          # push main, create the package version tag, push the tag
+pnpm release          # push main, wait for green CI, create and push the version tag
+pnpm site:sync        # point the website downloads at a published release
 ```
 
 ## Releasing
 
 1. Update the version in `package.json`, then run `pnpm version:sync` to align
-   the application and website references.
+   the application reference (`src/version.ts`).
 2. Add the matching section to `CHANGELOG.md` and commit these changes on
    `main`.
 3. Run `pnpm release`.
+4. Once the desktop workflow has attached the installers to the GitHub Release,
+   run `pnpm site:sync`, then commit and push the change to `main` to publish
+   the website. The command first checks that the release contains every
+   installer the website offers, and writes nothing otherwise. Until then the
+   website keeps offering the previous release rather than missing files.
+   `pnpm site:sync <version>` points it at another published release.
 
 The release command requires a clean `main`, reads the version from
-`package.json`, pushes `main`, creates and pushes the annotated version tag, then
-creates the corresponding GitHub Release with generated notes. The existing
-GitHub Actions workflow runs the quality gate and publishes the package to npm.
-The command requires an authenticated GitHub CLI (`gh auth status`).
+`package.json` and pushes `main`. It then waits for the CI workflow to pass on
+that exact commit. If no run appears within two minutes, or the run fails, is
+cancelled or is still going after 45 minutes, the command stops before any tag
+exists and can be run again once CI is green. Otherwise it creates and pushes
+the annotated version tag on that commit, then creates the corresponding GitHub
+Release with generated notes. The tag starts the publish workflow, which runs
+the quality gate again and publishes the package to npm. The command requires
+an authenticated GitHub CLI (`gh auth status`).
 
 ## Architecture
 

@@ -35,10 +35,14 @@ function testEnv(): NodeJS.ProcessEnv {
   };
 }
 
-function run(args: string, input?: string): { stdout: string; stderr: string; exitCode: number } {
+function run(
+  args: string,
+  input?: string,
+  nodeFlags: string[] = [],
+): { stdout: string; stderr: string; exitCode: number } {
   // process.execPath is absolute and pins the child to the very interpreter
   // running the suite, instead of whatever "node" PATH happens to resolve to.
-  const result = spawnSync(process.execPath, [CLI, ...parseArgs(args)], {
+  const result = spawnSync(process.execPath, [...nodeFlags, CLI, ...parseArgs(args)], {
     encoding: "utf8",
     env: testEnv(),
     input,
@@ -48,6 +52,15 @@ function run(args: string, input?: string): { stdout: string; stderr: string; ex
     stderr: result.stderr,
     exitCode: result.status ?? 1,
   };
+}
+
+/**
+ * Node flags that replace `fetch` in the CLI process with one answering every
+ * request with `status`: a provider failure without any network call.
+ */
+function fetchAnswering(status: number): string[] {
+  const stub = `globalThis.fetch = async () => new Response('{"error":{"message":"stub"}}', { status: ${String(status)} });`;
+  return ["--import", `data:text/javascript,${encodeURIComponent(stub)}`];
 }
 
 function parseArgs(args: string): string[] {
@@ -181,6 +194,13 @@ describe("CLI e2e", () => {
     expect(exitCode).toBe(2);
     expect(stdout).toBe("");
     expect(stderr).toContain("Valeur invalide pour showStats");
+  });
+
+  it("exits with the authentication code when rp auth login gets a rejected key", () => {
+    const { stderr, exitCode } = run("auth login openai", "sk-rejected-key\n", fetchAnswering(401));
+
+    expect(stderr).toContain("La clé API openai a été refusée.");
+    expect(exitCode).toBe(EXIT_CODES.AUTHENTICATION);
   });
 
   it("lists providers from the public catalog", () => {

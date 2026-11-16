@@ -4,6 +4,7 @@ export type ReqraftErrorCode =
   | "result.empty"
   | "result.unparseable"
   | "input.missing"
+  | "input.secret_detected"
   | "input.file_unreadable"
   | "clipboard.read_failed"
   | "clipboard.write_failed"
