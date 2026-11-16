@@ -17,6 +17,7 @@ import type {
   RunErrorPayload,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { mainLocale, t as desktopT } from "./i18n.js";
+import { DESKTOP_PROVIDER_ADVICE } from "./provider-advice.js";
 
 /** Minimal slice of `WebContents`, injected so the service stays testable. */
 export interface RunEventSender {
@@ -210,7 +211,7 @@ export class RepromptService {
       }
       this.emit(sender, IPC_CHANNELS.runError, {
         runId,
-        error: describeUiError(error, providerId, t),
+        error: describeUiError(error, providerId, t, DESKTOP_PROVIDER_ADVICE),
       });
       this.dependencies.onRunEvent?.("error");
     } finally {
