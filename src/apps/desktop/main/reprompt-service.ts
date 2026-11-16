@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { executeReprompt } from "@/application/reprompt.js";
 import type { Config } from "@/config/schema.js";
-import { detectSecrets } from "@/core/secret-detector.js";
+import { hasSecrets } from "@/core/secret-detector.js";
 import { previewRewritten } from "@/core/stream-preview.js";
 import type { RepromptResult } from "@/core/types.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
@@ -9,12 +9,14 @@ import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import { resolveProfile } from "@/profiles/registry.js";
 import { resolveEffectiveLevel } from "@/profiles/level.js";
 import { describeUiError, type UiError } from "@/shared/errors.js";
+import { redactSecrets } from "@/utils/redaction.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
   RepromptStartRequest,
   RepromptStartResponse,
+  RunErrorPayload,
 } from "@/apps/desktop/shared/ipc-contract.js";
-import { mainLocale } from "./i18n.js";
+import { mainLocale, t as desktopT } from "./i18n.js";
 
 /** Minimal slice of `WebContents`, injected so the service stays testable. */
 export interface RunEventSender {
@@ -50,6 +52,15 @@ export interface RepromptServiceDependencies {
 export class RepromptService {
   private readonly controllers = new Map<string, AbortController>();
   private readonly results = new Map<string, RepromptResult>();
+  /**
+   * The run each window started last, keyed by its event sender.
+   *
+   * A window only ever accepts the result of its latest run: the capsule and
+   * the popover let go of the previous one when they start another. The main
+   * process lets go of it too, so it holds one result per window instead of
+   * every run until the app quits.
+   */
+  private readonly latestRuns = new WeakMap<RunEventSender, string>();
   private readonly translator: Translator;
   private readonly schedule: (callback: () => void) => void;
 
@@ -80,6 +91,7 @@ export class RepromptService {
     const runId = this.dependencies.createRunId?.() ?? randomUUID();
     const controller = new AbortController();
     this.controllers.set(runId, controller);
+    this.forgetPreviousRun(sender, runId);
 
     const config = await this.dependencies.loadConfig();
     const profileId = request.profileId ?? config.defaultProfile;
@@ -99,9 +111,18 @@ export class RepromptService {
     this.controllers.get(runId)?.abort();
   }
 
-  /** Result of a finished run, kept for `result:accept`. */
+  /** Result of a window's latest run, kept for `result:accept`. */
   storedResult(runId: string): RepromptResult | undefined {
     return this.results.get(runId);
+  }
+
+  /** The window moves on: the result of its previous run can no longer be accepted. */
+  private forgetPreviousRun(sender: RunEventSender, runId: string): void {
+    const previous = this.latestRuns.get(sender);
+    if (previous !== undefined) {
+      this.results.delete(previous);
+    }
+    this.latestRuns.set(sender, runId);
   }
 
   private async execute(
@@ -116,16 +137,20 @@ export class RepromptService {
     this.dependencies.onRunEvent?.("start");
     try {
       // The local secret policy applies before any text leaves the machine,
-      // exactly like the CLI path (DESKTOP.md §9).
-      const secrets = detectSecrets(request.input);
-      if (secrets.length > 0) {
-        this.emit(sender, IPC_CHANNELS.runError, {
+      // as on the CLI path (DESKTOP.md §9): a secret is refused, unless the
+      // person chose to redact it, which `rp --redact-secrets` does too.
+      const redact = request.redactSecrets === true;
+      if (!redact && hasSecrets(request.input)) {
+        const refusal: RunErrorPayload = {
           runId,
           error: this.secretError(),
-        });
+          canRedactSecrets: true,
+        };
+        this.emit(sender, IPC_CHANNELS.runError, refusal);
         this.dependencies.onRunEvent?.("error");
         return;
       }
+      const input = redact ? redactSecrets(request.input) : request.input;
 
       // The renderer never sees the raw provider envelope: deltas are decoded
       // here through `previewRewritten` (core/stream-preview.ts, REUSED, not
@@ -134,7 +159,7 @@ export class RepromptService {
       let sentPreviewLength = 0;
       const profileId = request.profileId ?? config.defaultProfile;
       const { result } = await this.dependencies.executeReprompt({
-        input: request.input,
+        input,
         profileId,
         // Same precedence as the CLI (`profiles/level.ts`): what the capsule
         // asked for wins, then the chosen profile's own level, then the
@@ -170,7 +195,11 @@ export class RepromptService {
         },
       });
 
-      this.results.set(runId, result);
+      // Not kept once its window has started another run: that window can no
+      // longer accept it, and nothing else ever will.
+      if (this.latestRuns.get(sender) === runId) {
+        this.results.set(runId, result);
+      }
       this.emit(sender, IPC_CHANNELS.runDone, { runId, result });
       this.dependencies.onRunEvent?.("done");
     } catch (error) {
@@ -189,12 +218,15 @@ export class RepromptService {
     }
   }
 
+  /**
+   * The desktop's own words: the CLI's advice names `--redact-secrets` and
+   * `--force`, flags no window has. The way on is the window's redact action.
+   */
   private secretError(): UiError {
-    const t = this.translator;
     return {
-      title: t("common.error"),
-      message: t("reprompt.secretDetected"),
-      nextAction: t("reprompt.secretAdvice"),
+      title: desktopT("main.secretDetectedTitle"),
+      message: desktopT("main.secretDetected"),
+      nextAction: desktopT("main.secretDetectedAction"),
     };
   }
 

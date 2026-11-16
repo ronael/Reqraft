@@ -353,3 +353,58 @@ describe("secondary views", () => {
     expect(app.frame()).not.toBe(explaining);
   }, 120_000);
 });
+
+/** An engine that records what would have been sent, then answers. */
+function recordingServices(): { services: TuiServices; sent: ExecuteRepromptInput[] } {
+  const sent: ExecuteRepromptInput[] = [];
+  const services = fakeServices({
+    execute: (input) => {
+      sent.push(input);
+      return Promise.resolve({ result: makeResult(input.input), detectedProfile: false });
+    },
+  });
+  return { services, sent };
+}
+
+describe("OpenTuiApp · secrets", () => {
+  test("refuses a prompt holding a secret before anything leaves, as the CLI does", async () => {
+    const { services, sent } = recordingServices();
+    const screen = await mountApp(services);
+
+    await screen.type("deploy with AKIAIOSFODNN7EXAMPLE");
+    await screen.key("g", { ctrl: true });
+    await screen.settle();
+
+    expect(sent).toEqual([]);
+    const frame = screen.frame();
+    expect(frame).toContain(t("tui.secret.title"));
+    expect(frame).toContain("AWS access key");
+    // The prompt stays where it can be fixed.
+    expect(frame).toContain("deploy with AKIAIOSFODNN7EXAMPLE");
+  });
+});
+
+describe("OpenTuiApp · provider picker", () => {
+  test("switching to openai-compatible keeps a model, and mock is not offered", async () => {
+    const { services, sent } = recordingServices();
+    const screen = await mountApp(services);
+
+    await screen.key("k", { ctrl: true });
+    await screen.type("provider");
+    await screen.enter();
+    expect(screen.frame()).toContain(t("tui.changeProvider"));
+    expect(screen.frame()).toContain("openai-compatible — OpenAI Compatible");
+    expect(screen.frame()).not.toContain("mock — Mock");
+
+    await screen.type("compatible");
+    await screen.enter();
+    await screen.type("hello");
+    await screen.key("g", { ctrl: true });
+    await screen.settle();
+
+    // No preset exists for an endpoint: the configured model, as rp --provider
+    // would send it, and never an empty one.
+    expect(sent.at(-1)?.providerId).toBe("openai-compatible");
+    expect(sent.at(-1)?.requestedModel).toBe(DEFAULT_CONFIG.defaultModel);
+  });
+});

@@ -337,7 +337,7 @@ Reqraft detects common secrets locally before sending text to a provider:
 - Private keys
 - Variables named `SECRET`, `TOKEN`, `PASSWORD`, or `API_KEY`
 
-If a secret is detected, the CLI stops and suggests `--redact-secrets` or `--force`.
+If a secret is detected, nothing is sent: `rp "…"` stops and suggests `--redact-secrets` or `--force`, the interactive editor refuses to send until the secret is removed, and the desktop app offers to redact it and continue.
 
 See [SECURITY.md](SECURITY.md) and [docs/privacy.md](docs/privacy.md).
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cycleRepromptLevel } from "@/apps/desktop/renderer/capsule/App.js";
+import { cycleRepromptLevel } from "@/apps/desktop/renderer/capsule/levels.js";
 import {
   comparisonEvent,
   keepsComparison,

@@ -27,7 +27,7 @@ const SCALE = 60;
 
 function desktopCatalogue(count: number): ProfileCatalogEntry[] {
   return [
-    { id: "auto", name: "Auto", description: "Détection locale", origin: "auto" },
+    { id: "auto", name: "Auto", description: "Choisi par le modèle", origin: "auto" },
     { id: "writing", name: "Writing", description: "Textes généraux", origin: "builtin" },
     ...Array.from({ length: count }, (_, index) => ({
       id: `profil-${String(index)}`,

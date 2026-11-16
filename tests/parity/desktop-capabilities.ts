@@ -1,6 +1,9 @@
 import { CAPSULE_STATES } from "@/apps/desktop/shared/capsule-machine.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
-import { RESULT_ACCEPT_MODES } from "@/apps/desktop/shared/ipc-contract.js";
+import {
+  RepromptStartRequestSchema,
+  RESULT_ACCEPT_MODES,
+} from "@/apps/desktop/shared/ipc-contract.js";
 
 /**
  * Desktop capability inventory — derived from the REAL desktop declarations
@@ -33,6 +36,11 @@ export function listDesktopCapabilities(): string[] {
     }
   }
 
+  // reprompt:start can ask for the detected secrets to be masked.
+  if ("redactSecrets" in RepromptStartRequestSchema.shape) {
+    ids.add("redact-secrets");
+  }
+
   // reprompt:cancel is the interrupt capability.
   if (IPC_CHANNELS.repromptCancel.length > 0) {
     ids.add("interrupt");
@@ -56,9 +64,7 @@ export function listDesktopCapabilities(): string[] {
 
 /**
  * Capabilities the desktop exposes without a structural anchor:
- * - redact-secrets: `reprompt-service.ts` runs `detectSecrets()` on every
- *   captured text before anything leaves the machine (DESKTOP.md §9) ;
  * - show-stats: the capsule verdict line displays model, level and latency
  *   from the result payload.
  */
-const STATIC_CAPABILITIES = ["redact-secrets", "show-stats"] as const;
+const STATIC_CAPABILITIES = ["show-stats"] as const;

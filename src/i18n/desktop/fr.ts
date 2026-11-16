@@ -28,6 +28,7 @@ export const DESKTOP_FR = {
   "capsule.correctOnly": "Corriger",
   "capsule.correctOnlyTitle":
     "Relancer depuis le texte de départ avec le profil clean au niveau minimal",
+  "capsule.redactAndContinue": "Masquer et continuer",
   "capsule.textPreserved": "✓ texte conservé",
   "capsule.textPreservedDetail": "le texte de départ est resté inchangé",
   "capsule.editedVerdict": "modifié · à relire",
@@ -385,8 +386,13 @@ export const DESKTOP_FR = {
   "main.doctorShortcutsSuspended": "raccourcis globaux suspendus depuis la barre de menus",
   "main.doctorNoShortcut": "aucun raccourci actif",
   "main.autoProfileName": "Auto",
-  "main.autoProfileSummary": "Détection locale du profil",
+  "main.autoProfileSummary": "Choisi par le modèle",
   "main.autoProfileDescription": "Reqraft laisse le modèle choisir le profil adapté au texte.",
+  "main.secretDetectedTitle": "Secret possible dans le texte",
+  "main.secretDetected":
+    "Reqraft a repéré ce qui ressemble à une clé, un jeton ou un mot de passe, et n'a rien envoyé.",
+  "main.secretDetectedAction":
+    "« Masquer et continuer » l'envoie avec [REDACTED] à la place de chaque secret, et le résultat garde [REDACTED] lui aussi.",
   "main.errorProviderNotStorable":
     "Le fournisseur {provider} ne prend pas de clé enregistrable dans le trousseau.",
   "main.errorProviderNotSelectable":
@@ -530,7 +536,7 @@ export const DESKTOP_FR = {
   "onboarding.tour.privacy.telemetry": "Télémétrie désactivée · contenu non conservé",
   "onboarding.tour.privacy.ephemeral": "Aucun prompt enregistré",
   "onboarding.tour.privacy.ephemeralDetail":
-    "Le texte existe seulement le temps de la reformulation.",
+    "Seul le dernier résultat reste en mémoire, jamais sur le disque.",
   "onboarding.tour.privacy.keychain": "Clés protégées par votre système",
   "onboarding.tour.privacy.keychainDetail": "Elles ne sont jamais renvoyées à l'interface.",
   "onboarding.tour.privacy.available": "Toujours à portée de raccourci",
@@ -545,6 +551,7 @@ export const DESKTOP_FR = {
   "settings.providersConfiguredPlural": "{count} providers configurés · télémétrie désactivée",
   "profiles.levelMeta": "niveau {level}",
   "profiles.confirmDeleteQuestion": "Supprimer « {id} » ? Cette action est définitive.",
+  "settings.confirmRemoveEndpoint": "Retirer « {id} » de votre configuration ?",
   "settings.confirmDeleteKey":
     "Supprimer la clé {provider} du stockage sécurisé ? Elle sera définitivement perdue, et une clé API ne se réaffiche pas chez le fournisseur. Il faudra en générer une nouvelle.",
   "picker.availableOne": "{count} disponible",

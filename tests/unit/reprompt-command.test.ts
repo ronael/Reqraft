@@ -361,13 +361,14 @@ describe("rp <text>: secrets", () => {
     expect(stdout).toEqual(["[mock] Le jeton [REDACTED] et [REDACTED] ne marchent plus"]);
   });
 
-  // An Anthropic or OpenAI key holds a 40-character run the "AWS secret key"
-  // pattern matches, and a generic API_KEY= secret holds the key it assigns:
-  // the matches overlap.
+  // An Anthropic key holds a 40-character run of mixed case and digits that
+  // the "AWS secret key" pattern matches, and a generic API_KEY= secret holds
+  // the key it assigns: the matches overlap.
+  const mixed = (length: number): string => "aB3".repeat(length).slice(0, length);
   it.each([
-    { kind: "Anthropic", key: `sk-ant-${"x".repeat(40)}` },
-    { kind: "OpenAI", key: `sk-${"x".repeat(48)}` },
-    { kind: "assigned Anthropic", key: `API_KEY=sk-ant-${"x".repeat(40)}` },
+    { kind: "Anthropic", key: `sk-ant-${mixed(40)}` },
+    { kind: "OpenAI", key: `sk-${mixed(48)}` },
+    { kind: "assigned Anthropic", key: `API_KEY=sk-ant-${mixed(40)}` },
   ])("keeps the words that follow an $kind key when --redact-secrets masks it", async ({ key }) => {
     const { code, stdout } = await run({
       text: `Use ${key} in the deploy script and keep the rest`,

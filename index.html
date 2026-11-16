@@ -655,15 +655,15 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   <div class="wrap">
     <div class="rv" style="max-width:640px">
       <div class="kick"><b>05</b> Profiles</div>
-      <h2>It reads the room. <em>Locally.</em></h2>
-      <p class="lede">Leave it on <strong class="mono" style="font-size:13.5px">auto</strong> and Reqraft infers the right profile on your machine, before any network call. Or pin one yourself.</p>
+      <h2>It reads the room. <em>In one call.</em></h2>
+      <p class="lede">Leave it on <strong class="mono" style="font-size:13.5px">auto</strong> and the model picks the right profile in the very request that rewrites your text: no second call, no extra round trip. Or pin one yourself.</p>
     </div>
 
     <div class="prof-lines rv">
-      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "fix the form on mobile"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">frontend</span><span class="loc">LOCAL</span></span></div>
-      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "rewrite this landing headline"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">web-design</span><span class="loc">LOCAL</span></span></div>
-      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "why does this test only fail in CI"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">code</span><span class="loc">LOCAL</span></span></div>
-      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "make this section feel calmer"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">web-design</span><span class="loc">LOCAL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "fix the form on mobile"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">frontend</span><span class="loc">ONE CALL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "rewrite this landing headline"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">web-design</span><span class="loc">ONE CALL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "why does this test only fail in CI"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">code</span><span class="loc">ONE CALL</span></span></div>
+      <div class="prof-row"><span class="cmd"><span class="dollar">$</span>rp "make this section feel calmer"</span><span class="det"><span>auto</span><span class="arrow">→</span><span class="to">web-design</span><span class="loc">ONE CALL</span></span></div>
     </div>
 
     <div class="prof-all rv">
@@ -713,7 +713,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
         <div class="capsule" id="capsule">
           <div class="cap-head">
             <span class="rqn"><img class="mark" src="docs/assets/reqraft-mark.svg" alt="Reqraft" /></span><span id="capSource">selection · Code</span>
-            <span class="ctx" id="capCtx"><span id="capCtxTxt">local analysis…</span></span>
+            <span class="ctx" id="capCtx"><span id="capCtxTxt"><span class="pf">auto</span>&nbsp;· analysing…</span></span>
           </div>
           <div class="cap-act" id="capAct"></div>
           <div class="cap-body"><span id="capStream"></span><span class="caret" id="capCaret" style="display:none"></span></div>
@@ -1124,6 +1124,10 @@ const nativeSceneButtons = [...document.querySelectorAll("[data-native-scene]")]
 let activeNativeScene = 0;
 let nativeSceneVersion = 0;
 let nativeSceneStarted = false;
+// With auto, the model picks the profile in the same call as the rewrite: it
+// is known with the result, as the capsule shows it, never before.
+const AUTO_ANALYSING = '<span class="pf">auto</span>&nbsp;· analysing…';
+const autoDetected = (profile) => `<span class="pf">${profile}</span>&nbsp;· detected automatically`;
 
 function resetNativeFeedback(){
   $("capsule").classList.remove("on");
@@ -1133,7 +1137,7 @@ function resetNativeFeedback(){
   $("capStream").textContent = "";
   $("capAct").classList.remove("on");
   $("mbDot").classList.remove("working");
-  $("capCtxTxt").textContent = "local analysis…";
+  $("capCtxTxt").innerHTML = AUTO_ANALYSING;
 }
 
 function renderNativeScene(scene){
@@ -1149,7 +1153,7 @@ function renderNativeScene(scene){
 
 function renderNativeStatic(scene){
   $("capsule").classList.add("on");
-  $("capCtxTxt").innerHTML = `<span class="pf">${scene.profile}</span>&nbsp;· detected locally`;
+  $("capCtxTxt").innerHTML = autoDetected(scene.profile);
   $("capStream").textContent = scene.result;
   $("capVerdict").innerHTML = '<span style="color:var(--ok)">✓ quality: good</span><span>no scope warning detected</span>';
   $("capActions").innerHTML = '<span style="color:var(--tx2)"><kbd>⏎</kbd> replace</span><span><kbd>⌥</kbd> compare</span><span class="ml"><kbd>⌘C</kbd> copy</span>';
@@ -1174,20 +1178,20 @@ async function nativeLoop(scene, version){
     cap.classList.remove("on"); toast.classList.remove("on");
     verdict.innerHTML = ""; actions.innerHTML = ""; stream.textContent = "";
     act.classList.remove("on"); dot.classList.remove("working");
-    ctx.textContent = "local analysis…";
+    ctx.innerHTML = AUTO_ANALYSING;
     if (!await waitForNativeScene(1600, version)) return;
 
-    // capsule appears, local analysis
+    // capsule appears; the request leaves with the profile still on auto
     cap.classList.add("on"); act.classList.add("on");
-    if (!await waitForNativeScene(1100, version)) return;
-    ctx.innerHTML = `<span class="pf">${scene.profile}</span>&nbsp;· detected locally`;
-    if (!await waitForNativeScene(800, version)) return;
+    if (!await waitForNativeScene(1900, version)) return;
 
     // generation streams
     dot.classList.add("working");
     await streamInto(stream, scene.result, caret, () => version === nativeSceneVersion);
     if (version !== nativeSceneVersion) return;
     act.classList.remove("on"); dot.classList.remove("working");
+    // the profile the model picked arrives with the result
+    ctx.innerHTML = autoDetected(scene.profile);
     verdict.innerHTML = V_READY;
     actions.innerHTML = A_READY;
     if (!await waitForNativeScene(2300, version)) return;

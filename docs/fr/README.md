@@ -50,7 +50,7 @@ rp --profile frontend "améliore la card et fait qu'elle marche mobile"
 
 ## Profils
 
-- `auto` — détection locale
+- `auto` — le modèle choisit le profil le plus adapté, dans le même appel
 - `clean` — correction et clarification légère
 - `code` — agents de développement
 - `frontend` — implémentation frontend

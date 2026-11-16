@@ -568,6 +568,11 @@ export const fr = {
   "tui.toast.copied": () => "Résultat copié",
   "tui.toast.reset": () => "Session réinitialisée",
   "tui.toast.cancelled": () => "Génération annulée",
+  "tui.secret.title": () => "Secret possible dans le prompt",
+  "tui.secret.message": ({ kinds }) =>
+    `Rien n'a été envoyé : le prompt contient ce qui ressemble à un secret (${kinds}).`,
+  "tui.secret.action": () =>
+    "Retirez-le du prompt, ou masquez-le avec une commande rp --redact-secrets ponctuelle.",
   "tui.tooSmall.title": () => "Terminal trop petit",
   "tui.tooSmall.body": () =>
     "Reqraft a besoin d'un peu plus d'espace pour afficher l'éditeur de manière fiable.",

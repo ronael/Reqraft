@@ -62,6 +62,12 @@ export const RepromptStartRequestSchema = z
     level: RepromptLevelSchema.optional(),
     providerId: z.string().min(1).optional(),
     model: z.string().min(1).optional(),
+    /**
+     * Mask each detected secret before the text leaves, as
+     * `rp --redact-secrets` does. Absent, a text holding a secret is refused
+     * with `canRedactSecrets`, and the window offers to start again with it.
+     */
+    redactSecrets: z.boolean().optional(),
   })
   .strict();
 export type RepromptStartRequest = z.infer<typeof RepromptStartRequestSchema>;
@@ -960,6 +966,11 @@ export interface RunDonePayload {
 export interface RunErrorPayload {
   runId: string;
   error: UiError;
+  /**
+   * The text was refused for a secret before anything was sent: the same
+   * request with `redactSecrets: true` goes through, each secret masked.
+   */
+  canRedactSecrets?: boolean;
 }
 
 export interface RunCancelledPayload {

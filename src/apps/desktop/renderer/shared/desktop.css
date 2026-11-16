@@ -634,7 +634,9 @@ button:disabled {
   flex-wrap: wrap;
 }
 
-.capsule-correction {
+/* Les actions du verdict se rangent à droite, après ce qu'elles commentent. */
+.capsule-correction,
+.capsule-redact {
   margin-left: auto;
   flex-shrink: 0;
 }

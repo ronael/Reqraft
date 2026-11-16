@@ -34,6 +34,7 @@ export const DESKTOP_EN = {
   "capsule.rerun": "rerun",
   "capsule.correctOnly": "Correct",
   "capsule.correctOnlyTitle": "Rerun the source text with the clean profile at minimal level",
+  "capsule.redactAndContinue": "Redact and continue",
   "capsule.textPreserved": "✓ text preserved",
   "capsule.textPreservedDetail": "the source text was left unchanged",
   "capsule.editedVerdict": "edited · review",
@@ -389,8 +390,13 @@ export const DESKTOP_EN = {
   "main.doctorShortcutsSuspended": "global shortcuts suspended from the menu bar",
   "main.doctorNoShortcut": "no active shortcut",
   "main.autoProfileName": "Auto",
-  "main.autoProfileSummary": "Local profile detection",
+  "main.autoProfileSummary": "Picked by the model",
   "main.autoProfileDescription": "Reqraft lets the model pick the profile that fits the text.",
+  "main.secretDetectedTitle": "Possible secret in the text",
+  "main.secretDetected":
+    "Reqraft found what looks like a key, a token or a password, and sent nothing.",
+  "main.secretDetectedAction":
+    "“Redact and continue” sends it with [REDACTED] in place of each secret, and the result keeps [REDACTED] too.",
   "main.errorProviderNotStorable":
     "The {provider} provider has no key that can be stored in the keychain.",
   "main.errorProviderNotSelectable": "The {provider} provider cannot be chosen during setup.",
@@ -530,7 +536,8 @@ export const DESKTOP_EN = {
     "Clarify this request without adding features or losing any constraint.",
   "onboarding.tour.privacy.telemetry": "Telemetry off · content not retained",
   "onboarding.tour.privacy.ephemeral": "No prompt stored",
-  "onboarding.tour.privacy.ephemeralDetail": "Text exists only for the duration of the rewrite.",
+  "onboarding.tour.privacy.ephemeralDetail":
+    "Only the latest result stays in memory, never on disk.",
   "onboarding.tour.privacy.keychain": "Keys protected by your system",
   "onboarding.tour.privacy.keychainDetail": "They are never sent back to the interface.",
   "onboarding.tour.privacy.available": "Always one shortcut away",
@@ -545,6 +552,7 @@ export const DESKTOP_EN = {
   "settings.providersConfiguredPlural": "{count} providers configured · telemetry off",
   "profiles.levelMeta": "level {level}",
   "profiles.confirmDeleteQuestion": "Delete “{id}”? This cannot be undone.",
+  "settings.confirmRemoveEndpoint": "Remove “{id}” from your configuration?",
   "settings.confirmDeleteKey":
     "Delete the securely stored {provider} key? It will be lost for good, and an API key is never shown again by the provider. You would have to generate a new one.",
   "picker.availableOne": "{count} available",

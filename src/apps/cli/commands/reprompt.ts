@@ -6,7 +6,7 @@ import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js
 import { readFileContent, readStdin } from "@/utils/input.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { loadConfig } from "@/config/loader.js";
-import { detectSecrets } from "@/core/secret-detector.js";
+import { detectSecretKinds } from "@/core/secret-detector.js";
 import { redactSecrets } from "@/utils/redaction.js";
 import { executeReprompt, type ExecuteRepromptInput } from "@/application/reprompt.js";
 import type { Config } from "@/config/schema.js";
@@ -76,16 +76,15 @@ function applySecretPolicy(
   options: RepromptCliOptions,
   t: Translator,
 ): { input: string } | { refusal: Refusal } {
-  const secrets = detectSecrets(input);
-  if (secrets.length === 0 || options.force) {
+  // Each kind once, with or without --json, however many secrets share it.
+  const types = detectSecretKinds(input);
+  if (types.length === 0 || options.force) {
     return { input };
   }
   if (options.redactSecrets) {
     return { input: redactSecrets(input) };
   }
 
-  // Each kind once, with or without --json, however many secrets share it.
-  const types = [...new Set(secrets.map((secret) => secret.type))];
   return {
     refusal: {
       error: new ReqraftError("input.secret_detected", EXIT_CODES.SECRET_DETECTED, {

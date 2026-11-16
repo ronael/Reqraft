@@ -111,10 +111,10 @@ export const CAPABILITIES: Capability[] = [
     cliFlag: "--stats",
   },
   {
-    // Pas de « tui » : la détection et le masquage de secrets n'existent que
-    // dans le chemin non interactif (commands/reprompt.ts). Exposer l'option
-    // dans la TUI demanderait d'abord d'y construire toute la politique de
-    // masquage — hors périmètre d'un simple branchement de palette.
+    // Pas de « tui » : l'éditeur applique la détection du CLI et refuse
+    // l'envoi (ui/app-actions.ts), mais ne masque pas. Exposer le masquage
+    // dans la TUI demanderait une action de plus dans la palette et l'écran
+    // d'erreur — hors périmètre d'un simple branchement de palette.
     id: "redact-secrets",
     label: "Masquer les secrets détectés",
     description: "Masquer automatiquement les secrets détectés avant l'envoi.",

@@ -20,7 +20,6 @@ import { describeQualityVerdict } from "../shared/quality.js";
 import {
   AUTO_PROFILE_ID,
   type ProfileCatalogEntry,
-  REPROMPT_LEVEL_IDS,
   type CapsuleOpenedPayload,
   type DesktopPlatform,
   type RepromptResult,
@@ -39,11 +38,10 @@ import {
   type CapsuleIntent,
 } from "./keyboard.js";
 import { autoApplyDecision, isUserIntervention } from "./auto-apply.js";
+import { cycleRepromptLevel, offersLowerLevel, type Level } from "./levels.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
 const GENERATING = "generating";
-
-type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
 const PROMPT_EMPTY_MESSAGE = "capsule.promptEmpty";
 const CORRECTION_PROFILE = "clean";
@@ -56,13 +54,6 @@ function offersCorrectionOnly(
   const ready = state === "ready" || state === "comparison";
   if (!ready || picking || result === null) return false;
   return result.profile !== CORRECTION_PROFILE || result.level !== "minimal";
-}
-
-export function cycleRepromptLevel(current: Level, direction: 1 | -1): Level {
-  const currentIndex = REPROMPT_LEVEL_IDS.indexOf(current);
-  const safeIndex = currentIndex === -1 ? REPROMPT_LEVEL_IDS.indexOf("standard") : currentIndex;
-  const nextIndex = (safeIndex + direction + REPROMPT_LEVEL_IDS.length) % REPROMPT_LEVEL_IDS.length;
-  return REPROMPT_LEVEL_IDS[nextIndex] ?? "standard";
 }
 
 /**
@@ -257,7 +248,8 @@ function CapsuleSource(
 interface CapsuleFooterProps {
   platform: DesktopPlatform;
   state: CapsuleState;
-  expansion: boolean;
+  /** Le résultat est trop long et un niveau plus bas existe : « minimal » n'en a pas. */
+  canLowerLevel: boolean;
   /** La comparaison est-elle épinglée (⌘D), plutôt que maintenue (⌥) ? */
   comparisonPinned: boolean;
   running: boolean;
@@ -268,10 +260,13 @@ interface CapsuleFooterProps {
   verdictItems: string[];
   verdictTone: RepromptResult["quality"]["status"];
   canCorrectOnly: boolean;
+  /** The run was refused for a secret: it can start again with each one masked. */
+  canRedactSecrets: boolean;
   profileLabel: string;
   pickable: boolean;
   level: Level;
   onPick(): void;
+  onRedactSecrets(): void;
   onCycleLevel(): void;
   onSubmit(): void;
   onAccept(): void;
@@ -280,6 +275,7 @@ interface CapsuleFooterProps {
   onRerun(): void;
   onCorrectOnly(): void;
   onLevel(): void;
+  onLowerLevel(): void;
   onCancel(): void;
   onClose(): void;
 }
@@ -378,6 +374,15 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
               </>
             )}
             {props.state === "error" && <span className="muted">{t("capsule.escToClose")}</span>}
+            {props.state === "error" && props.canRedactSecrets && (
+              <button
+                type="button"
+                className="capsule-key key-primary capsule-redact"
+                onClick={props.onRedactSecrets}
+              >
+                {t("capsule.redactAndContinue")}
+              </button>
+            )}
           </div>
           <div className="capsule-keys">
             {(props.state === "ready" || props.state === "comparison") && (
@@ -392,8 +397,9 @@ function CapsuleFooter(props: Readonly<CapsuleFooterProps>): React.JSX.Element {
                 >
                   {props.profileLabel}
                 </button>
-                {props.expansion && (
-                  <CapsuleKey touche="⇥" className="key-primary" onClick={props.onLevel}>
+                {/* Vers le bas, donc ⇧⇥ : ⇥ monte. */}
+                {props.canLowerLevel && (
+                  <CapsuleKey touche="⇧⇥" className="key-primary" onClick={props.onLowerLevel}>
                     {t("capsule.lowerLevel")}
                   </CapsuleKey>
                 )}
@@ -462,6 +468,8 @@ export function App(): React.JSX.Element {
   const [streamed, setStreamed] = useState("");
   const [result, setResult] = useState<RepromptResult | null>(null);
   const [error, setError] = useState<UiError | null>(null);
+  /** The error is a refusal for a secret, which the main process can redact. */
+  const [canRedactSecrets, setCanRedactSecrets] = useState(false);
   const [notice, setNotice] = useState<CapsuleNotice | null>(null);
   const [profiles, setProfiles] = useState<ProfileCatalogEntry[]>([]);
   /** Profil choisi à la main ; `null` laisse le défaut de la configuration. */
@@ -530,7 +538,7 @@ export function App(): React.JSX.Element {
   }, []);
 
   const startRun = useCallback(
-    (text: string, chosenLevel: Level, profileId: string | null = chosenProfile) => {
+    (text: string, chosenLevel: Level, profileId = chosenProfile, redactSecrets = false) => {
       // Entrer dans `analysis` ici, pas chez l'appelant.
       //
       // Trois chemins sur cinq l'oubliaient — ⌘R, ⇥ et la pastille de niveau —
@@ -545,6 +553,7 @@ export function App(): React.JSX.Element {
       setStreamedBoth(() => "");
       setResult(null);
       setError(null);
+      setCanRedactSecrets(false);
       setNotice(null);
       // Une nouvelle génération repart du texte du modèle : garder l'édition
       // précédente ferait copier et remplacer un texte que plus rien à l'écran
@@ -557,6 +566,7 @@ export function App(): React.JSX.Element {
           input: text,
           level: chosenLevel,
           ...(profileId === null ? {} : { profileId }),
+          ...(redactSecrets ? { redactSecrets: true } : {}),
         })
         .then((response) => {
           activeRunId.current = response.runId;
@@ -688,6 +698,7 @@ export function App(): React.JSX.Element {
     const offError = window.reqraft.onRunError((payload) => {
       if (payload.runId === activeRunId.current) {
         setError(payload.error);
+        setCanRedactSecrets(payload.canRedactSecrets === true);
         dispatch("failed");
       }
     });
@@ -1041,9 +1052,6 @@ export function App(): React.JSX.Element {
     };
   }, [running, startedAt]);
 
-  const expansion = result?.quality.signals.some(
-    (signal) => signal.code === "disproportionate_expansion",
-  );
   const showResult =
     (state === "ready" || state === "comparison" || state === "applying") && result !== null;
   const finalResult = showResult ? result : null;
@@ -1215,7 +1223,7 @@ export function App(): React.JSX.Element {
         <CapsuleFooter
           platform={platform}
           state={state}
-          expansion={expansion === true}
+          canLowerLevel={offersLowerLevel(result, level)}
           comparisonPinned={comparison.pinned}
           running={running}
           elapsedMs={elapsedMs}
@@ -1225,10 +1233,15 @@ export function App(): React.JSX.Element {
           verdictItems={verdict?.items ?? []}
           verdictTone={verdict?.tone ?? "good"}
           canCorrectOnly={canCorrectOnly}
+          canRedactSecrets={canRedactSecrets}
           profileLabel={profilAffiche}
           pickable={profilChoisissable}
           onPick={() => {
             setPicking(true);
+          }}
+          onRedactSecrets={() => {
+            // The same request as the refused one, with the secrets masked.
+            startRun(input, level, chosenProfile, true);
           }}
           onCycleLevel={() => {
             setLevel(cycleRepromptLevel(level, 1));
@@ -1246,6 +1259,9 @@ export function App(): React.JSX.Element {
           onCorrectOnly={corrigerSeulement}
           onLevel={() => {
             changerNiveau(1);
+          }}
+          onLowerLevel={() => {
+            changerNiveau(-1);
           }}
           onCancel={cancelRun}
           onClose={fermer}

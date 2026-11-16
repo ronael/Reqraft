@@ -19,7 +19,7 @@ import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import { parseLevel } from "@/core/levels.js";
 import { previewRewritten } from "@/core/stream-preview.js";
-import { createUiRepromptInput } from "@/apps/cli/ui/app-actions.js";
+import { createUiRepromptInput, refuseSecrets } from "@/apps/cli/ui/app-actions.js";
 import {
   applyLoadedConfig,
   completeGeneration,
@@ -280,6 +280,15 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
   const generate = useCallback(async (): Promise<void> => {
     if (generationInFlight.current) return;
     if (!canStartGeneration(app.input, false)) return;
+    // The CLI's secret check, before anything leaves the machine. Nothing
+    // starts: the prompt stays in the editor, to be fixed there.
+    const refusal = refuseSecrets(app.input, t);
+    if (refusal !== null) {
+      setSubmittedPrompt(app.input);
+      setApp((prev) => failGeneration(prev, refusal));
+      setStatus("error");
+      return;
+    }
 
     generationInFlight.current = true;
     const controller = new AbortController();
@@ -642,12 +651,13 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       }
       if (overlayId === "level") setApp((prev) => selectLevel(prev, parseLevel(value)));
       if (overlayId === "provider") {
-        setApp((prev) => selectProvider(prev, value, getFallbackModelForProvider(value)));
+        const model = getFallbackModelForProvider(value, config ?? DEFAULT_CONFIG);
+        setApp((prev) => selectProvider(prev, value, model));
       }
       if (overlayId === "model") setApp((prev) => selectModel(prev, value));
       closeOverlayAndRestore();
     },
-    [closeOverlayAndRestore, openProfileForm],
+    [closeOverlayAndRestore, config, openProfileForm],
   );
 
   const context = useMemo(

@@ -741,7 +741,7 @@ function ProvidersTab(props: Readonly<ProvidersTabProps>): React.JSX.Element {
                     )}
                     {confirming === `endpoint:${id}` && (
                       <span className="settings-row-detail provider-confirm">
-                        Retirer « {id} » de votre configuration ?
+                        {t("settings.confirmRemoveEndpoint", { id })}
                       </span>
                     )}
                   </span>
