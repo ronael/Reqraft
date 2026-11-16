@@ -1,4 +1,5 @@
-import type { ProviderResponse } from "@/core/types.js";
+import type { ProviderRequest, ProviderResponse } from "@/core/types.js";
+import { createReasoningFilter } from "@/core/reasoning.js";
 import { emptyAnswerError } from "./errors.js";
 import { parseDataLine, streamLines } from "./sse.js";
 
@@ -18,6 +19,8 @@ interface ChatCompletionChunk {
 export interface ChatCompletionAccumulator {
   /** Visible text carried by this line, if any. */
   consume(line: string): string | undefined;
+  /** Visible text held back until the stream ended — a tag that never completed. */
+  end(): string | undefined;
   finish(requestedModel: string): ProviderResponse;
 }
 
@@ -26,6 +29,11 @@ export interface ChatCompletionAccumulator {
  *
  * Shared by the OpenAI adapter and every OpenAI-compatible one, so the four
  * providers speaking that dialect cannot drift apart.
+ *
+ * Reasoning written into the content between `<think>` tags is not visible
+ * text: it is neither published nor kept (`core/reasoning.ts`). Reasoning a
+ * server sends in a field of its own (`reasoning`, `reasoning_content`) was
+ * never read as text in the first place.
  */
 export function createChatCompletionAccumulator(providerName: string): ChatCompletionAccumulator {
   let text = "";
@@ -34,6 +42,17 @@ export function createChatCompletionAccumulator(providerName: string): ChatCompl
   let inputTokens: number | undefined;
   let outputTokens: number | undefined;
   let reasoningTokens: number | undefined;
+  const reasoning = createReasoningFilter();
+  let ended = false;
+
+  const end = (): string | undefined => {
+    if (ended) return undefined;
+    ended = true;
+    const rest = reasoning.flush();
+    if (rest === "") return undefined;
+    text += rest;
+    return rest;
+  };
 
   return {
     consume(line) {
@@ -56,10 +75,16 @@ export function createChatCompletionAccumulator(providerName: string): ChatCompl
       if (typeof fragment !== "string" || fragment === "") {
         return undefined;
       }
-      text += fragment;
-      return fragment;
+      const visible = reasoning.push(fragment);
+      if (visible === "") {
+        return undefined;
+      }
+      text += visible;
+      return visible;
     },
+    end,
     finish(requestedModel) {
+      end();
       if (!text) {
         throw emptyAnswerError(
           providerName,
@@ -85,17 +110,24 @@ export async function consumeChatCompletionStream(
   body: ReadableStream<Uint8Array>,
   providerName: string,
   requestedModel: string,
-  onDelta?: (chunk: string) => void,
+  listeners: Pick<ProviderRequest, "onDelta" | "onActivity"> = {},
 ): Promise<ProviderResponse> {
   const accumulator = createChatCompletionAccumulator(providerName);
 
   for await (const line of streamLines(body)) {
+    // Every line counts, reasoning and keep-alives included: the engine times
+    // the server's silence, not the visible text.
+    listeners.onActivity?.();
     const fragment = accumulator.consume(line);
     if (fragment !== undefined) {
-      onDelta?.(fragment);
+      listeners.onDelta?.(fragment);
     }
   }
 
+  const rest = accumulator.end();
+  if (rest !== undefined) {
+    listeners.onDelta?.(rest);
+  }
   return accumulator.finish(requestedModel);
 }
 

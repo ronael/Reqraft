@@ -25,6 +25,7 @@ export type ReqraftErrorCode =
   | "provider.rate_limited"
   | "provider.unavailable"
   | "provider.request_failed"
+  | "provider.model_not_found"
   | "credential.placeholder"
   | "credential.storage_unavailable"
   | "internal.unexpected";
@@ -62,9 +63,19 @@ export class RequestCancelledError extends ReqraftError {
   }
 }
 
+/**
+ * The provider stayed silent too long.
+ *
+ * `phase` says whether it never started answering (`first_token`, the case of
+ * a model still loading on a local server) or stopped in the middle of an
+ * answer (`idle`): the two call for different advice.
+ */
 export class RequestTimeoutError extends ReqraftError {
-  constructor(readonly timeoutMs: number) {
-    super("request.timeout", 4, { params: { timeoutMs } });
+  constructor(
+    readonly timeoutMs: number,
+    readonly phase: "first_token" | "idle" = "first_token",
+  ) {
+    super("request.timeout", 4, { params: { timeoutMs, phase } });
     this.name = "RequestTimeoutError";
   }
 }
