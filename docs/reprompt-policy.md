@@ -62,9 +62,16 @@ rp "..." --max-output-tokens 2000
 
 ### Runtime
 
-The generation timeout defaults to 30 seconds and is applied to the provider
-request through `AbortSignal`. Credential and setup checks use a shorter
-10-second timeout. Both defaults are centralized in the policy module.
+The generation timeout defaults to 30 seconds. It is how long the provider may
+stay silent — before its first token, then between two pieces of a streamed
+answer — not how long the whole answer may take: a slow model on a laptop CPU
+streams a few tokens a second, and a single budget cut it off mid-answer. The
+engine applies both deadlines through `AbortSignal`
+(`core/response-deadline.ts`); a non-streamed answer arrives all at once, so it
+only ever meets the first. Credential and setup checks use a shorter 10-second
+timeout, except the connection test of a local server, which loads the model
+and gets the generation timeout. Both defaults are centralized in the policy
+module.
 
 ```bash
 rp config set timeoutMs 45000

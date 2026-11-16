@@ -59,5 +59,11 @@ rp "test" --provider openai-compatible --model llama3
 
 Set `RP_OPENAI_COMPATIBLE_BASE_URL` to the endpoint root.
 
+For a model server on your own machine or network — Ollama, LM Studio — run
+`rp init` and choose **Local server**: it finds the server, lists the models
+it has installed and recommends one when there is none. See
+[local-models.md](local-models.md) for what Reqraft does differently for such
+a server and how the recommended model was chosen.
+
 `openai-compatible` is visible during `rp init` but is deliberately excluded
 from `rp auth login` because its credentials depend on custom gateway settings.

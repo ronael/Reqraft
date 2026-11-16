@@ -237,8 +237,11 @@ d'installation, de mise à jour et de diagnostic testé.
 
 ## Exploration
 
-- Créer un onboarding « Local » capable de détecter ou de configurer Ollama et
-  LM Studio, afin d'obtenir une exécution locale sans embarquer un modèle.
+- Onboarding « Local » : livré pour la détection. `rp init` et l'onboarding
+  desktop trouvent Ollama et LM Studio sur leurs ports par défaut, listent les
+  modèles installés et recommandent Qwen3.5 4B ou 9B selon la mémoire
+  ([local-models.md](local-models.md)). Reste exploratoire : installer un
+  modèle depuis l'application.
 - Étendre l'intégration générique des fournisseurs compatibles OpenAI :
   largement couvert depuis que les réglages desktop déclarent un endpoint
   (identifiant, URL de base, variable de clé). OpenRouter, DeepInfra et leurs
