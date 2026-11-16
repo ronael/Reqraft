@@ -34,6 +34,7 @@ export const DESKTOP_EN = {
   "capsule.rerun": "rerun",
   "capsule.correctOnly": "Correct",
   "capsule.correctOnlyTitle": "Rerun the source text with the clean profile at minimal level",
+  "capsule.redactAndContinue": "Redact and continue",
   "capsule.textPreserved": "✓ text preserved",
   "capsule.textPreservedDetail": "the source text was left unchanged",
   "capsule.editedVerdict": "edited · review",
@@ -391,6 +392,11 @@ export const DESKTOP_EN = {
   "main.autoProfileName": "Auto",
   "main.autoProfileSummary": "Local profile detection",
   "main.autoProfileDescription": "Reqraft lets the model pick the profile that fits the text.",
+  "main.secretDetectedTitle": "Possible secret in the text",
+  "main.secretDetected":
+    "Reqraft found what looks like a key, a token or a password, and sent nothing.",
+  "main.secretDetectedAction":
+    "“Redact and continue” sends it with [REDACTED] in place of each secret, and the result keeps [REDACTED] too.",
   "main.errorProviderNotStorable":
     "The {provider} provider has no key that can be stored in the keychain.",
   "main.errorProviderNotSelectable": "The {provider} provider cannot be chosen during setup.",

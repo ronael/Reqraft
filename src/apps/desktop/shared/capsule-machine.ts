@@ -113,7 +113,10 @@ const TRANSITIONS: Readonly<
   // `comparison` — ⏎, ⌘C, ⌘R et ⇥ devenaient tous inertes. Vu de l'extérieur,
   // « le remplacement ne fait rien ».
   applying: { applied: "closed", failed: "ready" },
-  error: { close: "closed" },
+  // `rerun` aussi : un texte refusé pour un secret repart masqué par
+  // « Masquer et continuer ». Sans cette ligne, le seul geste possible devant
+  // ce refus était de fermer, et la capsule n'offrait aucune suite.
+  error: { close: "closed", rerun: "analysis" },
 };
 
 /**

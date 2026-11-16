@@ -17,6 +17,13 @@ import { Toast, useToast } from "../shared/Toast.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
+/** A failed run, as the panel shows it. */
+interface Failure {
+  message: string;
+  /** Set for a refusal over a secret: how « Redact and continue » sends it. */
+  redaction?: string;
+}
+
 /**
  * Le curseur est-il dans un champ de saisie ?
  *
@@ -73,7 +80,7 @@ export function PopoverApp(): React.JSX.Element {
    * exactement le texte qu'il a produit.
    */
   const [edited, setEdited] = useState<string | null>(null);
-  const [failed, setFailed] = useState<string | null>(null);
+  const [failed, setFailed] = useState<Failure | null>(null);
   const activeRunId = useRef<string | null>(null);
   const contentRef = useRef<HTMLDivElement | null>(null);
   const { toast, show: annoncer, dismiss: fermerAnnonce } = useToast();
@@ -103,7 +110,15 @@ export function PopoverApp(): React.JSX.Element {
     });
     const offError = window.reqraft.onRunError((payload) => {
       if (payload.runId === activeRunId.current) {
-        setFailed(payload.error.message);
+        // Only the redaction's next action is shown: the others are written
+        // for the CLI (`rp auth login`, `rp doctor`), while this one says
+        // what the footer's « Redact and continue » does.
+        setFailed({
+          message: payload.error.message,
+          ...(payload.canRedactSecrets === true
+            ? { redaction: payload.error.nextAction ?? "" }
+            : {}),
+        });
         setRunning(false);
       }
     });
@@ -120,35 +135,47 @@ export function PopoverApp(): React.JSX.Element {
     };
   }, []);
 
+  const lancer = useCallback(
+    (redactSecrets: boolean) => {
+      if (running) {
+        return;
+      }
+      // Un bouton qui ne fait rien ressemble à une panne. Le dire coûte une
+      // annonce et évite de chercher pourquoi ⌘⏎ est resté sans effet.
+      if (input.trim() === "") {
+        annoncer(t("capsule.promptEmpty"), "warning");
+        return;
+      }
+      // Une nouvelle génération repart du texte du modèle : garder le résultat
+      // précédent, ou sa reprise, ferait copier un texte que plus rien à l'écran
+      // ne montre — et laisserait l'ancien résultat sous un écran d'erreur.
+      activeRunId.current = null;
+      setStreamed("");
+      setFailed(null);
+      setLastResult(null);
+      setEdited(null);
+      setRunning(true);
+      window.reqraft
+        .startReprompt({
+          input,
+          profileId,
+          level,
+          ...(redactSecrets ? { redactSecrets: true } : {}),
+        })
+        .then(({ runId }) => {
+          activeRunId.current = runId;
+        })
+        .catch((reason: unknown) => {
+          setRunning(false);
+          setFailed({ message: ipcFailureMessage(reason) });
+        });
+    },
+    [annoncer, input, profileId, level, running, t],
+  );
+
   const run = useCallback(() => {
-    if (running) {
-      return;
-    }
-    // Un bouton qui ne fait rien ressemble à une panne. Le dire coûte une
-    // annonce et évite de chercher pourquoi ⌘⏎ est resté sans effet.
-    if (input.trim() === "") {
-      annoncer(t("capsule.promptEmpty"), "warning");
-      return;
-    }
-    // Une nouvelle génération repart du texte du modèle : garder le résultat
-    // précédent, ou sa reprise, ferait copier un texte que plus rien à l'écran
-    // ne montre — et laisserait l'ancien résultat sous un écran d'erreur.
-    activeRunId.current = null;
-    setStreamed("");
-    setFailed(null);
-    setLastResult(null);
-    setEdited(null);
-    setRunning(true);
-    window.reqraft
-      .startReprompt({ input, profileId, level })
-      .then(({ runId }) => {
-        activeRunId.current = runId;
-      })
-      .catch((reason: unknown) => {
-        setRunning(false);
-        setFailed(ipcFailureMessage(reason));
-      });
-  }, [annoncer, input, profileId, level, running, t]);
+    lancer(false);
+  }, [lancer]);
 
   /**
    * Le texte à copier, ou `undefined` s'il n'a pas été repris.
@@ -316,7 +343,10 @@ export function PopoverApp(): React.JSX.Element {
 
         {failed !== null && (
           <div className="popover-section" role="alert">
-            <p className="error-detail">{failed}</p>
+            <p className="error-detail">{failed.message}</p>
+            {failed.redaction !== undefined && (
+              <p className="error-detail muted">{failed.redaction}</p>
+            )}
           </div>
         )}
 
@@ -340,9 +370,22 @@ export function PopoverApp(): React.JSX.Element {
 
       <footer className="popover-footer">
         {resultatVisible && (
-          <button type="button" className="capsule-key key-primary" onClick={copier}>
+          <button type="button" className="capsule-key key-primary popover-copy" onClick={copier}>
             <kbd>{formatCapsuleShortcut(CAPSULE_SHORTCUTS.copy, platform)}</kbd>
             {t("popover.copy")}
+          </button>
+        )}
+        {/* Dans le pied et non sous le message : le panneau ne grandit pas,
+            et sous l'explication le bouton passait sous la ligne de flottaison. */}
+        {failed?.redaction !== undefined && (
+          <button
+            type="button"
+            className="capsule-key key-primary"
+            onClick={() => {
+              lancer(true);
+            }}
+          >
+            {t("capsule.redactAndContinue")}
           </button>
         )}
         {/* Le popover s'ouvre à la souris : son action principale doit s'y

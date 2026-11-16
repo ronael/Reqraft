@@ -264,6 +264,49 @@ describe("cycle de vie reprompt via IPC", () => {
     expect(harness.execute).not.toHaveBeenCalled();
   });
 
+  it("refuse un secret avec ses propres mots, sans les options du CLI, et propose de le masquer", async () => {
+    const harness = setup({});
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.repromptStart,
+      { input: "voici ma clé AKIAIOSFODNN7EXAMPLE à utiliser" },
+      harness.sender,
+    );
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runError)).toHaveLength(1);
+    });
+    const messages = DESKTOP_MESSAGES[mainLocale()];
+    const refusal = sentChannels(harness, IPC_CHANNELS.runError)[0];
+    expect(refusal).toEqual({
+      runId: "run-1",
+      error: {
+        title: messages["main.secretDetectedTitle"],
+        message: messages["main.secretDetected"],
+        nextAction: messages["main.secretDetectedAction"],
+      },
+      canRedactSecrets: true,
+    });
+    // Des options qu'aucune fenêtre ne propose.
+    expect(JSON.stringify(refusal)).not.toMatch(/--redact-secrets|--force/);
+  });
+
+  it("masque chaque secret et envoie le reste quand la fenêtre le demande", async () => {
+    const harness = setup({});
+    await harness.ipcMain.invoke(
+      IPC_CHANNELS.repromptStart,
+      { input: "voici ma clé AKIAIOSFODNN7EXAMPLE à utiliser", redactSecrets: true },
+      harness.sender,
+    );
+
+    await vi.waitFor(() => {
+      expect(sentChannels(harness, IPC_CHANNELS.runDone)).toHaveLength(1);
+    });
+    expect(harness.execute).toHaveBeenCalledWith(
+      expect.objectContaining({ input: "voici ma clé [REDACTED] à utiliser" }),
+    );
+    expect(sentChannels(harness, IPC_CHANNELS.runError)).toHaveLength(0);
+  });
+
   it("n'émet plus rien quand la fenêtre est détruite (§5.6)", async () => {
     const harness = setup({});
     harness.state.destroyed = true;

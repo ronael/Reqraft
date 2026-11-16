@@ -282,6 +282,39 @@ describe("la génération suivante", () => {
     expect(await screen.findByRole("alert")).toHaveProperty("textContent", "provider unavailable");
     expect(screen.queryByLabelText(EN["popover.resultLabel"])).toBeNull();
     expect(screen.queryByRole("button", { name: new RegExp(EN["popover.copy"], "i") })).toBeNull();
+    expect(screen.queryByRole("button", { name: EN["capsule.redactAndContinue"] })).toBeNull();
+  });
+
+  it("propose de masquer un secret refusé, et renvoie la même demande masquée", async () => {
+    const harness = await monterPopover();
+    await harness.user.type(champPrompt(), PROMPT);
+    await harness.user.click(commande(EN["capsule.reformulate"]));
+    await waitFor(() => {
+      expect(harness.bridge.startReprompt).toHaveBeenCalledTimes(1);
+    });
+    await waitFor(() => {
+      harness.push.error({
+        runId: harness.dernierRunId(),
+        error: {
+          title: EN["main.secretDetectedTitle"],
+          message: EN["main.secretDetected"],
+          nextAction: EN["main.secretDetectedAction"],
+        },
+        canRedactSecrets: true,
+      });
+      expect(screen.getByRole("alert").textContent).toContain(EN["main.secretDetectedAction"]);
+    });
+
+    await harness.user.click(commande(EN["capsule.redactAndContinue"]));
+
+    expect(harness.bridge.startReprompt).toHaveBeenLastCalledWith({
+      input: PROMPT,
+      profileId: "auto",
+      level: "standard",
+      redactSecrets: true,
+    });
+    await pousserResultat(harness, MODEL_TEXT);
+    expect(screen.queryByRole("alert")).toBeNull();
   });
 
   it("ignore un résultat qui appartient à un run abandonné", async () => {

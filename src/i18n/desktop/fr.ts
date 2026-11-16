@@ -28,6 +28,7 @@ export const DESKTOP_FR = {
   "capsule.correctOnly": "Corriger",
   "capsule.correctOnlyTitle":
     "Relancer depuis le texte de départ avec le profil clean au niveau minimal",
+  "capsule.redactAndContinue": "Masquer et continuer",
   "capsule.textPreserved": "✓ texte conservé",
   "capsule.textPreservedDetail": "le texte de départ est resté inchangé",
   "capsule.editedVerdict": "modifié · à relire",
@@ -387,6 +388,11 @@ export const DESKTOP_FR = {
   "main.autoProfileName": "Auto",
   "main.autoProfileSummary": "Détection locale du profil",
   "main.autoProfileDescription": "Reqraft laisse le modèle choisir le profil adapté au texte.",
+  "main.secretDetectedTitle": "Secret possible dans le texte",
+  "main.secretDetected":
+    "Reqraft a repéré ce qui ressemble à une clé, un jeton ou un mot de passe, et n'a rien envoyé.",
+  "main.secretDetectedAction":
+    "« Masquer et continuer » l'envoie avec [REDACTED] à la place de chaque secret, et le résultat garde [REDACTED] lui aussi.",
   "main.errorProviderNotStorable":
     "Le fournisseur {provider} ne prend pas de clé enregistrable dans le trousseau.",
   "main.errorProviderNotSelectable":

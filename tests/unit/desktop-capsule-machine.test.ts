@@ -35,6 +35,7 @@ describe("machine à états de la capsule (DESKTOP.md §8.2)", () => {
     ["ready", "rerun", "analysis"],
     ["ready", "close", "closed"],
     ["error", "close", "closed"],
+    ["error", "rerun", "analysis"],
   ];
 
   it.each(TABLE)("%s + %s → %s", (from, event, expected) => {

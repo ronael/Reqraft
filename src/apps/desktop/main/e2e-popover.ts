@@ -23,7 +23,7 @@ interface PopoverUiTargets {
 
 const PROMPT_FIELD = "textarea.popover-input";
 const RESULT_FIELD = "textarea.result-editor-input";
-const COPY = ".popover-footer .key-primary";
+const COPY = ".popover-footer .popover-copy";
 const TOAST = ".toast";
 
 /** Un prompt assez long pour que le résultat déborde de la zone centrale. */
@@ -109,7 +109,7 @@ const MEASURE_SCRIPT = `(name) => {
     box !== null && box.top >= 0 && box.bottom <= window.innerHeight + 1;
   const contentNode = document.querySelector(".popover-content");
   const footerNode = document.querySelector(".popover-footer");
-  const copyNode = footerNode === null ? null : footerNode.querySelector(".key-primary");
+  const copyNode = footerNode === null ? null : footerNode.querySelector(".popover-copy");
   const resultNode = document.querySelector(${JSON.stringify(RESULT_FIELD)});
   const promptNode = document.querySelector(${JSON.stringify(PROMPT_FIELD)});
   const zero = { top: 0, bottom: 0, height: 0 };
