@@ -29,6 +29,14 @@ interface WindowsTarget {
 /** Compile, key wait and UI Automation take about two seconds on a slow machine. */
 const FOREGROUND_READ_TIMEOUT_MS = 5000;
 
+/**
+ * What an activation script needs before its own wait even starts: PowerShell
+ * and the C# compile. A one-second margin was too short on a cold machine, and
+ * the script was killed without a word; the paste then failed as if the source
+ * window had not come back.
+ */
+const ACTIVATION_START_MS = 3000;
+
 const FOREGROUND_WINDOW_API = String.raw`
 Add-Type -TypeDefinition @'
 using System;
@@ -157,7 +165,7 @@ export function createWindowsBridge(run: PowershellRunner): DesktopNativeBridge 
     if (target === undefined) return false;
 
     const script = activationScript(target, timeoutMs);
-    return (await run(script, timeoutMs + 1000)).trim().toLowerCase() === "true";
+    return (await run(script, timeoutMs + ACTIVATION_START_MS)).trim().toLowerCase() === "true";
   }
 
   /**
