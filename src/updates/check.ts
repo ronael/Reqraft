@@ -8,13 +8,10 @@ const GITHUB_LATEST_RELEASE_ENDPOINT =
   "https://api.github.com/repos/ronael/Reqraft/releases/latest";
 
 const NpmLatestSchema = z.object({ version: z.string() });
-const GitHubReleaseUrlSchema = z
-  .string()
-  .url()
-  .refine((value) => {
-    const url = new URL(value);
-    return url.hostname === "github.com" && url.pathname.startsWith("/ronael/Reqraft/releases/");
-  });
+const GitHubReleaseUrlSchema = z.url().refine((value) => {
+  const url = new URL(value);
+  return url.hostname === "github.com" && url.pathname.startsWith("/ronael/Reqraft/releases/");
+});
 const GitHubLatestReleaseSchema = z.object({
   tag_name: z.string(),
   html_url: GitHubReleaseUrlSchema,

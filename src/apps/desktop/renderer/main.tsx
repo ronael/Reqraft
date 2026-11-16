@@ -1,3 +1,5 @@
+// First: the IPC contract builds zod schemas as soon as it is imported.
+import "./zod-jitless.js";
 import { createRoot } from "react-dom/client";
 import { PALETTE_VALUES } from "@/shared/palette-values.js";
 import { App as CapsuleApp } from "./capsule/App.js";

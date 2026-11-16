@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { RepromptLevelSchema } from "@/core/levels.js";
 import {
-  ConfigSchema,
+  ConfigFieldsSchema,
   DesktopShortcutsConfigSchema,
   type Config,
   type ConfigKey,
@@ -112,7 +112,7 @@ export const ResultAcceptRequestSchema = z
       .string()
       .min(1)
       .max(RESULT_ACCEPT_TEXT_MAX_LENGTH)
-      .refine((value) => value.trim() !== "", { message: "texte vide" })
+      .refine((value) => value.trim() !== "", { error: "texte vide" })
       .optional(),
   })
   .strict();
@@ -158,7 +158,7 @@ export type LocaleReadRequest = z.infer<typeof LocaleReadRequestSchema>;
  * champ ajouté au fichier de configuration n'est pas éditable ici tant qu'il
  * n'a pas été nommé, ce qui est le sens du refus par défaut.
  */
-export const ConfigWriteRequestSchema = ConfigSchema.pick({
+export const ConfigWriteRequestSchema = ConfigFieldsSchema.pick({
   defaultProvider: true,
   defaultModel: true,
   defaultProfile: true,
@@ -457,11 +457,11 @@ const ProfileIdSchema = z
   .regex(CUSTOM_PROFILE_ID_REGEX, PROFILE_ID_ERROR);
 
 const WritableProfileIdSchema = ProfileIdSchema.refine((id) => isValidCustomProfileId(id), {
-  message: "This local profile identifier is reserved, built-in or not portable. Pick another one.",
+  error: "This local profile identifier is reserved, built-in or not portable. Pick another one.",
 });
 
 const ExportableProfileIdSchema = ProfileIdSchema.refine((id) => id !== AUTO_PROFILE_ID, {
-  message: "The automatic profile can be neither exported nor duplicated.",
+  error: "The automatic profile can be neither exported nor duplicated.",
 });
 
 export const ProfileIdRequestSchema = z.object({ id: ProfileIdSchema }).strict();
@@ -622,7 +622,7 @@ export const ProviderSaveRequestSchema = z
           const parsed = URL.parse(value);
           return parsed?.protocol === "http:" || parsed?.protocol === "https:";
         },
-        { message: "L'URL de base doit commencer par http:// ou https://." },
+        { error: "L'URL de base doit commencer par http:// ou https://." },
       ),
     apiKeyEnv: z.string().trim().min(1).optional(),
   })
@@ -929,7 +929,7 @@ export const OnboardingCompleteRequestSchema = z
               const parsed = URL.parse(value);
               return parsed?.protocol === "http:" || parsed?.protocol === "https:";
             },
-            { message: "L'URL de base doit commencer par http:// ou https://." },
+            { error: "L'URL de base doit commencer par http:// ou https://." },
           ),
         apiKeyEnv: z.string().trim().min(1).optional(),
       })
