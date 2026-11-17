@@ -1,5 +1,21 @@
 # Changelog
 
+## Unreleased
+
+### Desktop application
+
+- A provider error in a desktop window points to Settings (Providers or
+  Diagnostics) instead of suggesting `rp auth login` or `rp doctor`, which no
+  window can run.
+
+### Reliability and distribution
+
+- Releases publish the desktop installers again while no signing certificate
+  is configured, as the 0.6.4 release did. The release notes open with a
+  warning that the macOS installer is unsigned and how to open it; a partial
+  signing configuration still stops the release. The workflow can also rebuild
+  the installers of a release that is already out (`-f tag=v0.6.5`).
+
 ## 0.6.5 (2026-11-16)
 
 ### Desktop application
