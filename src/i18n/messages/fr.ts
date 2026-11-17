@@ -464,14 +464,14 @@ export const fr = {
     `Le provider s’est interrompu en pleine réponse : plus rien reçu pendant ${String(timeoutMs)} ms.`,
   "error.request.timeoutUnknown": () => "Le provider n’a pas répondu dans le délai imparti.",
   "error.request.timeoutLocalAction": () =>
-    "Un modèle local se charge peut-être encore : réessaie dans un instant. Si cela se répète, augmente le délai de réponse dans les réglages ou avec « rp config set timeoutMs 120000 ».",
+    "Un modèle local se charge peut-être encore : réessaie dans un instant. Si cela se répète, augmente le délai de réponse avec « rp config set timeoutMs 120000 ».",
   "error.modelNotFound.title": () => "Modèle introuvable",
   "error.modelNotFound.message": ({ model, provider }) =>
     `Le modèle « ${model} » n’est pas installé sur ${provider}.`,
   "error.modelNotFound.pullAction": ({ model }) =>
-    `Télécharge-le avec « ollama pull ${model} », ou choisis un modèle installé avec « rp init » ou dans l’onglet Modèles des réglages.`,
+    `Télécharge-le avec « ollama pull ${model} », ou choisis un modèle installé avec « rp init ».`,
   "error.modelNotFound.pickAction": () =>
-    "Choisis un modèle installé sur ce serveur avec « rp init » ou dans l’onglet Modèles des réglages.",
+    "Choisis un modèle installé sur ce serveur avec « rp init ».",
   "error.result.empty": () =>
     "Le modèle a consommé la limite de sortie sans produire de texte visible. Réessaie avec une limite supérieure ou un modèle plus rapide.",
   "error.internal.unexpected": () => "Une erreur inattendue est survenue.",

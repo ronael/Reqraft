@@ -455,14 +455,13 @@ export const en = {
     `The provider stopped in the middle of its answer: nothing arrived for ${String(timeoutMs)} ms.`,
   "error.request.timeoutUnknown": () => "The provider did not respond in time.",
   "error.request.timeoutLocalAction": () =>
-    "A local model may still be loading: try again in a moment. If it keeps happening, raise the response timeout in the settings or with “rp config set timeoutMs 120000”.",
+    "A local model may still be loading: try again in a moment. If it keeps happening, raise the response timeout with “rp config set timeoutMs 120000”.",
   "error.modelNotFound.title": () => "Model not found",
   "error.modelNotFound.message": ({ model, provider }) =>
     `The model “${model}” is not installed on ${provider}.`,
   "error.modelNotFound.pullAction": ({ model }) =>
-    `Download it with “ollama pull ${model}”, or pick an installed model with “rp init” or in the Models tab of the settings.`,
-  "error.modelNotFound.pickAction": () =>
-    "Pick a model installed on this server with “rp init” or in the Models tab of the settings.",
+    `Download it with “ollama pull ${model}”, or pick an installed model with “rp init”.`,
+  "error.modelNotFound.pickAction": () => "Pick a model installed on this server with “rp init”.",
   "error.result.empty": () =>
     "The model reached its output limit without producing visible text. Try a higher limit or a faster model.",
   "error.internal.unexpected": () => "An unexpected error occurred.",

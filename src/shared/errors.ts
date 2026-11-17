@@ -21,10 +21,10 @@ export interface UiError {
 /**
  * Where a provider failure sends the person to fix it.
  *
- * These four next actions depend on the surface: a terminal names a command
- * (`rp auth login`, `rp doctor`), a window names the settings tab that does
- * the same. A surface passes its own; without one, the catalogue's wording,
- * written for the terminal, applies.
+ * These next actions depend on the surface: a terminal names a command
+ * (`rp auth login`, `rp doctor`, `rp init`), a window names the settings tab
+ * that does the same. A surface passes its own; without one, the catalogue's
+ * wording, written for the terminal, applies.
  */
 export interface ProviderAdvice {
   /** The provider refused the key (401, 403). */
@@ -35,6 +35,12 @@ export interface ProviderAdvice {
   keyMissing(provider: string): string;
   /** Any other refusal: the model or the configuration. */
   requestRejected(): string;
+  /** Ollama does not have the model: pull it, or pick an installed one. */
+  modelNotPulled(model: string): string;
+  /** Another server does not have the model: pick an installed one. */
+  modelNotInstalled(): string;
+  /** A local model never started answering: wait, or raise the timeout. */
+  localModelSilent(): string;
 }
 
 const MISSING_KEY_PATTERN = /Clé API .* manquante/;
@@ -47,6 +53,9 @@ function terminalAdvice(t: Translator): ProviderAdvice {
     endpointKeyRejected: () => t("error.apiKeyRejected.endpointAction"),
     keyMissing: (provider) => t("error.missingKey.action", { provider }),
     requestRejected: () => t("error.rejected.action"),
+    modelNotPulled: (model) => t("error.modelNotFound.pullAction", { model }),
+    modelNotInstalled: () => t("error.modelNotFound.pickAction"),
+    localModelSilent: () => t("error.request.timeoutLocalAction"),
   };
 }
 
@@ -113,7 +122,12 @@ const ERROR_MESSAGE_RESOLVERS: Partial<Record<ReqraftErrorCode, ErrorMessageReso
     }),
 };
 
-function describeReqraftError(error: ReqraftError, provider: string, t: Translator): UiError {
+function describeReqraftError(
+  error: ReqraftError,
+  provider: string,
+  t: Translator,
+  advice: ProviderAdvice,
+): UiError {
   const resolveMessage = ERROR_MESSAGE_RESOLVERS[error.errorCode];
   const described = createBasicError(
     resolveMessage?.(error, provider, t) ?? t("error.internal.unexpected"),
@@ -126,7 +140,7 @@ function describeReqraftError(error: ReqraftError, provider: string, t: Translat
     error.params?.phase !== "idle" &&
     provider === OPENAI_COMPATIBLE_PROVIDER_ID
   ) {
-    return { ...described, nextAction: t("error.request.timeoutLocalAction") };
+    return { ...described, nextAction: advice.localModelSilent() };
   }
   return described;
 }
@@ -139,16 +153,19 @@ function describeReqraftError(error: ReqraftError, provider: string, t: Translat
  * command, so that command is the advice; any other server, a pick among the
  * models it has.
  */
-function describeMissingModel(error: ReqraftError, provider: string, t: Translator): UiError {
+function describeMissingModel(
+  error: ReqraftError,
+  provider: string,
+  t: Translator,
+  advice: ProviderAdvice,
+): UiError {
   const model = String(error.params?.model ?? "");
   const server = String(error.params?.provider ?? provider);
   return {
     title: t("error.modelNotFound.title"),
     message: t("error.modelNotFound.message", { model, provider: server }),
     nextAction:
-      error.params?.server === "ollama"
-        ? t("error.modelNotFound.pullAction", { model })
-        : t("error.modelNotFound.pickAction"),
+      error.params?.server === "ollama" ? advice.modelNotPulled(model) : advice.modelNotInstalled(),
   };
 }
 
@@ -214,7 +231,7 @@ export function describeUiError(
   const status = getProviderHttpStatus(error, message);
 
   if (error instanceof ReqraftError && error.errorCode === "provider.model_not_found") {
-    return describeMissingModel(error, provider, t);
+    return describeMissingModel(error, provider, t, advice);
   }
 
   // A deadline that reached the surface without passing through the engine,
@@ -229,7 +246,7 @@ export function describeUiError(
   }
 
   if (error instanceof ReqraftError) {
-    return describeReqraftError(error, provider, t);
+    return describeReqraftError(error, provider, t, advice);
   }
 
   if (MISSING_KEY_PATTERN.test(message)) {

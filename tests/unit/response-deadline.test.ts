@@ -164,7 +164,7 @@ describe("the engine's deadline", () => {
     expect(error).toBeInstanceOf(RequestTimeoutError);
     expect(error).toMatchObject({ params: { timeoutMs: 1_000, phase: "first_token" } });
     expect(formatUiError(error, "openai-compatible")).toBe(
-      "Le provider n’a pas répondu dans le délai de 1000 ms. Un modèle local se charge peut-être encore : réessaie dans un instant. Si cela se répète, augmente le délai de réponse dans les réglages ou avec « rp config set timeoutMs 120000 ».",
+      "Le provider n’a pas répondu dans le délai de 1000 ms. Un modèle local se charge peut-être encore : réessaie dans un instant. Si cela se répète, augmente le délai de réponse avec « rp config set timeoutMs 120000 ».",
     );
   });
 

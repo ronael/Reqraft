@@ -430,6 +430,13 @@ export const DESKTOP_FR = {
   "main.keyMissingAction": "Ajoutez la clé dans Réglages\u00a0›\u00a0Providers.",
   "main.requestRejectedAction":
     "Vérifiez le modèle et la configuration dans Réglages\u00a0›\u00a0Diagnostic, puis réessayez.",
+  "main.modelNotPulledAction":
+    "Téléchargez-le avec « ollama pull {model} », ou choisissez un modèle installé dans Réglages\u00a0›\u00a0Modèles.",
+  "main.modelNotInstalledAction":
+    "Choisissez un modèle installé sur ce serveur dans Réglages\u00a0›\u00a0Modèles.",
+  // Le champ, pas son onglet : celui-ci s'appelle aussi « Réglages ».
+  "main.localModelSilentAction":
+    "Un modèle local se charge peut-être encore : réessayez dans un instant. Si cela se répète, augmentez le « Délai de réponse » dans les réglages.",
   "common.recommendedSuffix": " — recommandé",
   "settings.endpointNoKey": "Sans clé.",
   "settings.endpointIdDetail": "Minuscules, chiffres et tirets.",

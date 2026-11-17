@@ -548,7 +548,7 @@ describe("OpenAI-compatible missing models", () => {
         params: { provider: "Ollama", model: "qwen3.5:4b", server: "ollama" },
       });
       expect(formatUiError(failure, "openai-compatible")).toBe(
-        "Le modèle « qwen3.5:4b » n’est pas installé sur Ollama. Télécharge-le avec « ollama pull qwen3.5:4b », ou choisis un modèle installé avec « rp init » ou dans l’onglet Modèles des réglages.",
+        "Le modèle « qwen3.5:4b » n’est pas installé sur Ollama. Télécharge-le avec « ollama pull qwen3.5:4b », ou choisis un modèle installé avec « rp init ».",
       );
     },
   );
@@ -572,7 +572,7 @@ describe("OpenAI-compatible missing models", () => {
       params: { provider: "LM Studio", model: "qwen-x", server: "lmstudio" },
     });
     expect(formatUiError(failure, "openai-compatible")).toBe(
-      "Le modèle « qwen-x » n’est pas installé sur LM Studio. Choisis un modèle installé sur ce serveur avec « rp init » ou dans l’onglet Modèles des réglages.",
+      "Le modèle « qwen-x » n’est pas installé sur LM Studio. Choisis un modèle installé sur ce serveur avec « rp init ».",
     );
   });
 

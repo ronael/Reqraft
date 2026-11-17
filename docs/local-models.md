@@ -86,9 +86,11 @@ the command that installs it:
 
 ```text
 Le modèle « qwen3.5:4b » n’est pas installé sur Ollama. Télécharge-le avec
-« ollama pull qwen3.5:4b », ou choisis un modèle installé avec « rp init » ou
-dans l’onglet Modèles des réglages.
+« ollama pull qwen3.5:4b », ou choisis un modèle installé avec « rp init ».
 ```
+
+The desktop app gives the same command and points to Settings › Models
+instead of `rp init`.
 
 A model still loading is reported as a timeout, not as an unreachable server.
 

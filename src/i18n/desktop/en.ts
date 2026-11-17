@@ -431,6 +431,13 @@ export const DESKTOP_EN = {
   "main.keyMissingAction": "Add the key in Settings\u00a0›\u00a0Providers.",
   "main.requestRejectedAction":
     "Check the model and configuration in Settings\u00a0›\u00a0Diagnostic, then retry.",
+  "main.modelNotPulledAction":
+    "Download it with “ollama pull {model}”, or pick an installed model in Settings\u00a0›\u00a0Models.",
+  "main.modelNotInstalledAction":
+    "Pick a model installed on this server in Settings\u00a0›\u00a0Models.",
+  // The field, not its tab: the tab is called “Settings” too.
+  "main.localModelSilentAction":
+    "A local model may still be loading: try again in a moment. If it keeps happening, raise “Response timeout” in the settings.",
   "common.recommendedSuffix": " — recommended",
   "settings.endpointNoKey": "No key.",
   "settings.endpointIdDetail": "Lowercase letters, digits and hyphens.",
