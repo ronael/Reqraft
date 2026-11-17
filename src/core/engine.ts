@@ -2,9 +2,16 @@ import type { PromptProfile } from "@/profiles/types.js";
 import { resolveModelCapabilities } from "@/models/capabilities.js";
 import { RequestCancelledError, RequestTimeoutError } from "./errors.js";
 import { assessFidelity, buildQualityAssessment } from "./fidelity.js";
-import { buildAutoDetectPrompt, buildPrompt } from "./prompt-builder.js";
+import {
+  buildAutoDetectPrompt,
+  buildCompactPrompt,
+  buildPrompt,
+  type BuiltPrompt,
+  type PromptVariant,
+} from "./prompt-builder.js";
 import { REPROMPT_POLICY, resolveOutputTokenBudget } from "./reprompt-policy.js";
-import { parseResult, resolveDetectedProfileId } from "./result-parser.js";
+import { startResponseDeadline } from "./response-deadline.js";
+import { parseResult, resolveDetectedProfileId, resultJsonSchema } from "./result-parser.js";
 import { DEFAULT_FIDELITY_MODE } from "./types.js";
 import type {
   ProviderAdapter,
@@ -34,7 +41,17 @@ export interface EngineOptions {
   maxOutputTokens?: number;
   reasoningEffort?: "none" | "low" | "medium" | "high";
   fidelityMode?: FidelityMode;
+  /**
+   * How long the provider may stay silent: before its first token, then
+   * between two pieces of its answer (`core/response-deadline.ts`).
+   */
   timeoutMs?: number;
+  /**
+   * Which system prompt to send. Defaults to `compact` for a provider on the
+   * user's own hardware (`ProviderAdapter.local`), `full` otherwise; the
+   * benchmark sets it to compare both on the same model.
+   */
+  promptVariant?: PromptVariant;
   /** Caller-owned cancellation, combined with the timeout. */
   signal?: AbortSignal;
   /** Receives text as it arrives when streaming is enabled. */
@@ -72,28 +89,37 @@ function resolveResultProfile(
   };
 }
 
+function buildRequestPrompt(options: EngineOptions): BuiltPrompt {
+  const variant = options.promptVariant ?? (options.provider.local ? "compact" : "full");
+  if (variant === "compact") {
+    return buildCompactPrompt(options);
+  }
+  return options.profile === "auto"
+    ? buildAutoDetectPrompt({
+        input: options.input,
+        level: options.level,
+        outputLanguage: options.outputLanguage,
+        includeChanges: options.includeChanges,
+      })
+    : buildPrompt({
+        input: options.input,
+        profile: options.profile,
+        level: options.level,
+        outputLanguage: options.outputLanguage,
+        includeChanges: options.includeChanges,
+      });
+}
+
 export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
   const start = Date.now();
 
-  const { systemPrompt, userPrompt } =
-    options.profile === "auto"
-      ? buildAutoDetectPrompt({
-          input: options.input,
-          level: options.level,
-          outputLanguage: options.outputLanguage,
-          includeChanges: options.includeChanges,
-        })
-      : buildPrompt({
-          input: options.input,
-          profile: options.profile,
-          level: options.level,
-          outputLanguage: options.outputLanguage,
-          includeChanges: options.includeChanges,
-        });
+  const { systemPrompt, userPrompt } = buildRequestPrompt(options);
 
   const timeoutMs = options.timeoutMs ?? REPROMPT_POLICY.runtime.defaultTimeoutMs;
-  const timeoutSignal = AbortSignal.timeout(timeoutMs);
-  const signal = options.signal ? AbortSignal.any([timeoutSignal, options.signal]) : timeoutSignal;
+  const deadline = startResponseDeadline({ firstTokenMs: timeoutMs, idleMs: timeoutMs });
+  const signal = options.signal
+    ? AbortSignal.any([deadline.signal, options.signal])
+    : deadline.signal;
   const modelCapabilities = resolveModelCapabilities(options.provider.id, options.model);
   const providerRequest: ProviderRequest = {
     model: options.model,
@@ -104,13 +130,26 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
       input: options.input,
       level: options.level,
       reasoningEffort: options.reasoningEffort,
+      // A local thinking model may reason whatever it is asked: room is kept
+      // for it, or the reasoning alone would exhaust the answer's budget.
+      mayReason: options.provider.local === true,
       requestedMaxOutputTokens: options.maxOutputTokens,
       modelMaxOutputTokens: modelCapabilities.maxOutputTokens,
     }),
     stream: options.stream ?? false,
     reasoningEffort: options.reasoningEffort,
     signal,
-    onDelta: options.onDelta,
+    onDelta: (chunk) => {
+      deadline.touch();
+      options.onDelta?.(chunk);
+    },
+    onActivity: () => {
+      deadline.touch();
+    },
+    responseSchema: resultJsonSchema({
+      profile: options.profile === "auto",
+      changes: options.includeChanges,
+    }),
   };
 
   let response: Awaited<ReturnType<ProviderAdapter["generate"]>>;
@@ -122,10 +161,12 @@ export async function rewrite(options: EngineOptions): Promise<RepromptResult> {
     if (options.signal?.aborted) {
       throw new RequestCancelledError();
     }
-    if (timeoutSignal.aborted) {
-      throw new RequestTimeoutError(timeoutMs);
+    if (deadline.expired !== undefined) {
+      throw new RequestTimeoutError(timeoutMs, deadline.expired);
     }
     throw error;
+  } finally {
+    deadline.dispose();
   }
   const responseText = assertNonEmptyResult(response.text);
   const parsed = parseResult(responseText);

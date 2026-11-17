@@ -1,15 +1,33 @@
 import { existsSync } from "node:fs";
-import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import os from "node:os";
-import path from "node:path";
-import { PassThrough, Writable } from "node:stream";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { runFirstRunSetup } from "@/apps/cli/commands/first-run.js";
+import { readFile } from "node:fs/promises";
+import { describe, expect, it, vi } from "vitest";
 import { configPath, loadUserConfig } from "@/config/loader.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
-import { createTranslator, type Translator } from "@/i18n/translate.js";
+import { createTranslator } from "@/i18n/translate.js";
 import { getFallbackModelForProvider } from "@/models/presets.js";
 import { createProvider } from "@/providers/registry.js";
+import {
+  CANCEL,
+  CHANGE,
+  ENTER,
+  KEEP_PREFERENCES,
+  LOCAL_OLLAMA,
+  NO,
+  SAVE,
+  YES,
+  chatCompletion,
+  occurrences,
+  pick,
+  pickModel,
+  readSavedConfig,
+  requestBody,
+  runSetup,
+  startSetup,
+  urlOf,
+  useInitSandbox,
+  writeExistingConfig,
+  type Answer,
+} from "./first-run-harness.js";
 
 vi.mock("node:child_process", () => ({
   // `rp init` looks a key missing from the environment up in the system
@@ -23,162 +41,6 @@ vi.mock("node:child_process", () => ({
     throw new Error("No child process in tests.");
   },
 }));
-
-/** What the person types: a fixed answer, or one read off the question on screen. */
-type Answer = string | ((screen: string) => string);
-
-interface SetupSession {
-  /** Everything written to the terminal, questions included. */
-  transcript: string;
-  /** Each question, as displayed. */
-  prompts: string[];
-  input: PassThrough;
-}
-
-interface RunningSetup {
-  session: SetupSession;
-  /** Settles with the setup; rejects on a question the script did not plan for. */
-  finished: Promise<void>;
-}
-
-interface SetupOptions {
-  env?: NodeJS.ProcessEnv;
-  reset?: boolean;
-  shell?: string;
-  t?: Translator;
-}
-
-const ENTER = "";
-const YES = "o";
-const NO = "n";
-
-function menuNumber(screen: string, matches: (label: string) => boolean, wanted: string): string {
-  for (const line of screen.split("\n")) {
-    // A menu entry reads "  2. Label", or "> 1. Label" for the proposed one.
-    const entry = /^\D*(\d+)\. /.exec(line);
-    if (entry?.[1] && matches(line.slice(entry[0].length))) return entry[1];
-  }
-  throw new Error(`No menu entry for "${wanted}" in:\n${screen}`);
-}
-
-/** Chooses the menu entry labelled `label`, as a person reading the screen would. */
-function pick(label: string): Answer {
-  return (screen) => menuNumber(screen, (entry) => entry === label, label);
-}
-
-/** Chooses a model of the list by its identifier. */
-function pickModel(id: string): Answer {
-  return (screen) => menuNumber(screen, (entry) => entry.includes(`(${id})`), id);
-}
-
-const SAVE = pick("Enregistrer la configuration");
-const CHANGE = pick("Modifier un choix");
-const CANCEL = pick("Annuler");
-/** Profile, level, auto copy, interface language, output language, streaming, timeout. */
-const KEEP_PREFERENCES: readonly Answer[] = Array<Answer>(7).fill(ENTER);
-/** A local Ollama server: default id and URL, no key variable, no headers. */
-const LOCAL_OLLAMA: readonly Answer[] = [
-  pick("Serveur local compatible OpenAI"),
-  ENTER, // internal id
-  "Ollama",
-  ENTER, // base URL
-  ENTER, // no key variable
-  ENTER, // no custom headers
-  "llama3.2",
-];
-
-/**
- * Starts `rp init` on in-memory streams and answers each question with the
- * next scripted answer, the way a person at the keyboard would.
- */
-function startSetup(answers: readonly Answer[], options: SetupOptions = {}): RunningSetup {
-  const pending = [...answers];
-  const session: SetupSession = { transcript: "", prompts: [], input: new PassThrough() };
-  let screen = "";
-  let failScript: (error: Error) => void;
-  const scriptFailure = new Promise<never>((_resolve, reject) => {
-    failScript = reject;
-  });
-
-  const answerQuestion = (): void => {
-    const next = pending.shift();
-    if (next === undefined) {
-      failScript(new Error(`Unscripted question:\n${screen}`));
-      return;
-    }
-    try {
-      const typed = typeof next === "function" ? next(screen) : next;
-      setImmediate(() => session.input.write(`${typed}\n`));
-    } catch (error) {
-      failScript(error instanceof Error ? error : new Error(String(error)));
-    }
-  };
-
-  const output = new Writable({
-    write(chunk: Buffer, _encoding, done: () => void): void {
-      const text = chunk.toString("utf8");
-      session.transcript += text;
-      screen += text;
-      // Every message ends its line; only a question waits on the same line.
-      if (!text.endsWith("\n")) {
-        session.prompts.push(text);
-        answerQuestion();
-        screen = "";
-      }
-      done();
-    },
-  });
-
-  const setup = runFirstRunSetup(
-    {
-      input: session.input,
-      output,
-      env: options.env ?? {},
-      shell: options.shell,
-      reset: options.reset,
-    },
-    options.t,
-  );
-  const finished = Promise.race([setup, scriptFailure]).then(() => {
-    if (pending.length > 0) {
-      throw new Error(`The setup ended with ${String(pending.length)} scripted answers left.`);
-    }
-  });
-  return { session, finished };
-}
-
-async function runSetup(
-  answers: readonly Answer[],
-  options: SetupOptions = {},
-): Promise<SetupSession> {
-  const { session, finished } = startSetup(answers, options);
-  await finished;
-  return session;
-}
-
-function occurrences(text: string, fragment: string): number {
-  return text.split(fragment).length - 1;
-}
-
-async function readSavedConfig(): Promise<Record<string, unknown>> {
-  return JSON.parse(await readFile(configPath(), "utf8")) as Record<string, unknown>;
-}
-
-async function writeExistingConfig(content: string): Promise<void> {
-  await mkdir(path.dirname(configPath()), { recursive: true });
-  await writeFile(configPath(), content, "utf8");
-}
-
-function chatCompletion(content: string): Response {
-  return new Response(JSON.stringify({ choices: [{ message: { role: "assistant", content } }] }), {
-    status: 200,
-    headers: { "Content-Type": "application/json" },
-  });
-}
-
-function requestBody(init: RequestInit | undefined): unknown {
-  return typeof init?.body === "string" ? (JSON.parse(init.body) as unknown) : undefined;
-}
 
 const ANTHROPIC_KEY = "anthropic-test-key";
 const ANTHROPIC_ENV = { ANTHROPIC_API_KEY: ANTHROPIC_KEY };
@@ -234,29 +96,7 @@ const KEEP_EXISTING_ANSWERS: readonly Answer[] = [
   ENTER, // timeout, as saved
 ];
 
-let home = "";
-
-beforeEach(async () => {
-  home = await mkdtemp(path.join(os.tmpdir(), "reqraft-init-"));
-  // Each platform reads its configuration directory from one of these.
-  vi.stubEnv("HOME", home);
-  vi.stubEnv("USERPROFILE", home);
-  vi.stubEnv("APPDATA", path.join(home, "AppData", "Roaming"));
-  vi.stubEnv("XDG_CONFIG_HOME", path.join(home, ".config"));
-  vi.stubEnv("SHELL", "/bin/zsh");
-  expect(configPath().startsWith(`${home}${path.sep}`)).toBe(true);
-  vi.stubGlobal(
-    "fetch",
-    vi.fn(() => Promise.reject(new Error("Unexpected network call."))),
-  );
-});
-
-afterEach(async () => {
-  vi.useRealTimers();
-  vi.unstubAllGlobals();
-  vi.unstubAllEnvs();
-  await rm(home, { recursive: true, force: true });
-});
+useInitSandbox();
 
 describe("rp init, first setup", () => {
   it("saves every choice of a first setup, but never the API key", async () => {
@@ -536,7 +376,7 @@ describe("rp init, OpenAI-compatible endpoints", () => {
     });
   });
 
-  it("proposes a local model id rather than the Anthropic default for a new local server", async () => {
+  it("recommends the model this machine can hold when no local server answers", async () => {
     const session = await runSetup([
       pick("Serveur local compatible OpenAI"),
       ...Array<Answer>(5).fill(ENTER), // id, name, base URL, key variable, headers
@@ -546,8 +386,15 @@ describe("rp init, OpenAI-compatible endpoints", () => {
       NO,
     ]);
 
-    expect(session.prompts).toContain("Identifiant du modèle (local-model) : ");
-    expect((await readSavedConfig()).defaultModel).toBe("local-model");
+    expect(session.transcript).toContain("Ollama ne répond pas sur http://localhost:11434/v1.");
+    expect(session.transcript).toContain("LM Studio ne répond pas sur http://localhost:1234/v1.");
+    expect(session.transcript).toContain("Aucun serveur local ne répond.");
+    expect(session.transcript).toContain(
+      "Pour cette machine (8 Go de mémoire), Reqraft recommande qwen3.5:4b, 3,3 à 4 Go à télécharger :",
+    );
+    expect(session.transcript).toContain("$ ollama pull qwen3.5:4b");
+    expect(session.prompts).toContain("Identifiant du modèle (qwen3.5:4b) : ");
+    expect((await readSavedConfig()).defaultModel).toBe("qwen3.5:4b");
   });
 
   it("asks a hosted endpoint for its model rather than proposing one of another provider", async () => {
@@ -989,8 +836,11 @@ describe("rp init, connection test", () => {
     const session = await runSetup([...LOCAL_OLLAMA, ...KEEP_PREFERENCES, SAVE, YES]);
 
     expect(session.transcript).toContain("+ Connexion réussie en 120 ms.");
-    expect(fetchMock).toHaveBeenCalledOnce();
-    const [url, init] = fetchMock.mock.calls[0] ?? [];
+    const completions = fetchMock.mock.calls.filter(([url]) =>
+      urlOf(url).endsWith("/chat/completions"),
+    );
+    expect(completions).toHaveLength(1);
+    const [url, init] = completions[0] ?? [];
     expect(url).toBe("http://localhost:11434/v1/chat/completions");
     expect(init?.method).toBe("POST");
     // No key was configured, so none is sent.

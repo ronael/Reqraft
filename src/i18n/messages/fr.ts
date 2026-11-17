@@ -4,6 +4,17 @@ import type { MessageCatalogue } from "@/i18n/translate.js";
  * les trois ouvrent la même chose. */
 const NEW_LOCAL_PROFILE = "Nouveau profil local";
 
+/** « aucun modèle installé », « 1 modèle installé », « 3 modèles installés ». */
+function frenchModelCount(count: number): string {
+  if (count === 0) return "aucun modèle installé";
+  return `${String(count)} ${count === 1 ? "modèle installé" : "modèles installés"}`;
+}
+
+/** 3.3 → « 3,3 ». */
+function frenchNumber(value: number): string {
+  return value.toLocaleString("fr-FR", { maximumFractionDigits: 1 });
+}
+
 export const fr = {
   "common.error": () => "Erreur",
   "common.version": () => "Affiche la version",
@@ -340,6 +351,22 @@ export const fr = {
   "init.modelRequired": () => "Indique l'identifiant du modèle à utiliser.",
   "init.manualModel": () => "Saisir un identifiant manuellement",
   "init.modelQuestion": () => "Quel modèle souhaites-tu utiliser ?",
+  "init.installedModelQuestion": () => "Quel modèle installé souhaites-tu utiliser ?",
+  "init.localServersTitle": () => "Serveurs locaux",
+  "init.localServerFound": ({ server, baseUrl, count }) =>
+    `${server} détecté sur ${baseUrl} : ${frenchModelCount(count)}.`,
+  "init.localServerMissing": ({ server, baseUrl }) => `${server} ne répond pas sur ${baseUrl}.`,
+  "init.localServersNone": () =>
+    "Aucun serveur local ne répond. Installe Ollama (https://ollama.com) ou démarre le serveur de LM Studio, ou indique ci-dessous l’adresse de ton serveur.",
+  "init.localServerQuestion": () => "Quel serveur local utiliser ?",
+  "init.localServerChoice": ({ server, count }) => `${server} (${frenchModelCount(count)})`,
+  "init.localNoModel": ({ server }) => `Aucun modèle de conversation n’est installé sur ${server}.`,
+  "init.localUnreachable": ({ baseUrl }) =>
+    `Impossible de lister les modèles de ${baseUrl} : le serveur ne répond pas.`,
+  "init.localRecommendation": ({ model, memoryGb, minGb, maxGb }) =>
+    `Pour cette machine (${String(memoryGb)} Go de mémoire), Reqraft recommande ${model}, ${frenchNumber(minGb)} à ${frenchNumber(maxGb)} Go à télécharger :`,
+  "init.localLmStudioSearch": ({ searchTerm }) =>
+    `Dans LM Studio, cherche « ${searchTerm} », télécharge-le puis charge-le.`,
   "init.defaultProfile": () => "Profil par défaut",
   "init.level": () => "Niveau",
   "init.timeoutQuestion": () => "Timeout en millisecondes",
@@ -433,6 +460,18 @@ export const fr = {
   "error.request.cancelled": () => "Génération interrompue.",
   "error.request.timeout": ({ timeoutMs }) =>
     `Le provider n’a pas répondu dans le délai de ${String(timeoutMs)} ms.`,
+  "error.request.stalled": ({ timeoutMs }) =>
+    `Le provider s’est interrompu en pleine réponse : plus rien reçu pendant ${String(timeoutMs)} ms.`,
+  "error.request.timeoutUnknown": () => "Le provider n’a pas répondu dans le délai imparti.",
+  "error.request.timeoutLocalAction": () =>
+    "Un modèle local se charge peut-être encore : réessaie dans un instant. Si cela se répète, augmente le délai de réponse avec « rp config set timeoutMs 120000 ».",
+  "error.modelNotFound.title": () => "Modèle introuvable",
+  "error.modelNotFound.message": ({ model, provider }) =>
+    `Le modèle « ${model} » n’est pas installé sur ${provider}.`,
+  "error.modelNotFound.pullAction": ({ model }) =>
+    `Télécharge-le avec « ollama pull ${model} », ou choisis un modèle installé avec « rp init ».`,
+  "error.modelNotFound.pickAction": () =>
+    "Choisis un modèle installé sur ce serveur avec « rp init ».",
   "error.result.empty": () =>
     "Le modèle a consommé la limite de sortie sans produire de texte visible. Réessaie avec une limite supérieure ou un modèle plus rapide.",
   "error.internal.unexpected": () => "Une erreur inattendue est survenue.",

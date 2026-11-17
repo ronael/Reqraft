@@ -100,6 +100,12 @@ export const IPC_CHANNELS = {
   // modèle sorti depuis. La requête ne nomme qu'un fournisseur ; les
   // credentials restent hydratés et utilisés dans le processus principal.
   modelsList: "models:list",
+  // Ollama et LM Studio sur leurs ports par défaut, pour l'onboarding. Sans
+  // charge utile : le renderer demande « qu'y a-t-il sur cette machine ? »,
+  // jamais « appelle cette adresse ». Les deux adresses sondées sont fixées
+  // côté principal (`providers/local-endpoint.ts`) ; un renderer qui pourrait
+  // en nommer une ferait appeler n'importe quel hôte à l'application.
+  localServersDetect: "local-servers:detect",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -152,6 +158,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.providerDelete,
   IPC_CHANNELS.providerTest,
   IPC_CHANNELS.modelsList,
+  IPC_CHANNELS.localServersDetect,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

@@ -9,10 +9,15 @@ import type { RepromptLevel } from "./types.js";
  */
 export const REPROMPT_POLICY = {
   runtime: {
-    // Long enough for consumer networks, bounded so the CLI always returns.
+    // How long a provider may stay silent: before its first token, then
+    // between two pieces of a streamed answer (core/response-deadline.ts). An
+    // answer that keeps arriving is never cut, however slow the model.
     defaultTimeoutMs: 30_000,
     // Credential and setup checks should fail faster than full generations.
     connectionCheckTimeoutMs: 10_000,
+    // Looking for Ollama and LM Studio on their default ports: a running
+    // server answers in milliseconds and a stopped one refuses at once.
+    localServerProbeTimeoutMs: 1_500,
     // A connectivity check only needs room for a tiny valid JSON response.
     connectionCheckMaxOutputTokens: 32,
     connectionCheckTemperature: 0,
@@ -151,6 +156,11 @@ interface OutputTokenBudgetInput {
   modelMaxOutputTokens?: number;
   requestedMaxOutputTokens?: number;
   reasoningEffort?: "none" | "low" | "medium" | "high";
+  /**
+   * The model may reason even though no effort was requested: a thinking
+   * model on a local server, whose server may ignore the request not to.
+   */
+  mayReason?: boolean;
 }
 
 export function resolveOutputTokenBudget(input: OutputTokenBudgetInput): number {
@@ -160,7 +170,7 @@ export function resolveOutputTokenBudget(input: OutputTokenBudgetInput): number 
   );
   const levelReserve = generation.levels[input.level].structuralReserveTokens;
   const reasoningReserve =
-    input.reasoningEffort && input.reasoningEffort !== "none"
+    input.mayReason === true || (input.reasoningEffort && input.reasoningEffort !== "none")
       ? generation.reasoningReserveTokens
       : 0;
   const requestedBudget = estimatedInputTokens + levelReserve + reasoningReserve;

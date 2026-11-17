@@ -1,5 +1,5 @@
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
-import { ReqraftError, type ReqraftErrorCode } from "@/core/errors.js";
+import { ReqraftError, type ReqraftErrorCode, type ReqraftErrorParams } from "@/core/errors.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 
 export class ProviderError extends ReqraftError {
@@ -9,11 +9,18 @@ export class ProviderError extends ReqraftError {
     message: string,
     readonly code: number,
     readonly cause?: unknown,
-    options: { httpStatus?: number; provider?: string; errorCode?: ReqraftErrorCode } = {},
+    options: {
+      httpStatus?: number;
+      provider?: string;
+      errorCode?: ReqraftErrorCode;
+      /** What the advice needs beyond the provider and the status, such as a model name. */
+      params?: ReqraftErrorParams;
+    } = {},
   ) {
     const httpStatus = options.httpStatus;
     super(options.errorCode ?? providerErrorCode(httpStatus), code, {
       params: {
+        ...options.params,
         ...(options.provider ? { provider: options.provider } : {}),
         ...(httpStatus === undefined ? {} : { httpStatus }),
       },

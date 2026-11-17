@@ -787,6 +787,42 @@ export interface ModelsListResponse {
   missing?: string[];
 }
 
+// --- Local servers -------------------------------------------------------------
+
+/**
+ * A model server on this machine, as the onboarding may show it.
+ *
+ * The two kinds are the two servers probed — Ollama and LM Studio on their
+ * default ports. `models` went through the same sanitising as a provider
+ * catalogue (`sanitizeModelCatalog`): a local server is still remote data.
+ */
+export interface LocalServerEntry {
+  kind: "ollama" | "lmstudio";
+  label: string;
+  baseUrl: string;
+  reachable: boolean;
+  models: ModelCatalogEntry[];
+}
+
+/**
+ * The model to install when no server has one, chosen for this machine's
+ * memory (`models/local-recommendation.ts`). The size is sent as numbers: the
+ * onboarding formats it in the language it is previewing, which may not be
+ * the one the main process started in.
+ */
+export interface LocalModelAdvice {
+  model: string;
+  sizeGb: { min: number; max: number };
+  memoryGb: number;
+  pullCommand: string;
+  searchTerm: string;
+}
+
+export interface LocalServersDetectResponse {
+  servers: LocalServerEntry[];
+  recommendation: LocalModelAdvice;
+}
+
 export const CredentialDeleteRequestSchema = z
   .object({ provider: z.enum(BUILTIN_PROVIDER_IDS) })
   .strict();
@@ -1111,6 +1147,8 @@ export interface ReqraftBridge {
   deleteProvider(id: string): Promise<ProviderMutationResponse>;
   testProvider(request: ProviderTestRequest): Promise<ProviderTestResponse>;
   listModels(request: ModelsListRequest): Promise<ModelsListResponse>;
+  /** Ollama and LM Studio on this machine; the renderer names no address. */
+  detectLocalServers(): Promise<LocalServersDetectResponse>;
   completeOnboarding(request: OnboardingCompleteRequest): Promise<OnboardingCompleteResponse>;
   onRunDelta(listener: (payload: RunDeltaPayload) => void): Unsubscribe;
   onRunDone(listener: (payload: RunDonePayload) => void): Unsubscribe;

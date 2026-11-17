@@ -1,5 +1,6 @@
 import { OPENAI_COMPATIBLE_PROVIDER_ID } from "@/providers/catalog.js";
 import { ProviderError } from "@/providers/errors.js";
+import { isTimeoutError } from "@/providers/http.js";
 import { ReqraftError, type ReqraftErrorCode } from "@/core/errors.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 
@@ -20,10 +21,10 @@ export interface UiError {
 /**
  * Where a provider failure sends the person to fix it.
  *
- * These four next actions depend on the surface: a terminal names a command
- * (`rp auth login`, `rp doctor`), a window names the settings tab that does
- * the same. A surface passes its own; without one, the catalogue's wording,
- * written for the terminal, applies.
+ * These next actions depend on the surface: a terminal names a command
+ * (`rp auth login`, `rp doctor`, `rp init`), a window names the settings tab
+ * that does the same. A surface passes its own; without one, the catalogue's
+ * wording, written for the terminal, applies.
  */
 export interface ProviderAdvice {
   /** The provider refused the key (401, 403). */
@@ -34,6 +35,12 @@ export interface ProviderAdvice {
   keyMissing(provider: string): string;
   /** Any other refusal: the model or the configuration. */
   requestRejected(): string;
+  /** Ollama does not have the model: pull it, or pick an installed one. */
+  modelNotPulled(model: string): string;
+  /** Another server does not have the model: pick an installed one. */
+  modelNotInstalled(): string;
+  /** A local model never started answering: wait, or raise the timeout. */
+  localModelSilent(): string;
 }
 
 const MISSING_KEY_PATTERN = /Clé API .* manquante/;
@@ -46,6 +53,9 @@ function terminalAdvice(t: Translator): ProviderAdvice {
     endpointKeyRejected: () => t("error.apiKeyRejected.endpointAction"),
     keyMissing: (provider) => t("error.missingKey.action", { provider }),
     requestRejected: () => t("error.rejected.action"),
+    modelNotPulled: (model) => t("error.modelNotFound.pullAction", { model }),
+    modelNotInstalled: () => t("error.modelNotFound.pickAction"),
+    localModelSilent: () => t("error.request.timeoutLocalAction"),
   };
 }
 
@@ -58,7 +68,9 @@ type ErrorMessageResolver = (error: ReqraftError, provider: string, t: Translato
 const ERROR_MESSAGE_RESOLVERS: Partial<Record<ReqraftErrorCode, ErrorMessageResolver>> = {
   "request.cancelled": (_error, _provider, t) => t("error.request.cancelled"),
   "request.timeout": (error, _provider, t) =>
-    t("error.request.timeout", { timeoutMs: Number(error.params?.timeoutMs ?? 0) }),
+    error.params?.phase === "idle"
+      ? t("error.request.stalled", { timeoutMs: Number(error.params.timeoutMs ?? 0) })
+      : t("error.request.timeout", { timeoutMs: Number(error.params?.timeoutMs ?? 0) }),
   "result.empty": (_error, _provider, t) => t("error.result.empty"),
   "clipboard.read_failed": (_error, _provider, t) => t("error.clipboard.read"),
   "clipboard.write_failed": (_error, _provider, t) => t("error.clipboard.write"),
@@ -110,12 +122,51 @@ const ERROR_MESSAGE_RESOLVERS: Partial<Record<ReqraftErrorCode, ErrorMessageReso
     }),
 };
 
-function describeReqraftError(error: ReqraftError, provider: string, t: Translator): UiError {
+function describeReqraftError(
+  error: ReqraftError,
+  provider: string,
+  t: Translator,
+  advice: ProviderAdvice,
+): UiError {
   const resolveMessage = ERROR_MESSAGE_RESOLVERS[error.errorCode];
-  return createBasicError(
+  const described = createBasicError(
     resolveMessage?.(error, provider, t) ?? t("error.internal.unexpected"),
     t,
   );
+  // A model loading on a local server is what a compatible endpoint that
+  // never started answering most often means; elsewhere it is the network.
+  if (
+    error.errorCode === "request.timeout" &&
+    error.params?.phase !== "idle" &&
+    provider === OPENAI_COMPATIBLE_PROVIDER_ID
+  ) {
+    return { ...described, nextAction: advice.localModelSilent() };
+  }
+  return described;
+}
+
+/**
+ * A model the server does not have.
+ *
+ * Checked before the HTTP status: a 404 alone says "request rejected", which
+ * names neither the model nor how to get it. Ollama installs a model with one
+ * command, so that command is the advice; any other server, a pick among the
+ * models it has.
+ */
+function describeMissingModel(
+  error: ReqraftError,
+  provider: string,
+  t: Translator,
+  advice: ProviderAdvice,
+): UiError {
+  const model = String(error.params?.model ?? "");
+  const server = String(error.params?.provider ?? provider);
+  return {
+    title: t("error.modelNotFound.title"),
+    message: t("error.modelNotFound.message", { model, provider: server }),
+    nextAction:
+      error.params?.server === "ollama" ? advice.modelNotPulled(model) : advice.modelNotInstalled(),
+  };
 }
 
 function describeHttpStatus(
@@ -179,13 +230,23 @@ export function describeUiError(
   const message = error instanceof Error ? error.message : String(error);
   const status = getProviderHttpStatus(error, message);
 
+  if (error instanceof ReqraftError && error.errorCode === "provider.model_not_found") {
+    return describeMissingModel(error, provider, t, advice);
+  }
+
+  // A deadline that reached the surface without passing through the engine,
+  // which would have named its duration — a key check, a model list.
+  if (isTimeoutError(error)) {
+    return createBasicError(t("error.request.timeoutUnknown"), t);
+  }
+
   if (status !== undefined) {
     // The raw body is dropped on purpose: it can echo the prompt or the key.
     return describeHttpStatus(status, provider, t, advice);
   }
 
   if (error instanceof ReqraftError) {
-    return describeReqraftError(error, provider, t);
+    return describeReqraftError(error, provider, t, advice);
   }
 
   if (MISSING_KEY_PATTERN.test(message)) {

@@ -4,6 +4,12 @@ import type { MessageCatalogue } from "@/i18n/translate.js";
  * three open the same thing. */
 const NEW_LOCAL_PROFILE = "New local profile";
 
+/** "no model installed", "1 model installed", "3 models installed". */
+function englishModelCount(count: number): string {
+  if (count === 0) return "no model installed";
+  return `${String(count)} ${count === 1 ? "model installed" : "models installed"}`;
+}
+
 export const en = {
   "common.error": () => "Error",
   "common.version": () => "Show version",
@@ -337,6 +343,22 @@ export const en = {
   "init.modelRequired": () => "Enter the id of the model to use.",
   "init.manualModel": () => "Enter a model id manually",
   "init.modelQuestion": () => "Which model would you like to use?",
+  "init.installedModelQuestion": () => "Which installed model would you like to use?",
+  "init.localServersTitle": () => "Local servers",
+  "init.localServerFound": ({ server, baseUrl, count }) =>
+    `${server} found at ${baseUrl}: ${englishModelCount(count)}.`,
+  "init.localServerMissing": ({ server, baseUrl }) => `${server} is not answering at ${baseUrl}.`,
+  "init.localServersNone": () =>
+    "No local server is answering. Install Ollama (https://ollama.com) or start LM Studio’s server, or enter your server’s address below.",
+  "init.localServerQuestion": () => "Which local server should Reqraft use?",
+  "init.localServerChoice": ({ server, count }) => `${server} (${englishModelCount(count)})`,
+  "init.localNoModel": ({ server }) => `No chat model is installed on ${server}.`,
+  "init.localUnreachable": ({ baseUrl }) =>
+    `Could not list the models at ${baseUrl}: the server is not answering.`,
+  "init.localRecommendation": ({ model, memoryGb, minGb, maxGb }) =>
+    `For this machine (${String(memoryGb)} GB of memory), Reqraft recommends ${model}, a ${String(minGb)} to ${String(maxGb)} GB download:`,
+  "init.localLmStudioSearch": ({ searchTerm }) =>
+    `In LM Studio, search for “${searchTerm}”, download it, then load it.`,
   "init.defaultProfile": () => "Default profile",
   "init.level": () => "Level",
   "init.timeoutQuestion": () => "Timeout in milliseconds",
@@ -429,6 +451,17 @@ export const en = {
   "error.request.cancelled": () => "Generation cancelled.",
   "error.request.timeout": ({ timeoutMs }) =>
     `The provider did not respond within ${String(timeoutMs)} ms.`,
+  "error.request.stalled": ({ timeoutMs }) =>
+    `The provider stopped in the middle of its answer: nothing arrived for ${String(timeoutMs)} ms.`,
+  "error.request.timeoutUnknown": () => "The provider did not respond in time.",
+  "error.request.timeoutLocalAction": () =>
+    "A local model may still be loading: try again in a moment. If it keeps happening, raise the response timeout with “rp config set timeoutMs 120000”.",
+  "error.modelNotFound.title": () => "Model not found",
+  "error.modelNotFound.message": ({ model, provider }) =>
+    `The model “${model}” is not installed on ${provider}.`,
+  "error.modelNotFound.pullAction": ({ model }) =>
+    `Download it with “ollama pull ${model}”, or pick an installed model with “rp init”.`,
+  "error.modelNotFound.pickAction": () => "Pick a model installed on this server with “rp init”.",
   "error.result.empty": () =>
     "The model reached its output limit without producing visible text. Try a higher limit or a faster model.",
   "error.internal.unexpected": () => "An unexpected error occurred.",

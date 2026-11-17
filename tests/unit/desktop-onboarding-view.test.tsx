@@ -9,6 +9,7 @@ import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
   CredentialSaveRequest,
   CredentialSaveResponse,
+  LocalServersDetectResponse,
   OnboardingCompleteRequest,
   OnboardingProviderOption,
   OnboardingStateResponse,
@@ -148,6 +149,7 @@ const CONFIG_ENREGISTREE = ConfigSchema.parse({});
 
 /** Les fonctions du pont que l'onboarding touche, espionnées. */
 interface FauxPont {
+  readonly detectLocalServers?: Mock<ReqraftBridge["detectLocalServers"]>;
   readonly readLocale: Mock<ReqraftBridge["readLocale"]>;
   readonly profileCatalog: Mock<ReqraftBridge["profileCatalog"]>;
   readonly onboardingState: Mock<ReqraftBridge["onboardingState"]>;
@@ -161,6 +163,11 @@ interface OptionsPont {
   readonly etatInitial?: OnboardingStateResponse | (() => Promise<OnboardingStateResponse>);
   /** Le catalogue de profils, ou l'erreur qui empêche de le lire. */
   readonly profils?: readonly ProfileCatalogEntry[] | Error;
+  /**
+   * Ce que trouve la recherche d'Ollama et de LM Studio, réponse après réponse.
+   * Absente, le pont n'a pas la fonction : la recherche échoue.
+   */
+  readonly serveursLocaux?: readonly LocalServersDetectResponse[];
 }
 
 interface Montage {
@@ -230,11 +237,25 @@ function installerPont(options: OptionsPont): FauxPont {
       Promise.resolve({ config: CONFIG_ENREGISTREE, state: INSTALLATION_UTILISABLE }),
     ),
   };
+  const reponses = [...(options.serveursLocaux ?? [])];
+  const detectLocalServers =
+    options.serveursLocaux === undefined
+      ? undefined
+      : vi.fn<ReqraftBridge["detectLocalServers"]>(() => {
+          const reponse = reponses.length > 1 ? reponses.shift() : reponses[0];
+          return reponse === undefined
+            ? Promise.reject(new Error("aucune réponse prévue"))
+            : Promise.resolve(reponse);
+        });
   // Le pont réel porte une quarantaine de fonctions ; l'onboarding en touche
   // six. Les autres restent absentes : un appel inattendu doit échouer
   // bruyamment, pas rendre `undefined`.
-  window.reqraft = { platform: "darwin", ...pont } as unknown as ReqraftBridge;
-  return pont;
+  window.reqraft = {
+    platform: "darwin",
+    ...pont,
+    ...(detectLocalServers === undefined ? {} : { detectLocalServers }),
+  } as unknown as ReqraftBridge;
+  return { ...pont, detectLocalServers };
 }
 
 function monterOnboarding(options: OptionsPont = {}): Montage {
@@ -650,6 +671,131 @@ describe("un point d'accès compatible OpenAI", () => {
 
     expect(screen.getByText(raison)).toBeTruthy();
     expect(bouton(t("onboarding.finish")).disabled).toBe(true);
+  });
+});
+
+const OLLAMA_URL = "http://localhost:11434/v1";
+const LMSTUDIO_URL = "http://localhost:1234/v1";
+
+/** Ce que rend `local-servers:detect` : `null` pour un serveur qui ne répond pas. */
+function machine(ollama: string[] | null, lmstudio: string[] | null): LocalServersDetectResponse {
+  const entree = (
+    kind: "ollama" | "lmstudio",
+    modeles: string[] | null,
+  ): LocalServersDetectResponse["servers"][number] => ({
+    kind,
+    label: kind === "ollama" ? "Ollama" : "LM Studio",
+    baseUrl: kind === "ollama" ? OLLAMA_URL : LMSTUDIO_URL,
+    reachable: modeles !== null,
+    models: (modeles ?? []).map((id) => ({ id, name: id })),
+  });
+  return {
+    servers: [entree("ollama", ollama), entree("lmstudio", lmstudio)],
+    recommendation: {
+      model: "qwen3.5:4b",
+      sizeGb: { min: 3.3, max: 4 },
+      memoryGb: 8,
+      pullCommand: "ollama pull qwen3.5:4b",
+      searchTerm: "Qwen3.5 4B",
+    },
+  };
+}
+
+describe("un serveur local sur cette machine", () => {
+  async function choisirServeurLocal(
+    ...serveursLocaux: LocalServersDetectResponse[]
+  ): Promise<Montage> {
+    const montage = await ouvrirFormulaire({ serveursLocaux });
+    await choisir(montage.user, t("onboarding.provider"), "OpenAI Compatible");
+    await screen.findByText(
+      (texte) => texte !== t("onboarding.localSearching") && texte.length > 0,
+      { selector: "#onboarding-server-label .onboarding-label-detail" },
+    );
+    return montage;
+  }
+
+  it("propose Ollama et ses modèles installés, sans demander d'adresse", async () => {
+    const montage = await choisirServeurLocal(machine(["llama3.2", "qwen3.5:4b"], null));
+
+    expect((await menu(t("onboarding.localServer"))).textContent).toBe("Ollama — 2 models");
+    expect(screen.getByText(t("onboarding.localFoundAt", { baseUrl: OLLAMA_URL }))).toBeTruthy();
+    expect(
+      screen.queryByRole("textbox", { name: commencePar(t("onboarding.baseUrl")) }),
+    ).toBeNull();
+    // Le modèle recommandé pour cette machine, puisqu'il est installé.
+    expect((await menu(t("onboarding.model"))).textContent).toBe(
+      `qwen3.5:4b${t("common.recommendedSuffix")}`,
+    );
+    expect(await terminer(montage)).toStrictEqual({
+      provider: "openai-compatible",
+      model: "qwen3.5:4b",
+      profile: "auto",
+      level: "standard",
+      compatibleProvider: { id: "local", name: "Ollama", baseUrl: OLLAMA_URL },
+    });
+  });
+
+  it("passe à LM Studio quand c'est le seul serveur qui répond", async () => {
+    const montage = await choisirServeurLocal(machine(null, ["qwen/qwen3.5-9b"]));
+
+    expect((await menu(t("onboarding.localServer"))).textContent).toBe("LM Studio — 1 model");
+    expect(await terminer(montage)).toMatchObject({
+      model: "qwen/qwen3.5-9b",
+      compatibleProvider: { name: "LM Studio", baseUrl: LMSTUDIO_URL },
+    });
+  });
+
+  it("donne la commande qui installe le modèle recommandé quand Ollama n'en a aucun", async () => {
+    await choisirServeurLocal(machine([], null));
+
+    const conseil = texteDe("status");
+    expect(conseil).toContain(t("onboarding.localNoModelLead", { server: "Ollama" }));
+    expect(conseil).toContain("qwen3.5:4b, a 3.3–4 GB download");
+    expect(screen.getByText("ollama pull qwen3.5:4b").tagName).toBe("CODE");
+    // Le champ est prérempli : c'est le modèle que la commande installe.
+    expect(champTexte(t("onboarding.model")).value).toBe("qwen3.5:4b");
+  });
+
+  it("nomme le modèle à chercher dans LM Studio, qui n'a pas de commande", async () => {
+    await choisirServeurLocal(machine(null, []));
+
+    expect(texteDe("status")).toContain(
+      t("onboarding.localSearchIn", { searchTerm: "Qwen3.5 4B" }),
+    );
+    expect(screen.queryByText("ollama pull qwen3.5:4b")).toBeNull();
+  });
+
+  it("commence par Ollama quand rien ne répond, et laisse chercher à nouveau", async () => {
+    const montage = await choisirServeurLocal(machine(null, null), machine(["qwen3.5:4b"], null));
+
+    expect(screen.getByText(t("onboarding.localNone"))).toBeTruthy();
+    expect(texteDe("status")).toContain(t("onboarding.localInstallLead"));
+    expect(champTexte(t("onboarding.baseUrl")).value).toBe(OLLAMA_URL);
+
+    await montage.user.click(bouton(t("onboarding.localSearchAgain")));
+
+    expect(
+      await screen.findByText(t("onboarding.localFoundAt", { baseUrl: OLLAMA_URL })),
+    ).toBeTruthy();
+    expect(montage.pont.detectLocalServers).toHaveBeenCalledTimes(2);
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("laisse indiquer l'adresse d'un autre serveur", async () => {
+    const montage = await choisirServeurLocal(machine(["llama3.2"], null));
+
+    await choisir(montage.user, t("onboarding.localServer"), t("onboarding.localOther"));
+    const adresse = champTexte(t("onboarding.baseUrl"));
+    expect(adresse.value).toBe("");
+    expect(screen.getByText(t("onboarding.localOtherAddress"))).toBeTruthy();
+    await montage.user.type(adresse, "http://host.docker.internal:11434/v1");
+    await montage.user.clear(champTexte(t("onboarding.model")));
+    await montage.user.type(champTexte(t("onboarding.model")), "gemma4:e4b");
+
+    expect(await terminer(montage)).toMatchObject({
+      model: "gemma4:e4b",
+      compatibleProvider: { id: "local", baseUrl: "http://host.docker.internal:11434/v1" },
+    });
   });
 });
 

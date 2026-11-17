@@ -135,6 +135,20 @@ export interface ProviderRequest {
    * Adapters that cannot stream simply never call it.
    */
   onDelta?: (chunk: string) => void;
+  /**
+   * Called whenever the server sends anything — a line of the stream, reasoning
+   * the user never sees — so the engine's deadline times silence rather than
+   * the whole answer. `onDelta` counts as activity too: an adapter that cannot
+   * see below the visible text simply never calls this.
+   */
+  onActivity?: () => void;
+  /**
+   * The JSON Schema of the envelope the engine parses (`core/result-parser.ts`).
+   *
+   * An adapter able to constrain decoding to it may send it; the engine parses
+   * the answer leniently whether it did or not.
+   */
+  responseSchema?: Record<string, unknown>;
 }
 
 export interface ProviderResponse {
@@ -159,6 +173,13 @@ export interface ProviderHealth {
 export interface ProviderAdapter {
   id: string;
   name: string;
+  /**
+   * The model runs on a server the user hosts — on this machine or the local
+   * network — such as Ollama or LM Studio: a small model, a small default
+   * context window, and a prompt processed at the speed of the user's own
+   * hardware. The engine sends such providers its compact prompt.
+   */
+  local?: boolean;
   listModels?(signal?: AbortSignal): Promise<ModelInfo[]>;
   generate(request: ProviderRequest): Promise<ProviderResponse>;
   validateConfiguration(): Promise<ProviderHealth>;

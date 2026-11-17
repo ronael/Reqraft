@@ -249,7 +249,8 @@ Reqraft supports multiple providers using native `fetch`:
 - OpenAI
 - DeepSeek
 - Mistral
-- OpenAI Compatible (Ollama, LM Studio, gateways, etc.)
+- OpenAI Compatible (Ollama, LM Studio, gateways, etc.) — to run offline with
+  a local model, see [docs/local-models.md](docs/local-models.md)
 
 On macOS and Linux, the recommended option is the system credential manager:
 
