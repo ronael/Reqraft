@@ -88,13 +88,23 @@ moment the secrets exist, and neither has a certificate in this repository.
 | `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password for that account |
 | `APPLE_TEAM_ID` | team the Developer ID belongs to |
 
-With none of them set, electron-builder produces an unsigned build. macOS will
-refuse to open it without a Gatekeeper override, which is acceptable for
-testing and not for distribution.
+With none of them set, electron-builder produces an unsigned build, and that is
+what every release ships until a Developer ID exists. The workflow says so in
+its run and puts a warning at the top of the release notes
+(`.github/desktop-unsigned-note.md`): macOS refuses to open the app, and may
+call it damaged, until the quarantine attribute is removed. A partial
+configuration stops the release instead.
+
+To rebuild the installers of a release that is already out, run the workflow
+from `main` with that tag:
+
+```sh
+gh workflow run desktop.yml --ref main -f tag=v0.6.5 -f attach_to_release=true
+```
 
 Once the secrets exist, set `notarize: true` under `mac` in
 `electron-builder.yml` and make an official release **fail** when signing was
-skipped, rather than quietly publishing an unsigned installer.
+skipped, rather than publishing an unsigned installer.
 
 ### Windows
 
