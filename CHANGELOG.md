@@ -15,6 +15,9 @@
   warning that the macOS installer is unsigned and how to open it; a partial
   signing configuration still stops the release. The workflow can also rebuild
   the installers of a release that is already out (`-f tag=v0.6.5`).
+- The platform table in the release notes no longer says that selection
+  capture and reinjection are macOS-only: Windows has both since 0.6.5, though
+  its installer has not yet been tested by hand on a clean machine.
 
 ## 0.6.5 (2026-11-16)
 
