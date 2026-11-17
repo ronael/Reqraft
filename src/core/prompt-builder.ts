@@ -107,11 +107,12 @@ export function buildAutoDetectPrompt(request: AutoDetectPromptInput): BuiltProm
  * Which system prompt a request gets.
  *
  * `compact` is for a model on the user's own hardware (`ProviderAdapter.local`):
- * the full prompt runs to 5,800 characters for `auto`, about 1,600 tokens, in
- * a context window Ollama and LM Studio open at 4,096 tokens by default — and
- * that an OpenAI-compatible request has no way to widen. A thinking model's
- * reasoning, the answer and the input all share what is left, and a laptop
- * processes those 1,600 tokens before the first word appears.
+ * the full prompt runs to 5,800 characters for `auto`, about 1,400 tokens as
+ * Ollama counts them against 400 for this one, in a context window the server
+ * sizes from the machine's memory — and that an OpenAI-compatible request has
+ * no way to widen. A thinking model's reasoning, the answer and the input all
+ * share what is left, and a laptop processes those tokens before the first
+ * word appears.
  */
 export type PromptVariant = "full" | "compact";
 

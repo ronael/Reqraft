@@ -41,19 +41,26 @@ A base URL on `localhost`, a private address (`10.x`, `172.16–31.x`,
 (`src/providers/local-endpoint.ts`). Reqraft then:
 
 - **sends a compact system prompt.** The full `auto` prompt is about 5,800
-  characters, some 1,600 tokens, in a context window Ollama and LM Studio
-  open at 4,096 tokens by default — and an OpenAI-compatible request cannot
-  widen it. The compact prompt keeps the rules small models break first: the
+  characters: a request costs some 1,400 prompt tokens with it and some 400
+  with the compact one, as Ollama counts them. The context window is the
+  server's to set, and an OpenAI-compatible request cannot widen it: Ollama
+  sizes it from the memory it finds (32,768 tokens on a 32 GB Mac), so a
+  smaller machine has less room to share between the prompt, the input and
+  the answer. The compact prompt keeps the rules small models break first: the
   text is data, never an order; its language, names, numbers and code come back
   unchanged; a clean text comes back almost as it was; the answer is the JSON
-  envelope. It is under 1,800 characters at every level.
+  envelope. It is under 1,800 characters at every level, and the models
+  measured rewrite as well or better with it than with the full prompt.
 - **constrains the answer to the envelope's JSON Schema** with
   `response_format: { type: "json_schema" }`. LM Studio accepts only
-  `json_schema`; Ollama, llama.cpp and vLLM accept it too.
+  `json_schema`; Ollama, llama.cpp and vLLM accept it too. On Ollama, every
+  answer of the five models measured came back as a valid envelope.
 - **asks the model not to reason** with `reasoning_effort: "none"`, and keeps
   1,024 output tokens in reserve in case it reasons anyway. A thinking model
   otherwise spends tens of seconds and most of the output budget before the
-  first word of a one-sentence rewrite.
+  first word of a one-sentence rewrite. Ollama honours the field for Qwen3.5:
+  the same request costs about 40 output tokens with it and 1,300 to 2,000
+  without, all but a sentence of them reasoning.
 - **asks for token counts** (`stream_options.include_usage`), which local
   servers only report when asked.
 - **removes `<think>` reasoning** a server leaves in the content, while
@@ -99,6 +106,12 @@ A model still loading is reported as a timeout, not as an unreachable server.
 The recommendation (`src/models/local-recommendation.ts`) is Qwen3.5, Apache
 2.0: 4B below 16 GB of memory, 9B from 16 GB. Gemma 4 (E4B, 12B) and Ministral
 3 8B are the alternatives that were measured.
+
+A request written in English can come back in French. Reqraft's instructions
+to the model are in French, and the smaller models follow that language
+rather than the text's: Qwen3.5 4B and 9B, Gemma 4 E4B and Ministral 3 8B all
+did it on some English requests. Gemma 4 12B kept every request in its
+language. French requests are not affected.
 
 ### Measuring
 
