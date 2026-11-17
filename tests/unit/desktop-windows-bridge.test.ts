@@ -214,8 +214,10 @@ describe.runIf(process.platform === "win32")("scripts PowerShell réels", () => 
 
     await bridge.frontmostApp();
     // Le script répond « false » dès qu'AppActivate échoue : ce délai ne sert
-    // qu'à laisser démarrer PowerShell et compiler, plus d'une seconde sur un
-    // poste de CI froid.
-    await expect(bridge.activateApp("absent", 2000)).resolves.toBe(false);
+    // qu'à laisser démarrer PowerShell et compiler. Une seconde suffit
+    // d'habitude, mais des postes de CI chargés ont dépassé cinq secondes le
+    // 17 novembre 2026. Ce test vérifie que le script compile et répond, pas la
+    // vitesse du poste.
+    await expect(bridge.activateApp("absent", 10_000)).resolves.toBe(false);
   }, 20_000);
 });
