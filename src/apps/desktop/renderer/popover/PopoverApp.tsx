@@ -17,11 +17,19 @@ import { Toast, useToast } from "../shared/Toast.js";
 
 type Level = (typeof REPROMPT_LEVEL_IDS)[number];
 
-/** A failed run, as the panel shows it. */
+/**
+ * A failed run, as the panel shows it: what went wrong, then what to do.
+ *
+ * Every next action is shown: the main process words them for a window — a
+ * Settings tab or the redact action, never an `rp` command or a CLI flag.
+ * Under the message they scroll with the content zone, so the footer stays
+ * where it is.
+ */
 interface Failure {
   message: string;
-  /** Set for a refusal over a secret: how « Redact and continue » sends it. */
-  redaction?: string;
+  nextAction?: string;
+  /** A refusal over a secret: the footer offers « Redact and continue ». */
+  canRedactSecrets?: boolean;
 }
 
 /**
@@ -110,14 +118,10 @@ export function PopoverApp(): React.JSX.Element {
     });
     const offError = window.reqraft.onRunError((payload) => {
       if (payload.runId === activeRunId.current) {
-        // Only the redaction's next action is shown: the others are written
-        // for the CLI (`rp auth login`, `rp doctor`), while this one says
-        // what the footer's « Redact and continue » does.
         setFailed({
           message: payload.error.message,
-          ...(payload.canRedactSecrets === true
-            ? { redaction: payload.error.nextAction ?? "" }
-            : {}),
+          nextAction: payload.error.nextAction,
+          canRedactSecrets: payload.canRedactSecrets === true,
         });
         setRunning(false);
       }
@@ -344,8 +348,8 @@ export function PopoverApp(): React.JSX.Element {
         {failed !== null && (
           <div className="popover-section" role="alert">
             <p className="error-detail">{failed.message}</p>
-            {failed.redaction !== undefined && (
-              <p className="error-detail muted">{failed.redaction}</p>
+            {failed.nextAction !== undefined && (
+              <p className="error-detail muted">{failed.nextAction}</p>
             )}
           </div>
         )}
@@ -377,7 +381,7 @@ export function PopoverApp(): React.JSX.Element {
         )}
         {/* Dans le pied et non sous le message : le panneau ne grandit pas,
             et sous l'explication le bouton passait sous la ligne de flottaison. */}
-        {failed?.redaction !== undefined && (
+        {failed?.canRedactSecrets === true && (
           <button
             type="button"
             className="capsule-key key-primary"

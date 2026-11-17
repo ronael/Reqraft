@@ -424,6 +424,13 @@ export const DESKTOP_EN = {
     "“{id}” is a built-in profile: it can be neither edited nor deleted. Duplicate it to get a copy.",
   "main.errorProfileIsDefault":
     "“{id}” is the default profile: pick another one before deleting it.",
+  // No-break spaces keep a Settings path on one line, even in the 320 px popover.
+  "main.keyRejectedAction": "Add or replace the key in Settings\u00a0›\u00a0Providers.",
+  "main.endpointKeyRejectedAction":
+    "Check this endpoint's key variable in Settings\u00a0›\u00a0Providers.",
+  "main.keyMissingAction": "Add the key in Settings\u00a0›\u00a0Providers.",
+  "main.requestRejectedAction":
+    "Check the model and configuration in Settings\u00a0›\u00a0Diagnostic, then retry.",
   "common.recommendedSuffix": " — recommended",
   "settings.endpointNoKey": "No key.",
   "settings.endpointIdDetail": "Lowercase letters, digits and hyphens.",

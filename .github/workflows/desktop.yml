@@ -14,6 +14,10 @@ on:
         description: "Attach the installers to the GitHub Release for this version"
         type: boolean
         default: false
+      tag:
+        description: "Build this existing release tag instead of the selected branch (e.g. v0.6.5)"
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -41,7 +45,11 @@ jobs:
             artifact: reqraft-desktop-linux-x64
 
     steps:
+      # `tag` rebuilds the installers of a release that is already out, with
+      # this workflow rather than the copy frozen in the tag.
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ inputs.tag || github.ref }}
       - uses: pnpm/action-setup@v6
       - uses: actions/setup-node@v7
         with:
@@ -92,11 +100,13 @@ jobs:
 
           echo "Code signing configured: ${signed}"
 
-      # A public macOS download must pass Gatekeeper without asking the user to
-      # weaken their security settings. Keep ad-hoc builds available, but stop
-      # a tag (or an on-demand run that attaches assets to a release) before it
-      # can publish an unsigned, non-notarized DMG.
-      - name: Require macOS signing for a public release
+      # Until a Developer ID is configured, every release is unsigned, as the
+      # release guide and docs/desktop-platform-support.md say: the installers
+      # are still built and published, this run says so, and the release notes
+      # warn whoever downloads them. A partial configuration is what stops here:
+      # someone started setting up signing, and the release would not be what
+      # they expect.
+      - name: Check macOS signing for a public release
         if: runner.os == 'macOS' && (github.ref_type == 'tag' || inputs.attach_to_release)
         shell: bash
         env:
@@ -119,9 +129,11 @@ jobs:
             fi
           done
 
-          if [ ${#missing[@]} -gt 0 ]; then
+          if [ ${#missing[@]} -eq 5 ]; then
+            echo "::warning::No macOS signing secret is configured: the installers are unsigned and not notarised, and the release notes say so."
+          elif [ ${#missing[@]} -gt 0 ]; then
             printf -v missing_names '%s, ' "${missing[@]}"
-            printf '::error::A public macOS release requires signing and notarization secrets: %s\\n' \
+            printf '::error::macOS signing is only partly configured. Missing: %s\n' \
               "${missing_names%, }"
             exit 1
           fi
@@ -186,12 +198,21 @@ jobs:
       - name: Resolve the target tag
         id: target
         shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
         run: |
           set -euo pipefail
-          if [ "${{ github.ref_type }}" = "tag" ]; then
+          if [ -n "${INPUT_TAG}" ]; then
+            tag="${INPUT_TAG}"
+          elif [ "${{ github.ref_type }}" = "tag" ]; then
             tag="${{ github.ref_name }}"
           else
             tag="v$(node -p "require('./package.json').version")"
+          fi
+          # The tag ends up in shell commands below: only a version tag passes.
+          if ! [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::Not a release tag: ${tag}"
+            exit 1
           fi
           echo "tag=${tag}" >> "$GITHUB_OUTPUT"
           echo "Target release: ${tag}"
@@ -231,3 +252,29 @@ jobs:
           fi
 
           { printf '%s\n\n' "$body"; cat "$note_file"; } | gh release edit "$tag" --notes-file -
+
+      # The build's signing check, seen from the release: without a Developer
+      # ID the macOS installer is unsigned and macOS refuses to open it, so the
+      # warning goes first, where someone about to download reads it.
+      - name: Warn that the macOS installer is unsigned
+        env:
+          GH_TOKEN: ${{ github.token }}
+          MAC_CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -n "${MAC_CSC_LINK}" ]; then
+            echo "macOS signing is configured: no unsigned warning."
+            exit 0
+          fi
+          tag="${{ steps.target.outputs.tag }}"
+          note_file=.github/desktop-unsigned-note.md
+          marker="## Unsigned macOS installer"
+
+          body=$(gh release view "$tag" --json body --jq .body)
+          if printf '%s' "$body" | grep -qF "$marker"; then
+            echo "Release already carries the unsigned warning."
+            exit 0
+          fi
+
+          { cat "$note_file"; printf '\n%s\n' "$body"; } | gh release edit "$tag" --notes-file -

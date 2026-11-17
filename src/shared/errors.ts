@@ -18,8 +18,37 @@ export interface UiError {
   nextAction?: string;
 }
 
+/**
+ * Where a provider failure sends the person to fix it.
+ *
+ * These four next actions depend on the surface: a terminal names a command
+ * (`rp auth login`, `rp doctor`), a window names the settings tab that does
+ * the same. A surface passes its own; without one, the catalogue's wording,
+ * written for the terminal, applies.
+ */
+export interface ProviderAdvice {
+  /** The provider refused the key (401, 403). */
+  keyRejected(provider: string): string;
+  /** The same for a compatible endpoint, whose key comes from a variable. */
+  endpointKeyRejected(): string;
+  /** No key is configured for the provider. */
+  keyMissing(provider: string): string;
+  /** Any other refusal: the model or the configuration. */
+  requestRejected(): string;
+}
+
 const MISSING_KEY_PATTERN = /Clé API .* manquante/;
 const DEFAULT_TRANSLATOR = createTranslator("fr");
+
+/** The catalogue's advice, written for the CLI and the TUI. */
+function terminalAdvice(t: Translator): ProviderAdvice {
+  return {
+    keyRejected: (provider) => t("error.apiKeyRejected.action", { provider }),
+    endpointKeyRejected: () => t("error.apiKeyRejected.endpointAction"),
+    keyMissing: (provider) => t("error.missingKey.action", { provider }),
+    requestRejected: () => t("error.rejected.action"),
+  };
+}
 
 function createBasicError(message: string, t: Translator): UiError {
   return { title: t("common.error"), message };
@@ -123,17 +152,22 @@ function describeMissingModel(error: ReqraftError, provider: string, t: Translat
   };
 }
 
-function describeHttpStatus(status: number, provider: string, t: Translator): UiError {
+function describeHttpStatus(
+  status: number,
+  provider: string,
+  t: Translator,
+  advice: ProviderAdvice,
+): UiError {
   if (status === 401 || status === 403) {
     return {
       title: t("error.apiKeyRejected.title"),
       message: t("error.apiKeyRejected.message", { provider }),
-      // `rp auth login` does not take a compatible endpoint: its key comes
-      // from the variable configured for that endpoint.
+      // A compatible endpoint has no stored key (`rp auth login` does not
+      // take one): its key comes from the variable configured for it.
       nextAction:
         provider === OPENAI_COMPATIBLE_PROVIDER_ID
-          ? t("error.apiKeyRejected.endpointAction")
-          : t("error.apiKeyRejected.action", { provider }),
+          ? advice.endpointKeyRejected()
+          : advice.keyRejected(provider),
     };
   }
   if (status === 402) {
@@ -160,14 +194,21 @@ function describeHttpStatus(status: number, provider: string, t: Translator): Ui
   return {
     title: t("error.rejected.title"),
     message: t("error.rejected.message", { provider, httpStatus: status }),
-    nextAction: t("error.rejected.action"),
+    nextAction: advice.requestRejected(),
   };
 }
 
+/**
+ * A failure, as a surface shows it.
+ *
+ * `advice` words the next actions that name somewhere to go; the CLI and the
+ * TUI keep the catalogue's, the desktop passes its settings tabs.
+ */
 export function describeUiError(
   error: unknown,
   provider: string,
   t: Translator = DEFAULT_TRANSLATOR,
+  advice: ProviderAdvice = terminalAdvice(t),
 ): UiError {
   const message = error instanceof Error ? error.message : String(error);
   const status = getProviderHttpStatus(error, message);
@@ -184,7 +225,7 @@ export function describeUiError(
 
   if (status !== undefined) {
     // The raw body is dropped on purpose: it can echo the prompt or the key.
-    return describeHttpStatus(status, provider, t);
+    return describeHttpStatus(status, provider, t, advice);
   }
 
   if (error instanceof ReqraftError) {
@@ -195,7 +236,7 @@ export function describeUiError(
     return {
       title: t("error.missingKey.title"),
       message: t("error.missingKey.message", { provider }),
-      nextAction: t("error.missingKey.action", { provider }),
+      nextAction: advice.keyMissing(provider),
     };
   }
 
