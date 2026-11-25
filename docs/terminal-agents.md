@@ -1,8 +1,10 @@
 # Reqraft in Codex and Claude Code
 
 Type your request in Codex, Claude Code or another terminal agent as it comes,
-press its editor key (**Ctrl+G** in most), and Reqraft rewrites it in place. You see the before and the after, keep it with
-Enter, retry with `r`, or cancel with Esc to get your draft back untouched.
+press its editor key (**Ctrl+G** in most), and Reqraft opens on it and
+rewrites it. Change the profile, level or model, look at the diff, then send
+the result back with **Ctrl+Y**, or quit with **Ctrl+C** to get your draft back
+untouched.
 
 ## How it works
 
@@ -43,6 +45,19 @@ front; closing the capsule leaves your draft as it was. With the app closed, or
 an agent running over SSH, the review stays in the terminal.
 
 Settings › AI agents › Review chooses between the two.
+
+## Reviewing in the terminal
+
+With the app closed, `rp edit` opens the full `rp` interface on your draft and
+rewrites it straight away. Everything `rp` offers is there: the profile
+(Ctrl+P), the level (Ctrl+L) and the model (Ctrl+O), the diff (Ctrl+D) and the
+explanation (Ctrl+E). You can also touch up the draft in the editor and rewrite
+it again with Ctrl+G. **Ctrl+Y** sends the result back to the agent; **Ctrl+C**
+leaves your draft as it was.
+
+That interface runs on Bun, like `rp` on its own. Without Bun, `rp edit` shows
+a shorter review instead: Enter keeps the rewrite, `r` retries, Esc gives your
+draft back.
 
 ## Turning it on
 
@@ -125,8 +140,9 @@ tmux, panes opened before the change keep their old shell: open a new window.
 **"editor exited with status 1."** `rp edit` could not run. Check that
 `rp --version` works in that terminal, then `rp doctor`.
 
-**The rewrite failed.** The reason stays on screen until you press Enter, and
-your draft comes back unchanged.
+**The rewrite failed.** The interface shows why, and Ctrl+C gives your draft
+back unchanged. In the shorter review, the reason stays on screen until you
+press Enter.
 
 **Removing it.** `rp agents --disable`, or **Disable** in Settings › AI agents,
 removes the block and leaves the rest of the file as it was.

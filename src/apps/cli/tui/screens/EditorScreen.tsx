@@ -55,6 +55,8 @@ export interface EditorScreenProps {
   settings: ToolbarValues;
   ready: boolean;
   toast: ToastState | null;
+  /** Opened by `rp edit` on an agent's draft: the result goes back to the agent. */
+  agentDraft?: boolean;
   t: Translator;
   onPromptChange(value: string): void;
   /** Moves the application focus to the editor after a mouse click. */
@@ -93,6 +95,7 @@ export function EditorScreen({
   settings,
   ready,
   toast,
+  agentDraft = false,
   t,
   onPromptChange,
   onFocusEditor,
@@ -135,6 +138,7 @@ export function EditorScreen({
     hasResult: hasResult(result),
     isGenerating: isBusy(result),
     inputLength: prompt.length,
+    agentDraft,
   };
 
   if (layout.mode === "too-small") {
@@ -362,7 +366,15 @@ function Overlays({
   }
 
   if (isActive(overlay, "help")) {
-    return <HelpOverlay open terminalWidth={width} terminalHeight={height} t={t} />;
+    return (
+      <HelpOverlay
+        open
+        terminalWidth={width}
+        terminalHeight={height}
+        agentDraft={context.agentDraft === true}
+        t={t}
+      />
+    );
   }
 
   return null;

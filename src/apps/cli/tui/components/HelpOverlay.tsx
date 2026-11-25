@@ -15,6 +15,8 @@ export interface HelpOverlayProps {
   open: boolean;
   terminalWidth: number;
   terminalHeight: number;
+  /** An agent's draft: its result is used, not copied. */
+  agentDraft?: boolean;
   t: Translator;
 }
 
@@ -23,25 +25,32 @@ export interface HelpOverlayProps {
  * reusing them titled the navigation group "Next panel" and then listed "Next
  * panel" inside it.
  */
-const GROUPS: readonly { title: CommandLabelKey; ids: readonly CommandId[] }[] = [
-  { title: "tui.help.group.run", ids: ["generate", "cancel", "reset", "paste"] },
-  {
-    title: "tui.help.group.settings",
-    ids: ["open-profile", "open-level", "open-model", "open-palette"],
-  },
-  {
-    // Both are overlay-scoped, so they never reach the status bar. Help is the
-    // only place they can be advertised — and an unadvertised shortcut is one
-    // nobody finds.
-    title: "tui.help.group.profiles",
-    ids: ["profile-actions", "profile-save"],
-  },
-  { title: "tui.help.group.result", ids: ["copy", "toggle-diff", "show-explain"] },
-  {
-    title: "tui.help.group.navigate",
-    ids: ["focus-next", "focus-previous", "open-help", "close-overlay"],
-  },
-];
+function helpGroups(
+  agentDraft: boolean,
+): readonly { title: CommandLabelKey; ids: readonly CommandId[] }[] {
+  return [
+    { title: "tui.help.group.run", ids: ["generate", "cancel", "reset", "paste"] },
+    {
+      title: "tui.help.group.settings",
+      ids: ["open-profile", "open-level", "open-model", "open-palette"],
+    },
+    {
+      // Both are overlay-scoped, so they never reach the status bar. Help is the
+      // only place they can be advertised — and an unadvertised shortcut is one
+      // nobody finds.
+      title: "tui.help.group.profiles",
+      ids: ["profile-actions", "profile-save"],
+    },
+    {
+      title: "tui.help.group.result",
+      ids: [agentDraft ? "use" : "copy", "toggle-diff", "show-explain"],
+    },
+    {
+      title: "tui.help.group.navigate",
+      ids: ["focus-next", "focus-previous", "open-help", "close-overlay"],
+    },
+  ];
+}
 
 /**
  * The help overlay.
@@ -54,19 +63,21 @@ export function HelpOverlay({
   open,
   terminalWidth,
   terminalHeight,
+  agentDraft = false,
   t,
 }: Readonly<HelpOverlayProps>): React.ReactNode {
   const { color } = theme.tokens;
+  const groups = helpGroups(agentDraft);
 
   // A title row plus its commands per group, and one blank row between groups.
   // Commands sit on consecutive rows: a blank line between every shortcut made
   // the list twice as tall as the terminal and pushed it off the bottom.
   const contentRows =
-    GROUPS.reduce(
+    groups.reduce(
       (rows, group) => rows + 1 + COMMANDS.filter((c) => group.ids.includes(c.id)).length,
       0,
     ) +
-    (GROUPS.length - 1);
+    (groups.length - 1);
 
   return (
     <Dialog
@@ -77,7 +88,7 @@ export function HelpOverlay({
       contentRows={contentRows}
     >
       <Stack direction="column" gap="sm">
-        {GROUPS.map((group) => (
+        {groups.map((group) => (
           <Stack key={group.title} direction="column" gap="none">
             <text fg={color.textMuted}>{t(group.title)}</text>
             {COMMANDS.filter((command) => group.ids.includes(command.id)).map((command) => (

@@ -21,6 +21,8 @@ function setup(options: {
   keys?: Key[];
   results?: { code: number; text: string }[];
   draft?: string;
+  /** The full interface: its exit code, and what it sent back, if anything. */
+  ui?: { code: number; sends?: string };
 }) {
   const files: Record<string, string> = { [FILE]: options.draft ?? DRAFT };
   const keys = [...(options.keys ?? [])];
@@ -28,6 +30,7 @@ function setup(options: {
   const screen: string[] = [];
   let rewrites = 0;
   const opened: string[] = [];
+  const interfaces: { file: string; options: unknown }[] = [];
   const deps: EditDependencies = {
     readText: (file) => Promise.resolve(files[file] ?? ""),
     writeText: (file, text) => {
@@ -51,8 +54,14 @@ function setup(options: {
       onConnected();
       return Promise.resolve(options.app);
     },
+    reviewInInterface: (file, editOptions) => {
+      if (options.ui === undefined) return null;
+      interfaces.push({ file, options: editOptions });
+      if (options.ui.sends !== undefined) files[file] = options.ui.sends;
+      return options.ui.code;
+    },
   };
-  return { deps, files, screen, opened, rewrites: () => rewrites };
+  return { deps, files, screen, opened, interfaces, rewrites: () => rewrites };
 }
 
 describe("rp edit, l'éditeur que l'agent ouvre", () => {
@@ -154,6 +163,43 @@ describe("rp edit, l'éditeur que l'agent ouvre", () => {
     await runEdit(FILE, {}, t, busy.deps);
     expect(busy.rewrites()).toBe(1);
     expect(busy.files[FILE]).toBe(REWRITTEN);
+  });
+
+  it("sans l'app, ouvre l'interface complète, qui renvoie elle-même le résultat", async () => {
+    const used = setup({ ui: { code: 0, sends: REWRITTEN } });
+    expect(await runEdit(FILE, { profile: "dev" }, t, used.deps)).toBe(EXIT_CODES.SUCCESS);
+    expect(used.files[FILE]).toBe(REWRITTEN);
+    expect(used.interfaces).toEqual([{ file: FILE, options: { profile: "dev" } }]);
+    expect(used.rewrites()).toBe(0);
+
+    const left = setup({ ui: { code: 0 } });
+    expect(await runEdit(FILE, {}, t, left.deps)).toBe(EXIT_CODES.SUCCESS);
+    expect(left.files[FILE]).toBe(DRAFT);
+    expect(left.rewrites()).toBe(0);
+  });
+
+  it("l'app passe avant l'interface, et --yes n'ouvre ni l'une ni l'autre", async () => {
+    const inApp = setup({ app: { result: "kept", text: "capsule" }, ui: { code: 0 } });
+    await runEdit(FILE, {}, t, inApp.deps);
+    expect(inApp.interfaces).toEqual([]);
+
+    const direct = setup({ ui: { code: 0 } });
+    await runEdit(FILE, { yes: true }, t, direct.deps);
+    expect(direct.interfaces).toEqual([]);
+    expect(direct.files[FILE]).toBe(REWRITTEN);
+  });
+
+  it("si l'interface échoue sans rien renvoyer, la relecture courte prend le relais", async () => {
+    const failed = setup({ ui: { code: 1 }, keys: ["enter"] });
+    expect(await runEdit(FILE, {}, t, failed.deps)).toBe(EXIT_CODES.SUCCESS);
+    expect(failed.rewrites()).toBe(1);
+    expect(failed.files[FILE]).toBe(REWRITTEN);
+
+    // Already sent back before failing: nothing to review again.
+    const sent = setup({ ui: { code: 1, sends: "déjà renvoyé" } });
+    expect(await runEdit(FILE, {}, t, sent.deps)).toBe(EXIT_CODES.SUCCESS);
+    expect(sent.rewrites()).toBe(0);
+    expect(sent.files[FILE]).toBe("déjà renvoyé");
   });
 
   it("revient au début de ligne même dans un terminal laissé en mode brut", () => {

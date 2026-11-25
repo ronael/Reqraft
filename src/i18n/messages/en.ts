@@ -588,6 +588,9 @@ export const en = {
   "tui.command.cancel": () => "Interrupt",
   "tui.command.exit": () => "Quit",
   "tui.command.copy": () => "Copy",
+  "tui.command.use": () => "Use",
+  "tui.agentDraft.hint": ({ use, exit }) =>
+    `Your agent's draft. ${use} sends the rewrite back, ${exit} leaves the draft as it was.`,
   "tui.command.reset": () => "Reset",
   "tui.command.toggleDiff": () => "Toggle diff",
   "tui.command.explain": () => "Explain",

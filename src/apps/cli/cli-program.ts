@@ -7,7 +7,7 @@ import { runDoctor } from "./commands/doctor.js";
 import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
 import { runAgents } from "./commands/agents.js";
-import { runEdit } from "./commands/edit.js";
+import { defaultEditDependencies, runEdit } from "./commands/edit.js";
 import { runModelsList, runProfilesList, runProvidersList } from "./commands/list.js";
 import {
   runProfilesAdd,
@@ -272,7 +272,9 @@ export function createCliProgram(t: Translator, uiLocale: "en" | "fr"): Command 
     .allowUnknownOption()
     .action(
       async (files: string[], options: { profile?: string; level?: string; yes?: boolean }) => {
-        applyExitCode(await runEdit(files.at(-1) ?? "", options, t));
+        applyExitCode(
+          await runEdit(files.at(-1) ?? "", options, t, defaultEditDependencies(t, uiLocale)),
+        );
       },
     );
 
