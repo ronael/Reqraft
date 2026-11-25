@@ -310,6 +310,7 @@ export const en = {
       "Change nothing else.",
     ].join("\n"),
   "edit.rewriting": () => "Reqraft is rewriting your draft…",
+  "edit.inApp": () => "Reviewing in the Reqraft app… Close the capsule to keep your draft.",
   "edit.before": () => "before",
   "edit.after": () => "after",
   "edit.keep": () => "keep",

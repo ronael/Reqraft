@@ -312,6 +312,8 @@ export const fr = {
       "Ne modifie rien d'autre.",
     ].join("\n"),
   "edit.rewriting": () => "Reqraft réécrit votre brouillon…",
+  "edit.inApp": () =>
+    "Relecture dans l'app Reqraft… Fermez la capsule pour garder votre brouillon.",
   "edit.before": () => "avant",
   "edit.after": () => "après",
   "edit.keep": () => "garder",

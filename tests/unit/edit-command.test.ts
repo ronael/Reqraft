@@ -16,6 +16,7 @@ const DRAFT = "jveux que tu regarde pk le bouton marche pas";
 const REWRITTEN = "Trouve pourquoi le bouton ne réagit pas, puis corrige-le.";
 
 function setup(options: {
+  app?: { result: "kept"; text: string } | { result: "cancelled" } | { result: "busy" };
   interactive?: boolean;
   keys?: Key[];
   results?: { code: number; text: string }[];
@@ -44,6 +45,11 @@ function setup(options: {
     openInEditor: (file) => {
       opened.push(file);
       return 0;
+    },
+    reviewInApp: (_draft, onConnected) => {
+      if (options.app === undefined) return Promise.resolve({ result: "unavailable" as const });
+      onConnected();
+      return Promise.resolve(options.app);
     },
   };
   return { deps, files, screen, opened, rewrites: () => rewrites };
@@ -128,6 +134,26 @@ describe("rp edit, l'éditeur que l'agent ouvre", () => {
     expect(fallbackEditor({ EDITOR: "nvim" }, "darwin")).toBe("nvim");
     expect(fallbackEditor({ EDITOR: "rp edit" }, "darwin")).toBe("vi");
     expect(fallbackEditor({}, "win32")).toBe("notepad");
+  });
+
+  it("avec l'app ouverte, la capsule relit : gardé, écrit ; fermé, intact", async () => {
+    const kept = setup({ app: { result: "kept", text: "depuis la capsule" } });
+    expect(await runEdit(FILE, {}, t, kept.deps)).toBe(EXIT_CODES.SUCCESS);
+    expect(kept.files[FILE]).toBe("depuis la capsule");
+    expect(kept.rewrites()).toBe(0);
+    expect(kept.screen.join("")).toContain("Relecture dans l'app Reqraft");
+
+    const closed = setup({ app: { result: "cancelled" } });
+    expect(await runEdit(FILE, {}, t, closed.deps)).toBe(EXIT_CODES.SUCCESS);
+    expect(closed.files[FILE]).toBe(DRAFT);
+    expect(closed.rewrites()).toBe(0);
+  });
+
+  it("si l'app est occupée, relit dans le terminal", async () => {
+    const busy = setup({ app: { result: "busy" }, keys: ["enter"] });
+    await runEdit(FILE, {}, t, busy.deps);
+    expect(busy.rewrites()).toBe(1);
+    expect(busy.files[FILE]).toBe(REWRITTEN);
   });
 
   it("revient au début de ligne même dans un terminal laissé en mode brut", () => {

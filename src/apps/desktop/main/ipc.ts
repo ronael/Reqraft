@@ -162,6 +162,8 @@ export interface DesktopIpcDependencies {
   openSettings?: (tab?: SettingsTabRequest) => void;
   /** Réglages › Agents IA. */
   agents?: DesktopAgents;
+  /** The agent draft under review in the capsule, when there is one. */
+  agentDrafts?: { readonly active: boolean; accept(text: string): void; cancel(): void };
   /** Opens the welcome tour explicitly from Settings. */
   openWelcomeTour?: () => void;
   /** Pourquoi la capsule est ouverte, pour qu'elle puisse le demander. */
@@ -297,7 +299,7 @@ export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
   const hydrate = dependencies.hydrateCredentials ?? hydrateCredentials;
   const service =
     dependencies.service ?? new RepromptService({ executeReprompt, loadConfig: load, env });
-  const { ipcMain, clipboard } = dependencies;
+  const { ipcMain } = dependencies;
   ipcMain.handle(IPC_CHANNELS.repromptStart, (event, payload) => {
     const request = RepromptStartRequestSchema.parse(payload);
     return service.start(request, event.sender);
@@ -315,40 +317,7 @@ export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
     return dependencies.captureService?.consumeStashed() ?? { empty: true };
   });
 
-  ipcMain.handle(IPC_CHANNELS.resultAccept, async (_event, payload) => {
-    // La validation d'abord, le run ensuite : un texte hors bornes est refusé
-    // quel que soit le run, et l'acceptation entière échoue plutôt que de
-    // retomber sur le résultat d'origine — accepter silencieusement autre chose
-    // que ce que la capsule montrait serait pire qu'une erreur.
-    const { runId, mode, text } = ResultAcceptRequestSchema.parse(payload);
-    const result = service.storedResult(runId);
-    if (!result) {
-      return { applied: false };
-    }
-    // Une seule opération, un seul message : le texte repris à la main arrive
-    // avec l'acceptation, jamais par un enregistrement préalable. Il n'y a donc
-    // pas d'instant où le texte appliqué pourrait différer de celui affiché.
-    const accepted = text ?? result.rewritten;
-    if (mode === "copy") {
-      clipboard.writeText(accepted);
-      return { applied: true };
-    }
-    // "replace" reinjects into the recorded source app — never into whatever
-    // is frontmost now, which would be the capsule itself (§5.2).
-    if (!dependencies.captureService) {
-      return { applied: false };
-    }
-
-    // Le focus d'abord, la frappe ensuite : voir `hideCapsule`.
-    dependencies.hideCapsule?.();
-    const outcome = await dependencies.captureService.replace(accepted);
-    if (!outcome.applied) {
-      // Le message d'échec s'affiche dans la capsule : la cacher sans la
-      // ramener le rendrait invisible.
-      dependencies.showCapsule?.();
-    }
-    return outcome;
-  });
+  registerResultAcceptHandler(dependencies, service);
 
   ipcMain.handle(IPC_CHANNELS.configRead, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);
@@ -1315,6 +1284,59 @@ async function defaultStoreCredential(
  */
 async function defaultWriteExport(path: string, contents: string): Promise<void> {
   await writeFile(path, contents, "utf8");
+}
+
+/** `result:accept`: paste into the source app, copy, or answer an agent's draft. */
+function registerResultAcceptHandler(
+  dependencies: DesktopIpcDependencies,
+  service: RepromptService,
+): void {
+  const { ipcMain, clipboard } = dependencies;
+  ipcMain.handle(IPC_CHANNELS.resultAccept, async (_event, payload) => {
+    // La validation d'abord, le run ensuite : un texte hors bornes est refusé
+    // quel que soit le run, et l'acceptation entière échoue plutôt que de
+    // retomber sur le résultat d'origine — accepter silencieusement autre chose
+    // que ce que la capsule montrait serait pire qu'une erreur.
+    const { runId, mode, text } = ResultAcceptRequestSchema.parse(payload);
+    const result = service.storedResult(runId);
+    if (!result) {
+      return { applied: false };
+    }
+    // Une seule opération, un seul message : le texte repris à la main arrive
+    // avec l'acceptation, jamais par un enregistrement préalable. Il n'y a donc
+    // pas d'instant où le texte appliqué pourrait différer de celui affiché.
+    const accepted = text ?? result.rewritten;
+    // An agent's draft goes back to `rp edit`, not into the frontmost app:
+    // replacing answers the agent, copying leaves it its draft.
+    if (dependencies.agentDrafts?.active === true) {
+      if (mode === "copy") {
+        clipboard.writeText(accepted);
+        dependencies.agentDrafts.cancel();
+      } else {
+        dependencies.agentDrafts.accept(accepted);
+      }
+      return { applied: true };
+    }
+    if (mode === "copy") {
+      clipboard.writeText(accepted);
+      return { applied: true };
+    }
+    // "replace" reinjects into the recorded source app — never into whatever
+    // is frontmost now, which would be the capsule itself (§5.2).
+    if (!dependencies.captureService) {
+      return { applied: false };
+    }
+
+    // Le focus d'abord, la frappe ensuite : voir `hideCapsule`.
+    dependencies.hideCapsule?.();
+    const outcome = await dependencies.captureService.replace(accepted);
+    if (!outcome.applied) {
+      // Le message d'échec s'affiche dans la capsule : la cacher sans la
+      // ramener le rendrait invisible.
+      dependencies.showCapsule?.();
+    }
+    return outcome;
+  });
 }
 
 function registerUpdateHandlers(dependencies: DesktopIpcDependencies): void {

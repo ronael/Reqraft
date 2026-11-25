@@ -107,6 +107,7 @@ export const IPC_CHANNELS = {
   agentsState: "agents:state",
   agentsSet: "agents:set",
   agentsCopy: "agents:copy",
+  agentsReviewInApp: "agents:review-in-app",
   // Ce qui est nouveau depuis la dernière version vue, annoncé une seule fois.
   announcementsRead: "announcements:read",
   announcementsDismiss: "announcements:dismiss",
@@ -165,6 +166,7 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.agentsState,
   IPC_CHANNELS.agentsSet,
   IPC_CHANNELS.agentsCopy,
+  IPC_CHANNELS.agentsReviewInApp,
   IPC_CHANNELS.announcementsRead,
   IPC_CHANNELS.announcementsDismiss,
 ] as const;

@@ -6,6 +6,7 @@ import { createTranslator, type Translator } from "@/i18n/translate.js";
 import { formatUiError } from "@/shared/errors.js";
 import { detectColor } from "@/shared/terminal/capabilities.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
+import { requestAppReview, type AppReview } from "@/agents/review-client.js";
 import { readKey, type Key } from "./keys.js";
 import { runReprompt, type RepromptCliOptions } from "./reprompt.js";
 
@@ -35,6 +36,11 @@ export interface EditDependencies {
   readKey(): Promise<Key>;
   /** Opens `file` in the user's own editor and returns its exit code. */
   openInEditor(file: string): number;
+  /**
+   * Hands the draft to the desktop app when it is open; `unavailable` (or
+   * `busy`) means the review happens here, in the terminal.
+   */
+  reviewInApp(draft: string, onConnected: () => void): Promise<AppReview>;
 }
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
@@ -110,6 +116,7 @@ export function defaultEditDependencies(t: Translator): EditDependencies {
     interactive: process.stdin.isTTY && process.stderr.isTTY,
     color: detectColor(process.env, process.stderr.isTTY),
     readKey: () => readKey(process.stdin),
+    reviewInApp: (draft, onConnected) => requestAppReview(draft, { onConnected }),
     openInEditor: (file) => {
       // The editor may carry arguments ("code --wait"); no shell is involved,
       // so nothing in the file name can run as a command.
@@ -150,6 +157,9 @@ export async function runEdit(
 
   if (draft.trim() === "") return giveBack(t("edit.empty"));
 
+  const answeredInApp = await reviewInAppFirst(file, draft, options, deps, style, t);
+  if (answeredInApp !== null) return answeredInApp;
+
   for (;;) {
     const attempt = await rewriteOnce(draft, options, deps, style, t);
     if (attempt.kind === "done") return attempt.code;
@@ -168,6 +178,30 @@ export async function runEdit(
 }
 
 type Style = (text: string, code: string) => string;
+
+/**
+ * With the app open, the capsule reviews the draft; the terminal is the
+ * fallback, and the only place without a person at the keyboard. Null means
+ * the review happens here.
+ */
+async function reviewInAppFirst(
+  file: string,
+  draft: string,
+  options: EditCommandOptions,
+  deps: EditDependencies,
+  style: Style,
+  t: Translator,
+): Promise<number | null> {
+  if (!deps.interactive || options.yes === true) return null;
+  const inApp = await deps.reviewInApp(draft, () => {
+    deps.screen.write(`${style(t("edit.inApp"), "2")}\n`);
+  });
+  if (inApp.result === "kept") {
+    await deps.writeText(file, inApp.text);
+    return EXIT_CODES.SUCCESS;
+  }
+  return inApp.result === "cancelled" ? EXIT_CODES.SUCCESS : null;
+}
 
 /** One rewrite: its text, or the exit code to leave with when it failed. */
 async function rewriteOnce(

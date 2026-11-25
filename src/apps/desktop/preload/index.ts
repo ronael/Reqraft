@@ -80,6 +80,7 @@ const bridge: ReqraftBridge = {
   agentsState: () => ipcRenderer.invoke(IPC_CHANNELS.agentsState),
   setAgentEnabled: (id, enabled) => ipcRenderer.invoke(IPC_CHANNELS.agentsSet, { id, enabled }),
   copyAgentText: (request) => ipcRenderer.invoke(IPC_CHANNELS.agentsCopy, request),
+  setReviewInApp: (enabled) => ipcRenderer.invoke(IPC_CHANNELS.agentsReviewInApp, { enabled }),
   announcements: () => ipcRenderer.invoke(IPC_CHANNELS.announcementsRead),
   dismissAnnouncement: (id) => ipcRenderer.invoke(IPC_CHANNELS.announcementsDismiss, { id }),
   openWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenWelcomeTour),

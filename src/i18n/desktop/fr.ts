@@ -111,6 +111,12 @@ export const DESKTOP_FR = {
   "settings.agents.copied": "Copié",
   "settings.agents.loading": "Recherche des agents…",
   "settings.agents.cliPath": "rp · {path}",
+  "settings.agents.reviewSection": "Relecture",
+  "settings.agents.reviewTitle": "Où relire le brouillon",
+  "settings.agents.reviewDetail":
+    "Quand l'app est ouverte, Ctrl+G peut montrer le brouillon dans la capsule plutôt que dans le terminal.",
+  "settings.agents.reviewInApp": "Dans la capsule",
+  "settings.agents.reviewInTerminal": "Dans le terminal",
   "settings.agents.agentsSection": "Agents détectés",
   "settings.agents.how": "{shortcut} envoie votre brouillon à Reqraft, puis le remet réécrit.",
   "settings.agents.found": "Trouvé : {path}",

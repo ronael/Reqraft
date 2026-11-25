@@ -34,6 +34,16 @@ Nothing is sent to your provider until you press Ctrl+G, and then only the
 draft, exactly as a normal `rp` rewrite would send it. Secret detection applies
 the same way.
 
+## Reviewing in the app
+
+When the Reqraft app is open, Ctrl+G shows the draft in the capsule instead of
+the terminal: before and after, the profile and level, and a result you can
+touch up. **Replace** sends it back to the agent and brings the terminal to the
+front; closing the capsule leaves your draft as it was. With the app closed, or
+an agent running over SSH, the review stays in the terminal.
+
+Settings › AI agents › Review chooses between the two.
+
 ## Turning it on
 
 You need the command-line tool, `rp`. If you only have the desktop app, install

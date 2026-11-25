@@ -334,6 +334,7 @@ export interface MessageParameters {
   "agents.tip": undefined;
   "agents.setupPrompt": undefined;
   "edit.rewriting": undefined;
+  "edit.inApp": undefined;
   "edit.before": undefined;
   "edit.after": undefined;
   "edit.keep": undefined;

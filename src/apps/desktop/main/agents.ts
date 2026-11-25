@@ -11,6 +11,7 @@ import {
 import { displayPath, shellLabel, wrapperLine, type ShellEnvironment } from "@/agents/shell.js";
 import {
   AgentCopyRequestSchema,
+  AgentReviewInAppRequestSchema,
   AgentSetRequestSchema,
   AnnouncementDismissRequestSchema,
   EmptyRequestSchema,
@@ -49,12 +50,16 @@ export interface DesktopAgentsDependencies {
   searchPath(): Promise<string | undefined>;
   /** The version `rp --version` prints, or null when it cannot say. */
   cliVersion(rpPath: string, searchPath: string | undefined): Promise<string | null>;
+  /** Whether drafts are reviewed in the capsule while the app is open. */
+  reviewInApp(): Promise<boolean>;
+  setReviewInApp(enabled: boolean): Promise<void>;
 }
 
 export interface DesktopAgents {
   state(): Promise<DesktopAgentsState>;
   setEnabled(id: string, enabled: boolean): Promise<DesktopAgentsState>;
   copy(request: AgentCopyRequest): Promise<void>;
+  setReviewInApp(enabled: boolean): Promise<DesktopAgentsState>;
 }
 
 export function createDesktopAgents(deps: DesktopAgentsDependencies): DesktopAgents {
@@ -102,6 +107,7 @@ export function createDesktopAgents(deps: DesktopAgentsDependencies): DesktopAge
             : null,
       })),
       alsoSupported: otherSupportedAgents(status).map((spec) => spec.label),
+      reviewInApp: await deps.reviewInApp(),
     };
   }
 
@@ -113,6 +119,10 @@ export function createDesktopAgents(deps: DesktopAgentsDependencies): DesktopAge
     async setEnabled(id, enabled) {
       const current = await context();
       return present(await setAgentsEnabled(current.ports, environment, [id], enabled), current);
+    },
+    async setReviewInApp(enabled) {
+      await deps.setReviewInApp(enabled);
+      return this.state();
     },
     async copy(request) {
       const text = textToCopy(request, await this.state());
@@ -216,6 +226,10 @@ export function registerAgentsHandlers(
   });
   ipcMain.handle(IPC_CHANNELS.agentsCopy, async (_event, payload) => {
     await available().copy(AgentCopyRequestSchema.parse(payload));
+  });
+  ipcMain.handle(IPC_CHANNELS.agentsReviewInApp, async (_event, payload) => {
+    const { enabled } = AgentReviewInAppRequestSchema.parse(payload);
+    return await available().setReviewInApp(enabled);
   });
   ipcMain.handle(IPC_CHANNELS.announcementsRead, async (_event, payload) => {
     EmptyRequestSchema.parse(payload);

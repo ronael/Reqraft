@@ -33,6 +33,7 @@ async function setup(installed: string[]) {
   for (const name of installed) await fakeExecutable(bin, name);
   await writeFile(path.join(home, ".zshrc"), "export PATH=x\n", "utf8");
   const copied: string[] = [];
+  const review = { on: true };
   const agents = createDesktopAgents({
     env: { SHELL: "/bin/zsh" },
     platform: "darwin",
@@ -41,6 +42,11 @@ async function setup(installed: string[]) {
     writeClipboard: (text) => copied.push(text),
     searchPath: () => Promise.resolve(bin),
     cliVersion: () => Promise.resolve("0.7.0"),
+    reviewInApp: () => Promise.resolve(review.on),
+    setReviewInApp: (enabled) => {
+      review.on = enabled;
+      return Promise.resolve();
+    },
   });
   return { agents, copied, zshrc: path.join(home, ".zshrc") };
 }

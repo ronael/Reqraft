@@ -38,6 +38,17 @@ Rien ne part vers votre fournisseur avant Ctrl+G, et seulement le brouillon,
 comme pour n'importe quelle réécriture `rp`. La détection des secrets
 s'applique de la même façon.
 
+## Relire dans l'app
+
+Quand l'app Reqraft est ouverte, Ctrl+G montre le brouillon dans la capsule
+plutôt que dans le terminal : l'avant et l'après, le profil et le niveau, et un
+résultat que vous pouvez retoucher. **Remplacer** le renvoie à l'agent et
+ramène le terminal au premier plan ; fermer la capsule laisse votre brouillon
+tel quel. App fermée, ou agent lancé en SSH, la relecture reste dans le
+terminal.
+
+Réglages › Agents IA › Relecture choisit entre les deux.
+
 ## L'activer
 
 Il faut l'outil en ligne de commande, `rp`. Si vous n'avez que l'app desktop,
