@@ -20,7 +20,7 @@ export interface ResultTurnProps {
   onCommand?(id: CommandId): void;
 }
 
-const RESULT_ACTIONS: readonly CommandId[] = ["copy", "toggle-diff", "show-explain"];
+const RESULT_ACTIONS: readonly CommandId[] = ["use", "copy", "toggle-diff", "show-explain"];
 
 function turnLabel(state: ResultState, view: ResultViewMode, t: Translator): string {
   switch (state.kind) {

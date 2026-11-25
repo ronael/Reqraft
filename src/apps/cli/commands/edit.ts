@@ -7,6 +7,9 @@ import { formatUiError } from "@/shared/errors.js";
 import { detectColor } from "@/shared/terminal/capabilities.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
 import { requestAppReview, type AppReview } from "@/agents/review-client.js";
+import type { UiLocale } from "@/i18n/locale.js";
+import { toAgentDraftArguments } from "@/apps/cli/opentui/agent-draft-arguments.js";
+import { canRunOpenTui, runOpenTuiAppLauncher } from "@/apps/cli/opentui/launcher.js";
 import { readKey, type Key } from "./keys.js";
 import { runReprompt, type RepromptCliOptions } from "./reprompt.js";
 
@@ -14,10 +17,12 @@ import { runReprompt, type RepromptCliOptions } from "./reprompt.js";
  * `rp edit <file>`: the editor Codex and Claude Code open with Ctrl+G.
  *
  * The agent writes its draft to a file, runs `$VISUAL` on it and takes the
- * file back once the editor exits. Reqraft rewrites the draft, shows before
- * and after, and writes the result only when the user keeps it. Cancelling, or
- * a failed rewrite, leaves the file untouched and still exits 0: the agent
- * then gives the draft back as it was, without an error line.
+ * file back once the editor exits. Reqraft rewrites the draft and writes the
+ * result only when the user keeps it: in the desktop app's capsule when it is
+ * open, otherwise in the full `rp` interface, and in a short before/after
+ * review when that interface cannot start. Cancelling, or a failed rewrite,
+ * leaves the file untouched and still exits 0: the agent then gives the draft
+ * back as it was, without an error line.
  */
 export type EditCommandOptions = Pick<RepromptCliOptions, "profile" | "level"> & {
   /** Replace without the before/after review. */
@@ -41,6 +46,12 @@ export interface EditDependencies {
    * `busy`) means the review happens here, in the terminal.
    */
   reviewInApp(draft: string, onConnected: () => void): Promise<AppReview>;
+  /**
+   * Opens the full `rp` interface on the draft; it writes the file itself
+   * when the user sends a result back. Null when it cannot start here (no
+   * Bun, or no build): the short review takes over.
+   */
+  reviewInInterface(file: string, options: EditCommandOptions): number | null;
 }
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
@@ -75,7 +86,7 @@ export function fallbackEditor(env: NodeJS.ProcessEnv, platform: NodeJS.Platform
   return platform === "win32" ? "notepad" : "vi";
 }
 
-export function defaultEditDependencies(t: Translator): EditDependencies {
+export function defaultEditDependencies(t: Translator, uiLocale?: UiLocale): EditDependencies {
   return {
     readText: async (file) => {
       try {
@@ -117,6 +128,17 @@ export function defaultEditDependencies(t: Translator): EditDependencies {
     color: detectColor(process.env, process.stderr.isTTY),
     readKey: () => readKey(process.stdin),
     reviewInApp: (draft, onConnected) => requestAppReview(draft, { onConnected }),
+    reviewInInterface: (file, options) => {
+      if (!canRunOpenTui()) return null;
+      try {
+        return runOpenTuiAppLauncher(
+          uiLocale,
+          toAgentDraftArguments({ file, profile: options.profile, level: options.level }),
+        );
+      } catch {
+        return null;
+      }
+    },
     openInEditor: (file) => {
       // The editor may carry arguments ("code --wait"); no shell is involved,
       // so nothing in the file name can run as a command.
@@ -159,6 +181,8 @@ export async function runEdit(
 
   const answeredInApp = await reviewInAppFirst(file, draft, options, deps, style, t);
   if (answeredInApp !== null) return answeredInApp;
+  const answeredInInterface = await reviewInInterfaceNext(file, draft, options, deps);
+  if (answeredInInterface !== null) return answeredInInterface;
 
   for (;;) {
     const attempt = await rewriteOnce(draft, options, deps, style, t);
@@ -201,6 +225,26 @@ async function reviewInAppFirst(
     return EXIT_CODES.SUCCESS;
   }
   return inApp.result === "cancelled" ? EXIT_CODES.SUCCESS : null;
+}
+
+/**
+ * Without the app, the full `rp` interface: profile, level and model, the
+ * diff, and a draft to touch up before rewriting it again. Null means the
+ * short review: no interface here, or one that failed before sending anything
+ * back.
+ */
+async function reviewInInterfaceNext(
+  file: string,
+  draft: string,
+  options: EditCommandOptions,
+  deps: EditDependencies,
+): Promise<number | null> {
+  if (!deps.interactive || options.yes === true) return null;
+  const code = deps.reviewInInterface(file, options);
+  if (code === null) return null;
+  if (code === EXIT_CODES.SUCCESS) return EXIT_CODES.SUCCESS;
+  const now = await deps.readText(file).catch(() => draft);
+  return now === draft ? null : EXIT_CODES.SUCCESS;
 }
 
 /** One rewrite: its text, or the exit code to leave with when it failed. */

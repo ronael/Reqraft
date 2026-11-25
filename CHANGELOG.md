@@ -34,9 +34,11 @@
   lines to paste, or prints instructions for your agent. `--disable` removes
   the block and nothing else. `rp init` offers it at the end of the setup, and
   people who already use the CLI see a one-time tip after a rewrite.
-- `rp edit <file>` is the editor those agents open. It rewrites the draft,
-  shows before and after, and writes the result only when you keep it;
-  cancelling or a failed rewrite gives the agent its draft back unchanged.
+- `rp edit <file>` is the editor those agents open. It opens the full `rp`
+  interface on the draft and rewrites it at once: profile, level, model, diff
+  and a draft to touch up are all there. Ctrl+Y sends the result back to the
+  agent; Ctrl+C, or a failed rewrite, gives the agent its draft back unchanged.
+  Without Bun, a shorter before/after review takes its place.
 
 ### Reliability and distribution
 

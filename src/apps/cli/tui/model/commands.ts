@@ -24,6 +24,7 @@ export type CommandLabelKey = {
 export type CommandId =
   | "generate"
   | "cancel"
+  | "use"
   | "copy"
   | "reset"
   | "toggle-diff"
@@ -66,6 +67,11 @@ export interface CommandContext {
   hasResult: boolean;
   isGenerating: boolean;
   inputLength: number;
+  /**
+   * Opened by `rp edit` on a terminal agent's draft: the result goes back to
+   * the agent rather than to the clipboard.
+   */
+  agentDraft?: boolean;
 }
 
 export interface CommandDefinition {
@@ -118,11 +124,22 @@ export const COMMANDS: readonly CommandDefinition[] = [
     isAvailable: (context) => !context.isGenerating,
   },
   {
+    // An agent's draft: the result replaces it, which is what copying was
+    // for. It takes copy's chord, so the key people know does the right thing
+    // in both kinds of session, and copy steps aside rather than show ^Y twice.
+    id: "use",
+    chords: [ctrl("y")],
+    labelKey: "tui.command.use",
+    scope: "global",
+    isAvailable: (context) =>
+      context.agentDraft === true && context.hasResult && !context.isGenerating,
+  },
+  {
     id: "copy",
     chords: [ctrl("y")],
     labelKey: "tui.command.copy",
     scope: "global",
-    isAvailable: (context) => context.hasResult,
+    isAvailable: (context) => context.hasResult && context.agentDraft !== true,
   },
   {
     id: "reset",

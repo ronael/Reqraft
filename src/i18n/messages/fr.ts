@@ -599,6 +599,9 @@ export const fr = {
   "tui.command.cancel": () => "Interrompre",
   "tui.command.exit": () => "Quitter",
   "tui.command.copy": () => "Copier",
+  "tui.command.use": () => "Utiliser",
+  "tui.agentDraft.hint": ({ use, exit }) =>
+    `Brouillon de votre agent. ${use} renvoie la réécriture, ${exit} le laisse tel quel.`,
   "tui.command.reset": () => "Réinitialiser",
   "tui.command.toggleDiff": () => "Afficher le diff",
   "tui.command.explain": () => "Expliquer",

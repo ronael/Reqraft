@@ -50,6 +50,8 @@ export interface MessageParameters {
   "tui.command.cancel": undefined;
   "tui.command.exit": undefined;
   "tui.command.copy": undefined;
+  "tui.command.use": undefined;
+  "tui.agentDraft.hint": { use: string; exit: string };
   "tui.command.reset": undefined;
   "tui.command.toggleDiff": undefined;
   "tui.command.explain": undefined;

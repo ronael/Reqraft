@@ -6,7 +6,16 @@ import { fileURLToPath } from "node:url";
 import type { UiLocale } from "@/i18n/locale.js";
 import { createTranslator } from "@/i18n/translate.js";
 
-export function runOpenTuiAppLauncher(uiLocale?: UiLocale): number {
+/** True when the interface can start here: built, and Bun installed. */
+export function canRunOpenTui(): boolean {
+  return resolveStandaloneEntry() !== null && resolveBunBinary() !== null;
+}
+
+/**
+ * Runs the interface and waits for it. `args` reach the interface's own entry
+ * point: `rp edit` passes the agent's draft there.
+ */
+export function runOpenTuiAppLauncher(uiLocale?: UiLocale, args: readonly string[] = []): number {
   const t = createTranslator(uiLocale ?? "en");
   const entry = resolveStandaloneEntry();
   if (!entry) {
@@ -17,7 +26,7 @@ export function runOpenTuiAppLauncher(uiLocale?: UiLocale): number {
     throw new Error(t("opentui.bunRequired"));
   }
 
-  const result = spawnSync(bun, [entry], {
+  const result = spawnSync(bun, [entry, ...args], {
     env: uiLocale ? { ...process.env, REQRAFT_UI_LOCALE: uiLocale } : process.env,
     stdio: "inherit",
   });

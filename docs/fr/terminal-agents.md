@@ -2,9 +2,9 @@
 
 Tapez votre demande dans Codex, Claude Code ou un autre agent du terminal comme
 elle vient, appuyez sur sa touche d'éditeur (**Ctrl+G** dans la plupart), et
-Reqraft la réécrit sur place. Vous voyez l'avant et l'après :
-Entrée garde la réécriture, `r` en relance une, Échap rend votre brouillon
-intact.
+Reqraft s'ouvre dessus et la réécrit. Changez de profil, de niveau ou de
+modèle, regardez le diff, puis renvoyez le résultat avec **Ctrl+Y**, ou quittez
+avec **Ctrl+C** pour retrouver votre brouillon intact.
 
 ## Comment ça marche
 
@@ -48,6 +48,19 @@ tel quel. App fermée, ou agent lancé en SSH, la relecture reste dans le
 terminal.
 
 Réglages › Agents IA › Relecture choisit entre les deux.
+
+## Relire dans le terminal
+
+App fermée, `rp edit` ouvre l'interface complète de `rp` sur votre brouillon et
+le réécrit aussitôt. Tout ce que `rp` propose y est : le profil (Ctrl+P), le
+niveau (Ctrl+L) et le modèle (Ctrl+O), le diff (Ctrl+D) et l'explication
+(Ctrl+E). Vous pouvez aussi retoucher le brouillon dans l'éditeur et le
+réécrire avec Ctrl+G. **Ctrl+Y** renvoie le résultat à l'agent ; **Ctrl+C**
+laisse votre brouillon tel quel.
+
+Cette interface tourne sur Bun, comme `rp` seul. Sans Bun, `rp edit` montre une
+relecture plus courte : Entrée garde la réécriture, `r` en relance une, Échap
+rend votre brouillon.
 
 ## L'activer
 
@@ -131,8 +144,9 @@ changement gardent leur ancien shell : ouvrez une nouvelle fenêtre.
 **« editor exited with status 1 »** : `rp edit` n'a pas pu se lancer. Vérifiez
 que `rp --version` marche dans ce terminal, puis lancez `rp doctor`.
 
-**La réécriture a échoué** : la raison reste affichée jusqu'à ce que vous
-appuyiez sur Entrée, et votre brouillon revient inchangé.
+**La réécriture a échoué** : l'interface dit pourquoi, et Ctrl+C rend votre
+brouillon inchangé. Dans la relecture courte, la raison reste affichée jusqu'à
+ce que vous appuyiez sur Entrée.
 
 **Le retirer** : `rp agents --disable`, ou **Désactiver** dans Réglages ›
 Agents IA, retire le bloc et laisse le reste du fichier tel quel.

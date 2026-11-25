@@ -49,6 +49,7 @@ import {
   type PickerId,
 } from "@/apps/cli/ui/modal-options.js";
 import { createOpenTuiRendererOptions } from "@/apps/cli/opentui/renderer-options.js";
+import { applyAgentDraftSettings, withAgentDraft } from "@/apps/cli/ui/agent-draft.js";
 import { createTranslator, type Translator } from "@/i18n/translate.js";
 
 import {
@@ -57,6 +58,7 @@ import {
   type ToastState,
 } from "@/apps/cli/tui/screens/EditorScreen.js";
 import { useKeyboardRouting } from "@/apps/cli/tui/app/use-keyboard-routing.js";
+import { useAgentDraftStart, type AgentDraftSession } from "./use-agent-draft.js";
 import type { OverlayRoute } from "@/apps/cli/tui/model/keymap.js";
 import {
   createProfileForm,
@@ -154,12 +156,14 @@ const OVERLAY_OPENING_COMMANDS: ReadonlySet<CommandId> = new Set([
 export async function runOpenTuiAppV2(
   t: Translator = createTranslator("en"),
   services: TuiServices = DEFAULT_SERVICES,
+  agentDraft?: AgentDraftSession,
 ): Promise<void> {
   const renderer = await createCliRenderer(createOpenTuiRendererOptions());
   createRoot(renderer).render(
     <OpenTuiApp
       t={t}
       services={services}
+      agentDraft={agentDraft}
       onExit={() => {
         // `destroy()`, not `stop()`. `stop()` only halts the render loop — it
         // belongs to the start/pause/resume lifecycle and leaves the terminal
@@ -175,6 +179,8 @@ export async function runOpenTuiAppV2(
 interface OpenTuiAppProps {
   t: Translator;
   services: TuiServices;
+  /** Set when `rp edit` opened the interface on a terminal agent's draft. */
+  agentDraft?: AgentDraftSession;
   onExit(): void;
 }
 
@@ -182,11 +188,19 @@ interface OpenTuiAppProps {
  * Exposed for the interaction tests: the real component, driven through fake
  * services. The production entry point is `runOpenTuiAppV2`.
  */
-export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): React.ReactNode {
+export function OpenTuiApp({
+  t,
+  services,
+  agentDraft,
+  onExit,
+}: Readonly<OpenTuiAppProps>): React.ReactNode {
   const renderer = useRenderer();
   const { width, height } = useTerminalDimensions();
 
-  const [app, setApp] = useState<AppState>(() => createInitialAppState(DEFAULT_CONFIG));
+  const [app, setApp] = useState<AppState>(() => {
+    const initial = createInitialAppState(DEFAULT_CONFIG);
+    return agentDraft === undefined ? initial : withAgentDraft(initial, agentDraft);
+  });
   const [config, setConfig] = useState<Config | null>(null);
   const [configReady, setConfigReady] = useState(false);
   const [status, setStatus] = useState<Status>("idle");
@@ -218,15 +232,16 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
         const nextConfig = result.config;
         const bootstrapError = getBootstrapError(result);
         setConfig(nextConfig);
-        setApp((prev) =>
-          applyLoadedConfig(
+        setApp((prev) => {
+          const loaded = applyLoadedConfig(
             prev,
             nextConfig,
             bootstrapError
               ? services.describeError(bootstrapError, nextConfig.defaultProvider, t)
               : null,
-          ),
-        );
+          );
+          return agentDraft === undefined ? loaded : applyAgentDraftSettings(loaded, agentDraft);
+        });
         if (bootstrapError) setStatus("error");
       })
       .catch((error: unknown) => {
@@ -239,7 +254,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       .finally(() => {
         setConfigReady(true);
       });
-  }, [services, t]);
+  }, [agentDraft, services, t]);
 
   /**
    * The single toast entry point: set the toast, then schedule its expiry.
@@ -346,6 +361,26 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       setStatus("error");
     }
   }, [app.result, app.provider, services, showToast, t]);
+
+  useAgentDraftStart(
+    agentDraft,
+    { configReady, failed: status === "error" },
+    generate,
+    showToast,
+    t,
+  );
+
+  /** The result replaces the agent's draft, and the agent takes the terminal back. */
+  const sendResultToAgent = useCallback(async (): Promise<void> => {
+    if (!app.result || agentDraft === undefined) return;
+    try {
+      await agentDraft.use(app.result.rewritten);
+      onExit();
+    } catch (error) {
+      setApp((prev) => failCopy(prev, services.describeError(error, app.provider, t)));
+      setStatus("error");
+    }
+  }, [agentDraft, app.result, app.provider, onExit, services, t]);
 
   const pasteFromClipboard = useCallback(async (): Promise<void> => {
     try {
@@ -561,6 +596,9 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
           abortController.current?.abort();
           showToast(t("tui.toast.cancelled"), "neutral");
           break;
+        case "use":
+          void sendResultToAgent();
+          break;
         case "copy":
           void copyResult();
           break;
@@ -626,6 +664,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       closeOverlayAndRestore,
       openProfileActions,
       submitProfileForm,
+      sendResultToAgent,
       copyResult,
       generate,
       onExit,
@@ -669,8 +708,9 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       isProfilePicker: overlay.active === "profile",
       hasProfileForm: overlay.active === PROFILE_FORM_OVERLAY,
       editorFocused: focus.zone === "editor" && overlay.active === null,
+      agentDraft: agentDraft !== undefined,
     }),
-    [app.input.length, app.result, focus.zone, overlay.active, status],
+    [agentDraft, app.input.length, app.result, focus.zone, overlay.active, status],
   );
 
   const overlayOptionCount = useMemo(() => {
@@ -849,6 +889,7 @@ export function OpenTuiApp({ t, services, onExit }: Readonly<OpenTuiAppProps>): 
       settings={settings}
       ready={status !== "loading" && status !== "streaming"}
       toast={toast}
+      agentDraft={agentDraft !== undefined}
       t={t}
       onPromptChange={(value) => {
         setApp((prev) => updatePromptInput(prev, value));
