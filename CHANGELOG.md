@@ -18,6 +18,10 @@
 - The platform table in the release notes no longer says that selection
   capture and reinjection are macOS-only: Windows has both since 0.6.5, though
   its installer has not yet been tested by hand on a clean machine.
+- `rp` finds Bun on the PATH and where Bun's own installer puts it
+  (`$BUN_INSTALL/bin`, `~/.bun/bin`), not only in Homebrew and system folders.
+  A Bun installed with its script no longer reads as missing, and Windows
+  finds `bun.exe`. A relative PATH entry is never used.
 
 ## 0.6.5 (2026-11-16)
 
