@@ -1,3 +1,5 @@
+import { enableCandidates, readAgentsStatus } from "@/agents/setup.js";
+import { defaultAgentsDependencies, runAgents } from "./agents.js";
 import process from "node:process";
 import readline from "node:readline";
 import { existsSync } from "node:fs";
@@ -52,6 +54,8 @@ interface InitProviderChoice {
 }
 
 interface RunFirstRunOptions {
+  /** The last step, `rp agents`; replaced in tests. */
+  agentsStep?: (t: Translator) => Promise<void>;
   reset?: boolean;
   input?: Readable;
   output?: Writable;
@@ -392,6 +396,19 @@ export async function runFirstRunSetup(
   } finally {
     io.close();
   }
+  // Reached only once the setup is done. Last step, outside the setup's own
+  // terminal: `rp agents` asks with its own keys.
+  await (options.agentsStep ?? offerAgents)(t);
+}
+
+/** The `rp agents` choice, when an installed agent can still be connected. */
+async function offerAgents(t: Translator): Promise<void> {
+  if (!process.stdin.isTTY || !process.stdout.isTTY) return;
+  const deps = defaultAgentsDependencies();
+  const status = await readAgentsStatus(deps.ports, deps.environment);
+  if (enableCandidates(status).length === 0) return;
+  process.stdout.write("\n");
+  await runAgents({}, t, deps);
 }
 
 /**

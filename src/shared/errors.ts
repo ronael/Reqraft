@@ -90,6 +90,11 @@ const ERROR_MESSAGE_RESOLVERS: Partial<Record<ReqraftErrorCode, ErrorMessageReso
       name: String(error.params?.name ?? ""),
       path: String(error.params?.path ?? ""),
     }),
+  "agents.shell_unknown": (_error, _provider, t) => t("error.agents.shellUnknown"),
+  "agents.unknown": (error, _provider, t) =>
+    t("error.agents.unknown", { agent: String(error.params?.agent ?? "") }),
+  "agents.unsupported": (error, _provider, t) =>
+    t("error.agents.unsupported", { agent: String(error.params?.agent ?? "") }),
   "profile.unknown": (error, _provider, t) =>
     t("error.profile.unknown", { profile: String(error.params?.profile ?? "") }),
   "level.invalid": (error, _provider, t) =>
