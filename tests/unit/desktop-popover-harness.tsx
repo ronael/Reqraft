@@ -131,6 +131,9 @@ export async function monterPopover(options: PopoverHarnessOptions = {}): Promis
           : { entries: options.profiles, problems: [] },
       ),
     readLocale: () => Promise.resolve({ locale: "en" as const, messages: DESKTOP_EN }),
+    // Nothing new to announce: the popover is the subject, not the news.
+    announcements: () => Promise.resolve([]),
+    dismissAnnouncement: () => Promise.resolve(),
     onRunDelta: (listener: (payload: RunDeltaPayload) => void) =>
       subscription(listeners.delta, listener),
     onRunDone: (listener: (payload: RunDonePayload) => void) =>

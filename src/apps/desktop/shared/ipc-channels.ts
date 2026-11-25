@@ -100,6 +100,16 @@ export const IPC_CHANNELS = {
   // modèle sorti depuis. La requête ne nomme qu'un fournisseur ; les
   // credentials restent hydratés et utilisés dans le processus principal.
   modelsList: "models:list",
+  // Réglages › Agents IA : quels agents du terminal confient leur brouillon à
+  // `rp edit`, et la ligne du fichier de démarrage qui les y conduit. Le
+  // renderer ne nomme qu'un agent ou un texte par son identifiant : le fichier,
+  // la recherche dans le PATH et le presse-papiers restent au processus principal.
+  agentsState: "agents:state",
+  agentsSet: "agents:set",
+  agentsCopy: "agents:copy",
+  // Ce qui est nouveau depuis la dernière version vue, annoncé une seule fois.
+  announcementsRead: "announcements:read",
+  announcementsDismiss: "announcements:dismiss",
   // Main → renderer, pushed (webContents.send).
   runDelta: "run:delta",
   runDone: "run:done",
@@ -152,6 +162,11 @@ export const REQUEST_CHANNELS = [
   IPC_CHANNELS.providerDelete,
   IPC_CHANNELS.providerTest,
   IPC_CHANNELS.modelsList,
+  IPC_CHANNELS.agentsState,
+  IPC_CHANNELS.agentsSet,
+  IPC_CHANNELS.agentsCopy,
+  IPC_CHANNELS.announcementsRead,
+  IPC_CHANNELS.announcementsDismiss,
 ] as const;
 
 /** Channels the main process pushes to the renderer. */

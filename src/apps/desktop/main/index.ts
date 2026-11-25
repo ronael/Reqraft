@@ -1,4 +1,5 @@
 import path from "node:path";
+import { homedir } from "node:os";
 import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
@@ -76,7 +77,8 @@ import { createCapsuleWindow, type CapsuleWindow } from "./windows/capsule.js";
 import { createPopoverWindow, type PopoverWindow } from "./windows/popover.js";
 import { createSettingsWindow } from "./windows/settings.js";
 import { revealExistingWindow } from "./windows/reveal.js";
-import { resolveMainLocale, setMainLocale, t } from "./i18n.js";
+import { mainLocale, resolveMainLocale, setMainLocale, t } from "./i18n.js";
+import { cliVersion, createDesktopAgents, loginShellPath, type DesktopAgents } from "./agents.js";
 import {
   DESKTOP_E2E_PROBE,
   DESKTOP_E2E_HOLD,
@@ -849,9 +851,12 @@ function bootstrap(): void {
       },
     });
 
+    const agents = createSessionAgents(desktopEnv, clipboard);
+
     registerIpcHandlers({
       ipcMain,
       clipboard,
+      agents,
       env: desktopEnv,
       platform: process.platform,
       secureCredentialStorageAvailable: credentialRuntime.secureStorageAvailable,
@@ -977,5 +982,25 @@ function bootstrap(): void {
     if (process.platform !== "darwin") {
       app.quit();
     }
+  });
+}
+
+/**
+ * Réglages › Agents IA for this session. The login shell's PATH is asked for
+ * when the tab first opens, then kept: an app started from the Finder does not
+ * have the terminal's PATH.
+ */
+function createSessionAgents(env: NodeJS.ProcessEnv, clipboard: Electron.Clipboard): DesktopAgents {
+  let loginPath: Promise<string | undefined> | null = null;
+  return createDesktopAgents({
+    env,
+    platform: process.platform,
+    home: homedir() || undefined,
+    locale: mainLocale,
+    writeClipboard: (text) => {
+      clipboard.writeText(text);
+    },
+    searchPath: () => (loginPath ??= loginShellPath(env, process.platform, homedir())),
+    cliVersion,
   });
 }

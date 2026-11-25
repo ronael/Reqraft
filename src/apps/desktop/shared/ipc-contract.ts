@@ -1064,6 +1064,62 @@ export type Unsubscribe = () => void;
  * functions only, one per channel. `ipcRenderer` and any generic `invoke`
  * never cross the context bridge (DESKTOP.md §2.3).
  */
+/** Réglages › Agents IA. */
+export const AgentSetRequestSchema = z
+  .object({ id: z.string().trim().min(1), enabled: z.boolean() })
+  .strict();
+
+/** What to put on the clipboard, named rather than sent as text. */
+export const AgentCopyRequestSchema = z.discriminatedUnion("what", [
+  z.object({ what: z.literal("install") }).strict(),
+  z.object({ what: z.literal("prompt") }).strict(),
+  z.object({ what: z.literal("line"), id: z.string().trim().min(1) }).strict(),
+]);
+export type AgentCopyRequest = z.infer<typeof AgentCopyRequestSchema>;
+
+export const AnnouncementIdSchema = z.enum(["agents"]);
+export type AnnouncementId = z.infer<typeof AnnouncementIdSchema>;
+export const AnnouncementDismissRequestSchema = z.object({ id: AnnouncementIdSchema }).strict();
+
+/** Opening the settings on a given tab; nothing means the last one. */
+export const SettingsOpenRequestSchema = z
+  .object({ tab: z.enum(["agents"]) })
+  .strict()
+  .optional();
+export type SettingsTabRequest = NonNullable<z.infer<typeof SettingsOpenRequestSchema>>["tab"];
+
+export interface DesktopAgentStatus {
+  id: string;
+  label: string;
+  /** The command that starts it in a terminal. */
+  command: string;
+  /** Where it was found, `~` for the home directory; null when not installed. */
+  path: string | null;
+  enabled: boolean;
+  /** False when the agent has no external editor Reqraft could stand in for. */
+  supported: boolean;
+  /** Why it is not supported, worded for the user; null when it is. */
+  reason: string | null;
+  /** Listed even when not installed. */
+  featured: boolean;
+  shortcut: string | null;
+  /** The line Enable writes, for people who paste it themselves. */
+  line: string | null;
+}
+
+export interface DesktopAgentsState {
+  cli:
+    | { installed: true; version: string | null; path: string }
+    | { installed: false; installCommand: string };
+  /** Null when the shell is not one Reqraft can write for. */
+  shell: { name: string; file: string } | null;
+  /** What "Copy for your agent" puts on the clipboard. */
+  agentPrompt: string;
+  agents: DesktopAgentStatus[];
+  /** Supported agents that are not installed, named in one line. */
+  alsoSupported: string[];
+}
+
 export interface ReqraftBridge {
   /** Platform resolved by the trusted preload, used for shortcut presentation. */
   platform: DesktopPlatform;
@@ -1098,8 +1154,13 @@ export interface ReqraftBridge {
   capsulePending(): Promise<CapsulePendingResponse>;
   /** Propose une hauteur pour la fenêtre capsule ; le principal l'arbitre. */
   resizeCapsule(height: number): Promise<void>;
-  openSettings(): Promise<void>;
+  openSettings(tab?: SettingsTabRequest): Promise<void>;
   openWelcomeTour(): Promise<void>;
+  agentsState(): Promise<DesktopAgentsState>;
+  setAgentEnabled(id: string, enabled: boolean): Promise<DesktopAgentsState>;
+  copyAgentText(request: AgentCopyRequest): Promise<void>;
+  announcements(): Promise<AnnouncementId[]>;
+  dismissAnnouncement(id: AnnouncementId): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;
   /** Lève la suspension des raccourcis globaux et rend l'état relu après coup. */
   resumeShortcuts(): Promise<ShortcutStateInfo>;

@@ -28,13 +28,14 @@ describe("welcome tour desktop", () => {
     expect(shouldShowWelcomeTour(false, true, true)).toBe(false);
   });
 
-  it("présente six cas d'usage traduits et distincts", () => {
-    expect(WELCOME_TOUR_SLIDES).toHaveLength(6);
-    expect(new Set(WELCOME_TOUR_SLIDES.map(({ visual }) => visual)).size).toBe(6);
+  it("présente sept cas d'usage traduits et distincts", () => {
+    expect(WELCOME_TOUR_SLIDES).toHaveLength(7);
+    expect(new Set(WELCOME_TOUR_SLIDES.map(({ visual }) => visual)).size).toBe(7);
     expect(WELCOME_TOUR_SLIDES.map(({ visual }) => visual)).toEqual([
       "mail",
       "chat",
       "code",
+      "agents",
       "profiles",
       "providers",
       "privacy",

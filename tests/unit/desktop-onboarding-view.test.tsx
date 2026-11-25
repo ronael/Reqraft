@@ -743,7 +743,7 @@ describe("la visite de bienvenue avant le formulaire", () => {
     const { pont, user } = monterOnboarding({ etatInitial: CLE_ENREGISTREE });
 
     await screen.findByRole("heading", { name: PREMIER_ECRAN });
-    await user.click(bouton(t("onboarding.tour.goTo", { step: "6" })));
+    await user.click(bouton(t("onboarding.tour.goTo", { step: "7" })));
     await user.click(bouton(t("onboarding.tour.configure")));
 
     expect(await screen.findByRole("heading", { name: t("onboarding.title") })).toBeTruthy();

@@ -70,6 +70,7 @@ import {
   RepromptCancelRequestSchema,
   RepromptStartRequestSchema,
   ResultAcceptRequestSchema,
+  SettingsOpenRequestSchema,
   type DoctorReport,
   type DesktopUpdateState,
   type ProfileCatalogResponse,
@@ -85,6 +86,7 @@ import {
   type ProviderTestRequest,
   type ProviderTestResponse,
   type SafeConfig,
+  type SettingsTabRequest,
   type ShortcutStateInfo,
   type SystemPermissionPane,
 } from "@/apps/desktop/shared/ipc-contract.js";
@@ -95,6 +97,7 @@ import type { CaptureService } from "./capture-service.js";
 import type { PermissionsReport } from "./permissions.js";
 import { mainLocale, t } from "./i18n.js";
 import { applySavedPreferences } from "./saved-preferences.js";
+import { registerAgentsHandlers, withAnnouncementSeen, type DesktopAgents } from "./agents.js";
 import { version } from "@/version.js";
 
 /**
@@ -156,7 +159,9 @@ export interface DesktopIpcDependencies {
   checkForUpdates?: () => Promise<DesktopUpdateState>;
   openUpdateDownload?: () => Promise<void>;
   /** Lot 4: opens the settings window (from the popover or the capsule). */
-  openSettings?: () => void;
+  openSettings?: (tab?: SettingsTabRequest) => void;
+  /** Réglages › Agents IA. */
+  agents?: DesktopAgents;
   /** Opens the welcome tour explicitly from Settings. */
   openWelcomeTour?: () => void;
   /** Pourquoi la capsule est ouverte, pour qu'elle puisse le demander. */
@@ -366,6 +371,7 @@ export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
   registerProviderStatusHandler(ipcMain, env, hydrate, load, secureCredentialStorage);
 
   registerUpdateHandlers(dependencies);
+  registerAgentsHandlers(ipcMain, dependencies.agents, loadUser, save);
 
   const configExists = dependencies.configFileExists ?? (() => existsSync(configPath()));
   const storeCredential = dependencies.storeCredential ?? defaultStoreCredential;
@@ -383,7 +389,7 @@ export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
     const current = await loadUser();
     await save(
       ConfigSchema.parse({
-        ...current,
+        ...withAnnouncementSeen(current, "agents"),
         desktopWelcomeTourVersion: CURRENT_WELCOME_TOUR_VERSION,
       }),
     );
@@ -518,8 +524,8 @@ export function registerIpcHandlers(injected: DesktopIpcDependencies): void {
   });
 
   ipcMain.handle(IPC_CHANNELS.windowOpenSettings, (_event, payload) => {
-    EmptyRequestSchema.parse(payload);
-    dependencies.openSettings?.();
+    const request = SettingsOpenRequestSchema.parse(payload);
+    dependencies.openSettings?.(request?.tab);
   });
 
   ipcMain.handle(IPC_CHANNELS.windowOpenWelcomeTour, (_event, payload) => {

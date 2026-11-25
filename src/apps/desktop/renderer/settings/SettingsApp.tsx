@@ -8,6 +8,7 @@ import {
   KeyRound,
   Plus,
   SlidersHorizontal,
+  SquareTerminal,
   Stethoscope,
   Type,
   UserRound,
@@ -24,6 +25,7 @@ import {
   type ShortcutStateInfo,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
+import { AgentsTab } from "./AgentsTab.js";
 import { DiagnosticTab } from "./DiagnosticTab.js";
 import { ModelsTab } from "./ModelsTab.js";
 import { ProfilesTab } from "./ProfilesTab.js";
@@ -45,7 +47,15 @@ import { PreferencesTab } from "./PreferencesTab.js";
 import { UpdatesTab } from "./UpdatesTab.js";
 import { version } from "@/version.js";
 
-const TABS = ["profiles", "providers", "models", "preferences", "updates", "diagnostic"] as const;
+const TABS = [
+  "profiles",
+  "providers",
+  "models",
+  "agents",
+  "preferences",
+  "updates",
+  "diagnostic",
+] as const;
 type Tab = (typeof TABS)[number];
 const SETTINGS_NAV_ITEM_HEIGHT = 36;
 const SETTINGS_NAV_GAP = 2;
@@ -85,6 +95,11 @@ const TAB_META: Record<
     icon: Cpu,
     titleKey: "settings.nav.models",
     detailKey: "settings.models.detail",
+  },
+  agents: {
+    icon: SquareTerminal,
+    titleKey: "settings.nav.agents",
+    detailKey: "settings.agents.detail",
   },
   preferences: {
     icon: SlidersHorizontal,
@@ -382,6 +397,8 @@ export function SettingsApp(): React.JSX.Element {
                 }}
               />
             )}
+
+            {tab === "agents" && <AgentsTab />}
 
             {tab === "diagnostic" && (
               <DiagnosticTab

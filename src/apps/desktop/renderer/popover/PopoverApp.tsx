@@ -1,10 +1,13 @@
 import {
+  type AnnouncementId,
   REPROMPT_LEVEL_IDS,
   type ProfileCatalogEntry,
   type RepromptResult,
 } from "@/apps/desktop/shared/ipc-contract.js";
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useT } from "../shared/i18n.js";
+import { InlineMessage } from "../shared/InlineMessage.js";
+import { Button } from "../shared/Button.js";
 import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
@@ -76,6 +79,21 @@ export function PopoverApp(): React.JSX.Element {
   // 320×260 and not resizable, so an overlay would be cut off by its edge.
   const [picking, setPicking] = useState(false);
   const [level, setLevel] = useState<Level>("standard");
+  // Ce qui est nouveau depuis la dernière version vue : annoncé une fois, puis
+  // plus jamais, que la personne l'ouvre ou le remette à plus tard.
+  const [announcement, setAnnouncement] = useState<AnnouncementId | null>(null);
+  useEffect(() => {
+    window.reqraft
+      .announcements()
+      .then((items) => {
+        setAnnouncement(items[0] ?? null);
+      })
+      .catch(() => undefined);
+  }, []);
+  const closeAnnouncement = (id: AnnouncementId): void => {
+    setAnnouncement(null);
+    void window.reqraft.dismissAnnouncement(id).catch(() => undefined);
+  };
   const [running, setRunning] = useState(false);
   const [streamed, setStreamed] = useState("");
   const [lastResult, setLastResult] = useState<RepromptResult | null>(null);
@@ -292,6 +310,9 @@ export function PopoverApp(): React.JSX.Element {
     );
   }
 
+  // Rien en cours ni à lire : la place est libre pour l'annonce.
+  const popoverIdle = !running && failed === null && !resultatVisible;
+
   return (
     <main className="popover">
       <div className="popover-input-zone">
@@ -335,6 +356,29 @@ export function PopoverApp(): React.JSX.Element {
       </div>
 
       <div className="popover-content" ref={contentRef}>
+        {announcement === "agents" && popoverIdle && (
+          <div className="popover-section popover-announcement">
+            <InlineMessage tone="info">{t("popover.agentsNew")}</InlineMessage>
+            <div className="popover-announcement-actions">
+              <Button
+                variant="neutral"
+                onClick={() => {
+                  closeAnnouncement("agents");
+                }}
+              >
+                {t("popover.agentsLater")}
+              </Button>
+              <Button
+                onClick={() => {
+                  closeAnnouncement("agents");
+                  void window.reqraft.openSettings("agents");
+                }}
+              >
+                {t("popover.agentsSetup")}
+              </Button>
+            </div>
+          </div>
+        )}
         {running && (
           <div className="popover-section">
             <div className="popover-label">{t("popover.receiving")}</div>

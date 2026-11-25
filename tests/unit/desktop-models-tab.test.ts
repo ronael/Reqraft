@@ -189,9 +189,10 @@ describe("settingsNavIndicatorOffset", () => {
     expect(settingsNavIndicatorOffset("profiles")).toBe(0);
     expect(settingsNavIndicatorOffset("providers")).toBe(38);
     expect(settingsNavIndicatorOffset("models")).toBe(76);
-    expect(settingsNavIndicatorOffset("preferences")).toBe(114);
-    expect(settingsNavIndicatorOffset("updates")).toBe(152);
-    expect(settingsNavIndicatorOffset("diagnostic")).toBe(190);
+    expect(settingsNavIndicatorOffset("agents")).toBe(114);
+    expect(settingsNavIndicatorOffset("preferences")).toBe(152);
+    expect(settingsNavIndicatorOffset("updates")).toBe(190);
+    expect(settingsNavIndicatorOffset("diagnostic")).toBe(228);
   });
 });
 
