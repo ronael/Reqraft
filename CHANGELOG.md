@@ -20,6 +20,12 @@
 - A provider error in a desktop window points to Settings (Providers or
   Diagnostics) instead of suggesting `rp auth login` or `rp doctor`, which no
   window can run.
+- When macOS refuses Accessibility or Automation, the capsule says what it
+  blocked (copying the selection, or pasting the result back) and what to
+  allow, and its button opens that pane of System Settings, replacing a path
+  to retrace by hand. A refused paste keeps the capsule open on the copied
+  result, so ⏎ tries again once the permission is granted. The French notice
+  names « Événements système », as French macOS lists it.
 
 ### Command line
 
@@ -44,6 +50,10 @@
 - The platform table in the release notes no longer says that selection
   capture and reinjection are macOS-only: Windows has both since 0.6.5, though
   its installer has not yet been tested by hand on a clean machine.
+- `rp` finds Bun on the PATH and where Bun's own installer puts it
+  (`$BUN_INSTALL/bin`, `~/.bun/bin`), not only in Homebrew and system folders.
+  A Bun installed with its script no longer reads as missing, and Windows
+  finds `bun.exe`. A relative PATH entry is never used.
 
 ## 0.6.5 (2026-11-16)
 

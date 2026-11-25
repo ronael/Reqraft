@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { accessSync, constants, existsSync, statSync } from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
@@ -47,7 +48,51 @@ function resolveStandaloneEntry(): string | null {
   return candidates.find((candidate) => existsSync(candidate)) ?? null;
 }
 
-function resolveBunBinary(): string | null {
-  const candidates = ["/opt/homebrew/bin/bun", "/usr/local/bin/bun", "/usr/bin/bun", "/bin/bun"];
-  return candidates.find((candidate) => existsSync(candidate)) ?? null;
+/** Package managers' usual folders, the only places looked at before. */
+const USUAL_BUN_PATHS = ["/opt/homebrew/bin/bun", "/usr/local/bin/bun", "/usr/bin/bun", "/bin/bun"];
+
+/**
+ * Where Bun may be, in order.
+ *
+ * The PATH comes first: it holds the `bun` the person runs. Bun's own
+ * installer puts it in `$BUN_INSTALL/bin`, `~/.bun/bin` by default, and only
+ * adds that folder to the PATH of shells opened afterwards, so those come
+ * next; the package managers' folders close the list. A relative PATH entry is
+ * skipped: it would run whatever `bun` sits in the current folder.
+ */
+export function bunCandidates(
+  env: NodeJS.ProcessEnv,
+  platform: NodeJS.Platform,
+  home: string,
+): string[] {
+  const paths = platform === "win32" ? path.win32 : path.posix;
+  const executable = platform === "win32" ? "bun.exe" : "bun";
+  const absolute = (folder: string | undefined): folder is string =>
+    folder !== undefined && folder !== "" && paths.isAbsolute(folder);
+  const onPath = (env.PATH ?? "")
+    .split(paths.delimiter)
+    .filter(absolute)
+    .map((folder) => paths.join(folder, executable));
+  const installed = [env.BUN_INSTALL, paths.join(home, ".bun")]
+    .filter(absolute)
+    .map((folder) => paths.join(folder, "bin", executable));
+  const usual = platform === "win32" ? [] : USUAL_BUN_PATHS;
+  return [...new Set([...onPath, ...installed, ...usual])];
+}
+
+export function resolveBunBinary(
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform,
+  home: string = os.homedir(),
+): string | null {
+  return bunCandidates(env, platform, home).find(isExecutableFile) ?? null;
+}
+
+function isExecutableFile(file: string): boolean {
+  try {
+    accessSync(file, constants.X_OK);
+    return statSync(file).isFile();
+  } catch {
+    return false;
+  }
 }
