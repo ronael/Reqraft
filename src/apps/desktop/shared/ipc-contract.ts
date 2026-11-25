@@ -211,7 +211,13 @@ export interface RepromptStartResponse {
  */
 export type CaptureSelectionResponse =
   | { text: string; sourceApp: string | null }
-  | { empty: true; reason?: string; clipboardText?: string };
+  | {
+      empty: true;
+      reason?: string;
+      clipboardText?: string;
+      /** Set when a macOS permission stopped the copy: the capsule offers its pane. */
+      permission?: SystemPermissionPane;
+    };
 
 export interface ResultAcceptResponse {
   applied: boolean;
@@ -224,6 +230,8 @@ export interface ResultAcceptResponse {
    * revenue au premier plan. Même oubli que pour la raison d'une capture vide.
    */
   reason?: string;
+  /** Set when a macOS permission stopped the replacement: the capsule offers its pane. */
+  permission?: SystemPermissionPane;
 }
 
 /**

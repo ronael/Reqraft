@@ -54,4 +54,31 @@ describe("InlineMessage", () => {
 
     expect(markup).toContain('class="inline-message inline-message-info layout-hook"');
   });
+
+  it("porte un titre et l'action qui règle le problème, à sa droite", () => {
+    const markup = renderToStaticMarkup(
+      <InlineMessage
+        tone="warning"
+        title="macOS a bloqué la copie"
+        action={<button>Ouvrir</button>}
+      >
+        Autorise Reqraft.
+      </InlineMessage>,
+    );
+
+    expect(markup).toContain(
+      'class="inline-message inline-message-warning inline-message-with-action"',
+    );
+    expect(markup).toContain(
+      '<strong class="inline-message-title">macOS a bloqué la copie</strong>',
+    );
+    expect(markup).toContain('<div class="inline-message-action"><button>Ouvrir</button></div>');
+  });
+
+  it("garde sa forme d'origine sans titre ni action", () => {
+    const markup = renderToStaticMarkup(<InlineMessage tone="info">x</InlineMessage>);
+
+    expect(markup).not.toContain("inline-message-title");
+    expect(markup).not.toContain("inline-message-action");
+  });
 });

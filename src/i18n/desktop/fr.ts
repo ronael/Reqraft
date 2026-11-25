@@ -11,6 +11,13 @@ export const DESKTOP_FR = {
   "capsule.close": "fermer",
   "capsule.readingSelection": "Lecture de la sélection…",
   "capsule.clipboardSuggested": "Ton texte copié est prêt à être reformulé.",
+  "capsule.permission.captureBlocked": "macOS a bloqué la copie de ta sélection",
+  "capsule.permission.replaceBlocked": "macOS a bloqué le remplacement",
+  "capsule.permission.allowAutomation":
+    "Autorise Reqraft à contrôler « Événements système » dans Automatisation.",
+  "capsule.permission.allowAccessibility": "Active Reqraft dans Accessibilité.",
+  "capsule.permission.resultCopied": "Ton résultat est copié : ⌘V pour le coller.",
+  "capsule.permission.clipboardInField": "En attendant, ton dernier texte copié est dans le champ.",
   "capsule.analysingIntent": "Analyse de l'intention…",
   "capsule.preparing": "Préparation…",
   "capsule.detectedPreparing": "{profile} détecté · préparation…",

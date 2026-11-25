@@ -6,6 +6,7 @@ import {
   type ReplaceOutcome,
 } from "./capture.js";
 import { FocusTracker } from "./focus.js";
+import { permissionField } from "./native-permission.js";
 import type { DesktopNativeBridge } from "./native-bridge.js";
 import type { CaptureSelectionResponse } from "@/apps/desktop/shared/ipc-contract.js";
 import { t } from "./i18n.js";
@@ -69,6 +70,7 @@ export class CaptureService {
             // La raison remonte telle quelle : c'est la seule chose qui distingue
             // « rien de sélectionné » de « permission refusée ».
             reason: outcome.reason,
+            ...(outcome.permission === undefined ? {} : { permission: outcome.permission }),
             ...(outcome.clipboardText === undefined
               ? {}
               : { clipboardText: outcome.clipboardText }),
@@ -100,7 +102,12 @@ export class CaptureService {
   async replace(text: string): Promise<ReplaceOutcome> {
     const sourceApp = this.focus.current;
     if (sourceApp === null) {
-      return { applied: false, reason: t("main.replaceSourceUnknown") };
+      const blocked = this.focus.blocked;
+      return {
+        applied: false,
+        reason: t("main.replaceSourceUnknown"),
+        ...(blocked === null ? {} : { permission: blocked }),
+      };
     }
     const { bridge, clipboard } = this.dependencies;
     try {
@@ -113,6 +120,7 @@ export class CaptureService {
       return {
         applied: false,
         reason: describeNativeFailure(error, (detail) => t("main.replaceFailed", { detail })),
+        ...permissionField(error),
       };
     }
   }

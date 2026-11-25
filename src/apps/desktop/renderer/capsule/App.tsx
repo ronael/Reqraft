@@ -1,19 +1,11 @@
 import { BrandMark } from "../shared/BrandMark.js";
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { ProfileSheet } from "../shared/ProfilePicker.js";
 import { Toast, toastDurationMs, useToast } from "../shared/Toast.js";
 import { PromptEditor } from "./PromptEditor.js";
 import { ResultEditor } from "../shared/ResultEditor.js";
 import { useCapsuleHeight } from "./useCapsuleHeight.js";
-import { useT, type Translate } from "../shared/i18n.js";
+import { useT } from "../shared/i18n.js";
 import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { CAPSULE_SHORTCUTS, formatCapsuleShortcut } from "../shared/shortcut-labels.js";
 import { describeQualityVerdict } from "../shared/quality.js";
@@ -38,6 +30,13 @@ import {
   type CapsuleIntent,
 } from "./keyboard.js";
 import { autoApplyDecision, isUserIntervention } from "./auto-apply.js";
+import {
+  afterCopiedInstead,
+  emptyCaptureNotice,
+  noticeKey,
+  type CapsuleNotice,
+} from "./capsule-notice.js";
+import { CapsuleNoticeView } from "./CapsuleNotice.js";
 import { cycleRepromptLevel, offersLowerLevel, type Level } from "./levels.js";
 
 /** Nommé une fois : l'état apparaît dans trois conditions différentes. */
@@ -87,57 +86,6 @@ function useOuvertureDeCapsule(traiter: (payload: CapsuleOpenedPayload) => void)
   useEffect(() => {
     return window.reqraft.onCapsuleOpened(traiter);
   }, [traiter]);
-}
-
-/**
- * Ce que dit la notice d'une capture vide.
- *
- * La suggestion du texte copié est traduite au rendu, pas au retour de la
- * capture : à la première ouverture, la capture revient avant le catalogue, et
- * la suggestion restait affichée sous sa clé brute. Elle a sa propre ligne,
- * sous la raison : collées en une phrase, les deux se lisaient mal, surtout
- * quand la raison nomme un chemin dans les réglages.
- */
-interface CapsuleNotice {
-  /** Déjà traduite : elle vient du processus principal. */
-  reason: string | null;
-  /** Le champ a été rempli avec le texte copié. */
-  clipboardSuggested: boolean;
-}
-
-/**
- * La notice d'une capture vide. Le texte copié, quand il y en a, remplit le
- * champ : c'est le secours quand le raccourci ne capte rien. Il n'est envoyé
- * qu'au ⌘⏎ de l'utilisateur, et le résultat se recolle dans l'application
- * source comme une sélection.
- */
-function emptyCaptureNotice(capture: { reason?: string; clipboardText?: string }): CapsuleNotice {
-  return {
-    reason: capture.reason ?? null,
-    clipboardSuggested: capture.clipboardText !== undefined,
-  };
-}
-
-function noticeLines(notice: CapsuleNotice | null, t: Translate): string[] {
-  if (notice === null) return [];
-  const lines = notice.reason === null ? [] : [notice.reason];
-  return notice.clipboardSuggested ? [...lines, t("capsule.clipboardSuggested")] : lines;
-}
-
-function CapsuleNoticeLines(
-  props: Readonly<{ lines: readonly string[] }>,
-): React.JSX.Element | null {
-  if (props.lines.length === 0) return null;
-  return (
-    <p className="capsule-notice">
-      {props.lines.map((line, index) => (
-        <Fragment key={line}>
-          {index > 0 && <br />}
-          {line}
-        </Fragment>
-      ))}
-    </p>
-  );
 }
 
 /**
@@ -769,7 +717,7 @@ export function App(): React.JSX.Element {
     dispatch("accept");
     window.reqraft
       .acceptResult(runId, "replace", texte.text)
-      .then(async ({ applied, reason }) => {
+      .then(async ({ applied, reason, permission }) => {
         if (applied) {
           dispatch("applied");
           window.close();
@@ -786,10 +734,16 @@ export function App(): React.JSX.Element {
           echecDuRemplacement(reason);
           return;
         }
-        const message =
-          reason === undefined
-            ? t("capsule.replaceUnavailable")
-            : t("capsule.replaceUnavailableWhy", { reason });
+        const fallback = afterCopiedInstead({ reason, permission }, t);
+        if (fallback.kind === "notice") {
+          // Une permission refusée bloque chaque remplacement tant qu'elle
+          // manque : la capsule la nomme, offre son volet et reste ouverte sur
+          // le résultat copié, au lieu de se fermer sous une annonce.
+          setNotice(fallback.notice);
+          dispatch("failed");
+          return;
+        }
+        const message = fallback.message;
         annoncer(message, "warning");
         dispatch("applied");
         window.setTimeout(() => {
@@ -1026,8 +980,7 @@ export function App(): React.JSX.Element {
 
   // La fenêtre suit le contenu, mais seulement quand le contenu s'est posé :
   // ni pendant le streaming, ni pendant la frappe. Voir `useCapsuleHeight`.
-  const shownNotice = noticeLines(notice, t);
-  useCapsuleHeight({ state, picking, editing, result, notice: shownNotice.join("\n"), error });
+  useCapsuleHeight({ state, picking, editing, result, notice: noticeKey(notice, t), error });
 
   // Un résultat long peut laisser le corps défilé très bas. La comparaison
   // est une nouvelle lecture : elle doit toujours commencer par l'« avant »,
@@ -1214,7 +1167,15 @@ export function App(): React.JSX.Element {
               </div>
             )}
 
-            <CapsuleNoticeLines lines={shownNotice} />
+            <CapsuleNoticeView
+              notice={notice}
+              onSettingsOpened={() => {
+                window.close();
+              }}
+              onOpenFailed={(message) => {
+                annoncer(message, "error");
+              }}
+            />
           </div>
         </section>
       )}
