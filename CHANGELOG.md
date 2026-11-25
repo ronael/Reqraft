@@ -7,6 +7,12 @@
 - A provider error in a desktop window points to Settings (Providers or
   Diagnostics) instead of suggesting `rp auth login` or `rp doctor`, which no
   window can run.
+- When macOS refuses Accessibility or Automation, the capsule says what it
+  blocked (copying the selection, or pasting the result back) and what to
+  allow, and its button opens that pane of System Settings, replacing a path
+  to retrace by hand. A refused paste keeps the capsule open on the copied
+  result, so ⏎ tries again once the permission is granted. The French notice
+  names « Événements système », as French macOS lists it.
 
 ### Reliability and distribution
 

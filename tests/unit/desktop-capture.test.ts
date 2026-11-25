@@ -483,6 +483,36 @@ describe("CaptureService", () => {
 
     expect(outcome.applied).toBe(false);
     expect(outcome.reason).toContain("Accessibility");
+    // Nommée aussi en clair, pour que la capsule ouvre le bon volet.
+    expect(outcome.permission).toBe("accessibility");
+  });
+
+  it("une application source inconnue faute d'Automatisation le dit au remplacement", async () => {
+    // Sans Automatisation, `frontmostApp` échoue dès la capture : la source
+    // reste inconnue, et le remplacement s'arrêtait sur « source inconnue »
+    // sans jamais nommer la vraie cause.
+    const clipboard = new FakeClipboard();
+    const bridge = createBridge(clipboard);
+    bridge.frontmostApp = () => Promise.reject(new Error("execution error: ... (-1743)"));
+    const service = new CaptureService({ bridge, clipboard });
+    await service.trigger();
+
+    const outcome = await service.replace("résultat");
+
+    expect(outcome).toMatchObject({ applied: false, permission: "automation" });
+  });
+
+  it("une erreur qui n'est pas une permission n'en invente pas une", async () => {
+    const clipboard = new FakeClipboard();
+    const bridge = createBridge(clipboard);
+    const service = new CaptureService({ bridge, clipboard });
+    await service.trigger();
+    bridge.sendKeystroke = () => Promise.reject(new Error("timeout"));
+
+    const outcome = await service.replace("résultat");
+
+    expect(outcome.applied).toBe(false);
+    expect(outcome.permission).toBeUndefined();
   });
 });
 
@@ -583,6 +613,7 @@ describe("la raison d'un échec remonte jusqu'à la capsule", () => {
     const reason = "reason" in outcome ? outcome.reason : "";
     expect(reason).toContain("Automation");
     expect(reason).not.toContain("Accessibility");
+    expect("permission" in outcome ? outcome.permission : undefined).toBe("automation");
   });
 
   it("le service garde la raison au lieu de la jeter", async () => {
@@ -602,5 +633,6 @@ describe("la raison d'un échec remonte jusqu'à la capsule", () => {
     const stashed = await service.trigger();
 
     expect("reason" in stashed ? stashed.reason : undefined).toContain("Automation");
+    expect("permission" in stashed ? stashed.permission : undefined).toBe("automation");
   });
 });

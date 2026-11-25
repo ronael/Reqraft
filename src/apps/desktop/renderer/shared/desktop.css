@@ -568,14 +568,9 @@ button:disabled {
  * `padding: 0` pour que le champ occupe la capsule, ce qui collait le message
  * contre le bord gauche.
  */
+/* La boîte est celle d'`InlineMessage` ; la capsule ne fixe que sa place. */
 .capsule-notice {
   margin: 8px 0 0;
-  padding: 5px 10px;
-  border-radius: 6px;
-  background: rgba(251, 191, 36, 0.075);
-  font-size: 11px;
-  line-height: 16px;
-  color: rgba(253, 230, 138, 0.9);
 }
 
 .capsule-flush .capsule-notice {
@@ -4126,6 +4121,32 @@ kbd {
 .inline-message-text {
   min-width: 0;
   overflow-wrap: anywhere;
+}
+
+/*
+ * Un titre et une action, pour un message qui demande quelque chose.
+ *
+ * Seule la grille change : le bouton prend une troisième colonne, centrée sur
+ * le texte, et l'icône reste calée sur la première ligne. La boîte, ses marges
+ * et ses tons restent ceux de la base.
+ */
+.inline-message-with-action {
+  grid-template-columns: 13px minmax(0, 1fr) auto;
+  align-items: center;
+}
+
+.inline-message-with-action .inline-message-icon {
+  align-self: start;
+}
+
+.inline-message-title {
+  display: block;
+  font-weight: 600;
+}
+
+.inline-message-action {
+  display: flex;
+  align-items: center;
 }
 
 .inline-message-pending {
