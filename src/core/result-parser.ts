@@ -1,5 +1,37 @@
 import { z } from "zod";
 import { AUTO_FALLBACK_PROFILE_ID, BUILTIN_PROFILE_IDS } from "@/profiles/profile-ids.js";
+import { stripReasoning } from "./reasoning.js";
+
+/**
+ * `ResultSchema` as JSON Schema, for providers that can constrain decoding.
+ *
+ * Built per request so that every field asked for is required — a grammar
+ * then cannot end the object before the profile or the changes — and
+ * `rewritten` comes first, which the live preview relies on
+ * (`core/stream-preview.ts`).
+ */
+export function resultJsonSchema(fields: {
+  profile: boolean;
+  changes: boolean;
+}): Record<string, unknown> {
+  const strings = { type: "array", items: { type: "string" } };
+  return {
+    type: "object",
+    properties: {
+      rewritten: { type: "string" },
+      ...(fields.profile ? { profile: { type: "string", enum: [...BUILTIN_PROFILE_IDS] } } : {}),
+      ...(fields.changes ? { changes: strings } : {}),
+      warnings: strings,
+    },
+    required: [
+      "rewritten",
+      ...(fields.profile ? ["profile"] : []),
+      ...(fields.changes ? ["changes"] : []),
+      "warnings",
+    ],
+    additionalProperties: false,
+  };
+}
 
 const ResultSchema = z.object({
   rewritten: z.string().min(1),
@@ -94,7 +126,9 @@ function endOfJsonString(text: string, open: number): number {
 }
 
 export function parseResult(text: string): ParsedResult {
-  const cleaned = stripMarkdownFences(text);
+  // Reasoning first: a brace inside it would otherwise be taken for the start
+  // of the envelope, and an answer cut short in its reasoning has none at all.
+  const cleaned = stripMarkdownFences(stripReasoning(text));
   // Prefer the whole text; fall back to its first object so trailing chatter
   // does not cost the answer.
   const candidate = firstJsonObject(cleaned) ?? cleaned;

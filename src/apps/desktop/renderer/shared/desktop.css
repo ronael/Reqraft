@@ -2040,6 +2040,44 @@ kbd {
   flex: 1 1 auto;
 }
 
+/*
+ * The server menu and the button that searches again share the control
+ * column: the menu gives up the button's width, so the right edge stays a
+ * line. Both are 30px tall by their base rules.
+ */
+.onboarding-server-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.onboarding-server-control > .design-select {
+  flex: 1 1 auto;
+}
+
+.onboarding-server-control > .design-button {
+  flex-shrink: 0;
+}
+
+/* A command to type in a terminal, selected in one click. */
+.onboarding-command {
+  display: block;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 6px;
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.06);
+  color: #e4e4e7;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  line-height: 16px;
+  overflow-wrap: anywhere;
+  user-select: all;
+}
+
 .onboarding-banner {
   display: flex;
   align-items: center;

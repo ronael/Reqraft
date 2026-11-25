@@ -3,10 +3,10 @@ import { DEFAULT_CONFIG } from "@/config/loader.js";
 import type { Config } from "@/config/schema.js";
 import {
   registerIpcHandlers,
-  sanitizeModelCatalog,
   type IpcEventLike,
   type IpcMainLike,
 } from "@/apps/desktop/main/ipc.js";
+import { sanitizeModelCatalog } from "@/apps/desktop/main/model-catalog.js";
 import { IPC_CHANNELS } from "@/apps/desktop/shared/ipc-channels.js";
 import type {
   ModelsListResponse,

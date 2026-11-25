@@ -111,6 +111,8 @@ describe("OpenAI-compatible completions", () => {
       ],
       temperature: 0.2,
       max_tokens: 800,
+      // A local server is asked not to reason before a rewrite.
+      reasoning_effort: "none",
     });
   });
 
@@ -299,6 +301,22 @@ describe("OpenAI-compatible streaming", () => {
       model: "llama3.2:latest",
       finishReason: "stop",
     });
+    // A local server is asked to count tokens; it only does when asked.
+    expect(sentRequest().body).toMatchObject({
+      stream: true,
+      stream_options: { include_usage: true },
+    });
+  });
+
+  it("leaves usage to what a hosted gateway volunteers", async () => {
+    fetchMock.mockResolvedValue(
+      eventStream(['data: {"choices":[{"delta":{"content":"Fix it."}}]}\n\n', "data: [DONE]\n\n"]),
+    );
+
+    await localServer({ baseUrl: "https://gateway.example.test/v1" }).generate(
+      rewriteRequest({ stream: true }),
+    );
+
     expect(sentRequest().body).toMatchObject({ stream: true });
     expect(sentRequest().body).not.toHaveProperty("stream_options");
   });
@@ -422,5 +440,217 @@ describe("OpenAI-compatible configuration check", () => {
   it("accepts a local server without an API key, offline", async () => {
     await expect(localServer().validateConfiguration()).resolves.toEqual({ ok: true });
     expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe("OpenAI-compatible endpoints on the user's own hardware", () => {
+  const SCHEMA = { type: "object", properties: { rewritten: { type: "string" } } };
+
+  it.each([
+    ["http://localhost:11434/v1", true],
+    ["http://127.0.0.1:1234/v1", true],
+    ["http://host.docker.internal:11434/v1", true],
+    ["http://[::1]:8080/v1", true],
+    ["http://studio.localhost:1234/v1", true],
+    ["https://openrouter.ai/api/v1", false],
+    ["https://gateway.example.test/v1", false],
+  ])("treats %s as local: %s", (baseUrl, local) => {
+    expect(new OpenAICompatibleProvider("Endpoint", { baseUrl }).local).toBe(local);
+  });
+
+  it("constrains a local model to the envelope's schema and asks it not to reason", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(ANSWER));
+
+    await localServer().generate(rewriteRequest({ responseSchema: SCHEMA }));
+
+    expect(sentRequest().body).toMatchObject({
+      response_format: {
+        type: "json_schema",
+        json_schema: { name: "reqraft_rewrite", strict: true, schema: SCHEMA },
+      },
+      reasoning_effort: "none",
+    });
+  });
+
+  it("sends neither to a hosted gateway, whose support depends on the model behind it", async () => {
+    fetchMock.mockResolvedValue(jsonResponse(ANSWER));
+
+    await localServer({ baseUrl: "https://gateway.example.test/v1" }).generate(
+      rewriteRequest({ responseSchema: SCHEMA }),
+    );
+
+    expect(sentRequest().body).not.toHaveProperty("response_format");
+    expect(sentRequest().body).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("asks again without them when the server refuses them, and stops sending them", async () => {
+    fetchMock
+      .mockResolvedValueOnce(
+        jsonResponse({ error: "'response_format.type' must be 'json_schema' or 'text'" }, 400),
+      )
+      .mockResolvedValueOnce(jsonResponse(ANSWER))
+      .mockResolvedValueOnce(jsonResponse(ANSWER));
+    const server = localServer();
+
+    await expect(
+      server.generate(rewriteRequest({ responseSchema: SCHEMA })),
+    ).resolves.toMatchObject({ text: "Fix the login bug." });
+    await server.generate(rewriteRequest({ responseSchema: SCHEMA }));
+
+    const bodies = fetchMock.mock.calls.map(([, init]) =>
+      typeof init?.body === "string" ? (JSON.parse(init.body) as Record<string, unknown>) : {},
+    );
+    expect(bodies).toHaveLength(3);
+    expect(bodies[0]).toHaveProperty("reasoning_effort", "none");
+    expect(bodies[1]).not.toHaveProperty("reasoning_effort");
+    expect(bodies[1]).not.toHaveProperty("response_format");
+    expect(bodies[2]).not.toHaveProperty("reasoning_effort");
+  });
+
+  it("still reports a refusal that had nothing to do with the extras", async () => {
+    fetchMock.mockImplementation(() =>
+      Promise.resolve(jsonResponse({ error: "context length exceeded" }, 400)),
+    );
+
+    await expect(localServer().generate(rewriteRequest())).rejects.toMatchObject({
+      errorCode: "provider.request_failed",
+      httpStatus: 400,
+    });
+    // The first answer, then the same request without the extras.
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("returns empty text when a thinking model answered with no content", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse({
+        choices: [{ message: { role: "assistant", content: null, reasoning: "Let me think" } }],
+      }),
+    );
+
+    await expect(localServer().generate(rewriteRequest())).resolves.toMatchObject({ text: "" });
+  });
+});
+
+describe("OpenAI-compatible missing models", () => {
+  it.each(['model "qwen3.5:4b" not found, try pulling it first', "model 'qwen3.5:4b' not found"])(
+    "names the model and the pull command when Ollama says: %s",
+    async (message) => {
+      fetchMock.mockResolvedValue(jsonResponse({ error: { message, type: "api_error" } }, 404));
+
+      const failure = await localServer()
+        .generate(rewriteRequest({ model: "qwen3.5:4b" }))
+        .catch((error: unknown) => error);
+
+      expect(failure).toMatchObject({
+        errorCode: "provider.model_not_found",
+        exitCode: EXIT_CODES.INVALID_CONFIGURATION,
+        httpStatus: 404,
+        params: { provider: "Ollama", model: "qwen3.5:4b", server: "ollama" },
+      });
+      expect(formatUiError(failure, "openai-compatible")).toBe(
+        "Le modèle « qwen3.5:4b » n’est pas installé sur Ollama. Télécharge-le avec « ollama pull qwen3.5:4b », ou choisis un modèle installé avec « rp init ».",
+      );
+    },
+  );
+
+  it("offers a pick among the installed models on a server other than Ollama", async () => {
+    fetchMock.mockResolvedValue(
+      jsonResponse(
+        { error: { message: "Model qwen-x does not exist", code: "model_not_found" } },
+        404,
+      ),
+    );
+
+    const failure = await new OpenAICompatibleProvider("LM Studio", {
+      baseUrl: "http://localhost:1234/v1",
+    })
+      .generate(rewriteRequest({ model: "qwen-x" }))
+      .catch((error: unknown) => error);
+
+    expect(failure).toMatchObject({
+      errorCode: "provider.model_not_found",
+      params: { provider: "LM Studio", model: "qwen-x", server: "lmstudio" },
+    });
+    expect(formatUiError(failure, "openai-compatible")).toBe(
+      "Le modèle « qwen-x » n’est pas installé sur LM Studio. Choisis un modèle installé sur ce serveur avec « rp init ».",
+    );
+  });
+
+  it("keeps the generic advice for a 404 about the URL rather than the model", async () => {
+    fetchMock.mockResolvedValue(new Response("404 page not found", { status: 404 }));
+
+    await expect(localServer().generate(rewriteRequest())).rejects.toMatchObject({
+      errorCode: "provider.request_failed",
+      httpStatus: 404,
+    });
+  });
+});
+
+describe("OpenAI-compatible streams from thinking models", () => {
+  it("never shows the reasoning a model writes before its answer", async () => {
+    fetchMock.mockResolvedValue(
+      eventStream([
+        'data: {"choices":[{"delta":{"content":"<thi"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"nk>The user wants { a fix }"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":".</think>\\n\\n{\\"rewritten\\""}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":":\\"Fix it.\\"}"},"finish_reason":"stop"}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    );
+    const fragments: string[] = [];
+
+    const result = await localServer().generate(
+      rewriteRequest({ stream: true, onDelta: (fragment) => fragments.push(fragment) }),
+    );
+
+    expect(fragments.join("")).toBe('{"rewritten":"Fix it."}');
+    expect(result.text).toBe('{"rewritten":"Fix it."}');
+  });
+
+  it("reports reasoning sent in a field of its own as activity, not as text", async () => {
+    fetchMock.mockResolvedValue(
+      eventStream([
+        'data: {"choices":[{"delta":{"reasoning":"Thinking"}}]}\n\n',
+        'data: {"choices":[{"delta":{"reasoning_content":" more"}}]}\n\n',
+        'data: {"choices":[{"delta":{"content":"Fix it."}}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    );
+    const onActivity = vi.fn();
+    const onDelta = vi.fn();
+
+    const result = await localServer().generate(
+      rewriteRequest({ stream: true, onActivity, onDelta }),
+    );
+
+    expect(result.text).toBe("Fix it.");
+    expect(onDelta).toHaveBeenCalledOnce();
+    // Each line, the blank separators and the closing sentinel included.
+    expect(onActivity.mock.calls.length).toBeGreaterThanOrEqual(4);
+  });
+
+  it("reports an answer that was only reasoning as an empty result", async () => {
+    fetchMock.mockResolvedValue(
+      eventStream([
+        'data: {"choices":[{"delta":{"content":"<think>Still thinking"},"finish_reason":"length"}]}\n\n',
+        "data: [DONE]\n\n",
+      ]),
+    );
+
+    await expect(localServer().generate(rewriteRequest({ stream: true }))).rejects.toMatchObject({
+      errorCode: "result.empty",
+    });
+  });
+});
+
+describe("OpenAI-compatible timeouts", () => {
+  it("leaves a deadline to the caller instead of calling the server unreachable", async () => {
+    const timeout = new DOMException("The operation was aborted due to timeout", "TimeoutError");
+    fetchMock.mockRejectedValue(timeout);
+
+    await expect(localServer().generate(rewriteRequest())).rejects.toBe(timeout);
+    expect(formatUiError(timeout, "openai-compatible")).toBe(
+      "Le provider n’a pas répondu dans le délai imparti.",
+    );
   });
 });

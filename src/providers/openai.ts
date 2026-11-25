@@ -89,12 +89,7 @@ export class OpenAIProvider implements ProviderAdapter {
     }
 
     if (request.stream && response.body) {
-      return await consumeChatCompletionStream(
-        response.body,
-        this.name,
-        request.model,
-        request.onDelta,
-      );
+      return await consumeChatCompletionStream(response.body, this.name, request.model, request);
     }
 
     const data = JSON.parse(await response.text()) as OpenAIResponse;

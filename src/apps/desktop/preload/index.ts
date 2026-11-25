@@ -91,6 +91,8 @@ const bridge: ReqraftBridge = {
   // Ne porte qu'une identité de fournisseur : la clé, l'URL de base et les
   // en-têtes restent du côté qui les détient déjà.
   listModels: (request) => ipcRenderer.invoke(IPC_CHANNELS.modelsList, request),
+  // Sans argument : les adresses sondées sont fixées dans le processus principal.
+  detectLocalServers: () => ipcRenderer.invoke(IPC_CHANNELS.localServersDetect),
   completeOnboarding: (request) => ipcRenderer.invoke(IPC_CHANNELS.onboardingComplete, request),
   onRunDelta: (listener) =>
     subscribe(IPC_CHANNELS.runDelta, (payload) => {

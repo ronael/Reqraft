@@ -6,6 +6,18 @@ import { CheckCircle2, KeyRound, Loader2, TriangleAlert } from "lucide-react";
 import { groupProfiles } from "../shared/profiles.js";
 import { ipcFailureMessage } from "../shared/ipc-failure.js";
 import { shouldShowWelcomeTour, WelcomeTour } from "./WelcomeTour.js";
+import { LocalModelAdviceNote, LocalServerField } from "./LocalServerField.js";
+import {
+  endpointName,
+  knownResponse,
+  localAdvice,
+  modelChoices,
+  proposedModel,
+  proposeLocalSetup,
+  searchAgain,
+  serverAt,
+  type LocalDetection,
+} from "./local-servers.js";
 import {
   REPROMPT_LEVEL_IDS,
   type ProfileCatalogEntry,
@@ -39,6 +51,8 @@ interface OnboardingForm {
 }
 
 const COMPATIBLE_PROVIDER_ID = "openai-compatible";
+/** Where a compatible endpoint starts: Ollama, the local server most people have. */
+const DEFAULT_LOCAL_BASE_URL = "http://localhost:11434/v1";
 
 /** Les niveaux passent par une clé : leur libellé dépend de la langue. */
 const LEVEL_KEYS: Record<(typeof REPROMPT_LEVEL_IDS)[number], string> = {
@@ -164,7 +178,7 @@ export function OnboardingApp(): React.JSX.Element {
               level: next.suggested.level,
               compatibleId: "local",
               compatibleName: "",
-              compatibleBaseUrl: "http://localhost:11434/v1",
+              compatibleBaseUrl: DEFAULT_LOCAL_BASE_URL,
             },
         );
       } catch (cause) {
@@ -172,6 +186,34 @@ export function OnboardingApp(): React.JSX.Element {
       }
     })();
   }, [refresh]);
+
+  // Ollama and LM Studio, looked for once the compatible provider is chosen.
+  const [detection, setDetection] = useState<LocalDetection>({ status: "idle" });
+
+  const searchLocalServers = useCallback(() => {
+    setDetection(searchAgain);
+    void (async () => {
+      let result: LocalDetection;
+      try {
+        result = { status: "done", response: await window.reqraft.detectLocalServers() };
+      } catch {
+        result = { status: "failed" };
+      }
+      setDetection(result);
+      // Applied to the form as it is when the answer lands, not as it was
+      // when the search started: someone may have typed in between.
+      setForm((current) =>
+        current?.provider === COMPATIBLE_PROVIDER_ID
+          ? { ...current, ...proposeLocalSetup(current, result, DEFAULT_LOCAL_BASE_URL) }
+          : current,
+      );
+    })();
+  }, []);
+
+  const compatibleChosen = form?.provider === COMPATIBLE_PROVIDER_ID;
+  useEffect(() => {
+    if (compatibleChosen && detection.status === "idle") searchLocalServers();
+  }, [compatibleChosen, detection.status, searchLocalServers]);
 
   if (!state || !form) {
     // The error branch matters as much as the spinner: if the first read
@@ -240,9 +282,50 @@ export function OnboardingApp(): React.JSX.Element {
     // The model must follow the provider: keeping the previous one would send
     // an Anthropic identifier to OpenAI and fail on the first run.
     const recommended = next.models.find((model) => model.recommended) ?? next.models[0];
-    update({ provider: next.id, model: recommended?.id ?? "" });
+    const patch = { provider: next.id, model: recommended?.id ?? "" };
+    // Back to the compatible provider after a search: what it found still holds.
+    update(
+      next.id === COMPATIBLE_PROVIDER_ID
+        ? {
+            ...patch,
+            ...proposeLocalSetup({ ...form, ...patch }, detection, DEFAULT_LOCAL_BASE_URL),
+          }
+        : patch,
+    );
     setNotice(null);
   };
+
+  const localServer =
+    form.provider === COMPATIBLE_PROVIDER_ID
+      ? serverAt(detection, form.compatibleBaseUrl)
+      : undefined;
+  const advice =
+    form.provider === COMPATIBLE_PROVIDER_ID
+      ? localAdvice(detection, form.compatibleBaseUrl)
+      : undefined;
+  const localResponse = knownResponse(detection);
+  const recommendedLocalModel = localResponse?.recommendation.model ?? "";
+
+  const onPickServer = (baseUrl: string): void => {
+    update({
+      compatibleBaseUrl: baseUrl,
+      model: proposedModel(serverAt(detection, baseUrl), recommendedLocalModel, form.model),
+    });
+  };
+
+  const modelOptions = modelChoices(provider?.models ?? [], localServer, recommendedLocalModel).map(
+    (model) => ({
+      value: model.id,
+      label: `${model.name}${model.recommended ? t("common.recommendedSuffix") : ""}`,
+    }),
+  );
+  const savedName = endpointName(localServer, form.compatibleName);
+  // Right under the server it is about: further down, below the model, it fell
+  // under the fold of the 600px window while the footer said all was ready.
+  const adviceNote =
+    advice !== undefined && localResponse !== undefined ? (
+      <LocalModelAdviceNote advice={advice} recommendation={localResponse.recommendation} />
+    ) : null;
 
   const profileOptions: SelectOption[] = groupProfiles(profiles).flatMap((group) =>
     group.entries.map((entry) => ({
@@ -287,7 +370,7 @@ export function OnboardingApp(): React.JSX.Element {
           ? {
               compatibleProvider: {
                 id: form.compatibleId.trim(),
-                ...(form.compatibleName.trim() ? { name: form.compatibleName.trim() } : {}),
+                ...(savedName === undefined ? {} : { name: savedName }),
                 baseUrl: form.compatibleBaseUrl.trim(),
               },
             }
@@ -371,6 +454,29 @@ export function OnboardingApp(): React.JSX.Element {
 
           {form.provider === COMPATIBLE_PROVIDER_ID && (
             <>
+              <LocalServerField
+                detection={detection}
+                baseUrl={form.compatibleBaseUrl}
+                onPick={onPickServer}
+                onSearch={searchLocalServers}
+              />
+              {adviceNote}
+              {localServer === undefined && (
+                <label className="onboarding-field">
+                  <span className="onboarding-label">
+                    <span className="onboarding-label-title">{t("onboarding.baseUrl")}</span>
+                    <span className="onboarding-label-detail">{t("onboarding.baseUrlDetail")}</span>
+                  </span>
+                  <input
+                    className="settings-input mono"
+                    value={form.compatibleBaseUrl}
+                    placeholder={DEFAULT_LOCAL_BASE_URL}
+                    onChange={(event) => {
+                      update({ compatibleBaseUrl: event.target.value });
+                    }}
+                  />
+                </label>
+              )}
               <label className="onboarding-field">
                 <span className="onboarding-label">
                   <span className="onboarding-label-title">{t("onboarding.internalId")}</span>
@@ -383,19 +489,6 @@ export function OnboardingApp(): React.JSX.Element {
                   value={form.compatibleId}
                   onChange={(event) => {
                     update({ compatibleId: event.target.value });
-                  }}
-                />
-              </label>
-              <label className="onboarding-field">
-                <span className="onboarding-label">
-                  <span className="onboarding-label-title">{t("onboarding.baseUrl")}</span>
-                  <span className="onboarding-label-detail">{t("onboarding.baseUrlDetail")}</span>
-                </span>
-                <input
-                  className="settings-input mono"
-                  value={form.compatibleBaseUrl}
-                  onChange={(event) => {
-                    update({ compatibleBaseUrl: event.target.value });
                   }}
                 />
               </label>
@@ -454,16 +547,13 @@ export function OnboardingApp(): React.JSX.Element {
               <span className="onboarding-label-title">{t("onboarding.model")}</span>
               <span className="onboarding-label-detail">{t("onboarding.modelDetail")}</span>
             </span>
-            {provider && provider.models.length > 0 ? (
+            {modelOptions.length > 0 ? (
               <Select
                 ariaLabelledBy="onboarding-model-label"
                 value={form.model}
                 options={[
-                  ...provider.models.map((model) => ({
-                    value: model.id,
-                    label: `${model.name}${model.recommended ? t("common.recommendedSuffix") : ""}`,
-                  })),
-                  ...(provider.models.every((model) => model.id !== form.model)
+                  ...modelOptions,
+                  ...(modelOptions.every((choice) => choice.value !== form.model)
                     ? [{ value: form.model, label: form.model }]
                     : []),
                 ]}

@@ -1,3 +1,4 @@
+import os from "node:os";
 import process from "node:process";
 import readline from "node:readline";
 import { existsSync } from "node:fs";
@@ -28,7 +29,21 @@ import {
   formatInitStatus,
 } from "@/apps/cli/ui/init-format.js";
 import { DEFAULT_REPROMPT_LEVEL, REPROMPT_LEVELS } from "@/core/levels.js";
+import { RequestTimeoutError } from "@/core/errors.js";
 import { REPROMPT_POLICY } from "@/core/reprompt-policy.js";
+import { recommendLocalModel } from "@/models/local-recommendation.js";
+import { isTimeoutError } from "@/providers/http.js";
+import {
+  LOCAL_SERVERS,
+  isLocalEndpoint,
+  localServerKind,
+  trimTrailingSlashes,
+} from "@/providers/local-endpoint.js";
+import {
+  detectLocalServers,
+  listInstalledModels,
+  type DetectedLocalServer,
+} from "@/providers/local-servers.js";
 import { listProfiles } from "@/profiles/registry.js";
 import { AUTO_PROFILE_ID } from "@/profiles/profile-ids.js";
 import {
@@ -57,6 +72,8 @@ interface RunFirstRunOptions {
   output?: Writable;
   env?: NodeJS.ProcessEnv;
   shell?: string;
+  /** The machine's memory, which decides the local model recommended. */
+  totalMemoryBytes?: number;
 }
 
 // Re-exported: `rp init` is the CLI face of a rule that now lives in the
@@ -65,8 +82,6 @@ export { buildApiKeyStatus, createInitConfig };
 export type { ApiKeyStatus, CompatibleProviderInput, InitConfigInput };
 
 const DEFAULT_TRANSLATOR = createTranslator("fr");
-/** What a new local server is offered: no identifier can be known for it in advance. */
-const LOCAL_MODEL_ID = "local-model";
 
 export function getInitProfileChoices(): string[] {
   return [AUTO_PROFILE_ID, ...listProfiles().map((profile) => profile.id)];
@@ -380,7 +395,13 @@ export async function runFirstRunSetup(
   // Checked before the terminal is opened: a refused key would otherwise leave
   // an interface reading the input after the setup has given up.
   await hydrateCredentials(env);
-  const io = createIo(options.input ?? process.stdin, options.output ?? process.stdout, env, t);
+  const io = createIo(
+    options.input ?? process.stdin,
+    options.output ?? process.stdout,
+    env,
+    t,
+    options.totalMemoryBytes ?? os.totalmem(),
+  );
   const shell = options.shell ?? process.env.SHELL ?? "";
 
   try {
@@ -397,23 +418,127 @@ export async function runFirstRunSetup(
 /**
  * Asks for the model to use.
  *
- * An OpenAI-compatible endpoint publishes no preset catalogue, so its model is
- * typed in. The saved model is proposed only when it was saved for such an
- * endpoint: a fresh setup holds the Anthropic default, which no local server
- * serves. Otherwise a local server is offered the generic `local-model`, and a
- * hosted endpoint nothing, since no identifier can be guessed for it.
+ * An OpenAI-compatible endpoint publishes no preset catalogue. One on the
+ * user's own hardware publishes what it has installed, though: that list is
+ * offered, so the model saved is one the server can run. When it has none —
+ * or cannot be reached — the model this machine can hold is recommended, with
+ * the command that installs it. A hosted endpoint, whose catalogue can run to
+ * hundreds of models, is asked for an identifier as before.
+ *
+ * The saved model is proposed only when it was saved for such an endpoint: a
+ * fresh setup holds the Anthropic default, which no local server serves.
  */
 async function askModelIdentifier(
   io: InitIo,
   providerChoice: InitProviderChoice,
   defaults: Config,
-  compatibleProvider: CompatibleProviderInput | undefined,
+  endpoint: CompatibleEndpointAnswer | undefined,
+  env: NodeJS.ProcessEnv,
 ): Promise<string> {
-  if (!compatibleProvider) {
+  if (!endpoint) {
     return await askModel(io, providerChoice.provider, defaults);
   }
   const savedModel = savedModelFor(defaults, OPENAI_COMPATIBLE_PROVIDER_ID);
-  return await askModelText(io, savedModel ?? (providerChoice.local ? LOCAL_MODEL_ID : ""));
+  const { provider } = endpoint;
+  if (!isLocalEndpoint(provider.baseUrl)) {
+    return await askModelText(io, savedModel ?? "");
+  }
+
+  const installed = await installedModelsOf(endpoint, env);
+  const recommendation = recommendLocalModel(io.totalMemoryBytes);
+  if (installed !== undefined && installed.length > 0) {
+    return await askInstalledModel(io, installed, savedModel, recommendation.id);
+  }
+  writeLocalModelAdvice(io, provider, installed !== undefined);
+  return await askModelText(io, savedModel ?? recommendation.id);
+}
+
+/**
+ * The chat models the endpoint has installed, or undefined when it could not
+ * say. Taken from the detection when it probed that very URL.
+ */
+async function installedModelsOf(
+  endpoint: CompatibleEndpointAnswer,
+  env: NodeJS.ProcessEnv,
+): Promise<string[] | undefined> {
+  const { provider, detected } = endpoint;
+  const baseUrl = trimTrailingSlashes(provider.baseUrl.trim());
+  const probed = detected.find((server) => server.baseUrl === baseUrl);
+  if (probed) {
+    return probed.reachable ? probed.models : undefined;
+  }
+  try {
+    return await listInstalledModels({
+      baseUrl,
+      label: provider.name ?? baseUrl,
+      apiKey: provider.apiKeyEnv ? env[provider.apiKeyEnv] : undefined,
+      customHeaders: provider.customHeaders,
+      timeoutMs: REPROMPT_POLICY.runtime.localServerProbeTimeoutMs,
+    });
+  } catch {
+    return undefined;
+  }
+}
+
+/** One installed model, or another identifier typed by hand. */
+async function askInstalledModel(
+  io: InitIo,
+  installed: readonly string[],
+  savedModel: string | undefined,
+  recommendedId: string,
+): Promise<string> {
+  const labels = [...installed, io.t("init.manualModel")];
+  const manualIndex = labels.length - 1;
+  const recommendedIndex = installed.indexOf(recommendedId);
+  const proposed =
+    savedModel === undefined
+      ? Math.max(recommendedIndex, 0)
+      : proposedModelIndex(
+          installed.map((id) => ({ id })),
+          savedModel,
+          manualIndex,
+        );
+  const index = await askMenu(io, io.t("init.installedModelQuestion"), labels, proposed);
+  return installed[index] ?? (await askModelText(io, savedModel ?? ""));
+}
+
+/**
+ * What to install when the server has no model to offer.
+ *
+ * Ollama installs one with a command, so the command is printed; LM Studio
+ * has no such command, so the model is named for its search. A server that
+ * did not answer is most likely not installed yet, and Ollama is the one with
+ * a command to give.
+ */
+function writeLocalModelAdvice(
+  io: InitIo,
+  provider: CompatibleProviderInput,
+  reachable: boolean,
+): void {
+  const recommendation = recommendLocalModel(io.totalMemoryBytes);
+  const server = provider.name ?? provider.baseUrl;
+  const lines = [
+    "",
+    formatInitStatus(
+      reachable
+        ? io.t("init.localNoModel", { server })
+        : io.t("init.localUnreachable", { baseUrl: provider.baseUrl }),
+      "warning",
+      io.visual,
+    ),
+    io.t("init.localRecommendation", {
+      model: recommendation.id,
+      memoryGb: recommendation.memoryGb,
+      minGb: recommendation.sizeGb.min,
+      maxGb: recommendation.sizeGb.max,
+    }),
+    "",
+    localServerKind(provider.baseUrl) === "lmstudio"
+      ? io.t("init.localLmStudioSearch", { searchTerm: recommendation.searchTerm })
+      : formatInitCommand(recommendation.pullCommand, io.visual),
+    "",
+  ];
+  io.write(`${lines.join("\n")}\n`);
 }
 
 async function collectConfig(
@@ -424,10 +549,11 @@ async function collectConfig(
 ): Promise<Omit<InitConfigInput, "existing">> {
   for (;;) {
     const providerChoice = await askProvider(io, defaults);
-    const compatibleProvider =
+    const endpoint =
       providerChoice.provider === OPENAI_COMPATIBLE_PROVIDER_ID
         ? await askCompatibleProvider(io, defaults, providerChoice.local)
         : undefined;
+    const compatibleProvider = endpoint?.provider;
     const keyStatus = buildApiKeyStatus(
       providerChoice.provider,
       env,
@@ -455,7 +581,7 @@ async function collectConfig(
       }
     }
 
-    const model = await askModelIdentifier(io, providerChoice, defaults, compatibleProvider);
+    const model = await askModelIdentifier(io, providerChoice, defaults, endpoint, env);
 
     return {
       provider: providerChoice.provider,
@@ -518,12 +644,23 @@ async function askProvider(io: InitIo, defaults: Config): Promise<InitProviderCh
   return choices[index] ?? fallback;
 }
 
+/** The endpoint answers, with what the detection found on the way. */
+interface CompatibleEndpointAnswer {
+  provider: CompatibleProviderInput;
+  detected: DetectedLocalServer[];
+}
+
 async function askCompatibleProvider(
   io: InitIo,
   defaults: Config,
   local = false,
-): Promise<CompatibleProviderInput> {
-  const existing = firstCompatibleProvider(defaults);
+): Promise<CompatibleEndpointAnswer> {
+  const saved = firstCompatibleProvider(defaults);
+  // A local server is set up from the saved endpoint only when that one is
+  // local too: a hosted gateway's URL is no starting point for Ollama.
+  const existing = local && saved && !isLocalEndpoint(saved.baseUrl) ? undefined : saved;
+  const detected = local ? await reportLocalServers(io) : [];
+  const chosen = local && !existing ? await chooseLocalServer(io, detected) : undefined;
   const idDefault = local ? "local" : "custom";
   const id = await askText(io, io.t("init.internalProviderId"), existing?.id ?? idDefault);
   const name = await askText(
@@ -531,23 +668,82 @@ async function askCompatibleProvider(
     io.t("init.customProviderName"),
     existing?.name ??
       (local
-        ? io.t("init.localServer")
+        ? (chosen?.label ?? io.t("init.localServer"))
         : getProviderDefinition(OPENAI_COMPATIBLE_PROVIDER_ID).label),
   );
   const baseUrl = await askText(
     io,
     "Base URL",
-    existing?.baseUrl ?? (local ? "http://localhost:11434/v1" : "https://example.com/v1"),
+    existing?.baseUrl ?? proposedBaseUrl(local, chosen),
   );
   const apiKeyEnv = await askText(io, io.t("init.apiKeyEnv"), existing?.apiKeyEnv ?? "");
   const customHeaders = await askCustomHeaders(io, existing?.customHeaders);
   return {
-    id,
-    name: name ? name : undefined,
-    baseUrl,
-    apiKeyEnv: apiKeyEnv ? apiKeyEnv : undefined,
-    customHeaders,
+    provider: {
+      id,
+      name: name ? name : undefined,
+      baseUrl,
+      apiKeyEnv: apiKeyEnv ? apiKeyEnv : undefined,
+      customHeaders,
+    },
+    detected,
   };
+}
+
+/** The address a new endpoint starts from: the server detected, or Ollama's. */
+function proposedBaseUrl(local: boolean, chosen: DetectedLocalServer | undefined): string {
+  if (!local) return "https://example.com/v1";
+  return chosen?.baseUrl ?? LOCAL_SERVERS[0]?.baseUrl ?? "";
+}
+
+/** Looks for Ollama and LM Studio on their default ports, and says what it found. */
+async function reportLocalServers(io: InitIo): Promise<DetectedLocalServer[]> {
+  const servers = await detectLocalServers();
+  const lines = servers.map((server) =>
+    formatInitStatus(
+      server.reachable
+        ? io.t("init.localServerFound", {
+            server: server.label,
+            baseUrl: server.baseUrl,
+            count: server.models.length,
+          })
+        : io.t("init.localServerMissing", { server: server.label, baseUrl: server.baseUrl }),
+      server.reachable ? "success" : "info",
+      io.visual,
+    ),
+  );
+  if (!servers.some((server) => server.reachable)) {
+    lines.push("", io.t("init.localServersNone"));
+  }
+  io.write(`\n${formatInitSection(io.t("init.localServersTitle"), io.visual)}\n\n`);
+  io.write(`${lines.join("\n")}\n\n`);
+  return servers;
+}
+
+/**
+ * The detected server to propose: the only one running, or — when both
+ * are — the one the person picks, the one with models first.
+ */
+async function chooseLocalServer(
+  io: InitIo,
+  servers: readonly DetectedLocalServer[],
+): Promise<DetectedLocalServer | undefined> {
+  const running = servers.filter((server) => server.reachable);
+  if (running.length < 2) {
+    return running[0];
+  }
+  const index = await askMenu(
+    io,
+    io.t("init.localServerQuestion"),
+    running.map((server) =>
+      io.t("init.localServerChoice", { server: server.label, count: server.models.length }),
+    ),
+    Math.max(
+      running.findIndex((server) => server.models.length > 0),
+      0,
+    ),
+  );
+  return running[index] ?? running[0];
 }
 
 async function askModel(io: InitIo, provider: InitProvider, defaults: Config): Promise<string> {
@@ -711,8 +907,13 @@ async function maybeRunConnectionTest(
   }
 
   const startedAt = Date.now();
+  const provider = createProvider(config.defaultProvider, env, config);
+  // A local server loads the model on its first request, which is this one:
+  // it gets the generation timeout, not the ten seconds of a key check.
+  const timeoutMs = provider.local
+    ? config.timeoutMs
+    : Math.min(config.timeoutMs, REPROMPT_POLICY.runtime.connectionCheckTimeoutMs);
   try {
-    const provider = createProvider(config.defaultProvider, env, config);
     await provider.generate({
       systemPrompt: "Réponds brièvement.",
       userPrompt: "Test de connexion Reqraft.",
@@ -720,9 +921,7 @@ async function maybeRunConnectionTest(
       temperature: REPROMPT_POLICY.runtime.connectionCheckTemperature,
       maxOutputTokens: REPROMPT_POLICY.runtime.connectionCheckMaxOutputTokens,
       stream: false,
-      signal: AbortSignal.timeout(
-        Math.min(config.timeoutMs, REPROMPT_POLICY.runtime.connectionCheckTimeoutMs),
-      ),
+      signal: AbortSignal.timeout(timeoutMs),
     });
     io.write(
       `${formatInitStatus(
@@ -732,10 +931,13 @@ async function maybeRunConnectionTest(
       )}\n`,
     );
   } catch (error) {
+    // The deadline is this check's own: it names its duration, instead of
+    // reading as a server that could not be reached.
+    const failure = isTimeoutError(error) ? new RequestTimeoutError(timeoutMs) : error;
     io.write(
       `${formatInitStatus(
         io.t("init.connectionFailed", {
-          reason: formatUiError(error, config.defaultProvider, io.t),
+          reason: formatUiError(failure, config.defaultProvider, io.t),
         }),
         "error",
         io.visual,
@@ -839,6 +1041,8 @@ function parseHeaders(input: string): Record<string, string> | null {
 interface InitIo {
   visual: AnsiStyleOptions;
   t: Translator;
+  /** The machine's memory, for the local model recommendation. */
+  totalMemoryBytes: number;
   write(message: string): void;
   question(prompt: string): Promise<string>;
   close(): void;
@@ -849,12 +1053,14 @@ function createIo(
   output: Writable,
   env: NodeJS.ProcessEnv,
   t: Translator,
+  totalMemoryBytes: number,
 ): InitIo {
   const rl = readline.createInterface({ input, output });
   const visual = detectCapabilities(env, Boolean((output as Writable & { isTTY?: boolean }).isTTY));
   return {
     visual,
     t,
+    totalMemoryBytes,
     write(message: string): void {
       output.write(message);
     },

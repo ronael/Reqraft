@@ -72,7 +72,13 @@ Current payload decisions:
 - `temperature` omitted for `gpt-5*` models.
 - `reasoning_effort` sent only for supported model families.
 - The request timeout is propagated with `AbortSignal`; adapters do not own
-  timeout policy.
+  timeout policy. They report what they hear through `onActivity` — every line
+  of a stream, reasoning included — so the engine times silence rather than
+  the whole answer; `onDelta` counts as activity too.
+- `responseSchema` carries the JSON Schema of the envelope the engine parses.
+  An adapter that can constrain decoding to it may send it; the OpenAI-
+  compatible adapter does so for a local server only
+  ([local-models.md](local-models.md)).
 
 Frozen reference acceptance run:
 
