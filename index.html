@@ -220,6 +220,10 @@ kbd{font-family:var(--mono);font-size:10px;padding:1.5px 5px;border-radius:4px;b
 .cap-row{display:grid;grid-template-columns:130px 1fr;gap:18px;padding:13px 0;border-bottom:1px solid var(--line);font-size:13.5px;align-items:baseline}
 .cap-row .flag-n{font-family:var(--mono);font-size:12px;color:var(--rq)}
 .cap-row .flag-d{color:var(--tx3)}
+.agents-more{font-size:14px;margin-top:26px}
+.agents-more a{color:var(--tx);text-decoration:none;border-bottom:1px solid var(--line2)}
+.agents-more a:hover{border-bottom-color:var(--rq)}
+.term-body .agents-after{color:var(--tx)}
 .cli-install{margin-top:30px;display:flex;gap:14px;align-items:center;flex-wrap:wrap}
 
 /* ── section 05 · levels ── */
@@ -470,6 +474,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
       <a href="#transform">Rewrite</a>
       <a href="#fidelity">Fidelity</a>
       <a href="#cli">CLI</a>
+      <a href="#agents">Agents</a>
       <a href="#levels">Levels</a>
       <a href="#profiles">Profiles</a>
       <a href="#native">Native&nbsp;UI</a>
@@ -622,12 +627,47 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
   </div>
 </section>
 
+<!-- ══════════ 05 · AGENTS ══════════ -->
+<section class="sec" id="agents">
+  <div class="wrap cli-grid">
+    <div class="rv">
+      <div class="kick"><b>04</b> Inside your agent</div>
+      <h2>Rewrite it where<br><em>you type it.</em></h2>
+      <p class="lede">In Codex, Claude Code, Gemini CLI, Copilot CLI and other terminal agents, type your request as it comes, then press <strong class="mono" style="font-size:14px">Ctrl+G</strong>. Reqraft rewrites the draft in place: you see before and after, keep it, retry, or get your draft back untouched.</p>
+
+      <div class="cap-list">
+        <div class="cap-row"><span class="flag-n">Ctrl+G</span><span class="flag-d">rewrite the draft without leaving the agent</span></div>
+        <div class="cap-row"><span class="flag-n">rp agents</span><span class="flag-d">turn it on once, for zsh, bash, fish or PowerShell</span></div>
+        <div class="cap-row"><span class="flag-n">Settings</span><span class="flag-d">or from the desktop app, under AI agents</span></div>
+        <div class="cap-row"><span class="flag-n">Your agent</span><span class="flag-d">or paste the instructions and let it set everything up</span></div>
+      </div>
+
+      <p class="lede agents-more"><a href="https://github.com/ronael/Reqraft/blob/main/docs/terminal-agents.md" target="_blank" rel="noopener">How it works, supported agents and shells →</a></p>
+    </div>
+
+    <div class="rv">
+      <div class="term">
+        <div class="term-bar"><i aria-hidden="true">&#8203;</i><i aria-hidden="true">&#8203;</i><i aria-hidden="true">&#8203;</i><span>codex — ~/project</span></div>
+        <div class="term-body">
+          <div class="c-line"><span class="dollar">rq</span>rp edit · Codex draft</div>
+          <div class="o-dim">before</div>
+          <div class="o-line">i want u to check y the send button dont work on mobile, look at the form and fix it</div>
+          <div class="o-dim">after</div>
+          <div class="o-line agents-after">Find out why the Send button does nothing on mobile, then fix the form.</div>
+          <div class="o-ok">✓ faithful · nothing invented</div>
+          <div class="o-dim">⏎ keep · r retry · esc cancel</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ══════════ 05 · LEVELS ══════════ -->
 <section class="sec" id="levels">
   <div class="wrap">
     <div class="lvl-head rv">
       <div>
-        <div class="kick"><b>04</b> Rewrite depth</div>
+        <div class="kick"><b>05</b> Rewrite depth</div>
         <h2>Three depths.<br><em>One request.</em></h2>
       </div>
       <div class="seg" id="lvlSeg">
@@ -654,7 +694,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 <section class="sec" id="profiles" style="padding-top:40px">
   <div class="wrap">
     <div class="rv" style="max-width:640px">
-      <div class="kick"><b>05</b> Profiles</div>
+      <div class="kick"><b>06</b> Profiles</div>
       <h2>It reads the room. <em>In one call.</em></h2>
       <p class="lede">Leave it on <strong class="mono" style="font-size:13.5px">auto</strong> and the model picks the right profile in the very request that rewrites your text: no second call, no extra round trip. Or pin one yourself.</p>
     </div>
@@ -779,7 +819,7 @@ footer{border-top:1px solid var(--line);padding:34px 0 44px}
 <section class="sec" id="quiet">
   <div class="wrap">
     <div class="rv" style="max-width:640px;margin-bottom:70px">
-      <div class="kick"><b>06</b> Quiet by design</div>
+      <div class="kick"><b>07</b> Quiet by design</div>
       <h2>Your words don’t<br><em>become our data.</em></h2>
     </div>
 
