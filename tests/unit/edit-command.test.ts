@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fallbackEditor,
+  forTerminal,
   isAgentDraft,
   runEdit,
   type EditDependencies,
@@ -127,5 +128,9 @@ describe("rp edit, l'éditeur que l'agent ouvre", () => {
     expect(fallbackEditor({ EDITOR: "nvim" }, "darwin")).toBe("nvim");
     expect(fallbackEditor({ EDITOR: "rp edit" }, "darwin")).toBe("vi");
     expect(fallbackEditor({}, "win32")).toBe("notepad");
+  });
+
+  it("revient au début de ligne même dans un terminal laissé en mode brut", () => {
+    expect(forTerminal("AVANT\nligne un\r\nAPRÈS\n")).toBe("AVANT\r\nligne un\r\nAPRÈS\r\n");
   });
 });
