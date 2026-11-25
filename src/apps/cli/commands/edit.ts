@@ -46,6 +46,16 @@ export interface EditDependencies {
 const DEFAULT_TRANSLATOR = createTranslator("fr");
 
 /**
+ * Text for a terminal the agent may have left in raw mode, where a line feed
+ * goes down without coming back to the start of the line: every line break
+ * becomes CR LF, so the review does not fall down the screen like a staircase.
+ * Harmless in a normal terminal.
+ */
+export function forTerminal(text: string): string {
+  return text.replace(/\r?\n/g, "\r\n");
+}
+
+/**
  * Agents hand Reqraft their draft as a Markdown or plain-text file (Gemini CLI
  * writes `buffer.txt`). The wrapper line gives the editor variable to the
  * agent, so the commands the agent runs inherit it: a `git commit` without
@@ -91,14 +101,18 @@ export function defaultEditDependencies(t: Translator): EditDependencies {
         {
           log: (message) => captured.push(message),
           error: (message) => {
-            process.stderr.write(`${message}\n`);
+            process.stderr.write(forTerminal(`${message}\n`));
           },
         },
         t,
       );
       return { code, text: captured.join("\n") };
     },
-    screen: process.stderr,
+    screen: {
+      write: (text) => {
+        process.stderr.write(process.stderr.isTTY ? forTerminal(text) : text);
+      },
+    },
     interactive: process.stdin.isTTY && process.stderr.isTTY,
     color: detectColor(process.env, process.stderr.isTTY),
     readKey: () => readKey(process.stdin),

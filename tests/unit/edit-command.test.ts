@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   fallbackEditor,
+  forTerminal,
   isAgentDraft,
   runEdit,
   type EditDependencies,
@@ -153,5 +154,9 @@ describe("rp edit, l'éditeur que l'agent ouvre", () => {
     await runEdit(FILE, {}, t, busy.deps);
     expect(busy.rewrites()).toBe(1);
     expect(busy.files[FILE]).toBe(REWRITTEN);
+  });
+
+  it("revient au début de ligne même dans un terminal laissé en mode brut", () => {
+    expect(forTerminal("AVANT\nligne un\r\nAPRÈS\n")).toBe("AVANT\r\nligne un\r\nAPRÈS\r\n");
   });
 });
