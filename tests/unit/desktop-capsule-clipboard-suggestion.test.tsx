@@ -18,13 +18,9 @@ function champSaisie(): HTMLTextAreaElement {
   return screen.getByPlaceholderText<HTMLTextAreaElement>(EN["capsule.placeholder"]);
 }
 
-/** Les lignes de la notice, séparées par ses retours à la ligne. */
-function lignesDeLaNotice(): string[] {
-  const notice = document.querySelector(".capsule-notice");
-  if (notice === null) return [];
-  return [...notice.childNodes]
-    .filter((node) => node.nodeType === Node.TEXT_NODE)
-    .map((node) => node.textContent ?? "");
+/** Le texte de la notice, tel qu'il se lit. */
+function texteDeLaNotice(): string | null {
+  return document.querySelector(".capsule-notice .inline-message-text")?.textContent ?? null;
 }
 
 afterEach(() => {
@@ -40,7 +36,8 @@ describe("suggestion du texte copié", () => {
     await waitFor(() => {
       expect(champSaisie().value).toBe(COPIED);
     });
-    expect(lignesDeLaNotice()).toEqual(["no selection", EN["capsule.clipboardSuggested"]]);
+    // La raison, devenue phrase, puis la suggestion : une seule notice qui se lit.
+    expect(texteDeLaNotice()).toBe(`No selection. ${EN["capsule.clipboardSuggested"]}`);
     expect(harness.bridge.startReprompt).not.toHaveBeenCalled();
   });
 
@@ -64,18 +61,23 @@ describe("suggestion du texte copié", () => {
   it("garde la raison seule quand le presse-papiers n'avait pas de texte", async () => {
     monterCapsule({ capture: { empty: true, reason: "no selection" } });
 
-    await screen.findByText("no selection");
-    expect(lignesDeLaNotice()).toEqual(["no selection"]);
+    await screen.findByText("No selection.");
+    expect(texteDeLaNotice()).toBe("No selection.");
     expect(champSaisie().value).toBe("");
   });
 
   it("dit aussi pourquoi la capture a échoué quand une permission manque", async () => {
     const reason = "Accessibility access denied: allow Reqraft in System Settings";
-    monterCapsule({ capture: { empty: true, reason, clipboardText: COPIED } });
-
-    await waitFor(() => {
-      expect(lignesDeLaNotice()).toEqual([reason, EN["capsule.clipboardSuggested"]]);
+    monterCapsule({
+      capture: { empty: true, reason, permission: "accessibility", clipboardText: COPIED },
     });
+
+    // La permission a sa propre notice (voir desktop-capsule-permission-notice) :
+    // elle dit ce que macOS a bloqué, et que le champ tient le texte copié.
+    await screen.findByText(EN["capsule.permission.captureBlocked"]);
+    expect(texteDeLaNotice()).toContain(
+      `${EN["capsule.permission.allowAccessibility"]} ${EN["capsule.permission.clipboardInField"]}`,
+    );
     expect(champSaisie().value).toBe(COPIED);
   });
 });

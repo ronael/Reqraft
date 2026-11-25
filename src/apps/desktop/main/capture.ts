@@ -1,5 +1,7 @@
+import type { SystemPermissionPane } from "@/apps/desktop/shared/ipc-contract.js";
 import type { DesktopNativeBridge } from "./native-bridge.js";
 import { t } from "./i18n.js";
+import { permissionField, permissionOf } from "./native-permission.js";
 
 /**
  * Selection capture and reinjection — the product's critical path
@@ -87,11 +89,20 @@ export interface CaptureDependencies {
  * machine unless the user then asks for a rewrite.
  */
 export type CaptureOutcome =
-  { text: string } | { empty: true; reason: string; clipboardText?: string };
+  | { text: string }
+  | {
+      empty: true;
+      reason: string;
+      clipboardText?: string;
+      /** The macOS permission that stopped the copy, when one did. */
+      permission?: SystemPermissionPane;
+    };
 
 export interface ReplaceOutcome {
   applied: boolean;
   reason?: string;
+  /** The macOS permission that stopped the replacement, when one did. */
+  permission?: SystemPermissionPane;
 }
 
 /**
@@ -152,6 +163,7 @@ async function captureByCopy(deps: CaptureDependencies): Promise<CaptureOutcome>
     return {
       empty: true,
       reason: describeNativeFailure(error, (detail) => t("main.captureFailed", { detail })),
+      ...permissionField(error),
       ...suggestion(saved.text),
     };
   } finally {
@@ -176,17 +188,14 @@ export function describeNativeFailure(
   error: unknown,
   otherwise: (detail: string) => string,
 ): string {
-  const message = error instanceof Error ? error.message : String(error);
-  if (message.includes("1002") || message.includes("not allowed to send keystrokes")) {
-    return t("main.captureAccessibilityDenied");
+  switch (permissionOf(error)) {
+    case "accessibility":
+      return t("main.captureAccessibilityDenied");
+    case "automation":
+      return t("main.captureAutomationDenied");
+    case null:
+      return otherwise(error instanceof Error ? error.message : String(error));
   }
-  // -1743 : « Not authorized to send Apple events to System Events ». C'est
-  // l'Automatisation, pas l'Accessibilité — deux réglages différents, dans deux
-  // panneaux différents, et envoyer quelqu'un dans le mauvais ne mène nulle part.
-  if (message.includes("1743") || message.includes("Apple event")) {
-    return t("main.captureAutomationDenied");
-  }
-  return otherwise(message);
 }
 
 /**

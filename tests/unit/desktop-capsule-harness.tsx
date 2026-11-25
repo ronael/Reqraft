@@ -19,6 +19,7 @@ import type {
   RunDeltaPayload,
   RunDonePayload,
   RunErrorPayload,
+  SystemPermissionPane,
   UiError,
 } from "@/apps/desktop/shared/ipc-contract.js";
 
@@ -56,6 +57,8 @@ export interface CapsuleBridgeSpies {
    * exactement l'oscillation que la règle de hauteur interdit.
    */
   resizeCapsule: Mock<(height: number) => Promise<void>>;
+  /** The pane a permission notice asks the main process to open. */
+  openPermissionSettings: Mock<(pane: SystemPermissionPane) => Promise<void>>;
 }
 
 /** Les messages que le processus principal pousse vers la capsule. */
@@ -160,6 +163,9 @@ export function monterCapsule(options: CapsuleHarnessOptions = {}): CapsuleHarne
     Promise.resolve(options.capture ?? DEFAULT_CAPTURE),
   );
   const resizeCapsule: CapsuleBridgeSpies["resizeCapsule"] = vi.fn(() => Promise.resolve());
+  const openPermissionSettings: CapsuleBridgeSpies["openPermissionSettings"] = vi.fn(() =>
+    Promise.resolve(),
+  );
 
   const pending: CapsuleOpenedPayload | null =
     options.pending === undefined ? { id: 1, mode: "capture" } : options.pending;
@@ -171,6 +177,7 @@ export function monterCapsule(options: CapsuleHarnessOptions = {}): CapsuleHarne
     cancelReprompt,
     captureSelection,
     resizeCapsule,
+    openPermissionSettings,
     profileCatalog: () =>
       Promise.resolve(
         options.profiles === undefined
@@ -211,7 +218,14 @@ export function monterCapsule(options: CapsuleHarnessOptions = {}): CapsuleHarne
   };
 
   return {
-    bridge: { startReprompt, acceptResult, cancelReprompt, captureSelection, resizeCapsule },
+    bridge: {
+      startReprompt,
+      acceptResult,
+      cancelReprompt,
+      captureSelection,
+      resizeCapsule,
+      openPermissionSettings,
+    },
     push: {
       opened: (payload) => {
         diffuser(listeners.opened, payload);
