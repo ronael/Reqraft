@@ -79,6 +79,9 @@ import { createSettingsWindow } from "./windows/settings.js";
 import { revealExistingWindow } from "./windows/reveal.js";
 import { mainLocale, resolveMainLocale, setMainLocale, t } from "./i18n.js";
 import { cliVersion, createDesktopAgents, loginShellPath, type DesktopAgents } from "./agents.js";
+import { AgentDrafts } from "./agent-drafts.js";
+import { startAgentReviewServer, type AgentReviewServer } from "./agent-review-server.js";
+import { reviewSocketPath } from "@/agents/review-protocol.js";
 import {
   DESKTOP_E2E_PROBE,
   DESKTOP_E2E_HOLD,
@@ -708,11 +711,13 @@ function createCaptureBridge(platform: NodeJS.Platform): DesktopNativeBridge {
 
 /** Selection capture and the permissions probe, on the same native bridge. */
 function createCaptureRuntime(): {
+  bridge: DesktopNativeBridge;
   captureService: CaptureService;
   permissionsProbe: ReturnType<typeof createSystemPermissionsProbe>;
 } {
   const bridge = createCaptureBridge(process.platform);
   return {
+    bridge,
     captureService: new CaptureService({ bridge, clipboard: createCaptureClipboard(clipboard) }),
     permissionsProbe: createSystemPermissionsProbe(
       systemPreferences,
@@ -745,7 +750,7 @@ function bootstrap(): void {
     const { runtime: credentialRuntime, env: desktopEnv } = await initializeDesktopCredentials();
 
     const relaunchApp = createRelauncher();
-    const { captureService, permissionsProbe } = createCaptureRuntime();
+    const { bridge, captureService, permissionsProbe } = createCaptureRuntime();
 
     const { withSurface, windowDefaults } = createWindowEnvironment();
     const keepOpen = await createKeepOpenPreference();
@@ -851,12 +856,14 @@ function bootstrap(): void {
       },
     });
 
-    const agents = createSessionAgents(desktopEnv, clipboard);
+    const agentReview = createAgentReview({ captureService, bridge, liveCapsule, ouvertures });
+    const agents = createSessionAgents(desktopEnv, clipboard, agentReview);
 
     registerIpcHandlers({
       ipcMain,
       clipboard,
       agents,
+      agentDrafts: agentReview.drafts,
       env: desktopEnv,
       platform: process.platform,
       secureCredentialStorageAvailable: credentialRuntime.secureStorageAvailable,
@@ -990,7 +997,11 @@ function bootstrap(): void {
  * when the tab first opens, then kept: an app started from the Finder does not
  * have the terminal's PATH.
  */
-function createSessionAgents(env: NodeJS.ProcessEnv, clipboard: Electron.Clipboard): DesktopAgents {
+function createSessionAgents(
+  env: NodeJS.ProcessEnv,
+  clipboard: Electron.Clipboard,
+  review: Pick<AgentReview, "enabled" | "setEnabled">,
+): DesktopAgents {
   let loginPath: Promise<string | undefined> | null = null;
   return createDesktopAgents({
     env,
@@ -1002,5 +1013,84 @@ function createSessionAgents(env: NodeJS.ProcessEnv, clipboard: Electron.Clipboa
     },
     searchPath: () => (loginPath ??= loginShellPath(env, process.platform, homedir())),
     cliVersion,
+    reviewInApp: review.enabled,
+    setReviewInApp: review.setEnabled,
   });
+}
+
+interface AgentReview {
+  drafts: AgentDrafts;
+  enabled(): Promise<boolean>;
+  setEnabled(enabled: boolean): Promise<void>;
+}
+
+/**
+ * Agent drafts reviewed in the capsule (`rp edit`), and the local socket that
+ * receives them, on while the setting is on. The draft takes the capture's
+ * path; the capsule opens centred, since the terminal's cursor is no anchor.
+ */
+function createAgentReview(deps: {
+  captureService: CaptureService;
+  bridge: DesktopNativeBridge;
+  liveCapsule: () => CapsuleWindow;
+  ouvertures: ReturnType<typeof createOuvertureTracker>;
+}): AgentReview {
+  const drafts = new AgentDrafts({
+    stash: (draft) => deps.captureService.stashAgentDraft(draft),
+    open: (onHidden) => {
+      const target = deps.liveCapsule();
+      target.window.once("hide", onHidden);
+      target.show({ kind: "centered" }, "capture");
+      deps.ouvertures.annonce(target, "capture");
+    },
+    hide: () => {
+      deps.liveCapsule().hide();
+    },
+    activate: (name) => deps.bridge.activateApp(name),
+    clear: () => {
+      deps.captureService.clear();
+    },
+  });
+
+  let server: AgentReviewServer | null = null;
+  // One change at a time: a quick double toggle must not open two sockets.
+  let switching: Promise<void> = Promise.resolve();
+  const apply = (on: boolean): Promise<void> => {
+    switching = switching.then(async () => {
+      if (on && server === null) {
+        server = await startAgentReviewServer(reviewSocketPath(), drafts).catch(
+          (error: unknown) => {
+            console.error("Reqraft: the agent review socket could not open:", error);
+            return null;
+          },
+        );
+      } else if (!on && server !== null) {
+        await server.close();
+        server = null;
+      } else {
+        // Already in the asked state.
+      }
+    });
+    return switching;
+  };
+  const enabled = async (): Promise<boolean> =>
+    (await loadConfig()).desktopReviewAgentDrafts !== false;
+
+  void enabled()
+    .then(apply)
+    .catch(() => undefined);
+  app.on("before-quit", () => {
+    void server?.close();
+  });
+
+  return {
+    drafts,
+    enabled,
+    setEnabled: async (next) => {
+      await saveConfig(
+        ConfigSchema.parse({ ...(await loadUserConfig()), desktopReviewAgentDrafts: next }),
+      );
+      await apply(next);
+    },
+  };
 }

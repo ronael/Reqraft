@@ -92,6 +92,8 @@ export const ConfigSchema = z
     desktopWelcomeTourVersion: IntegerSchema.nonnegative().optional(),
     /** Annonces de nouveautés déjà vues dans l'application Desktop. */
     desktopAnnouncementsSeen: z.array(z.string()).optional(),
+    /** Ctrl+G dans un agent montre le brouillon dans la capsule quand l'app est ouverte. */
+    desktopReviewAgentDrafts: z.boolean().optional(),
     /** L'astuce « rp agents » du CLI a déjà été montrée. */
     cliAgentsTipShown: z.boolean().optional(),
     /** Dernière version Desktop déjà annoncée par une notification native. */

@@ -67,6 +67,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       agentsState: "agents:state",
       agentsSet: "agents:set",
       agentsCopy: "agents:copy",
+      agentsReviewInApp: "agents:review-in-app",
       announcementsRead: "announcements:read",
       announcementsDismiss: "announcements:dismiss",
       runDelta: "run:delta",
@@ -75,7 +76,7 @@ describe("contrat IPC desktop (DESKTOP.md §8.1)", () => {
       runCancelled: "run:cancelled",
       capsuleOpened: "capsule:opened",
     });
-    expect(REQUEST_CHANNELS).toHaveLength(43);
+    expect(REQUEST_CHANNELS).toHaveLength(44);
     expect(PUSH_CHANNELS).toHaveLength(5);
   });
 

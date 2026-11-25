@@ -12,6 +12,11 @@
   Agents that cannot open an external editor are listed as not supported.
 - People who already use the app see the news once, in the menu bar popover;
   new users meet it in the welcome tour, which gains a step.
+- While the app is open, Ctrl+G in an agent shows the draft in the capsule:
+  before and after, profile, level and a result to touch up. Replace sends it
+  back to the agent and returns to the terminal; closing keeps the draft. With
+  the app closed, or over SSH, the review stays in the terminal. Settings ›
+  AI agents › Review chooses.
 - A provider error in a desktop window points to Settings (Providers or
   Diagnostics) instead of suggesting `rp auth login` or `rp doctor`, which no
   window can run.

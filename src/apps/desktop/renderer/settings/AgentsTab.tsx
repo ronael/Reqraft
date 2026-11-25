@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { Bot, Check, Copy, RefreshCw, SquareTerminal } from "lucide-react";
+import { Bot, Check, Copy, PanelsTopLeft, RefreshCw, SquareTerminal } from "lucide-react";
 import type {
   AgentCopyRequest,
   DesktopAgentStatus,
@@ -8,6 +8,7 @@ import type {
 import { Button } from "../shared/Button.js";
 import { InlineMessage } from "../shared/InlineMessage.js";
 import { ipcFailureMessage } from "../shared/ipc-failure.js";
+import { Select } from "../shared/Select.js";
 import { useT, type Translate } from "../shared/i18n.js";
 import { ProviderLogo } from "./ProviderLogo.js";
 
@@ -38,6 +39,8 @@ export function AgentsTab(): React.JSX.Element {
   const [rowErrors, setRowErrors] = useState<Partial<Record<string, string>>>({});
   const [justEnabled, setJustEnabled] = useState<string | null>(null);
   const [shown, setShown] = useState<Shown>(null);
+  const [reviewSaving, setReviewSaving] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     setChecking(true);
@@ -66,6 +69,18 @@ export function AgentsTab(): React.JSX.Element {
       setRowErrors((current) => ({ ...current, [agent.id]: ipcFailureMessage(error) }));
     } finally {
       setSwitching((current) => ({ ...current, [agent.id]: false }));
+    }
+  };
+
+  const chooseReview = async (inApp: boolean): Promise<void> => {
+    setReviewSaving(true);
+    setReviewError(null);
+    try {
+      setState(await window.reqraft.setReviewInApp(inApp));
+    } catch (error) {
+      setReviewError(ipcFailureMessage(error));
+    } finally {
+      setReviewSaving(false);
     }
   };
 
@@ -153,6 +168,42 @@ export function AgentsTab(): React.JSX.Element {
             {t("settings.agents.footer", { file: state.shell.file })}
           </p>
         )}
+      </section>
+
+      <section className="provider-section">
+        <div className="provider-section-head">
+          <h3 className="settings-subhead">{t("settings.agents.reviewSection")}</h3>
+        </div>
+        <div className="provider-list">
+          <div className="provider-row">
+            <span className="provider-logo agents-cli-logo" aria-hidden>
+              <PanelsTopLeft size={20} strokeWidth={1.7} />
+            </span>
+            <span className="provider-copy">
+              <span className="settings-row-title provider-name">
+                <span className="provider-name-text">{t("settings.agents.reviewTitle")}</span>
+              </span>
+              <span className="settings-row-detail">{t("settings.agents.reviewDetail")}</span>
+              {reviewError !== null && (
+                <InlineMessage tone="error" role="alert" className="agents-ready">
+                  {reviewError}
+                </InlineMessage>
+              )}
+            </span>
+            <span className="provider-key-control">
+              <Select
+                value={state.reviewInApp ? "app" : "terminal"}
+                ariaLabel={t("settings.agents.reviewTitle")}
+                disabled={reviewSaving}
+                onChange={(value) => void chooseReview(value === "app")}
+                options={[
+                  { value: "app", label: t("settings.agents.reviewInApp") },
+                  { value: "terminal", label: t("settings.agents.reviewInTerminal") },
+                ]}
+              />
+            </span>
+          </div>
+        </div>
       </section>
     </>
   );

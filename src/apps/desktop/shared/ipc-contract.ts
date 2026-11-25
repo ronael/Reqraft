@@ -1077,6 +1077,8 @@ export const AgentCopyRequestSchema = z.discriminatedUnion("what", [
 ]);
 export type AgentCopyRequest = z.infer<typeof AgentCopyRequestSchema>;
 
+export const AgentReviewInAppRequestSchema = z.object({ enabled: z.boolean() }).strict();
+
 export const AnnouncementIdSchema = z.enum(["agents"]);
 export type AnnouncementId = z.infer<typeof AnnouncementIdSchema>;
 export const AnnouncementDismissRequestSchema = z.object({ id: AnnouncementIdSchema }).strict();
@@ -1118,6 +1120,8 @@ export interface DesktopAgentsState {
   agents: DesktopAgentStatus[];
   /** Supported agents that are not installed, named in one line. */
   alsoSupported: string[];
+  /** Whether Ctrl+G shows the draft in the capsule while the app is open. */
+  reviewInApp: boolean;
 }
 
 export interface ReqraftBridge {
@@ -1159,6 +1163,7 @@ export interface ReqraftBridge {
   agentsState(): Promise<DesktopAgentsState>;
   setAgentEnabled(id: string, enabled: boolean): Promise<DesktopAgentsState>;
   copyAgentText(request: AgentCopyRequest): Promise<void>;
+  setReviewInApp(enabled: boolean): Promise<DesktopAgentsState>;
   announcements(): Promise<AnnouncementId[]>;
   dismissAnnouncement(id: AnnouncementId): Promise<void>;
   shortcutsState(): Promise<ShortcutStateInfo>;

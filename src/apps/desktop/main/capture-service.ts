@@ -77,6 +77,17 @@ export class CaptureService {
   }
 
   /**
+   * An agent's draft, handed over by `rp edit`: stashed like a captured
+   * selection, with the frontmost app (the terminal) recorded as the one to
+   * give the focus back to.
+   */
+  async stashAgentDraft(text: string): Promise<string | null> {
+    const sourceApp = await this.focus.remember(this.dependencies.bridge);
+    this.stashed = { text, sourceApp };
+    return sourceApp;
+  }
+
+  /**
    * What the renderer gets through `capture:selection`. Without a prior
    * trigger there is nothing to give: the capsule opens in free-input mode.
    */

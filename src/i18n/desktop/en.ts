@@ -109,6 +109,12 @@ export const DESKTOP_EN = {
   "settings.agents.copied": "Copied",
   "settings.agents.loading": "Looking for agents…",
   "settings.agents.cliPath": "rp · {path}",
+  "settings.agents.reviewSection": "Review",
+  "settings.agents.reviewTitle": "Where to review the draft",
+  "settings.agents.reviewDetail":
+    "While the app is open, Ctrl+G can show the draft in the capsule rather than in the terminal.",
+  "settings.agents.reviewInApp": "In the capsule",
+  "settings.agents.reviewInTerminal": "In the terminal",
   "settings.agents.agentsSection": "Detected agents",
   "settings.agents.how": "{shortcut} sends your draft to Reqraft and puts it back rewritten.",
   "settings.agents.found": "Found: {path}",
