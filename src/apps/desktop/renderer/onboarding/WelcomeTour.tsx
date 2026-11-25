@@ -16,6 +16,7 @@ import {
   SendHorizontal,
   ShieldCheck,
   SlidersHorizontal,
+  SquareTerminal,
   Stethoscope,
   TriangleAlert,
   UserPlus,
@@ -50,6 +51,12 @@ export const WELCOME_TOUR_SLIDES = [
     body: "onboarding.tour.code.body",
     visual: "code",
     icon: Code2,
+  },
+  {
+    title: "onboarding.tour.agents.title",
+    body: "onboarding.tour.agents.body",
+    visual: "agents",
+    icon: SquareTerminal,
   },
   {
     title: "onboarding.tour.profiles.title",
@@ -352,6 +359,7 @@ function TourVisual({
         {visual === "mail" ? <MailVisual t={t} platform={platform} /> : null}
         {visual === "chat" ? <ChatVisual t={t} platform={platform} /> : null}
         {visual === "code" ? <CodeVisual t={t} platform={platform} /> : null}
+        {visual === "agents" ? <AgentsVisual t={t} /> : null}
         {visual === "profiles" ? <ProfilesVisual t={t} platform={platform} /> : null}
         {visual === "providers" ? <ProvidersVisual t={t} platform={platform} /> : null}
         {visual === "privacy" ? <PrivacyVisual t={t} platform={platform} /> : null}
@@ -621,6 +629,59 @@ function CodeVisual({
         className="tour-product-capsule-code"
         platform={platform}
       />
+    </>
+  );
+}
+
+/**
+ * Codex in a terminal: the draft, Ctrl+G, then `rp edit` asking before the
+ * rewritten text goes back into the composer.
+ */
+function AgentsVisual({ t }: Readonly<{ t: Translate }>): React.JSX.Element {
+  return (
+    <>
+      <div className="tour-app-window tour-terminal-window">
+        <div className="tour-app-titlebar">
+          <WindowControls />
+          <SquareTerminal size={12} />
+          <span>codex</span>
+          <em>~/projet</em>
+        </div>
+        <div className="tour-terminal-body">
+          <span className="tour-terminal-dim">&gt;_ OpenAI Codex</span>
+          <div className="tour-terminal-composer">
+            <b>›</b>
+            <span className="tour-inline-selection">{t("onboarding.tour.agents.draft")}</span>
+          </div>
+        </div>
+      </div>
+      <div className="tour-shortcut tour-agents-shortcut">
+        <BrandMark />
+        <kbd>Ctrl G</kbd>
+      </div>
+      <div className="tour-terminal-review">
+        <header>
+          <BrandMark />
+          <span>rp edit</span>
+        </header>
+        <p>
+          <small>{t("onboarding.tour.agents.before")}</small>
+          {t("onboarding.tour.agents.draft")}
+        </p>
+        <p className="tour-terminal-after">{t("onboarding.tour.agents.rewritten")}</p>
+        <footer>
+          <span>
+            <kbd>⏎</kbd> {t("onboarding.tour.agents.keep")}
+          </span>
+          <span>
+            <kbd>r</kbd> {t("onboarding.tour.agents.retry")}
+          </span>
+          <span>
+            <kbd>esc</kbd> {t("onboarding.tour.agents.cancel")}
+          </span>
+        </footer>
+      </div>
+      <span className="tour-agents-where">{t("onboarding.tour.agents.where")}</span>
     </>
   );
 }

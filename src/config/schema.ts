@@ -90,6 +90,10 @@ export const ConfigSchema = z
     desktopKeepOpenOnBlur: z.boolean().optional(),
     /** Version du parcours de bienvenue déjà terminé dans l'application Desktop. */
     desktopWelcomeTourVersion: IntegerSchema.nonnegative().optional(),
+    /** Annonces de nouveautés déjà vues dans l'application Desktop. */
+    desktopAnnouncementsSeen: z.array(z.string()).optional(),
+    /** L'astuce « rp agents » du CLI a déjà été montrée. */
+    cliAgentsTipShown: z.boolean().optional(),
     /** Dernière version Desktop déjà annoncée par une notification native. */
     desktopNotifiedUpdateVersion: z.string().optional(),
     /** Fournisseurs pour lesquels le Desktop préfère explicitement le trousseau. */

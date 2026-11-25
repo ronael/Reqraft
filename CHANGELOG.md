@@ -4,6 +4,14 @@
 
 ### Desktop application
 
+- Settings › AI agents puts Reqraft inside Codex and Claude Code: their
+  Ctrl+G opens the draft in Reqraft, which rewrites it in place. The tab lists
+  the agents found on the computer, enables one with a click, copies the line
+  to paste yourself, or copies instructions your agent carries out. When the
+  `rp` command is missing, it says so and gives the command to install it.
+  Agents that cannot open an external editor are listed as not supported.
+- People who already use the app see the news once, in the menu bar popover;
+  new users meet it in the welcome tour, which gains a step.
 - A provider error in a desktop window points to Settings (Providers or
   Diagnostics) instead of suggesting `rp auth login` or `rp doctor`, which no
   window can run.
@@ -13,6 +21,17 @@
   to retrace by hand. A refused paste keeps the capsule open on the copied
   result, so ⏎ tries again once the permission is granted. The French notice
   names « Événements système », as French macOS lists it.
+
+### Command line
+
+- `rp agents` turns on Ctrl+G in Codex and Claude Code for zsh, bash, fish or
+  PowerShell: it writes a marked block to the shell's start-up file, prints the
+  lines to paste, or prints instructions for your agent. `--disable` removes
+  the block and nothing else. `rp init` offers it at the end of the setup, and
+  people who already use the CLI see a one-time tip after a rewrite.
+- `rp edit <file>` is the editor those agents open. It rewrites the draft,
+  shows before and after, and writes the result only when you keep it;
+  cancelling or a failed rewrite gives the agent its draft back unchanged.
 
 ### Reliability and distribution
 

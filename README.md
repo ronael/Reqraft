@@ -318,6 +318,19 @@ requested output language.
 `rp auth login <provider>` for secure system storage and also prints shell-specific
 environment-variable instructions.
 
+## In Codex and Claude Code
+
+Type your request in Codex or Claude Code, press **Ctrl+G**, and Reqraft rewrites
+it in place, with a before/after you keep, retry or cancel. Turn it on once:
+
+```bash
+rp agents
+```
+
+It also works from the desktop app (Settings › AI agents), or by pasting
+instructions into your agent. Supported agents, shells and troubleshooting:
+[docs/terminal-agents.md](docs/terminal-agents.md).
+
 ## Shell aliases
 
 ```bash

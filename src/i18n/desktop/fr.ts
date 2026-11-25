@@ -78,6 +78,7 @@ export const DESKTOP_FR = {
   "settings.nav.preferences": "Réglages",
   "settings.nav.updates": "Mises à jour",
   "settings.nav.diagnostic": "Diagnostic",
+  "settings.nav.agents": "Agents IA",
   "settings.profiles.detail": "Style de reformulation et profils locaux.",
   "settings.providers.detail": "Vos clés et vos endpoints, sans jamais afficher une clé.",
   "settings.models.detail": "Provider, modèle et niveau utilisés par défaut.",
@@ -89,6 +90,42 @@ export const DESKTOP_FR = {
   "settings.preferences.generationGroup": "Génération",
   "settings.preferences.systemGroup": "Système",
   "settings.updates.detail": "Version installée et disponibilité d'une nouvelle version.",
+  "settings.agents.detail":
+    "Réécrivez un prompt sans quitter Codex ou Claude Code : tapez votre texte, puis Ctrl+G.",
+  "settings.agents.cliSection": "Ligne de commande",
+  "settings.agents.cliName": "Commande rp",
+  "settings.agents.cliMissing":
+    "Pas encore installée. Les agents passent par elle pour joindre Reqraft.",
+  "settings.agents.cliInstalled": "rp {version} · {path}",
+  "settings.agents.installedBadge": "Installée",
+  "settings.agents.copyCommand": "Copier la commande",
+  "settings.agents.check": "Vérifier",
+  "settings.agents.shell": "Shell : {shell} · {file}",
+  "settings.agents.copyPrompt": "Copier pour votre agent",
+  "settings.agents.promptHint":
+    "Collez cette consigne dans Codex ou Claude Code : l'agent installe rp s'il manque, puis active Ctrl+G.",
+  "settings.agents.unsupportedBadge": "Pas pris en charge",
+  "settings.agents.alsoSupported": "Aussi pris en charge, une fois installés : {agents}.",
+  "settings.agents.shellUnknown":
+    "Shell non reconnu : copiez la consigne pour votre agent, ou lancez rp agents --shell dans un terminal.",
+  "settings.agents.copied": "Copié",
+  "settings.agents.loading": "Recherche des agents…",
+  "settings.agents.cliPath": "rp · {path}",
+  "settings.agents.agentsSection": "Agents détectés",
+  "settings.agents.how": "{shortcut} envoie votre brouillon à Reqraft, puis le remet réécrit.",
+  "settings.agents.found": "Trouvé : {path}",
+  "settings.agents.notFound": "Pas trouvé sur cet ordinateur.",
+  "settings.agents.enable": "Activer",
+  "settings.agents.disable": "Désactiver",
+  "settings.agents.enabledBadge": "Activé",
+  "settings.agents.copyLine": "Copier la ligne",
+  "settings.agents.needsCli": "Installez d'abord la commande rp.",
+  "settings.agents.manualHint":
+    "Collez cette ligne à la fin de {file}, puis ouvrez un nouvel onglet de terminal.",
+  "settings.agents.enabled":
+    "{agent} est prêt. Ouvrez un nouvel onglet de terminal, lancez {command}, tapez votre texte, puis Ctrl+G.",
+  "settings.agents.footer":
+    "Activer ajoute une ligne repérée à {file}, que Désactiver retire. Rien ne part vers votre fournisseur avant Ctrl+G.",
   "settings.updates.current": "Version installée",
   "settings.updates.currentDetail": "La version de l'application actuellement ouverte.",
   "settings.updates.latest": "Dernière version",
@@ -334,6 +371,9 @@ export const DESKTOP_FR = {
   "popover.browse": "parcourir",
   "popover.choose": "choisir",
   "popover.back": "retour",
+  "popover.agentsNew": "Nouveau : Reqraft dans Codex et Claude Code.",
+  "popover.agentsSetup": "Activer…",
+  "popover.agentsLater": "Plus tard",
   "picker.title": "Profils",
   "picker.available": "{count} disponibles",
   "picker.search": "Rechercher un profil…",
@@ -541,6 +581,17 @@ export const DESKTOP_FR = {
   "onboarding.tour.providers.keychain":
     "Les clés sont protégées par le stockage sécurisé du système",
   "onboarding.tour.capture.editing": "modification",
+  "onboarding.tour.agents.title": "Aussi dans Codex et Claude Code",
+  "onboarding.tour.agents.body":
+    "Tapez votre demande dans le terminal, appuyez sur Ctrl+G : Reqraft la remet au propre, sur place.",
+  "onboarding.tour.agents.draft": "jveux que tu regarde pk le bouton envoyer marche pas sur mobile",
+  "onboarding.tour.agents.rewritten":
+    "Trouve pourquoi le bouton « Envoyer » ne réagit pas sur mobile, puis corrige le formulaire.",
+  "onboarding.tour.agents.before": "avant",
+  "onboarding.tour.agents.keep": "garder",
+  "onboarding.tour.agents.retry": "relancer",
+  "onboarding.tour.agents.cancel": "annuler",
+  "onboarding.tour.agents.where": "À activer dans Réglages › Agents IA",
   "onboarding.tour.privacy.title": "Vos demandes restent éphémères",
   "onboarding.tour.privacy.body":
     "Reqraft ne conserve pas vos prompts. Vous choisissez le fournisseur et les clés restent dans le stockage sécurisé du système.",

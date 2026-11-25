@@ -48,6 +48,20 @@ rp "ma demande" --copy
 rp --profile frontend "améliore la card et fait qu'elle marche mobile"
 ```
 
+## Dans Codex et Claude Code
+
+Tapez votre demande dans Codex ou Claude Code, appuyez sur **Ctrl+G**, et Reqraft
+la réécrit sur place, avec un avant/après que vous gardez, relancez ou annulez.
+Activez-le une fois :
+
+```bash
+rp agents
+```
+
+Ça marche aussi depuis l'app desktop (Réglages › Agents IA), ou en collant une
+consigne dans votre agent. Agents pris en charge, shells et dépannage :
+[terminal-agents.md](terminal-agents.md).
+
 ## Profils
 
 - `auto` — le modèle choisit le profil le plus adapté, dans le même appel

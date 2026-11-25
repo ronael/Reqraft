@@ -75,7 +75,13 @@ const bridge: ReqraftBridge = {
   capsulePending: () => ipcRenderer.invoke(IPC_CHANNELS.capsulePending),
   // Un nombre, rien d'autre : la fenêtre reste hors de portée du renderer.
   resizeCapsule: (height) => ipcRenderer.invoke(IPC_CHANNELS.capsuleResize, { height }),
-  openSettings: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings),
+  openSettings: (tab) =>
+    ipcRenderer.invoke(IPC_CHANNELS.windowOpenSettings, tab === undefined ? undefined : { tab }),
+  agentsState: () => ipcRenderer.invoke(IPC_CHANNELS.agentsState),
+  setAgentEnabled: (id, enabled) => ipcRenderer.invoke(IPC_CHANNELS.agentsSet, { id, enabled }),
+  copyAgentText: (request) => ipcRenderer.invoke(IPC_CHANNELS.agentsCopy, request),
+  announcements: () => ipcRenderer.invoke(IPC_CHANNELS.announcementsRead),
+  dismissAnnouncement: (id) => ipcRenderer.invoke(IPC_CHANNELS.announcementsDismiss, { id }),
   openWelcomeTour: () => ipcRenderer.invoke(IPC_CHANNELS.windowOpenWelcomeTour),
   shortcutsState: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsState),
   resumeShortcuts: () => ipcRenderer.invoke(IPC_CHANNELS.shortcutsResume),

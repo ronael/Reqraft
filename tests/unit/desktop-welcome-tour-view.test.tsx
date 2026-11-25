@@ -32,6 +32,7 @@ const DEMONSTRATIONS: Record<Ecran["visual"], string> = {
   mail: t("onboarding.tour.mail.subjectValue"),
   chat: t("onboarding.tour.chat.placeholder"),
   code: "Header.tsx",
+  agents: "rp edit",
   profiles: t("onboarding.tour.profiles.detects"),
   providers: t("onboarding.tour.providers.ecosystemTitle"),
   privacy: t("onboarding.tour.privacy.keychain"),

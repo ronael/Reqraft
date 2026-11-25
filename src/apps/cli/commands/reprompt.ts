@@ -1,3 +1,6 @@
+import { homedir } from "node:os";
+import { nodeAgentsPorts } from "@/agents/node-ports.js";
+import { enableCandidates, readAgentsStatus } from "@/agents/setup.js";
 import process from "node:process";
 import type { FidelityMode, RepromptResult } from "@/core/types.js";
 import { parseLevel } from "@/core/levels.js";
@@ -5,7 +8,7 @@ import { resolveEffectiveLevel } from "@/profiles/level.js";
 import { readClipboard, writeClipboard } from "@/apps/cli/clipboard/clipboard.js";
 import { readFileContent, readStdin } from "@/utils/input.js";
 import { EXIT_CODES } from "@/utils/exit-codes.js";
-import { loadConfig } from "@/config/loader.js";
+import { loadConfig, loadUserConfig, saveConfig } from "@/config/loader.js";
 import { detectSecretKinds } from "@/core/secret-detector.js";
 import { redactSecrets } from "@/utils/redaction.js";
 import { executeReprompt, type ExecuteRepromptInput } from "@/application/reprompt.js";
@@ -47,6 +50,8 @@ export interface RepromptCliOptions {
   force?: boolean;
   redactSecrets?: boolean;
   outputLanguage?: string;
+  /** Set by `rp edit`: its screen is no place for the one-time tip. */
+  skipAgentsTip?: boolean;
 }
 
 interface RepromptOutput {
@@ -164,7 +169,11 @@ export async function runReprompt(
       output.error(t("reprompt.profileDetected", { profile: result.profile }));
     }
 
-    return await outputResult(result, options, config.showStats, output, t);
+    const code = await outputResult(result, options, config.showStats, output, t);
+    if (code === EXIT_CODES.SUCCESS && options.json !== true && options.skipAgentsTip !== true) {
+      await maybeShowAgentsTip(config, output, t);
+    }
+    return code;
   } catch (error) {
     if (options.json) {
       const normalized = normalizeReqraftError(error);
@@ -172,6 +181,33 @@ export async function runReprompt(
       return normalized.exitCode;
     }
     return reportFatalError(error, options.verbose ?? false, output, providerId ?? "provider", t);
+  }
+}
+
+/**
+ * Once, after the update that brought `rp agents`: someone who rewrites in a
+ * terminal is who Ctrl+G in Codex or Claude Code helps. Only for a person at a
+ * terminal, only while an installed agent is not connected, then remembered.
+ * A tip never fails a rewrite.
+ */
+async function maybeShowAgentsTip(
+  config: Config,
+  output: RepromptOutput,
+  t: Translator,
+): Promise<void> {
+  if (config.cliAgentsTipShown === true || !process.stdout.isTTY || !process.stderr.isTTY) return;
+  try {
+    const status = await readAgentsStatus(nodeAgentsPorts(process.env.PATH), {
+      env: process.env,
+      platform: process.platform,
+      home: homedir() || undefined,
+    });
+    if (enableCandidates(status).length === 0) return;
+    output.error("");
+    output.error(t("agents.tip"));
+    await saveConfig({ ...(await loadUserConfig()), cliAgentsTipShown: true });
+  } catch {
+    // The rewrite already succeeded; the tip can wait for another run.
   }
 }
 

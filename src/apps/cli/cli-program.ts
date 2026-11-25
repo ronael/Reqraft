@@ -6,6 +6,8 @@ import { runConfig } from "./commands/config.js";
 import { runDoctor } from "./commands/doctor.js";
 import { runFirstRunSetup } from "./commands/first-run.js";
 import { runAlias } from "./commands/aliases.js";
+import { runAgents } from "./commands/agents.js";
+import { runEdit } from "./commands/edit.js";
 import { runModelsList, runProfilesList, runProvidersList } from "./commands/list.js";
 import {
   runProfilesAdd,
@@ -234,6 +236,45 @@ export function createCliProgram(t: Translator, uiLocale: "en" | "fr"): Command 
     .action(async (action: string, name?: string, options?: { dryRun?: boolean }) => {
       applyExitCode(await runAlias(action, name, options ?? {}, t));
     });
+
+  program
+    .command("agents")
+    .description(t("cli.agents.description"))
+    .option("--enable", t("cli.agents.enable"))
+    .option("--disable", t("cli.agents.disable"))
+    .option("--print", t("cli.agents.print"))
+    .option("--prompt", t("cli.agents.prompt"))
+    .option("-y, --yes", t("cli.agents.yes"))
+    .option("--shell <shell>", t("cli.agents.shell"))
+    .action(
+      async (options: {
+        enable?: boolean;
+        disable?: boolean;
+        print?: boolean;
+        prompt?: boolean;
+        yes?: boolean;
+        shell?: string;
+      }) => {
+        applyExitCode(await runAgents(options, t));
+      },
+    );
+
+  program
+    .command("edit")
+    .description(t("cli.edit.description"))
+    // Some agents add their own options before the file (Gemini CLI passes
+    // `-i NONE` to anything it takes for vi): they are tolerated, and the file
+    // is the last argument.
+    .argument("<file...>", t("cli.edit.file"))
+    .option("-p, --profile <profile>", t("cli.option.profile"))
+    .option("-l, --level <level>", t("cli.option.level"))
+    .option("-y, --yes", t("cli.edit.yes"))
+    .allowUnknownOption()
+    .action(
+      async (files: string[], options: { profile?: string; level?: string; yes?: boolean }) => {
+        applyExitCode(await runEdit(files.at(-1) ?? "", options, t));
+      },
+    );
 
   program
     .command("version")
